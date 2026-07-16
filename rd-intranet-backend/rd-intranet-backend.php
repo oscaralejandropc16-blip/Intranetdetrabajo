@@ -99,7 +99,38 @@ add_action('rest_api_init', function () {
             return is_user_logged_in();
         }
     ));
+
+    // Endpoint: GET /rd-intranet/v1/draft (Obtener borrador)
+    register_rest_route('rd-intranet/v1', '/draft', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_draft',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)
+    register_rest_route('rd-intranet/v1', '/draft', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_save_draft',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
 });
+
+function rd_intranet_get_draft() {
+    $user_id = get_current_user_id();
+    $draft = get_user_meta($user_id, 'rd_intranet_draft', true);
+    return rest_ensure_response($draft ? json_decode($draft, true) : null);
+}
+
+function rd_intranet_save_draft($request) {
+    $user_id = get_current_user_id();
+    $params = $request->get_json_params();
+    update_user_meta($user_id, 'rd_intranet_draft', wp_json_encode($params));
+    return rest_ensure_response(array('success' => true));
+}
 
 function rd_intranet_get_expedientes() {
     $expedientes = get_option('rd_global_expedientes', array());
@@ -184,6 +215,9 @@ function rd_intranet_handle_submit($request) {
     update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos));
     update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones));
     update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones));
+
+    // Eliminar borrador de la nube al finalizar jornada
+    delete_user_meta($user_id, 'rd_intranet_draft');
 
     return rest_ensure_response(array('success' => true, 'message' => 'Día cerrado exitosamente.', 'post_id' => $post_id));
 }

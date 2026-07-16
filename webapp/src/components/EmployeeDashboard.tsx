@@ -55,7 +55,7 @@ export default function EmployeeDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
 
-  // Autoguardado
+  // Autoguardado (Local y Nube)
   useEffect(() => {
     const draft = {
       clockIn: clockIn ? clockIn.toISOString() : null,
@@ -65,9 +65,38 @@ export default function EmployeeDashboard() {
       programaciones
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+
+    // Guardar en la nube con debounce de 2 segundos
+    const handler = setTimeout(async () => {
+      try {
+        // No sincronizamos si todo está vacío (estado inicial sin modificaciones)
+        if (!draft.clockIn && draft.actuaciones.length === 0 && draft.ingresos.length === 0 && draft.programaciones.length === 0) return;
+        await api.post('/rd-intranet/v1/draft', draft);
+      } catch (e) {
+        console.error('Error saving draft to cloud', e);
+      }
+    }, 2000);
+
+    return () => clearTimeout(handler);
   }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones]);
 
   useEffect(() => {
+    const fetchDraft = async () => {
+      try {
+        const response = await api.get('/rd-intranet/v1/draft');
+        if (response.data) {
+          if (response.data.clockIn) setClockIn(new Date(response.data.clockIn));
+          if (response.data.ubicacionEntrada) setUbicacionEntrada(response.data.ubicacionEntrada);
+          if (response.data.actuaciones) setActuaciones(response.data.actuaciones);
+          if (response.data.ingresos) setIngresos(response.data.ingresos);
+          if (response.data.programaciones) setProgramaciones(response.data.programaciones);
+        }
+      } catch (error) {
+        console.error('Error fetching draft:', error);
+      }
+    };
+    fetchDraft();
+
     const fetchMyTasks = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/my-tasks');
