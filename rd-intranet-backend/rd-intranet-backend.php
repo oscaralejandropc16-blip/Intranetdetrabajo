@@ -87,7 +87,7 @@ add_action('rest_api_init', function () {
         'methods' => 'POST',
         'callback' => 'rd_intranet_reset_test_data',
         'permission_callback' => function () {
-            return current_user_can('administrator');
+            return is_user_logged_in();
         }
     ));
 

@@ -34,9 +34,10 @@ export default function TabHistorial() {
   }, []);
 
   const openMap = (locationStr: string) => {
-    // locationStr format is "lat,lng"
+    // locationStr format could be "lat,lng" or "lat,lng|||City"
     if (!locationStr || locationStr === 'N/A') return;
-    window.open(`https://www.google.com/maps/search/?api=1&query=${locationStr}`, '_blank');
+    const coords = locationStr.split('|||')[0];
+    window.open(`https://www.google.com/maps/search/?api=1&query=${coords}`, '_blank');
   };
 
   return (
@@ -84,17 +85,27 @@ export default function TabHistorial() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col gap-3">
                       {bitacora.ubicacionEntrada && bitacora.ubicacionEntrada !== 'N/A' ? (
-                        <button onClick={() => openMap(bitacora.ubicacionEntrada!)} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max">
-                          <MapPin className="w-3.5 h-3.5" /> Ver Entrada
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          {bitacora.ubicacionEntrada.includes('|||') && (
+                            <span className="text-xs font-bold text-slate-700 leading-tight">{bitacora.ubicacionEntrada.split('|||')[1]}</span>
+                          )}
+                          <button onClick={() => openMap(bitacora.ubicacionEntrada!)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max uppercase tracking-wider">
+                            <MapPin className="w-3 h-3" /> Entrada
+                          </button>
+                        </div>
                       ) : <span className="text-xs text-slate-400 font-medium">Sin GPS (Entrada)</span>}
                       
                       {bitacora.ubicacionSalida && bitacora.ubicacionSalida !== 'N/A' ? (
-                        <button onClick={() => openMap(bitacora.ubicacionSalida!)} className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max">
-                          <MapPin className="w-3.5 h-3.5" /> Ver Salida
-                        </button>
+                        <div className="flex flex-col items-start gap-1">
+                          {bitacora.ubicacionSalida.includes('|||') && (
+                            <span className="text-xs font-bold text-slate-700 leading-tight">{bitacora.ubicacionSalida.split('|||')[1]}</span>
+                          )}
+                          <button onClick={() => openMap(bitacora.ubicacionSalida!)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max uppercase tracking-wider">
+                            <MapPin className="w-3 h-3" /> Salida
+                          </button>
+                        </div>
                       ) : <span className="text-xs text-slate-400 font-medium">Sin GPS (Salida)</span>}
                     </div>
                   </td>

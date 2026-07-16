@@ -257,6 +257,21 @@ export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial'>('ingresos');
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+      const data = await res.json();
+      const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
+      const state = data.address?.state || '';
+      if (city && state) return `${city}, ${state}`;
+      if (city) return city;
+      if (state) return state;
+      return 'Ubicación Desconocida';
+    } catch (error) {
+      return 'Ubicación Desconocida';
+    }
+  };
+
   const getGeolocation = (): Promise<string> => {
     return new Promise((resolve) => {
       if (!navigator.geolocation) {
@@ -264,8 +279,12 @@ export default function EmployeeDashboard() {
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          resolve(`${position.coords.latitude},${position.coords.longitude}`);
+        async (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          const coordsStr = `${lat},${lng}`;
+          const cityName = await getCityFromCoords(lat, lng);
+          resolve(`${coordsStr}|||${cityName}`);
         },
         () => {
           resolve('N/A');
@@ -400,7 +419,16 @@ export default function EmployeeDashboard() {
                   {clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
                   {clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
                 </span>
-                {clockIn && <span className="text-emerald-900 bg-emerald-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockIn, 'hh:mm a')}</span>}
+                {clockIn && (
+                  <div className="flex flex-col items-center gap-1 mt-1">
+                    <span className="text-emerald-900 bg-emerald-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockIn, 'hh:mm a')}</span>
+                    {ubicacionEntrada && ubicacionEntrada !== 'N/A' && ubicacionEntrada.includes('|||') && (
+                      <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight">
+                        {ubicacionEntrada.split('|||')[1]}
+                      </span>
+                    )}
+                  </div>
+                )}
               </button>
 
               <div className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm border-2 ${
@@ -413,7 +441,7 @@ export default function EmployeeDashboard() {
                   {clockOut ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 opacity-50" />}
                   {clockOut ? 'Salida Registrada' : 'Salida Pendiente'}
                 </span>
-                {clockOut && <span className="text-rose-900 bg-rose-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockOut, 'hh:mm a')}</span>}
+                {clockOut && <span className="text-rose-900 bg-rose-200/50 px-3 py-1 rounded-lg text-xs tracking-wider mt-1">{format(clockOut, 'hh:mm a')}</span>}
               </div>
             </div>
 

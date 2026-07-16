@@ -4,14 +4,8 @@ import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../lib/api';
 
-const MOCK_REPORTS = [
-  { id: 1, user: 'carmen luisa', date: '2026-07-15', clockIn: '08:00 AM', clockOut: '05:00 PM', status: 'Enviado', unread: true, content: 'TAREAS COMPLETADAS HOY:\n- [2 hrs] Llamada con cliente nuevo\n- [1 hrs] Redacción de correo\n\nACTIVIDADES PROGRAMADAS:\n- Visita a registro mercantil', files: [{name: 'Borrador_Alianza.pdf', size: '2.4 MB'}, {name: 'Reporte_Ventas.xlsx', size: '1.1 MB'}], progress: 100 },
-  { id: 2, user: 'Empleado 2', date: '2026-07-15', clockIn: '08:15 AM', clockOut: null, status: 'En Curso', unread: false, content: '', files: [], progress: 45 },
-  { id: 3, user: 'Empleado 3', date: '2026-07-15', clockIn: '07:50 AM', clockOut: '04:30 PM', status: 'Enviado', unread: true, content: 'TAREAS COMPLETADAS HOY:\n- [4 hrs] Revisión de contratos\n\nACTIVIDADES PROGRAMADAS:\n- Redactar minuta', files: [{name: 'Contrato_Firmado.pdf', size: '4.5 MB'}], progress: 100 },
-];
-
 export default function AdminDashboard() {
-  const [reports, setReports] = useState<any[]>(MOCK_REPORTS);
+  const [reports, setReports] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [adminComment, setAdminComment] = useState('');
   const [adminProgramaciones, setAdminProgramaciones] = useState<any[]>([]);
@@ -25,13 +19,16 @@ export default function AdminDashboard() {
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [activeView, setActiveView] = useState<'bitacoras' | 'agenda'>('bitacoras');
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
 
   useEffect(() => {
     const fetchBitacoras = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/bitacoras');
         if (response.data && Array.isArray(response.data)) {
-          setReports(response.data.length > 0 ? response.data : MOCK_REPORTS);
+          setReports(response.data);
         }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
@@ -102,15 +99,17 @@ export default function AdminDashboard() {
   const pendingReview = reports.filter(r => r.status === 'Enviado').length;
   const inProgress = reports.filter(r => r.status === 'En Curso').length;
 
-  const handleResetData = async () => {
-    if (confirm('¿Estás seguro de que deseas borrar TODAS las bitácoras y resetear los correlativos? Esta acción no se puede deshacer y es solo para limpiar datos de prueba.')) {
-      try {
-        await api.post('/rd-intranet/v1/reset-test-data', {});
-        alert('Datos de prueba borrados exitosamente.');
-        window.location.reload();
-      } catch (error) {
-        alert('Error al intentar borrar datos.');
-      }
+  const handleConfirmReset = async () => {
+    setIsResetting(true);
+    try {
+      await api.post('/rd-intranet/v1/reset-test-data', {});
+      setShowResetModal(false);
+      window.location.reload();
+    } catch (error) {
+      console.error('Error al intentar borrar datos', error);
+      setIsResetting(false);
+      setShowResetModal(false);
+      alert('Error al intentar borrar datos. Revisa la consola o los permisos.');
     }
   };
 
@@ -128,6 +127,13 @@ export default function AdminDashboard() {
     acc[task.fecha].push(task);
     return acc;
   }, {} as Record<string, any[]>);
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const activeNotifications = reports.filter(r => 
+    r.status === 'Enviado' && 
+    r.date === todayStr && 
+    !dismissedNotifs.includes(r.id)
+  );
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
@@ -169,20 +175,32 @@ export default function AdminDashboard() {
                 className="p-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl hover:bg-white/10 transition-colors"
               >
                 <Bell className="w-7 h-7 text-amber-400" />
-                {pendingReview > 0 && <span className="absolute top-4 right-4 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></span>}
+                {activeNotifications.length > 0 && <span className="absolute top-4 right-4 w-3 h-3 bg-red-500 rounded-full border-2 border-slate-900 animate-pulse"></span>}
               </button>
 
               {showNotifications && (
                 <div className="absolute right-0 mt-3 w-80 bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                   <div className="bg-slate-950 p-4 flex justify-between items-center text-white border-b border-white/5">
-                    <span className="font-bold text-sm tracking-widest uppercase text-amber-500 flex items-center gap-2"><Bell className="w-4 h-4"/> Notificaciones</span>
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+                    <span className="font-bold text-sm tracking-widest uppercase text-amber-500 flex items-center gap-2">
+                      <Bell className="w-4 h-4"/> Notificaciones
+                    </span>
+                    <div className="flex items-center gap-3">
+                      {activeNotifications.length > 0 && (
+                        <button 
+                          onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])} 
+                          className="text-xs font-bold text-slate-400 hover:text-amber-500 transition-colors uppercase tracking-wider"
+                        >
+                          Vaciar
+                        </button>
+                      )}
+                      <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors"><X className="w-4 h-4" /></button>
+                    </div>
                   </div>
                   <div className="max-h-80 overflow-y-auto p-2 space-y-2">
-                    {reports.filter(r => r.unread).length === 0 ? (
-                       <div className="p-6 text-center text-slate-400 text-sm font-medium">No tienes notificaciones pendientes</div>
+                    {activeNotifications.length === 0 ? (
+                       <div className="p-6 text-center text-slate-400 text-sm font-medium">No tienes notificaciones pendientes para hoy</div>
                     ) : (
-                       reports.filter(r => r.unread).map(r => (
+                       activeNotifications.map(r => (
                          <div key={r.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" onClick={() => {setSelectedReport(r); setShowNotifications(false);}}>
                            <p className="text-sm font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
                            <p className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> Requiere revisión urgente</p>
@@ -372,7 +390,7 @@ export default function AdminDashboard() {
           </table>
         </div>
         <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-3xl">
-           <button onClick={handleResetData} className="text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
+           <button onClick={() => setShowResetModal(true)} className="text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
              <AlertCircle className="w-4 h-4" /> Resetear Datos de Prueba
            </button>
         </div>
@@ -495,9 +513,14 @@ export default function AdminDashboard() {
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500"/> GPS Entrada</p>
                   {selectedReport.ubicacionEntrada && selectedReport.ubicacionEntrada !== 'N/A' ? (
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionEntrada}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
-                      Ver en Mapa
-                    </a>
+                    <div className="flex flex-col items-start gap-1">
+                      {selectedReport.ubicacionEntrada.includes('|||') && (
+                        <span className="text-xs font-bold text-slate-700">{selectedReport.ubicacionEntrada.split('|||')[1]}</span>
+                      )}
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionEntrada.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
+                        Ver en Mapa
+                      </a>
+                    </div>
                   ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
                 </div>
 
@@ -509,9 +532,14 @@ export default function AdminDashboard() {
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500"/> GPS Salida</p>
                   {selectedReport.ubicacionSalida && selectedReport.ubicacionSalida !== 'N/A' ? (
-                    <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionSalida}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
-                      Ver en Mapa
-                    </a>
+                    <div className="flex flex-col items-start gap-1">
+                      {selectedReport.ubicacionSalida.includes('|||') && (
+                        <span className="text-xs font-bold text-slate-700">{selectedReport.ubicacionSalida.split('|||')[1]}</span>
+                      )}
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionSalida.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
+                        Ver en Mapa
+                      </a>
+                    </div>
                   ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
                 </div>
               </div>
@@ -694,6 +722,37 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Modal de Confirmación de Reseteo */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
+            <div className="p-8 text-center">
+              <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertCircle className="w-8 h-8" />
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 mb-2">¿Borrar todos los datos?</h3>
+              <p className="text-slate-500 font-medium mb-8">Esta acción eliminará de WordPress todas las bitácoras y correlativos de prueba. No se puede deshacer.</p>
+              
+              <div className="flex gap-4">
+                <button 
+                  onClick={() => setShowResetModal(false)}
+                  disabled={isResetting}
+                  className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={handleConfirmReset}
+                  disabled={isResetting}
+                  className="flex-1 py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  {isResetting ? <span className="animate-pulse">Borrando...</span> : 'Sí, borrar todo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
