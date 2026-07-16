@@ -3,6 +3,7 @@ import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, 
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../lib/api';
+import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
@@ -22,6 +23,12 @@ export default function AdminDashboard() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
+  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     const fetchBitacoras = async () => {
@@ -46,13 +53,23 @@ export default function AdminDashboard() {
         comentario_admin: adminComment,
         programaciones: adminProgramaciones
       });
-      alert('Comentario y modificaciones guardadas. Se ha notificado al empleado.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'success',
+        title: '¡Comentario y Cambios Guardados!',
+        message: 'Las observaciones de Jefatura y modificaciones en la programación han sido registradas y se ha notificado al empleado.'
+      });
       
       setReports(reports.map(r => r.id === selectedReport.id ? { ...r, status: 'Revisado', unread: false, programaciones: adminProgramaciones } : r));
       setSelectedReport(null);
     } catch (error) {
       console.error('Error al guardar comentario', error);
-      alert('Error de red al intentar guardar.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error de Red o Conexión',
+        message: 'No se pudieron guardar las modificaciones en el servidor. Por favor verifica tu conexión y vuelve a intentarlo.'
+      });
     }
   };
 
@@ -109,7 +126,12 @@ export default function AdminDashboard() {
       console.error('Error al intentar borrar datos', error);
       setIsResetting(false);
       setShowResetModal(false);
-      alert('Error al intentar borrar datos. Revisa la consola o los permisos.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al Limpiar Datos',
+        message: 'No se pudieron eliminar las bitácoras de prueba. Verifica los permisos de administrador en la consola o el servidor.'
+      });
     }
   };
 
@@ -137,6 +159,13 @@ export default function AdminDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
+      <SystemAlertModal
+        isOpen={systemAlert.isOpen}
+        type={systemAlert.type}
+        title={systemAlert.title}
+        message={systemAlert.message}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+      />
       
       {/* Header Premium Glassmorphism */}
       <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 text-white shadow-2xl border border-slate-800 relative">

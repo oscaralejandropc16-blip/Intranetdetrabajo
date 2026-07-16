@@ -117,19 +117,113 @@ add_action('rest_api_init', function () {
             return is_user_logged_in();
         }
     ));
+
+    // Endpoint: POST /rd-intranet/v1/clock-in (Blindaje de asistencia y sello inmutable del día)
+    register_rest_route('rd-intranet/v1', '/clock-in', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_handle_clock_in',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
 });
 
 function rd_intranet_get_draft() {
     $user_id = get_current_user_id();
-    $draft = get_user_meta($user_id, 'rd_intranet_draft', true);
-    return rest_ensure_response($draft ? json_decode($draft, true) : null);
+    $draft_str = get_user_meta($user_id, 'rd_intranet_draft', true);
+    $draft = $draft_str ? json_decode($draft_str, true) : array();
+    if (!is_array($draft)) $draft = array();
+
+    // Blindaje horaria: Inyectar siempre el clockIn inmutable del servidor para hoy si existe
+    $today = date('Y-m-d');
+    $immutable_meta = get_user_meta($user_id, 'rd_intranet_clockin_' . $today, true);
+    if (!empty($immutable_meta)) {
+        $imm = json_decode($immutable_meta, true);
+        if (is_array($imm)) {
+            $draft['clockIn'] = $imm['clockIn'];
+            if (!empty($imm['ubicacionEntrada']) && $imm['ubicacionEntrada'] !== 'Obteniendo ubicación...') {
+                $draft['ubicacionEntrada'] = $imm['ubicacionEntrada'];
+            }
+        } else {
+            $draft['clockIn'] = $immutable_meta;
+        }
+    }
+
+    return rest_ensure_response(empty($draft) ? null : $draft);
 }
 
 function rd_intranet_save_draft($request) {
     $user_id = get_current_user_id();
     $params = $request->get_json_params();
+    if (!is_array($params)) $params = array();
+
+    // Blindaje: Si ya existe una hora inmutable para el día, nunca permitir que un guardado con clockIn = null la borre o sobrescriba
+    $today = date('Y-m-d');
+    $immutable_meta = get_user_meta($user_id, 'rd_intranet_clockin_' . $today, true);
+    if (!empty($immutable_meta)) {
+        $imm = json_decode($immutable_meta, true);
+        $params['clockIn'] = is_array($imm) ? $imm['clockIn'] : $immutable_meta;
+        if (is_array($imm) && !empty($imm['ubicacionEntrada']) && $imm['ubicacionEntrada'] !== 'Obteniendo ubicación...') {
+            $params['ubicacionEntrada'] = $imm['ubicacionEntrada'];
+        }
+    }
+
     update_user_meta($user_id, 'rd_intranet_draft', wp_json_encode($params));
     return rest_ensure_response(array('success' => true));
+}
+
+function rd_intranet_handle_clock_in($request) {
+    $user_id = get_current_user_id();
+    $params = $request->get_json_params();
+    $clock_in = $params['clockIn'] ?? '';
+    $ubicacion = $params['ubicacionEntrada'] ?? '';
+    $fecha = $params['fecha'] ?? date('Y-m-d');
+
+    if (empty($clock_in)) {
+        return rest_ensure_response(array('success' => false, 'message' => 'Hora de entrada inválida'));
+    }
+
+    $meta_key = 'rd_intranet_clockin_' . $fecha;
+    $existing = get_user_meta($user_id, $meta_key, true);
+
+    if (!empty($existing)) {
+        $existing_data = json_decode($existing, true);
+        if (!is_array($existing_data)) {
+            $existing_data = array('clockIn' => $existing, 'ubicacionEntrada' => $ubicacion);
+        }
+        // Si ya existe la hora inmutable de hoy, rechazar categóricamente cualquier intento de cambiar la hora (anti-trampas)
+        if (!empty($ubicacion) && ($existing_data['ubicacionEntrada'] === 'Obteniendo ubicación...' || $existing_data['ubicacionEntrada'] === 'N/A')) {
+            $existing_data['ubicacionEntrada'] = $ubicacion;
+            update_user_meta($user_id, $meta_key, wp_json_encode($existing_data));
+        }
+        return rest_ensure_response(array(
+            'success' => true,
+            'already_registered' => true,
+            'clockIn' => $existing_data['clockIn'],
+            'ubicacionEntrada' => $existing_data['ubicacionEntrada']
+        ));
+    }
+
+    $data = array(
+        'clockIn' => $clock_in,
+        'ubicacionEntrada' => $ubicacion
+    );
+    update_user_meta($user_id, $meta_key, wp_json_encode($data));
+
+    // Asegurar que también esté en el borrador al instante
+    $draft_str = get_user_meta($user_id, 'rd_intranet_draft', true);
+    $draft = $draft_str ? json_decode($draft_str, true) : array();
+    if (!is_array($draft)) $draft = array();
+    $draft['clockIn'] = $clock_in;
+    $draft['ubicacionEntrada'] = $ubicacion;
+    update_user_meta($user_id, 'rd_intranet_draft', wp_json_encode($draft));
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'already_registered' => false,
+        'clockIn' => $clock_in,
+        'ubicacionEntrada' => $ubicacion
+    ));
 }
 
 function rd_intranet_get_expedientes() {
@@ -223,8 +317,10 @@ function rd_intranet_handle_submit($request) {
         update_post_meta($post_id, 'cierre_retrasado', '1');
     }
 
-    // Eliminar borrador de la nube al finalizar jornada
+    // Eliminar borrador y sello inmutable al finalizar jornada
     delete_user_meta($user_id, 'rd_intranet_draft');
+    delete_user_meta($user_id, 'rd_intranet_clockin_' . $fecha_reporte);
+    delete_user_meta($user_id, 'rd_intranet_clockin_' . date('Y-m-d'));
 
     return rest_ensure_response(array('success' => true, 'message' => 'Día cerrado exitosamente.', 'post_id' => $post_id));
 }

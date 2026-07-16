@@ -11,6 +11,7 @@ import TabHistorial from './employee/TabHistorial';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 
 const STORAGE_KEY = 'rd_intranet_draft';
 
@@ -35,6 +36,12 @@ export default function EmployeeDashboard() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(true);
+  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
@@ -68,7 +75,7 @@ export default function EmployeeDashboard() {
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
 
-    // Guardar en la nube con debounce de 2 segundos
+    // Guardar en la nube con debounce de 800 milisegundos
     const handler = setTimeout(async () => {
       try {
         // No sincronizamos si todo está vacío (estado inicial sin modificaciones)
@@ -77,7 +84,7 @@ export default function EmployeeDashboard() {
       } catch (e) {
         console.error('Error saving draft to cloud', e);
       }
-    }, 2000);
+    }, 800);
 
     return () => clearTimeout(handler);
   }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones]);
@@ -92,6 +99,7 @@ export default function EmployeeDashboard() {
           if (response.data.actuaciones && Array.isArray(response.data.actuaciones)) setActuaciones(response.data.actuaciones);
           if (response.data.ingresos && Array.isArray(response.data.ingresos)) setIngresos(response.data.ingresos);
           if (response.data.programaciones && Array.isArray(response.data.programaciones)) setProgramaciones(response.data.programaciones);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(response.data));
         }
       } catch (error) {
         console.error('Error fetching draft:', error);
@@ -279,14 +287,29 @@ export default function EmployeeDashboard() {
       try {
         await api.post('/rd-intranet/v1/submit', payload);
         localStorage.removeItem(STORAGE_KEY); // Limpiar el borrador al enviar con éxito
-        alert('Jornada cerrada exitosamente. La bitácora y el PDF han sido enviados a Jefatura y los números de expediente han sido registrados globalmente.');
+        setSystemAlert({
+          isOpen: true,
+          type: 'success',
+          title: '¡Jornada Cerrada con Éxito!',
+          message: 'La bitácora y el archivo PDF han sido enviados correctamente a Jefatura, y los números de expediente fueron registrados globalmente en la Intranet.'
+        });
       } catch (apiError) {
         console.error('Error enviando a la API real, revisa tu conexión a WP', apiError);
-        alert('Se generó tu PDF localmente, pero hubo un problema conectando con el servidor central para subirlo. Revisa tu conexión.');
+        setSystemAlert({
+          isOpen: true,
+          type: 'warning',
+          title: 'PDF Generado - Sin Conexión al Servidor',
+          message: 'Se generó y descargó tu PDF de respaldo en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
+        });
       }
     } catch (error) {
       console.error('Error al cerrar jornada', error);
-      alert('Hubo un error al cerrar tu jornada.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al Cerrar Jornada',
+        message: 'Ocurrió un error inesperado al procesar el cierre de tu jornada. Por favor, intenta de nuevo.'
+      });
     }
   };
 
@@ -336,26 +359,57 @@ export default function EmployeeDashboard() {
   const handleClockIn = async () => {
     try {
       const now = new Date();
+      const nowIso = now.toISOString();
       setClockIn(now);
-      setLoadingLocation(true);
-      const loc = await getGeolocation();
-      setUbicacionEntrada(loc);
-      setLoadingLocation(false);
-
-      // Guardado inmediato en la nube sin esperar al debounce
+      
+      // Guardado instantáneo inmutable en servidor y local SIN ESPERAR a que termine el GPS
+      const immediatePayload = {
+        clockIn: nowIso,
+        ubicacionEntrada: 'Obteniendo ubicación...',
+        fecha: format(now, 'yyyy-MM-dd')
+      };
+      
       const immediateDraft = {
-        clockIn: now.toISOString(),
-        ubicacionEntrada: loc,
+        clockIn: nowIso,
+        ubicacionEntrada: 'Obteniendo ubicación...',
         actuaciones,
         ingresos,
         programaciones
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
-      await api.post('/rd-intranet/v1/draft', immediateDraft);
+      
+      // Sellar inmutablemente en el backend
+      api.post('/rd-intranet/v1/clock-in', immediatePayload).then(res => {
+        if (res.data && res.data.already_registered && res.data.clockIn) {
+          // Si ya había una hora registrada en el servidor hoy, respetar la hora original inmutable
+          setClockIn(new Date(res.data.clockIn));
+        }
+      }).catch(err => console.warn('Sync inicial de clock-in demorado:', err));
+
+      api.post('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
+        console.warn('Sincronización inicial de borrador demorada:', cloudError);
+      });
+
+      setLoadingLocation(true);
+      const loc = await getGeolocation();
+      setUbicacionEntrada(loc);
+      setLoadingLocation(false);
+
+      // Actualizar la ubicación una vez resuelta por el satélite/mapa
+      api.post('/rd-intranet/v1/clock-in', {
+        clockIn: nowIso,
+        ubicacionEntrada: loc,
+        fecha: format(now, 'yyyy-MM-dd')
+      }).catch(() => {});
     } catch (error) {
       console.error('Error al registrar entrada', error);
       setLoadingLocation(false);
-      alert('Error de conexión. Asegúrate de tener internet.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error de Sistema o GPS',
+        message: 'Hubo un problema al capturar tu hora de entrada. Por favor verifica los permisos de tu navegador o recarga la página.'
+      });
     }
   };
 
@@ -365,7 +419,14 @@ export default function EmployeeDashboard() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-700">
-      
+      <SystemAlertModal
+        isOpen={systemAlert.isOpen}
+        type={systemAlert.type}
+        title={systemAlert.title}
+        message={systemAlert.message}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+      />
+
       {/* BANNER DE RETRASO */}
       {isLateClosure && !reportSubmitted && (
         <div className="bg-rose-500 text-white p-4 rounded-2xl shadow-lg border border-rose-600 flex items-center justify-between animate-in slide-in-from-top">
