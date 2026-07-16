@@ -66,6 +66,9 @@ export default function EmployeeDashboard() {
 
   // Autoguardado (Local y Nube)
   useEffect(() => {
+    // Protección multi-dispositivo: No autoguardar ni sobrescribir en la nube mientras descargamos el borrador del servidor
+    if (loadingDraft) return;
+
     const draft = {
       clockIn: clockIn ? clockIn.toISOString() : null,
       ubicacionEntrada,
@@ -87,7 +90,7 @@ export default function EmployeeDashboard() {
     }, 800);
 
     return () => clearTimeout(handler);
-  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones]);
+  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, loadingDraft]);
 
   useEffect(() => {
     const fetchDraft = async () => {
