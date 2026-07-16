@@ -47,12 +47,17 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
     } catch (err: any) {
       console.error('Error de login:', err);
       
-      const serverMessage = err.response?.data?.message;
-      if (serverMessage) {
+      const status = err.response?.status;
+      const serverData = err.response?.data;
+      const serverMessage = typeof serverData === 'object' ? serverData?.message : undefined;
+
+      if (status === 503 || status === 429 || (typeof serverData === 'string' && serverData.includes('Varnish'))) {
+        setError('El servidor del hosting está temporalmente regulando el tráfico (Protección CDN Error ' + (status || 503) + '). Por favor espera 30 segundos e inténtalo de nuevo.');
+      } else if (serverMessage) {
         // Limpiar etiquetas HTML del mensaje que devuelve WordPress (ej. <strong>ERROR</strong>)
         setError(serverMessage.replace(/<[^>]*>?/gm, ''));
       } else {
-        setError('El nombre de usuario o la contraseña son incorrectos. Por favor verifica tus credenciales.');
+        setError('El nombre de usuario o la contraseña son incorrectos (o no hubo respuesta HTTP ' + (status || 'Error') + ').');
       }
     } finally {
       setLoading(false);
