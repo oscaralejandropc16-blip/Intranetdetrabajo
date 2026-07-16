@@ -34,6 +34,7 @@ export default function EmployeeDashboard() {
   const [clockOut, setClockOut] = useState<Date | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
+  const [loadingDraft, setLoadingDraft] = useState(true);
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
@@ -85,15 +86,17 @@ export default function EmployeeDashboard() {
     const fetchDraft = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/draft');
-        if (response.data) {
+        if (response.data && typeof response.data === 'object') {
           if (response.data.clockIn) setClockIn(new Date(response.data.clockIn));
           if (response.data.ubicacionEntrada) setUbicacionEntrada(response.data.ubicacionEntrada);
-          if (response.data.actuaciones) setActuaciones(response.data.actuaciones);
-          if (response.data.ingresos) setIngresos(response.data.ingresos);
-          if (response.data.programaciones) setProgramaciones(response.data.programaciones);
+          if (response.data.actuaciones && Array.isArray(response.data.actuaciones)) setActuaciones(response.data.actuaciones);
+          if (response.data.ingresos && Array.isArray(response.data.ingresos)) setIngresos(response.data.ingresos);
+          if (response.data.programaciones && Array.isArray(response.data.programaciones)) setProgramaciones(response.data.programaciones);
         }
       } catch (error) {
         console.error('Error fetching draft:', error);
+      } finally {
+        setLoadingDraft(false);
       }
     };
     fetchDraft();
@@ -332,11 +335,23 @@ export default function EmployeeDashboard() {
 
   const handleClockIn = async () => {
     try {
-      setClockIn(new Date());
+      const now = new Date();
+      setClockIn(now);
       setLoadingLocation(true);
       const loc = await getGeolocation();
       setUbicacionEntrada(loc);
       setLoadingLocation(false);
+
+      // Guardado inmediato en la nube sin esperar al debounce
+      const immediateDraft = {
+        clockIn: now.toISOString(),
+        ubicacionEntrada: loc,
+        actuaciones,
+        ingresos,
+        programaciones
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
+      await api.post('/rd-intranet/v1/draft', immediateDraft);
     } catch (error) {
       console.error('Error al registrar entrada', error);
       setLoadingLocation(false);
@@ -470,16 +485,18 @@ export default function EmployeeDashboard() {
               <button
                 type="button"
                 onClick={handleClockIn}
-                disabled={clockIn !== null}
+                disabled={clockIn !== null || loadingDraft}
                 className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm ${
-                  clockIn 
+                  loadingDraft
+                    ? 'bg-amber-50 text-amber-700 cursor-wait border-2 border-amber-200'
+                    : clockIn 
                     ? 'bg-emerald-50 text-emerald-700 cursor-not-allowed border-2 border-emerald-100'
                     : 'bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 border-2 border-slate-900 cursor-pointer'
                 }`}
               >
                 <span className="flex items-center gap-2 mb-1">
-                  {clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                  {clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
+                  {loadingDraft ? <Clock className="w-5 h-5 animate-spin text-amber-600" /> : clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                  {loadingDraft ? 'Sincronizando...' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
                 </span>
                 {clockIn && (
                   <div className="flex flex-col items-center gap-1 mt-1">
