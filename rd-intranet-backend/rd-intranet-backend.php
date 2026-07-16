@@ -3,7 +3,7 @@
  * Plugin Name: RD Intranet Backend
  * Plugin URI: https://romanydelgado.com
  * Description: Backend personalizado para la Intranet de Román & Delgado. Gestiona la base de datos de bitácoras, API REST segura y automatización de correos a las 6PM.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Tu Agente Antigravity
  * Text Domain: rd-intranet
  */
@@ -156,9 +156,30 @@ function rd_intranet_get_draft() {
     return rest_ensure_response(empty($draft) ? null : $draft);
 }
 
+function rd_intranet_get_request_data($request) {
+    $params = $request->get_params();
+    if (!is_array($params)) $params = array();
+    
+    // Si viene por JSON (Content-Type: application/json)
+    $json_params = $request->get_json_params();
+    if (is_array($json_params) && !empty($json_params)) {
+        $params = array_merge($params, $json_params);
+    }
+    
+    // Si viaja serializado por x-www-form-urlencoded para eludir WAF de Namecheap/EasyWP
+    if (!empty($params['payload_json']) && is_string($params['payload_json'])) {
+        $decoded = json_decode(wp_unslash($params['payload_json']), true);
+        if (is_array($decoded)) {
+            $params = array_merge($params, $decoded);
+        }
+    }
+    
+    return $params;
+}
+
 function rd_intranet_save_draft($request) {
     $user_id = get_current_user_id();
-    $params = $request->get_json_params();
+    $params = rd_intranet_get_request_data($request);
     if (!is_array($params)) $params = array();
 
     // Blindaje: Si ya existe una hora inmutable para el día en el servidor, jamás permitir que un borrador desde móvil con clockIn nulo la borre
@@ -182,7 +203,7 @@ function rd_intranet_save_draft($request) {
 
 function rd_intranet_handle_clock_in($request) {
     $user_id = get_current_user_id();
-    $params = $request->get_json_params();
+    $params = rd_intranet_get_request_data($request);
     $clock_in = $params['clockIn'] ?? '';
     $ubicacion = $params['ubicacionEntrada'] ?? '';
     $fecha = $params['fecha'] ?? date('Y-m-d');
@@ -252,7 +273,7 @@ function rd_intranet_get_correlatives() {
 
 function rd_intranet_handle_submit($request) {
     $user_id = get_current_user_id();
-    $params = $request->get_json_params();
+    $params = rd_intranet_get_request_data($request);
     
     $reporte_hoy = sanitize_textarea_field($params['reporte_hoy'] ?? '');
     $programacion_manana = sanitize_text_field($params['programacion_manana'] ?? '');
@@ -376,7 +397,7 @@ function rd_intranet_get_bitacoras() {
 }
 
 function rd_intranet_handle_admin_update($request) {
-    $params = $request->get_json_params();
+    $params = rd_intranet_get_request_data($request);
     $post_id = intval($params['post_id'] ?? 0);
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
     $programaciones_editadas = $params['programaciones'] ?? null;
