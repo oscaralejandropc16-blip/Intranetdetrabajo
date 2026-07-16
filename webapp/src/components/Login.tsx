@@ -47,25 +47,12 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
     } catch (err: any) {
       console.error('Error de login:', err);
       
-      // MODO DESARROLLO / OFFLINE (Bypass temporal para evitar bloqueos)
-      console.log('Iniciando sesión en modo desarrollo (Bypass de WordPress)');
-      const fallbackToken = 'dev-token-12345';
-      const fallbackName = username.charAt(0).toUpperCase() + username.slice(1);
-      
-      localStorage.setItem('rd_jwt_token', fallbackToken);
-      localStorage.setItem('rd_user_name', fallbackName);
-      localStorage.setItem('rd_user_email', `${username}@romanydelgado.com`);
-      
-      const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
-      const isAdmin = adminUsers.includes(username.toLowerCase());
-      localStorage.setItem('rd_is_admin', isAdmin ? 'true' : 'false');
-      
-      setAuthToken(fallbackToken);
-      
-      if (isAdmin) {
-        navigate('/admin');
+      const serverMessage = err.response?.data?.message;
+      if (serverMessage) {
+        // Limpiar etiquetas HTML del mensaje que devuelve WordPress (ej. <strong>ERROR</strong>)
+        setError(serverMessage.replace(/<[^>]*>?/gm, ''));
       } else {
-        navigate('/');
+        setError('El nombre de usuario o la contraseña son incorrectos. Por favor verifica tus credenciales.');
       }
     } finally {
       setLoading(false);

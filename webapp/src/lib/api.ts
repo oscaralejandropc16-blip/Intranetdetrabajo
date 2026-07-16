@@ -53,4 +53,30 @@ api.interceptors.request.use(
   }
 );
 
+// Interceptor de respuesta para capturar 401/403 de sesión o tokens falsos y redirigir al login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error.response?.status;
+    const token = localStorage.getItem('rd_jwt_token');
+
+    // Si el servidor indica no autorizado o sesión inválida (y estamos usando un token falso o caducado)
+    if (
+      (status === 401 || token === 'dev-token-12345') &&
+      !window.location.pathname.includes('/login') &&
+      !error.config?.url?.includes('/jwt-auth/v1/token')
+    ) {
+      console.warn('Sesión caducada o token inválido detectado. Redirigiendo a Login...');
+      localStorage.removeItem('rd_jwt_token');
+      localStorage.removeItem('rd_user_name');
+      localStorage.removeItem('rd_user_email');
+      localStorage.removeItem('rd_is_admin');
+      window.location.href = '/login';
+      return new Promise(() => {}); // Detener propagación de errores adicionales hacia componentes
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 export default api;
