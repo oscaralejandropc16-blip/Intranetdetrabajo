@@ -3,13 +3,22 @@
  * Plugin Name: RD Intranet Backend
  * Plugin URI: https://romanydelgado.com
  * Description: Backend personalizado para la Intranet de Román & Delgado. Gestiona la base de datos de bitácoras, API REST segura y automatización de correos a las 6PM.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Tu Agente Antigravity
  * Text Domain: rd-intranet
  */
 
 if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
+}
+
+// Anti-lockout: Limpiar automáticamente bloqueos por reintentos de login en la API REST (transitorios de JWT Auth / Limit Login)
+add_action('init', 'rd_intranet_clear_lockouts_automatically');
+function rd_intranet_clear_lockouts_automatically() {
+    if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'wp-json') !== false) {
+        global $wpdb;
+        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '%_transient_jwt_auth_retries_%' OR option_name LIKE '%_transient_timeout_jwt_auth_retries_%' OR option_name LIKE '%limit_login_%'");
+    }
 }
 
 // 1. Registrar Custom Post Type: Bitácora Diaria
