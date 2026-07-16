@@ -361,19 +361,29 @@ export default function EmployeeDashboard() {
 
   const handleClockIn = async () => {
     try {
+      setLoadingLocation(true);
       const now = new Date();
       const nowIso = now.toISOString();
-      setClockIn(now);
       
-      // Guardado instantáneo inmutable en servidor y local SIN ESPERAR a que termine el GPS
       const immediatePayload = {
         clockIn: nowIso,
         ubicacionEntrada: 'Obteniendo ubicación...',
         fecha: format(now, 'yyyy-MM-dd')
       };
+
+      // 1. Sellar inmutablemente en el servidor primero (la única verdad absoluta de la asistencia)
+      const res = await api.post('/rd-intranet/v1/clock-in', immediatePayload);
+      let finalClockIn = now;
+      if (res.data && res.data.already_registered && res.data.clockIn) {
+        finalClockIn = new Date(res.data.clockIn);
+      } else if (res.data && res.data.clockIn) {
+        finalClockIn = new Date(res.data.clockIn);
+      }
       
+      // 2. Solo al confirmar que el servidor lo guardó, actualizamos el estado visual y el borrador
+      setClockIn(finalClockIn);
       const immediateDraft = {
-        clockIn: nowIso,
+        clockIn: finalClockIn.toISOString(),
         ubicacionEntrada: 'Obteniendo ubicación...',
         actuaciones,
         ingresos,
@@ -381,37 +391,28 @@ export default function EmployeeDashboard() {
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
       
-      // Sellar inmutablemente en el backend
-      api.post('/rd-intranet/v1/clock-in', immediatePayload).then(res => {
-        if (res.data && res.data.already_registered && res.data.clockIn) {
-          // Si ya había una hora registrada en el servidor hoy, respetar la hora original inmutable
-          setClockIn(new Date(res.data.clockIn));
-        }
-      }).catch(err => console.warn('Sync inicial de clock-in demorado:', err));
-
       api.post('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
-        console.warn('Sincronización inicial de borrador demorada:', cloudError);
+        console.warn('Sincronización de borrador demorada:', cloudError);
       });
 
-      setLoadingLocation(true);
       const loc = await getGeolocation();
       setUbicacionEntrada(loc);
       setLoadingLocation(false);
 
       // Actualizar la ubicación una vez resuelta por el satélite/mapa
       api.post('/rd-intranet/v1/clock-in', {
-        clockIn: nowIso,
+        clockIn: finalClockIn.toISOString(),
         ubicacionEntrada: loc,
         fecha: format(now, 'yyyy-MM-dd')
       }).catch(() => {});
     } catch (error) {
-      console.error('Error al registrar entrada', error);
+      console.error('Error al registrar entrada en el servidor', error);
       setLoadingLocation(false);
       setSystemAlert({
         isOpen: true,
         type: 'error',
-        title: 'Error de Sistema o GPS',
-        message: 'Hubo un problema al capturar tu hora de entrada. Por favor verifica los permisos de tu navegador o recarga la página.'
+        title: 'Error al Sellar Entrada en Servidor',
+        message: 'No se pudo registrar tu hora de entrada en la base de datos oficial de WordPress. Por favor verifica tu conexión a internet, o que el plugin esté actualizado, y recarga la página antes de reintentar.'
       });
     }
   };
