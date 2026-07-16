@@ -33,6 +33,7 @@ export default function EmployeeDashboard() {
   });
   const [clockOut, setClockOut] = useState<Date | null>(null);
   const [reportSubmitted, setReportSubmitted] = useState(false);
+  const [loadingLocation, setLoadingLocation] = useState(false);
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
@@ -332,10 +333,13 @@ export default function EmployeeDashboard() {
   const handleClockIn = async () => {
     try {
       setClockIn(new Date());
+      setLoadingLocation(true);
       const loc = await getGeolocation();
       setUbicacionEntrada(loc);
+      setLoadingLocation(false);
     } catch (error) {
       console.error('Error al registrar entrada', error);
+      setLoadingLocation(false);
       alert('Error de conexión. Asegúrate de tener internet.');
     }
   };
@@ -480,9 +484,17 @@ export default function EmployeeDashboard() {
                 {clockIn && (
                   <div className="flex flex-col items-center gap-1 mt-1">
                     <span className="text-emerald-900 bg-emerald-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockIn, 'hh:mm a')}</span>
-                    {ubicacionEntrada && ubicacionEntrada !== 'N/A' && ubicacionEntrada.includes('|||') && (
+                    {loadingLocation ? (
+                      <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight animate-pulse">
+                        📍 Obteniendo ciudad...
+                      </span>
+                    ) : ubicacionEntrada && ubicacionEntrada !== 'N/A' ? (
                       <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight">
-                        {ubicacionEntrada.split('|||')[1]}
+                        📍 {ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada}
+                      </span>
+                    ) : (
+                      <span className="text-amber-600 text-[10px] tracking-wide uppercase font-medium text-center leading-tight">
+                        ⚠️ GPS no detectado o denegado
                       </span>
                     )}
                   </div>
