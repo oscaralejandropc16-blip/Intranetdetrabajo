@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import api from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabAgenda from './employee/TabAgenda';
 import TabLibroIngresos from './employee/TabLibroIngresos';
+import TabHistorial from './employee/TabHistorial';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -19,6 +20,14 @@ export default function EmployeeDashboard() {
     if (draft) {
       const parsed = JSON.parse(draft);
       return parsed.clockIn ? new Date(parsed.clockIn) : null;
+    }
+    return null;
+  });
+  const [ubicacionEntrada, setUbicacionEntrada] = useState<string | null>(() => {
+    const draft = localStorage.getItem(STORAGE_KEY);
+    if (draft) {
+      const parsed = JSON.parse(draft);
+      return parsed.ubicacionEntrada || null;
     }
     return null;
   });
@@ -50,12 +59,13 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     const draft = {
       clockIn: clockIn ? clockIn.toISOString() : null,
+      ubicacionEntrada,
       actuaciones,
       ingresos,
       programaciones
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
-  }, [clockIn, actuaciones, ingresos, programaciones]);
+  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones]);
 
   useEffect(() => {
     const fetchMyTasks = async () => {
@@ -211,10 +221,15 @@ export default function EmployeeDashboard() {
         ? programaciones.map(p => `[${p.fecha} ${p.hora}] ${p.organismoTribunal} - ${p.tipoActuacion}`).join('\n')
         : 'Sin programación futura.';
 
+      // Obtener ubicación de salida
+      const locSalida = await getGeolocation();
+
       const payload = {
         reporte_hoy: reportText,
         programacion_manana: progText,
         hora_entrada: clockIn ? format(clockIn, 'HH:mm') : 'N/A',
+        ubicacion_entrada: ubicacionEntrada || 'N/A',
+        ubicacion_salida: locSalida,
         ingresos: ingresos,
         actuaciones: actuaciones,
         programaciones: programaciones,
@@ -239,12 +254,32 @@ export default function EmployeeDashboard() {
   const tasksCompleted = pendingTasks.filter(t => t.completed).length;
   const progress = Math.round((tasksCompleted / pendingTasks.length) * 100) || 0;
 
-  const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones'>('ingresos');
+  const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial'>('ingresos');
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const getGeolocation = (): Promise<string> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve('N/A');
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          resolve(`${position.coords.latitude},${position.coords.longitude}`);
+        },
+        () => {
+          resolve('N/A');
+        },
+        { timeout: 10000, enableHighAccuracy: true }
+      );
+    });
+  };
 
   const handleClockIn = async () => {
     try {
       setClockIn(new Date());
+      const loc = await getGeolocation();
+      setUbicacionEntrada(loc);
     } catch (error) {
       console.error('Error al registrar entrada', error);
       alert('Error de conexión. Asegúrate de tener internet.');
@@ -322,6 +357,14 @@ export default function EmployeeDashboard() {
               {unreadCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-rose-500 rounded-full border-2 border-slate-900"></span>}
             </div>
             Notificaciones {unreadCount > 0 && `(${unreadCount})`}
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('historial')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'historial' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+          >
+            <History className="w-5 h-5" />
+            Mi Historial
           </button>
         </div>
       </div>
@@ -450,6 +493,10 @@ export default function EmployeeDashboard() {
                 <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
               )}
             </div>
+          )}
+
+          {activeTab === 'historial' && (
+            <TabHistorial />
           )}
         </div>
       </div>

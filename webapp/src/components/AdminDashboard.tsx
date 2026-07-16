@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../lib/api';
@@ -486,24 +486,33 @@ export default function AdminDashboard() {
             <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-8 bg-slate-50/50">
               
               {/* Info General (Cards) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-emerald-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Hora de Entrada</p>
-                    <p className="text-xl font-bold text-slate-800">{selectedReport.clockIn}</p>
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-emerald-500"/> Entrada</p>
+                  <p className="text-xl font-bold text-slate-800">{selectedReport.clockIn}</p>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-rose-100 rounded-xl flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-rose-600" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-0.5">Hora de Salida</p>
-                    <p className="text-xl font-bold text-slate-800">{selectedReport.clockOut || 'Jornada Activa'}</p>
-                  </div>
+                
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500"/> GPS Entrada</p>
+                  {selectedReport.ubicacionEntrada && selectedReport.ubicacionEntrada !== 'N/A' ? (
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionEntrada}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
+                      Ver en Mapa
+                    </a>
+                  ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-rose-500"/> Salida</p>
+                  <p className="text-xl font-bold text-slate-800">{selectedReport.clockOut || 'Activa'}</p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500"/> GPS Salida</p>
+                  {selectedReport.ubicacionSalida && selectedReport.ubicacionSalida !== 'N/A' ? (
+                    <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionSalida}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
+                      Ver en Mapa
+                    </a>
+                  ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
                 </div>
               </div>
 

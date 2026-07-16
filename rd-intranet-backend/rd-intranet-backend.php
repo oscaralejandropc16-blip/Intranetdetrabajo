@@ -73,6 +73,15 @@ add_action('rest_api_init', function () {
         }
     ));
 
+    // Endpoint: GET /rd-intranet/v1/my-history (Obtener bitácoras del usuario logueado)
+    register_rest_route('rd-intranet/v1', '/my-history', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_my_history',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
+
     // Endpoint: POST /rd-intranet/v1/reset-test-data (Exclusivo jefatura para borrar datos falsos)
     register_rest_route('rd-intranet/v1', '/reset-test-data', array(
         'methods' => 'POST',
@@ -110,6 +119,8 @@ function rd_intranet_handle_submit($request) {
     $reporte_hoy = sanitize_textarea_field($params['reporte_hoy'] ?? '');
     $programacion_manana = sanitize_text_field($params['programacion_manana'] ?? '');
     $hora_entrada = sanitize_text_field($params['hora_entrada'] ?? '');
+    $ubicacion_entrada = sanitize_text_field($params['ubicacion_entrada'] ?? '');
+    $ubicacion_salida = sanitize_text_field($params['ubicacion_salida'] ?? '');
     $pdf_base64 = $params['pdf_base64'] ?? '';
     $ingresos = $params['ingresos'] ?? array();
     $actuaciones = $params['actuaciones'] ?? array();
@@ -165,6 +176,8 @@ function rd_intranet_handle_submit($request) {
     update_post_meta($post_id, 'hora_entrada', $hora_entrada);
     update_post_meta($post_id, 'hora_salida', $hora_salida);
     update_post_meta($post_id, 'estado_revision', 'Enviado');
+    update_post_meta($post_id, 'ubicacion_entrada', $ubicacion_entrada);
+    update_post_meta($post_id, 'ubicacion_salida', $ubicacion_salida);
     if (!empty($pdf_base64)) {
         update_post_meta($post_id, 'bitacora_pdf_base64', $pdf_base64);
     }
@@ -195,6 +208,8 @@ function rd_intranet_get_bitacoras() {
                 'clockIn' => get_post_meta(get_the_ID(), 'hora_entrada', true),
                 'clockOut' => get_post_meta(get_the_ID(), 'hora_salida', true),
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
+                'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
+                'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
                 'content' => get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
                 'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
@@ -322,3 +337,36 @@ function rd_intranet_reset_test_data() {
     return rest_ensure_response(array('success' => true, 'message' => 'Base de datos de pruebas reseteada correctamente.'));
 }
 
+function rd_intranet_get_my_history() {
+    $user_id = get_current_user_id();
+    $args = array(
+        'post_type' => 'rd_bitacora',
+        'author' => $user_id,
+        'posts_per_page' => 50,
+        'post_status' => 'publish',
+        'orderby' => 'date',
+        'order' => 'DESC'
+    );
+    
+    $query = new WP_Query($args);
+    $resultados = array();
+    
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $resultados[] = array(
+                'id' => get_the_ID(),
+                'date' => get_the_date('Y-m-d'),
+                'clockIn' => get_post_meta(get_the_ID(), 'hora_entrada', true),
+                'clockOut' => get_post_meta(get_the_ID(), 'hora_salida', true),
+                'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
+                'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
+                'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
+                'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true)
+            );
+        }
+        wp_reset_postdata();
+    }
+    
+    return rest_ensure_response($resultados);
+}
