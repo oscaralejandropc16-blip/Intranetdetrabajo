@@ -17,12 +17,27 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
 
     try {
       // Llamada al endpoint del plugin JWT Authentication for WP-API
-      const response = await api.post('/jwt-auth/v1/token', {
-        username,
-        password
-      });
+      let response;
+      try {
+        // 1. Intentar primero con nuestro endpoint propio nativo de WordPress (/rd-intranet/v1/login) que elude CORS y Varnish
+        response = await api.post('/rd-intranet/v1/login', { username, password });
+        if (response.data && response.data.success === false) {
+          setError(response.data.message || 'Contraseña o usuario incorrectos.');
+          setLoading(false);
+          return;
+        }
+      } catch (nativeErr: any) {
+        // Si el endpoint nativo da 404 (porque aún no han subido la versión 1.0.4 del plugin), usar el plugin externo jwt-auth
+        if (nativeErr.response?.status === 404) {
+          response = await api.post('/jwt-auth/v1/token', { username, password });
+        } else {
+          throw nativeErr;
+        }
+      }
 
-      const { token, user_email, user_nicename, user_display_name } = response.data;
+      const token = response.data.token;
+      const user_email = response.data.user_email || `${username}@romanydelgado.com`;
+      const user_display_name = response.data.user_display_name || response.data.user_nicename || username;
       
       // Guardar el token en el navegador
       localStorage.setItem('rd_jwt_token', token);
@@ -30,8 +45,8 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
       localStorage.setItem('rd_user_email', user_email);
       
       // Identificar si es admin
-      const adminUsers = ['victor', 'luis', 'romanydelgado'];
-      const isAdmin = adminUsers.includes(user_nicename.toLowerCase()) || adminUsers.includes(username.toLowerCase());
+      const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
+      const isAdmin = response.data.is_admin || adminUsers.includes(username.toLowerCase());
       localStorage.setItem('rd_is_admin', isAdmin ? 'true' : 'false');
       
       // Actualizar el estado de la app
