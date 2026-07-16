@@ -66,8 +66,10 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
       const serverData = err.response?.data;
       const serverMessage = typeof serverData === 'object' ? serverData?.message : undefined;
 
-      if (status === 503 || status === 429 || (typeof serverData === 'string' && serverData.includes('Varnish'))) {
-        setError('El servidor del hosting está temporalmente regulando el tráfico (Protección CDN Error ' + (status || 503) + '). Por favor espera 30 segundos e inténtalo de nuevo.');
+      if (!err.response || err.code === 'ERR_NETWORK' || err.message === 'Network Error') {
+        setError('El cortafuegos CDN de tu hosting (Namecheap) bloqueó temporalmente la conexión desde tu red por ráfaga de peticiones (CORS/CDN 429). Por favor espera 2 minutos exactos sin hacer clic para que el CDN libere tu IP.');
+      } else if (status === 503 || status === 429 || (typeof serverData === 'string' && serverData.includes('Varnish'))) {
+        setError('El servidor del hosting está temporalmente regulando el tráfico (Protección CDN Error ' + (status || 503) + '). Por favor espera 1 o 2 minutos e inténtalo de nuevo.');
       } else if (serverMessage) {
         // Limpiar etiquetas HTML del mensaje que devuelve WordPress (ej. <strong>ERROR</strong>)
         setError(serverMessage.replace(/<[^>]*>?/gm, ''));
