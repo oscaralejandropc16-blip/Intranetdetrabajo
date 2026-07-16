@@ -253,6 +253,10 @@ export default function EmployeeDashboard() {
       // Obtener ubicación de salida
       const locSalida = await getGeolocation();
 
+      // Lógica de retraso
+      const isLateClosure = clockIn && format(clockIn, 'yyyy-MM-dd') < format(new Date(), 'yyyy-MM-dd');
+      const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+
       const payload = {
         reporte_hoy: reportText,
         programacion_manana: progText,
@@ -262,7 +266,9 @@ export default function EmployeeDashboard() {
         ingresos: ingresos,
         actuaciones: actuaciones,
         programaciones: programaciones,
-        pdf_base64: pdfBase64
+        pdf_base64: pdfBase64,
+        fecha_reporte: clockInDateStr,
+        cierre_retrasado: isLateClosure
       };
 
       console.log('Enviando al backend:', payload);
@@ -334,9 +340,32 @@ export default function EmployeeDashboard() {
     }
   };
 
+  const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : null;
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isLateClosure = clockInDateStr && clockInDateStr < todayStr;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
+    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-700">
       
+      {/* BANNER DE RETRASO */}
+      {isLateClosure && !reportSubmitted && (
+        <div className="bg-rose-500 text-white p-4 rounded-2xl shadow-lg border border-rose-600 flex items-center justify-between animate-in slide-in-from-top">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 animate-pulse" />
+            <div>
+              <p className="font-bold text-lg">Tienes una jornada pendiente del {clockInDateStr}</p>
+              <p className="text-sm text-rose-100">Debes cerrar esta jornada antes de poder registrar actividades del día de hoy.</p>
+            </div>
+          </div>
+          <button 
+            onClick={handleEndDay} 
+            className="px-6 py-2 bg-white text-rose-600 font-bold rounded-xl shadow-md hover:bg-rose-50 transition-colors"
+          >
+            Cerrar Jornada Anterior
+          </button>
+        </div>
+      )}
+
       {/* Header Premium con Stats */}
       <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 text-white shadow-2xl border border-slate-800 relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>

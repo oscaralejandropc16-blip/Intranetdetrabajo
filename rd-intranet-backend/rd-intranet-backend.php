@@ -156,6 +156,8 @@ function rd_intranet_handle_submit($request) {
     $ingresos = $params['ingresos'] ?? array();
     $actuaciones = $params['actuaciones'] ?? array();
     $programaciones = $params['programaciones'] ?? array();
+    $fecha_reporte = sanitize_text_field($params['fecha_reporte'] ?? date('Y-m-d'));
+    $cierre_retrasado = isset($params['cierre_retrasado']) ? (bool) $params['cierre_retrasado'] : false;
     $hora_salida = current_time('mysql');
 
     // Registrar los correlativos usados y expedientes globales
@@ -190,11 +192,12 @@ function rd_intranet_handle_submit($request) {
     }
 
     $post_data = array(
-        'post_title'    => 'Bitácora - ' . get_userdata($user_id)->display_name . ' - ' . date('Y-m-d'),
+        'post_title'    => 'Bitácora - ' . get_userdata($user_id)->display_name . ' - ' . $fecha_reporte,
         'post_content'  => "REPORTE HOY:\n$reporte_hoy\n\nPROGRAMACIÓN FUTURA:\n$programacion_manana",
         'post_status'   => 'publish',
         'post_author'   => $user_id,
-        'post_type'     => 'rd_bitacora'
+        'post_type'     => 'rd_bitacora',
+        'post_date'     => $fecha_reporte . ' ' . current_time('H:i:s')
     );
 
     $post_id = wp_insert_post($post_data);
@@ -215,6 +218,10 @@ function rd_intranet_handle_submit($request) {
     update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos));
     update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones));
     update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones));
+    
+    if ($cierre_retrasado) {
+        update_post_meta($post_id, 'cierre_retrasado', '1');
+    }
 
     // Eliminar borrador de la nube al finalizar jornada
     delete_user_meta($user_id, 'rd_intranet_draft');
@@ -246,6 +253,7 @@ function rd_intranet_get_bitacoras() {
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
                 'content' => get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
+                'cierreRetrasado' => get_post_meta(get_the_ID(), 'cierre_retrasado', true) === '1',
                 'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
                 'ingresos' => json_decode(get_post_meta(get_the_ID(), 'ingresos_json', true), true) ?: array(),
                 'programaciones' => json_decode(get_post_meta(get_the_ID(), 'programaciones_json', true), true) ?: array()

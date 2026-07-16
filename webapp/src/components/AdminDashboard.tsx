@@ -336,7 +336,13 @@ export default function AdminDashboard() {
                         <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
                       </div>
                       <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                        <Clock className="w-4 h-4 text-rose-400" /> Salida: {report.clockOut || 'Pendiente'}
+                        <Clock className="w-4 h-4 text-rose-400" /> 
+                        Salida: {report.clockOut || 'Pendiente'}
+                        {report.cierreRetrasado && (
+                           <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
+                             Cerrada con Retraso
+                           </span>
+                        )}
                       </div>
                     </div>
                   </td>
