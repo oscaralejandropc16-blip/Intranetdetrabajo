@@ -566,13 +566,19 @@ export default function EmployeeDashboard() {
                 {clockIn && (
                   <div className="flex flex-col items-center gap-1 mt-1">
                     <span className="text-emerald-900 bg-emerald-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockIn, 'hh:mm a')}</span>
-                    {loadingLocation ? (
+                    {loadingLocation || (ubicacionEntrada && ubicacionEntrada.toLowerCase().includes('obteniendo')) ? (
                       <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight animate-pulse">
-                        📍 Obteniendo ciudad...
+                        📍 Buscando ciudad satelital...
                       </span>
                     ) : ubicacionEntrada && ubicacionEntrada !== 'N/A' ? (
                       <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight">
-                        📍 {ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada}
+                        📍 {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
+                            .replace(/\\u00f3/gi, 'ó')
+                            .replace(/\\u00e1/gi, 'á')
+                            .replace(/\\u00e9/gi, 'é')
+                            .replace(/\\u00ed/gi, 'í')
+                            .replace(/\\u00fa/gi, 'ú')
+                            .replace(/\\u00f1/gi, 'ñ')}
                       </span>
                     ) : (
                       <span className="text-amber-600 text-[10px] tracking-wide uppercase font-medium text-center leading-tight">
