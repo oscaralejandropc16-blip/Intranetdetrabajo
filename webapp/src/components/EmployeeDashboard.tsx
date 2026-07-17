@@ -204,77 +204,190 @@ export default function EmployeeDashboard() {
       setClockOut(new Date());
       setReportSubmitted(true);
 
-      // --- GENERACIÓN DE PDF ---
+      // --- GENERACIÓN DE PDF PREMIUM ---
       const doc = new jsPDF('landscape');
+      const primaryColor: [number, number, number] = [15, 23, 42]; // slate-900 / navy
+      const accentColor: [number, number, number] = [245, 158, 11]; // amber-500 / gold
       
-      const primaryColor: [number, number, number] = [30, 41, 59]; // slate-800
-      
-      // Header General
-      doc.setFontSize(22);
-      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.text('REPORTE DIARIO DE ACTIVIDADES', 14, 20);
-      
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')}`, 14, 28);
-      doc.text(`Empleado: Carmen Luisa`, 14, 34);
-      doc.text(`Entrada: ${clockIn ? format(clockIn, 'HH:mm') : 'N/A'} - Salida: ${format(new Date(), 'HH:mm')}`, 14, 40);
+      // Cargar logo en base64 para marca de agua y encabezado
+      let logoBase64: string | null = null;
+      try {
+        const res = await fetch('/logo.png');
+        const blob = await res.blob();
+        logoBase64 = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('No se pudo cargar el logo para el PDF', e);
+      }
 
-      let finalY = 50;
+      let finalY = 62;
+
+      // 1. Ficha Técnica Superior en la primera página
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, 34, 269, 22, 2.5, 2.5, 'FD');
+
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('EMPLEADO:', 18, 42);
+      doc.setFont('helvetica', 'normal');
+      doc.text('Carmen Luisa', 45, 42);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('HORARIO:', 18, 51);
+      doc.setFont('helvetica', 'normal');
+      const inStr = clockIn ? format(clockIn, 'hh:mm a') : 'N/A';
+      const outStr = format(new Date(), 'hh:mm a');
+      doc.text(`Entrada: ${inStr}   —   Salida: ${outStr}`, 45, 51);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UBICACIÓN ENTRADA:', 135, 42);
+      doc.setFont('helvetica', 'normal');
+      const cleanLocIn = ubicacionEntrada ? (ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada) : 'N/A';
+      doc.text(cleanLocIn.substring(0, 50), 180, 42);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UBICACIÓN SALIDA:', 135, 51);
+      doc.setFont('helvetica', 'normal');
+      const cleanLocOut = locSalida ? (locSalida.includes('|||') ? locSalida.split('|||')[1] : locSalida) : 'N/A';
+      doc.text(cleanLocOut.substring(0, 50), 180, 51);
 
       // 1. Libro de Actuaciones
       if (actuaciones.length > 0) {
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.text('LIBRO DE ACTUACIONES', 14, finalY);
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 19, finalY + 4.5);
         
         const actData = actuaciones.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
         autoTable(doc, {
-          startY: finalY + 5,
-          head: [['HORA', 'NUMERO DE ASUNTO', 'PARTES', 'ACTUACIÓN', 'OBSERVACIONES']],
+          startY: finalY + 8,
+          head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
           body: actData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
-          styles: { fontSize: 9 }
+          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3.5 },
+          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+          margin: { top: 34, bottom: 20, left: 14, right: 14 }
         });
-        finalY = (doc as any).lastAutoTable.finalY + 15;
+        finalY = (doc as any).lastAutoTable.finalY + 14;
       }
 
       // 2. Libro de Ingresos
       if (ingresos.length > 0) {
-        if (finalY > 160) { doc.addPage(); finalY = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.text('LIBRO DE INGRESOS', 14, finalY);
+        if (finalY > 160) { doc.addPage(); finalY = 36; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 19, finalY + 4.5);
         
         const ingData = ingresos.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.partes, i.resumen, i.observaciones]);
         autoTable(doc, {
-          startY: finalY + 5,
-          head: [['N° DE EXPEDIENTE', 'FECHA/HORA DE INGRESO', 'TIPO', 'PARTES', 'RESUMEN', 'OBSERVACIONES']],
+          startY: finalY + 8,
+          head: [['N° EXPEDIENTE', 'FECHA/HORA INGRESO', 'TIPO', 'PARTES INVOLUCRADAS', 'RESUMEN DEL ASUNTO', 'OBSERVACIONES']],
           body: ingData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
-          styles: { fontSize: 9 }
+          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3.5 },
+          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+          margin: { top: 34, bottom: 20, left: 14, right: 14 }
         });
-        finalY = (doc as any).lastAutoTable.finalY + 15;
+        finalY = (doc as any).lastAutoTable.finalY + 14;
       }
 
       // 3. Libro de Programación
       if (programaciones.length > 0) {
-        if (finalY > 160) { doc.addPage(); finalY = 20; }
-        doc.setFontSize(14);
-        doc.setTextColor(0);
-        doc.text('LIBRO DE PROGRAMACIÓN', 14, finalY);
+        if (finalY > 160) { doc.addPage(); finalY = 36; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 19, finalY + 4.5);
         
         const progData = programaciones.map(p => [p.fecha, p.hora, p.organismoTribunal, p.tipoActuacion, p.resumen, p.observaciones]);
         autoTable(doc, {
-          startY: finalY + 5,
+          startY: finalY + 8,
           head: [['FECHA', 'HORA', 'ORGANISMO/TRIBUNAL', 'TIPO DE ACTUACIÓN', 'RESUMEN', 'OBSERVACIONES']],
           body: progData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold' },
-          styles: { fontSize: 9 }
+          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3.5 },
+          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+          alternateRowStyles: { fillColor: [248, 250, 252] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+          margin: { top: 34, bottom: 20, left: 14, right: 14 }
         });
+      }
+
+      // --- DECORACIÓN SUPERIOR, INFERIOR Y MARCA DE AGUA EN TODAS LAS PÁGINAS ---
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+
+        // Header azul marino
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, 297, 24, 'F');
+        // Línea de acento dorada
+        doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.rect(0, 24, 297, 1.2, 'F');
+
+        // Logo en el encabezado (si cargó) y en la marca de agua central
+        if (logoBase64) {
+          try {
+            // Logo superior izquierda
+            doc.addImage(logoBase64, 'PNG', 14, 3, 24, 18);
+            
+            // Marca de agua central translúcida (GState)
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+            }
+            doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100);
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            }
+          } catch (e) {
+            console.warn('Error dibujando imágenes en PDF', e);
+          }
+        }
+
+        // Textos del encabezado
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
+
+        doc.setFontSize(8.5);
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL', logoBase64 ? 42 : 14, 17.5);
+
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(203, 213, 225);
+        doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')} — Empleado: Carmen Luisa`, 283, 17.5, { align: 'right' });
+
+        // Pie de página (Footer)
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 196, 283, 196);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno', 14, 201);
+        doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
       }
 
       // Guardar PDF localmente (opcional, pero útil para el empleado)
