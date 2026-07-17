@@ -204,6 +204,9 @@ export default function EmployeeDashboard() {
       setClockOut(new Date());
       setReportSubmitted(true);
 
+      // Obtener ubicación de salida antes de generar el PDF
+      const locSalida = await getGeolocation();
+
       // --- GENERACIÓN DE PDF PREMIUM ---
       const doc = new jsPDF('landscape');
       const primaryColor: [number, number, number] = [15, 23, 42]; // slate-900 / navy
@@ -407,9 +410,6 @@ export default function EmployeeDashboard() {
       const progText = programaciones.length > 0
         ? programaciones.map(p => `[${p.fecha} ${p.hora}] ${p.organismoTribunal} - ${p.tipoActuacion}`).join('\n')
         : 'Sin programación futura.';
-
-      // Obtener ubicación de salida
-      const locSalida = await getGeolocation();
 
       // Lógica de retraso
       const isLateClosure = clockIn && format(clockIn, 'yyyy-MM-dd') < format(new Date(), 'yyyy-MM-dd');
