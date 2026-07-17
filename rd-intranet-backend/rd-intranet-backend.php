@@ -699,6 +699,10 @@ function rd_intranet_reset_test_data() {
     delete_option('rd_used_correlatives');
     delete_option('rd_global_expedientes');
     
+    // Borrar toda la metadata temporal de usuarios (borradores, sellos de entrada, jornadas cerradas)
+    global $wpdb;
+    $wpdb->query("DELETE FROM {$wpdb->usermeta} WHERE meta_key LIKE 'rd_intranet_draft%' OR meta_key LIKE 'rd_intranet_today_clockin%' OR meta_key LIKE 'rd_intranet_clockin_%' OR meta_key LIKE 'rd_intranet_day_closed_%'");
+
     return rest_ensure_response(array('success' => true, 'message' => 'Base de datos de pruebas reseteada correctamente.'));
 }
 
