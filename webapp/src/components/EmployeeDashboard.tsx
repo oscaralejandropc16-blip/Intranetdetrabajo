@@ -297,13 +297,26 @@ export default function EmployeeDashboard() {
           message: 'La bitácora y el archivo PDF han sido enviados correctamente a Jefatura, y los números de expediente fueron registrados globalmente en la Intranet.'
         });
       } catch (apiError) {
-        console.error('Error enviando a la API real, revisa tu conexión a WP', apiError);
-        setSystemAlert({
-          isOpen: true,
-          type: 'warning',
-          title: 'PDF Generado - Sin Conexión al Servidor',
-          message: 'Se generó y descargó tu PDF de respaldo en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
-        });
+        console.warn('Fallo el envío con PDF adjunto (posible límite de tamaño WAF/CDN en el servidor). Reintentando envío en modo ligero sin la cadena Base64 del PDF...', apiError);
+        try {
+          const lightPayload = { ...payload, pdf_base64: '' };
+          await api.post('/rd-intranet/v1/submit', lightPayload);
+          localStorage.removeItem(STORAGE_KEY);
+          setSystemAlert({
+            isOpen: true,
+            type: 'success',
+            title: '¡Jornada Cerrada con Éxito!',
+            message: 'La bitácora y tus actividades fueron enviadas correctamente al servidor (el archivo PDF de respaldo se descargó directamente en tu dispositivo).'
+          });
+        } catch (secondError) {
+          console.error('Error enviando a la API real, revisa tu conexión a WP', secondError);
+          setSystemAlert({
+            isOpen: true,
+            type: 'warning',
+            title: 'PDF Generado - Sin Conexión al Servidor',
+            message: 'Se generó y descargó tu PDF de respaldo en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
+          });
+        }
       }
     } catch (error) {
       console.error('Error al cerrar jornada', error);
