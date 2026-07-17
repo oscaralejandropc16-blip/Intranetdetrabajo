@@ -19,16 +19,37 @@ export default function EmployeeDashboard() {
   const [clockIn, setClockIn] = useState<Date | null>(() => {
     const draft = localStorage.getItem(STORAGE_KEY);
     if (draft) {
-      const parsed = JSON.parse(draft);
-      return parsed.clockIn ? new Date(parsed.clockIn) : null;
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.clockIn && typeof parsed.clockIn === 'string') {
+          const todayStr = format(new Date(), 'yyyy-MM-dd');
+          if (parsed.clockIn.slice(0, 10) !== todayStr) {
+            localStorage.removeItem(STORAGE_KEY);
+            return null;
+          }
+          return new Date(parsed.clockIn);
+        }
+      } catch (e) {
+        return null;
+      }
     }
     return null;
   });
   const [ubicacionEntrada, setUbicacionEntrada] = useState<string | null>(() => {
     const draft = localStorage.getItem(STORAGE_KEY);
     if (draft) {
-      const parsed = JSON.parse(draft);
-      return parsed.ubicacionEntrada || null;
+      try {
+        const parsed = JSON.parse(draft);
+        if (parsed.clockIn && typeof parsed.clockIn === 'string') {
+          const todayStr = format(new Date(), 'yyyy-MM-dd');
+          if (parsed.clockIn.slice(0, 10) !== todayStr) {
+            return null;
+          }
+        }
+        return parsed.ubicacionEntrada || null;
+      } catch (e) {
+        return null;
+      }
     }
     return null;
   });
@@ -97,7 +118,16 @@ export default function EmployeeDashboard() {
       try {
         const response = await api.get('/rd-intranet/v1/draft');
         if (response.data && typeof response.data === 'object') {
-          if (response.data.clockIn) setClockIn(new Date(response.data.clockIn));
+          const todayStr = format(new Date(), 'yyyy-MM-dd');
+          if (response.data.clockIn) {
+            if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
+              setClockIn(null);
+              setUbicacionEntrada(null);
+              localStorage.removeItem(STORAGE_KEY);
+              return;
+            }
+            setClockIn(new Date(response.data.clockIn));
+          }
           if (response.data.ubicacionEntrada) setUbicacionEntrada(response.data.ubicacionEntrada);
           if (response.data.actuaciones && Array.isArray(response.data.actuaciones)) setActuaciones(response.data.actuaciones);
           if (response.data.ingresos && Array.isArray(response.data.ingresos)) setIngresos(response.data.ingresos);
