@@ -119,6 +119,9 @@ export default function EmployeeDashboard() {
         const response = await api.get('/rd-intranet/v1/draft');
         if (response.data && typeof response.data === 'object') {
           const todayStr = format(new Date(), 'yyyy-MM-dd');
+          if (response.data.dayClosed) {
+            setReportSubmitted(true);
+          }
           if (response.data.clockIn) {
             if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
               setClockIn(null);
@@ -706,18 +709,20 @@ export default function EmployeeDashboard() {
               <button
                 type="button"
                 onClick={handleClockIn}
-                disabled={clockIn !== null || loadingDraft}
+                disabled={clockIn !== null || loadingDraft || reportSubmitted}
                 className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm ${
                   loadingDraft
                     ? 'bg-amber-50 text-amber-700 cursor-wait border-2 border-amber-200'
+                    : reportSubmitted
+                    ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-2 border-slate-200'
                     : clockIn 
                     ? 'bg-emerald-50 text-emerald-700 cursor-not-allowed border-2 border-emerald-100'
                     : 'bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 border-2 border-slate-900 cursor-pointer'
                 }`}
               >
                 <span className="flex items-center gap-2 mb-1">
-                  {loadingDraft ? <Clock className="w-5 h-5 animate-spin text-amber-600" /> : clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                  {loadingDraft ? 'Sincronizando...' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
+                  {loadingDraft ? <Clock className="w-5 h-5 animate-spin text-amber-600" /> : reportSubmitted ? <CheckCircle2 className="w-5 h-5 text-slate-500" /> : clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
+                  {loadingDraft ? 'Sincronizando...' : reportSubmitted ? 'Jornada de Hoy Concluida' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
                 </span>
                 {clockIn && (
                   <div className="flex flex-col items-center gap-1 mt-1">
