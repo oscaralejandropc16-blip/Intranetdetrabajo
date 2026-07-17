@@ -541,9 +541,11 @@ function rd_intranet_handle_submit($request) {
         update_post_meta($post_id, 'cierre_retrasado', '1');
     }
 
-    // Marcar la jornada de hoy como CERRADA y eliminar únicamente el borrador en curso
+    // Marcar la jornada específica como CERRADA
     update_user_meta($user_id, 'rd_intranet_day_closed_' . $fecha_reporte, '1');
-    update_user_meta($user_id, 'rd_intranet_day_closed_' . date('Y-m-d'), '1');
+    if ($fecha_reporte === date('Y-m-d')) {
+        update_user_meta($user_id, 'rd_intranet_day_closed_' . date('Y-m-d'), '1');
+    }
     delete_user_meta($user_id, 'rd_intranet_draft');
 
     return rest_ensure_response(array('success' => true, 'message' => 'Día cerrado exitosamente.', 'post_id' => $post_id));
