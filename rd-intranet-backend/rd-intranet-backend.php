@@ -146,6 +146,90 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true'
     ));
 
+    // Endpoint: POST /rd-intranet/v1/forgot-password (Recuperación por correo electrónico o ID)
+    register_rest_route('rd-intranet/v1', '/forgot-password', array(
+        'methods' => 'POST',
+        'callback' => function($request) {
+            $params = rd_intranet_get_request_data($request);
+            $input = trim($params['username'] ?? ($params['email'] ?? ''));
+
+            if (empty($input)) {
+                return rest_ensure_response(array(
+                    'success' => false,
+                    'message' => 'Por favor ingresa tu ID de usuario o correo electrónico registrado.'
+                ));
+            }
+
+            $user = get_user_by('login', $input);
+            if (!$user && is_email($input)) {
+                $user = get_user_by('email', $input);
+            }
+
+            if (!$user) {
+                return rest_ensure_response(array(
+                    'success' => false,
+                    'message' => 'No encontramos ningún usuario asociado a ese ID o correo en el portal. Verifica los datos o contacta a Jefatura.'
+                ));
+            }
+
+            // Disparar función nativa de WordPress para envío de correo de restablecimiento
+            $result = retrieve_password($user->user_login);
+            if (is_wp_error($result)) {
+                return rest_ensure_response(array(
+                    'success' => false,
+                    'message' => 'No se pudo enviar el correo: ' . wp_strip_all_tags($result->get_error_message())
+                ));
+            }
+
+            // Ocultar parcialmente el correo para proteger privacidad en la respuesta del frontend
+            $email = $user->user_email;
+            $parts = explode('@', $email);
+            $masked_email = !empty($parts[0]) && !empty($parts[1]) ? substr($parts[0], 0, 3) . '***@' . $parts[1] : 'tu correo registrado';
+
+            return rest_ensure_response(array(
+                'success' => true,
+                'message' => 'Enviamos las instrucciones de restablecimiento a ' . $masked_email . '. Revisa tu bandeja de entrada o carpeta de Spam.'
+            ));
+        },
+        'permission_callback' => '__return_true'
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/change-password (Cambiar contraseña para usuario autenticado)
+    register_rest_route('rd-intranet/v1', '/change-password', array(
+        'methods' => 'POST',
+        'callback' => function($request) {
+            $user = wp_get_current_user();
+            if (!$user || !$user->ID) {
+                return rest_ensure_response(array('success' => false, 'message' => 'Sesión no válida.'));
+            }
+
+            $params = rd_intranet_get_request_data($request);
+            $current_password = trim($params['current_password'] ?? '');
+            $new_password = trim($params['new_password'] ?? '');
+
+            if (empty($current_password) || empty($new_password)) {
+                return rest_ensure_response(array('success' => false, 'message' => 'Completa todos los campos.'));
+            }
+
+            if (strlen($new_password) < 6) {
+                return rest_ensure_response(array('success' => false, 'message' => 'La nueva contraseña debe tener al menos 6 caracteres para mayor seguridad.'));
+            }
+
+            // Verificar contraseña actual
+            $auth = wp_authenticate($user->user_login, $current_password);
+            if (is_wp_error($auth)) {
+                return rest_ensure_response(array('success' => false, 'message' => 'La contraseña actual ingresada es incorrecta.'));
+            }
+
+            wp_set_password($new_password, $user->ID);
+
+            return rest_ensure_response(array('success' => true, 'message' => 'Tu contraseña ha sido actualizada exitosamente.'));
+        },
+        'permission_callback' => function() {
+            return is_user_logged_in();
+        }
+    ));
+
     // Endpoint temporal de diagnóstico: GET /rd-intranet/v1/user-list-diag para verificar nombres de usuario en WordPress
     register_rest_route('rd-intranet/v1', '/user-list-diag', array(
         'methods' => 'GET',
