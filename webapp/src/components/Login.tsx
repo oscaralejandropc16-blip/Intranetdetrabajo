@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import api from '../lib/api';
-import { Lock, User, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, User, ArrowRight, ShieldCheck, HelpCircle, Mail, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login({ setAuthToken }: { setAuthToken: (token: string) => void }) {
@@ -8,6 +8,14 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // Estados para recuperación de contraseña
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotInput, setForgotInput] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [forgotError, setForgotError] = useState('');
+
   const navigate = useNavigate();
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -81,6 +89,28 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotInput.trim()) return;
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotMessage('');
+
+    try {
+      const res = await api.post('/rd-intranet/v1/forgot-password', { username: forgotInput.trim() });
+      if (res.data && res.data.success) {
+        setForgotMessage(res.data.message || 'Se han enviado las instrucciones a tu correo registrado.');
+      } else {
+        setForgotError(res.data?.message || 'No se encontró una cuenta con ese identificador o correo.');
+      }
+    } catch (err: any) {
+      console.error('Error en recuperación:', err);
+      setForgotError('Hubo un error al procesar tu solicitud. Por favor intenta más tarde o contacta a Jefatura/Soporte para restablecerla manualmente.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden font-sans">
       
@@ -131,7 +161,22 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
             </div>
 
             <div className="space-y-2">
-              <label className="text-slate-400 font-semibold text-xs uppercase tracking-wider ml-1">Contraseña</label>
+              <div className="flex items-center justify-between ml-1">
+                <label className="text-slate-400 font-semibold text-xs uppercase tracking-wider">Contraseña</label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowForgotModal(true);
+                    setForgotError('');
+                    setForgotMessage('');
+                    if (username && !forgotInput) setForgotInput(username);
+                  }}
+                  className="text-amber-400/90 hover:text-amber-300 text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  ¿Olvidaste tu contraseña?
+                </button>
+              </div>
               <div className="relative group/input">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 w-5 h-5 transition-colors group-focus-within/input:text-amber-400" />
                 <input 
@@ -148,7 +193,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
             <button 
               type="submit" 
               disabled={loading}
-              className="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 font-black text-lg py-4 rounded-2xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3 group/btn"
+              className="w-full mt-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 font-black text-lg py-4 rounded-2xl transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-3 group/btn cursor-pointer"
             >
               {loading ? (
                 <span className="flex items-center gap-2">
@@ -164,10 +209,96 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
             </button>
           </form>
         </div>
-        
-        <p className="text-center text-slate-500 text-xs font-medium mt-8">
-          &copy; {new Date().getFullYear()} Román & Delgado. Todos los derechos reservados.
-        </p>
+
+        {/* Modal de Recuperación de Contraseña */}
+        {showForgotModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="bg-slate-900 border border-slate-700 w-full max-w-md p-6 sm:p-8 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200">
+              <button
+                type="button"
+                onClick={() => setShowForgotModal(false)}
+                className="absolute top-5 right-5 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                  <Mail className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Restablecer Contraseña</h3>
+                  <p className="text-xs text-slate-400">Recuperación segura del portal corporativo</p>
+                </div>
+              </div>
+
+              {forgotMessage ? (
+                <div className="space-y-6">
+                  <div className="bg-emerald-500/10 border border-emerald-500/30 p-4 rounded-2xl text-emerald-300 text-sm flex items-start gap-3">
+                    <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5 text-emerald-400" />
+                    <div>
+                      <p className="font-semibold text-white mb-1">¡Correo Enviado!</p>
+                      <p>{forgotMessage}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition-colors cursor-pointer"
+                  >
+                    Volver al Inicio de Sesión
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-5">
+                  <p className="text-slate-300 text-sm leading-relaxed">
+                    Ingresa tu <span className="text-amber-400 font-semibold">ID de empleado</span> o tu <span className="text-amber-400 font-semibold">correo corporativo</span>. Te enviaremos un enlace oficial a tu bandeja para crear una nueva contraseña.
+                  </p>
+
+                  {forgotError && (
+                    <div className="bg-rose-500/10 border border-rose-500/50 text-rose-300 p-3.5 rounded-xl text-xs flex items-start gap-2.5 font-medium">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-rose-400" />
+                      <p>{forgotError}</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-slate-400 font-semibold text-xs uppercase tracking-wider block mb-2">Usuario o Correo</label>
+                    <input
+                      type="text"
+                      value={forgotInput}
+                      onChange={(e) => setForgotInput(e.target.value)}
+                      placeholder="Ej: croman o usuario@romanydelgado.com"
+                      required
+                      className="w-full px-4 py-3.5 bg-slate-950 border border-slate-700 rounded-xl text-white placeholder:text-slate-600 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={forgotLoading || !forgotInput.trim()}
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-900 font-black py-3.5 rounded-xl transition-all shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer text-sm"
+                  >
+                    {forgotLoading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-slate-900/30 border-t-slate-900 rounded-full animate-spin"></div>
+                        Enviando enlace...
+                      </>
+                    ) : (
+                      'Enviar Enlace de Recuperación'
+                    )}
+                  </button>
+
+                  <div className="pt-3 border-t border-slate-800/80 text-center">
+                    <p className="text-[11px] text-slate-400 leading-normal">
+                      💡 <span className="font-semibold text-slate-300">¿Necesitas acceso inmediato?</span> Si tu correo no está accesible, tu <span className="text-amber-400/90 font-medium">Jefatura / Administrador</span> puede restablecer tu clave instantáneamente desde el Panel de Control.
+                    </p>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
