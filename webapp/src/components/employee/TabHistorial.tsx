@@ -16,7 +16,6 @@ interface BitacoraHistorial {
 export default function TabHistorial() {
   const [historial, setHistorial] = useState<BitacoraHistorial[]>([]);
   const [loading, setLoading] = useState(true);
-  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     const fetchHistory = async () => {
@@ -34,21 +33,6 @@ export default function TabHistorial() {
     fetchHistory();
   }, []);
 
-  const handleResetHistory = async () => {
-    if (!window.confirm('¿Estás seguro de querer eliminar todo el historial de reportes y reiniciar la base de datos de pruebas? Esta acción no se puede deshacer.')) return;
-    setResetting(true);
-    try {
-      await api.post('/rd-intranet/v1/reset-test-data', {});
-      localStorage.removeItem('rd_intranet_draft');
-      window.location.reload();
-    } catch (error) {
-      console.error('Error al resetear datos', error);
-      alert('Error al eliminar los datos de prueba.');
-    } finally {
-      setResetting(false);
-    }
-  };
-
   const openMap = (locationStr: string) => {
     // locationStr format could be "lat,lng" or "lat,lng|||City"
     if (!locationStr || locationStr === 'N/A') return;
@@ -58,22 +42,12 @@ export default function TabHistorial() {
 
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <History className="w-7 h-7 text-amber-500" />
-            Mi Historial de Bitácoras
-          </h3>
-          <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados y descarga los documentos PDF de cada jornada.</p>
-        </div>
-        <button
-          type="button"
-          onClick={handleResetHistory}
-          disabled={resetting}
-          className="flex items-center gap-2 px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-rose-200 shadow-sm self-start sm:self-auto disabled:opacity-50 cursor-pointer"
-        >
-          {resetting ? 'Borrando...' : '🗑️ Limpiar Historial y Pruebas'}
-        </button>
+      <div className="mb-8">
+        <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+          <History className="w-7 h-7 text-amber-500" />
+          Mi Historial de Bitácoras
+        </h3>
+        <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados y descarga los documentos PDF de cada jornada.</p>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
