@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import api from '../lib/api';
+import api, { uploadPdfInChunks } from '../lib/api';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
@@ -763,7 +763,7 @@ export default function AdminDashboard() {
 
                       doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
                       const pdfBase64 = doc.output('datauristring');
-                      await api.post('/rd-intranet/v1/submit', {
+                      const response = await api.post('/rd-intranet/v1/submit', {
                         fecha: format(new Date(), 'yyyy-MM-dd'),
                         hora_entrada: 'N/A (Jefatura)',
                         hora_salida: 'N/A (Jefatura)',
@@ -771,12 +771,18 @@ export default function AdminDashboard() {
                         ingresos_json: JSON.stringify(ingresosJefe),
                         programaciones_json: JSON.stringify(programacionesJefe),
                         contenido_bitacora: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
-                        bitacora_pdf_base64: pdfBase64,
+                        bitacora_pdf_base64: '',
+                        pdf_base64: '',
                         ubicacion_entrada: 'Régimen de Jefatura (Sin GPS)',
                         ubicacion_salida: 'Régimen de Jefatura (Sin GPS)',
                         cierre_retrasado: false,
                         estado_revision: 'Jefatura'
                       });
+                      const postId = response.data?.post_id;
+                      if (postId && pdfBase64) {
+                        console.log(`Cargando archivo PDF de Jefatura por bloques al servidor (post_id: ${postId})...`);
+                        await uploadPdfInChunks(postId, pdfBase64);
+                      }
 
                       setJefeReportSubmitted(true);
                       setSystemAlert({

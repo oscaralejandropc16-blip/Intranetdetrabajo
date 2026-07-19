@@ -255,7 +255,15 @@ add_action('rest_api_init', function () {
         'methods' => 'POST',
         'callback' => 'rd_intranet_handle_submit',
         'permission_callback' => function () {
-            // Requiere usuario logueado (verificado vía JWT plugin)
+            return is_user_logged_in();
+        }
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/upload-pdf (Carga de PDF por bloques sin límite de peso)
+    register_rest_route('rd-intranet/v1', '/upload-pdf', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_upload_pdf',
+        'permission_callback' => function () {
             return is_user_logged_in();
         }
     ));
@@ -641,6 +649,57 @@ function rd_intranet_handle_submit($request) {
     delete_user_meta($user_id, 'rd_intranet_draft');
 
     return rest_ensure_response(array('success' => true, 'message' => 'Día cerrado exitosamente.', 'post_id' => $post_id));
+}
+
+function rd_intranet_upload_pdf($request) {
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
+    }
+
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['post_id'] ?? 0);
+    $chunk_index = intval($params['chunk_index'] ?? 0);
+    $total_chunks = intval($params['total_chunks'] ?? 1);
+    $chunk_data = $params['chunk_data'] ?? '';
+
+    if ($post_id <= 0 || empty($chunk_data)) {
+        return new WP_Error('bad_request', 'Datos de fragmento inválidos', array('status' => 400));
+    }
+
+    // Verificar que el post pertenezca al usuario o que sea admin
+    $post = get_post($post_id);
+    if (!$post || ($post->post_author != $user_id && !rd_intranet_is_authorized_admin($user_id))) {
+        return new WP_Error('forbidden', 'No tienes permiso para modificar esta bitácora', array('status' => 403));
+    }
+
+    // Guardar el fragmento en un post_meta temporal
+    update_post_meta($post_id, '_rd_pdf_chunk_' . $chunk_index, $chunk_data);
+
+    // Si es el último fragmento, ensamblar todo el PDF
+    if ($chunk_index === $total_chunks - 1) {
+        $full_base64 = '';
+        for ($i = 0; $i < $total_chunks; $i++) {
+            $chunk = get_post_meta($post_id, '_rd_pdf_chunk_' . $i, true);
+            $full_base64 .= $chunk;
+            delete_post_meta($post_id, '_rd_pdf_chunk_' . $i);
+        }
+
+        if (!empty($full_base64)) {
+            update_post_meta($post_id, 'bitacora_pdf_base64', $full_base64);
+            return rest_ensure_response(array(
+                'success' => true,
+                'message' => 'PDF completado y almacenado exitosamente en el servidor.',
+                'post_id' => $post_id
+            ));
+        }
+    }
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => "Fragmento $chunk_index de $total_chunks guardado.",
+        'chunk_index' => $chunk_index
+    ));
 }
 
 function rd_intranet_get_bitacoras() {

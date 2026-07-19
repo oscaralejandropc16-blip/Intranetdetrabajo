@@ -79,4 +79,22 @@ api.interceptors.response.use(
   }
 );
 
+export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
+  if (!pdfBase64 || postId <= 0) return;
+  const CHUNK_SIZE = 250000; // 250 KB por fragmento
+  const totalChunks = Math.ceil(pdfBase64.length / CHUNK_SIZE);
+  
+  let lastResponse = null;
+  for (let i = 0; i < totalChunks; i++) {
+    const chunkData = pdfBase64.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+    lastResponse = await api.post('/rd-intranet/v1/upload-pdf', {
+      post_id: postId,
+      chunk_index: i,
+      total_chunks: totalChunks,
+      chunk_data: chunkData
+    });
+  }
+  return lastResponse?.data;
+}
+
 export default api;

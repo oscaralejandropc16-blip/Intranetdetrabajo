@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api from '../lib/api';
+import api, { uploadPdfInChunks } from '../lib/api';
 import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -427,42 +427,36 @@ export default function EmployeeDashboard() {
         ingresos: ingresos,
         actuaciones: actuaciones,
         programaciones: programaciones,
-        pdf_base64: pdfBase64,
+        pdf_base64: '',
         fecha_reporte: clockInDateStr,
         cierre_retrasado: isLateClosure
       };
 
-      console.log('Enviando al backend:', payload);
+      console.log('Enviando datos de jornada al backend:', payload);
       try {
-        await api.post('/rd-intranet/v1/submit', payload);
+        const response = await api.post('/rd-intranet/v1/submit', payload);
+        const postId = response.data?.post_id;
+        
+        if (postId && pdfBase64) {
+          console.log(`Cargando archivo PDF por bloques (Chunked Upload) al servidor (post_id: ${postId})...`);
+          await uploadPdfInChunks(postId, pdfBase64);
+        }
+
         localStorage.removeItem(STORAGE_KEY); // Limpiar el borrador al enviar con éxito
         setSystemAlert({
           isOpen: true,
           type: 'success',
           title: '¡Jornada Cerrada con Éxito!',
-          message: 'La bitácora y el archivo PDF han sido enviados correctamente a Jefatura, y los números de expediente fueron registrados globalmente en la Intranet.'
+          message: 'La bitácora y el archivo PDF (sea del peso que sea) han sido cargados y asegurados al 100% en el servidor de la Intranet.'
         });
       } catch (apiError) {
-        console.warn('Fallo el envío con PDF adjunto (posible límite de tamaño WAF/CDN en el servidor). Reintentando envío en modo ligero sin la cadena Base64 del PDF...', apiError);
-        try {
-          const lightPayload = { ...payload, pdf_base64: '' };
-          await api.post('/rd-intranet/v1/submit', lightPayload);
-          localStorage.removeItem(STORAGE_KEY);
-          setSystemAlert({
-            isOpen: true,
-            type: 'success',
-            title: '¡Jornada Cerrada con Éxito!',
-            message: 'La bitácora y tus actividades fueron enviadas correctamente al servidor (el archivo PDF de respaldo se descargó directamente en tu dispositivo).'
-          });
-        } catch (secondError) {
-          console.error('Error enviando a la API real, revisa tu conexión a WP', secondError);
-          setSystemAlert({
-            isOpen: true,
-            type: 'warning',
-            title: 'PDF Generado - Sin Conexión al Servidor',
-            message: 'Se generó y descargó tu PDF de respaldo en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
-          });
-        }
+        console.error('Error enviando a la API real, revisa tu conexión a WP', apiError);
+        setSystemAlert({
+          isOpen: true,
+          type: 'warning',
+          title: 'PDF Generado - Sin Conexión al Servidor',
+          message: 'Se generó y descargó tu PDF en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
+        });
       }
     } catch (error) {
       console.error('Error al cerrar jornada', error);
