@@ -54,8 +54,11 @@ api.interceptors.response.use(
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
   if (!pdfBase64 || postId <= 0) return;
   
+  // Limpiar el encabezado data: si existe (para evitar DOMException en atob)
+  const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
+  
   // Decodificar Base64 a Blob
-  const byteCharacters = atob(pdfBase64);
+  const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
   for (let i = 0; i < byteCharacters.length; i++) {
     byteNumbers[i] = byteCharacters.charCodeAt(i);
