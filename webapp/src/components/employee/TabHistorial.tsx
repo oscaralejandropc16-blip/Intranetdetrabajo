@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin } from 'lucide-react';
+import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText } from 'lucide-react';
 import api from '../../lib/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface BitacoraHistorial {
   id: number;
@@ -38,6 +40,125 @@ export default function TabHistorial() {
     if (!locationStr || locationStr === 'N/A') return;
     const coords = locationStr.split('|||')[0];
     window.open(`https://www.google.com/maps/search/?api=1&query=${coords}`, '_blank');
+  };
+
+  const generateFallbackPdf = async (bitacora: BitacoraHistorial) => {
+    try {
+      const doc = new jsPDF('landscape');
+      const primaryColor: [number, number, number] = [15, 23, 42];
+      const accentColor: [number, number, number] = [245, 158, 11];
+
+      let logoBase64: string | null = null;
+      try {
+        const res = await fetch('/logo.png');
+        const blob = await res.blob();
+        logoBase64 = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('No se pudo cargar el logo para PDF', e);
+      }
+
+      if (logoBase64 && (doc as any).GState) {
+        try {
+          doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+          doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100);
+          doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+        } catch (e) {}
+      }
+
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 297, 24, 'F');
+
+      if (logoBase64) {
+        try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17); } catch (e) {}
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(255, 255, 255);
+      doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
+
+      doc.setFontSize(8.5);
+      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+      doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
+
+      doc.setFontSize(11);
+      doc.setTextColor(255, 255, 255);
+      doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(203, 213, 225);
+      const userName = localStorage.getItem('rd_user_name') || 'Empleado';
+      doc.text(`Fecha: ${bitacora.date} — Empleado: ${userName}`, 283, 17.5, { align: 'right' });
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, 34, 269, 26, 2.5, 2.5, 'FD');
+
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('EMPLEADO / ABOGADO:', 18, 43);
+      doc.setFont('helvetica', 'normal');
+      doc.text(userName, 68, 43);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('FECHA DE JORNADA:', 18, 53);
+      doc.setFont('helvetica', 'normal');
+      doc.text(bitacora.date, 68, 53);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('HORARIO DE REGISTRO:', 145, 43);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Entrada: ${bitacora.clockIn || 'N/A'}  —  Salida: ${bitacora.clockOut || 'N/A'}`, 198, 43);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UBICACIONES GPS:', 145, 53);
+      doc.setFont('helvetica', 'normal');
+      const cleanIn = bitacora.ubicacionEntrada ? (bitacora.ubicacionEntrada.includes('|||') ? bitacora.ubicacionEntrada.split('|||')[1] : bitacora.ubicacionEntrada) : 'N/A';
+      const cleanOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
+      doc.text(`In: ${cleanIn.substring(0, 20)} | Out: ${cleanOut.substring(0, 20)}`, 198, 53);
+
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(14, 70, 3, 6, 'F');
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, 74.5);
+
+      autoTable(doc, {
+        startY: 80,
+        head: [['PARÁMETRO REGISTRADO', 'INFORMACIÓN OFICIAL DEL EXPEDIENTE']],
+        body: [
+          ['Estado de Revisión', bitacora.status || 'Enviado'],
+          ['ID de Registro KANT', `#${bitacora.id}`],
+          ['Coordenadas de Entrada', bitacora.ubicacionEntrada || 'N/A'],
+          ['Coordenadas de Salida', bitacora.ubicacionSalida || 'N/A'],
+          ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+        bodyStyles: { fontSize: 9, textColor: 50 },
+        columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
+        margin: { left: 14, right: 14 }
+      });
+
+      doc.setDrawColor(226, 232, 240);
+      doc.line(14, 196, 283, 196);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(100, 116, 139);
+      doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno (Plataforma KANT)', 14, 201);
+
+      doc.save(`Bitacora_${userName}_${bitacora.date}_OFICIAL.pdf`);
+    } catch (error) {
+      console.error('Error generando PDF de respaldo:', error);
+      alert('Hubo un error al generar el PDF. Por favor reintenta.');
+    }
   };
 
   return (
@@ -127,12 +248,13 @@ export default function TabHistorial() {
                         <Download className="w-4 h-4" /> PDF
                       </a>
                     ) : (
-                      <span 
-                        className="text-xs text-slate-400 font-medium cursor-help border-b border-dotted border-slate-400"
-                        title="El archivo PDF de este reporte anterior no se pudo adjuntar al servidor en ese momento (o superó el límite de peso del WAF/hosting), por lo cual en esa ocasión se guardó de forma directa solo en tu dispositivo/PC."
+                      <button
+                        onClick={() => generateFallbackPdf(bitacora)}
+                        className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl transition-all shadow-md text-xs"
+                        title="Generar y descargar documento oficial PDF al instante con los datos registrados"
                       >
-                        No disponible (?)
-                      </span>
+                        <FileText className="w-3.5 h-3.5" /> Generar PDF
+                      </button>
                     )}
                   </td>
                 </tr>

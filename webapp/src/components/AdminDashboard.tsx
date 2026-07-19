@@ -138,6 +138,173 @@ export default function AdminDashboard() {
     setAdminProgramaciones(adminProgramaciones.filter((_, i) => i !== index));
   };
 
+  const generateFallbackReportPdf = async (report: any) => {
+    try {
+      const doc = new jsPDF('landscape');
+      const primaryColor: [number, number, number] = [15, 23, 42];
+      const accentColor: [number, number, number] = [245, 158, 11];
+
+      let logoBase64: string | null = null;
+      try {
+        const res = await fetch('/logo.png');
+        const blob = await res.blob();
+        logoBase64 = await new Promise<string | null>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('No se pudo cargar el logo para PDF', e);
+      }
+
+      if (logoBase64 && (doc as any).GState) {
+        try {
+          doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
+          doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100);
+          doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+        } catch (e) {}
+      }
+
+      let finalY = 62;
+
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.roundedRect(14, 34, 269, 22, 2.5, 2.5, 'FD');
+
+      doc.setFontSize(9.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('EMPLEADO / ABOGADO:', 18, 42);
+      doc.setFont('helvetica', 'normal');
+      doc.text(report.user || 'Empleado', 68, 42);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('HORARIO REGISTRADO:', 18, 51);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Entrada: ${report.clockIn || 'N/A'}   —   Salida: ${report.clockOut || 'N/A'}`, 68, 51);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UBICACIÓN ENTRADA:', 145, 42);
+      doc.setFont('helvetica', 'normal');
+      const cleanLocIn = report.ubicacionEntrada ? (report.ubicacionEntrada.includes('|||') ? report.ubicacionEntrada.split('|||')[1] : report.ubicacionEntrada) : 'N/A';
+      doc.text(String(cleanLocIn).substring(0, 50), 190, 42);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text('UBICACIÓN SALIDA:', 145, 51);
+      doc.setFont('helvetica', 'normal');
+      const cleanLocOut = report.ubicacionSalida ? (report.ubicacionSalida.includes('|||') ? report.ubicacionSalida.split('|||')[1] : report.ubicacionSalida) : 'N/A';
+      doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
+
+      if (report.actuaciones && report.actuaciones.length > 0) {
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 19, finalY + 4.5);
+        
+        const actData = report.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
+          body: actData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      if (report.ingresos && report.ingresos.length > 0) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 19, finalY + 4.5);
+
+        const ingData = report.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
+          body: ingData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      if (report.programaciones && report.programaciones.length > 0) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE PROGRAMACIÓN (AGENDA FUTURA REGISTRADA)', 19, finalY + 4.5);
+
+        const progData = report.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`, p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+          body: progData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+      }
+
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        if (logoBase64 && (doc as any).GState) {
+          try {
+            doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17);
+          } catch (e) {}
+        }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, 297, 24, 'F');
+        if (logoBase64) {
+          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17); } catch (e) {}
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
+        doc.setFontSize(8.5);
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(203, 213, 225);
+        doc.text(`Fecha: ${report.date || ''} — Empleado: ${report.user || ''}`, 283, 17.5, { align: 'right' });
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 196, 283, 196);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno (Plataforma KANT)', 14, 201);
+        doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
+      }
+
+      doc.save(`Bitacora_${report.user || 'Empleado'}_${report.date || ''}_OFICIAL.pdf`);
+    } catch (err) {
+      console.error('Error al regenerar PDF desde datos oficiales:', err);
+      alert('Hubo un error al reconstruir el PDF. Intenta nuevamente.');
+    }
+  };
+
   let filteredReports = reports.filter(r => r.user.toLowerCase().includes(searchTerm.toLowerCase()));
   
   if (statusFilter !== 'Todos') {
@@ -484,12 +651,13 @@ export default function AdminDashboard() {
                         ⬇️ PDF
                       </a>
                     ) : (
-                      <span
-                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 cursor-help"
-                        title="El archivo PDF no se adjuntó en el servidor durante este cierre o se envió antes de activar la fragmentación."
+                      <button
+                        onClick={() => generateFallbackReportPdf(report)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-extrabold transition-colors border border-amber-300 shadow-sm"
+                        title="Generar y descargar documento oficial PDF al instante con los datos registrados del empleado"
                       >
-                        No disponible (?)
-                      </span>
+                        <FileText className="w-3.5 h-3.5" /> Generar PDF
+                      </button>
                     )}
                   </td>
                   <td className="p-6 text-right">
@@ -1142,9 +1310,25 @@ export default function AdminDashboard() {
                       </div>
                     </a>
                   ) : (
-                    <div className="col-span-1 sm:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium">
-                      ⚠️ El archivo PDF oficial no se cargó en el servidor para este cierre (corresponde a una bitácora enviada antes de activar la fragmentación de archivos por bloques). Para nuevos cierres, el PDF se cargará y aparecerá aquí automáticamente.
-                    </div>
+                    <button
+                      onClick={() => generateFallbackReportPdf(selectedReport)}
+                      className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 bg-amber-50 border-2 border-amber-300 rounded-xl hover:border-amber-500 hover:bg-amber-100 transition-all cursor-pointer group shadow-sm text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-amber-500 text-slate-950 rounded-lg flex items-center justify-center shadow-md shrink-0">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-extrabold text-slate-900">Bitacora_{selectedReport.user}_{selectedReport.date}.pdf</p>
+                          <p className="text-xs text-amber-900 font-bold flex items-center gap-1">
+                            ⚡ Generar y Descargar Documento Oficial PDF (Reconstruido desde datos KANT)
+                          </p>
+                        </div>
+                      </div>
+                      <span className="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl font-black text-xs shrink-0 ml-2 shadow-sm">
+                        ⬇️ GENERAR PDF
+                      </span>
+                    </button>
                   )}
 
                   {selectedReport.files && selectedReport.files.map((file: any, index: number) => (

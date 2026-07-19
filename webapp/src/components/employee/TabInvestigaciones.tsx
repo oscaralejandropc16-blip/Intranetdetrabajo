@@ -92,41 +92,41 @@ export const TabInvestigaciones: React.FC = () => {
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
       {/* Hero Header Glassmorphism */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-8 lg:p-10 border border-slate-800 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          <div>
+        <div className="relative z-10 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6">
+          <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/20 backdrop-blur-md rounded-lg border border-amber-500/30 text-amber-400 text-xs font-bold tracking-wider uppercase mb-3">
               <Bookmark className="w-3.5 h-3.5" /> Doctrina & Jurisprudencia
             </div>
             <h2 className="text-3xl lg:text-4xl font-black tracking-tight flex items-center gap-3">
-              <BookOpen className="w-9 h-9 text-amber-500" /> Repositorio Jurídico KANT
+              <BookOpen className="w-9 h-9 text-amber-500 shrink-0" /> Repositorio Jurídico KANT
             </h2>
-            <p className="text-slate-300 text-base lg:text-lg mt-2 max-w-2xl">
+            <p className="text-slate-300 text-base lg:text-lg mt-2">
               Espacio oficial para que los abogados de Román & Delgado compartan investigaciones de sentencias, resúmenes, referencias bibliográficas y opinión doctrinal.
             </p>
           </div>
 
-          <div className="flex gap-3 w-full md:w-auto">
+          <div className="flex flex-wrap sm:flex-nowrap gap-3 w-full sm:w-auto shrink-0 pt-2 xl:pt-0">
             <button
               onClick={() => setActiveTab('explorar')}
-              className={`flex-1 md:flex-none px-6 py-3.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 sm:flex-none px-6 py-3.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm ${
                 activeTab === 'explorar'
-                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-105'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400'
                   : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
               }`}
             >
-              <Search className="w-4 h-4" /> Explorar ({investigaciones.length})
+              <Search className="w-4 h-4 shrink-0" /> Explorar ({investigaciones.length})
             </button>
             <button
               onClick={() => setActiveTab('subir')}
-              className={`flex-1 md:flex-none px-6 py-3.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all ${
+              className={`flex-1 sm:flex-none px-6 py-3.5 rounded-xl font-extrabold text-sm flex items-center justify-center gap-2 transition-all whitespace-nowrap shadow-sm ${
                 activeTab === 'subir'
-                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 scale-105'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20 ring-2 ring-amber-400'
                   : 'bg-white/10 hover:bg-white/20 text-white border border-white/10'
               }`}
             >
-              <PlusCircle className="w-4 h-4" /> Subir Investigación
+              <PlusCircle className="w-4 h-4 shrink-0" /> Subir Investigación
             </button>
           </div>
         </div>
