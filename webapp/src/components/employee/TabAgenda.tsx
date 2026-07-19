@@ -18,8 +18,9 @@ export default function TabAgenda({
   allFutureTasks = []
 }: TabAgendaProps) {
 
-  const decodeAccents = (str?: string) => {
+  const decodeAccents = (str?: any) => {
     if (!str) return '';
+    if (typeof str !== 'string') return String(str);
     return str
       .replace(/\\u00e1|u00e1/g, 'á').replace(/\\u00c1|u00c1/g, 'Á')
       .replace(/\\u00e9|u00e9/g, 'é').replace(/\\u00c9|u00c9/g, 'É')
