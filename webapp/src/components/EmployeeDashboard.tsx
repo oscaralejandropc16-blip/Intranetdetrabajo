@@ -212,11 +212,11 @@ export default function EmployeeDashboard() {
       const locSalida = await getGeolocation();
 
       // --- GENERACIÓN DE PDF PREMIUM ---
-      const doc = new jsPDF('landscape');
+      const doc = new jsPDF({ orientation: 'landscape', compress: true });
       const primaryColor: [number, number, number] = [15, 23, 42]; // slate-900 / navy
       const accentColor: [number, number, number] = [245, 158, 11]; // amber-500 / gold
       
-      // Cargar logo en base64 redimensionado para reducir dramáticamente el peso del PDF
+      // Cargar logo en base64 súper liviano para que el PDF no pese casi nada (~5KB - 8KB)
       let logoBase64: string | null = null;
       try {
         logoBase64 = await new Promise<string | null>((resolve) => {
@@ -224,9 +224,9 @@ export default function EmployeeDashboard() {
           img.crossOrigin = 'Anonymous';
           img.onload = () => {
             const canvas = document.createElement('canvas');
-            const maxDim = 250;
-            let w = img.width || 250;
-            let h = img.height || 250;
+            const maxDim = 120;
+            let w = img.width || 120;
+            let h = img.height || 120;
             if (w > maxDim || h > maxDim) {
               if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
               else { w = Math.round((w * maxDim) / h); h = maxDim; }
