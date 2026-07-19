@@ -762,22 +762,6 @@ export default function EmployeeDashboard() {
               <div className="mt-4 mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200 flex flex-col gap-2 text-amber-800 text-sm">
                 <AlertCircle className="w-5 h-5 flex-shrink-0 mx-auto" />
                 <p className="font-medium text-center leading-tight">Bitácora cerrada y enviada.</p>
-                <button
-                  onClick={async () => {
-                    if (confirm('¿Deseas reiniciar y reabrir la jornada de hoy para hacer una nueva prueba?')) {
-                      try {
-                        await api.post('/rd-intranet/v1/reset-test-data');
-                        localStorage.clear();
-                        window.location.reload();
-                      } catch (e) {
-                        alert('Error al reiniciar pruebas');
-                      }
-                    }
-                  }}
-                  className="mt-1 mx-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 text-xs font-bold transition-colors shadow-sm cursor-pointer"
-                >
-                  ⚙️ ¿Haciendo pruebas? Reabrir jornada de hoy
-                </button>
               </div>
             )}
 

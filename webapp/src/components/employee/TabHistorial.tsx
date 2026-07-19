@@ -42,30 +42,12 @@ export default function TabHistorial() {
 
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <History className="w-7 h-7 text-amber-500" />
-            Mi Historial de Bitácoras
-          </h3>
-          <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados y descarga los documentos PDF de cada jornada.</p>
-        </div>
-        <button
-          onClick={async () => {
-            if (confirm('¿Deseas reiniciar y reabrir la jornada de hoy para hacer una nueva prueba?')) {
-              try {
-                await api.post('/rd-intranet/v1/reset-test-data');
-                localStorage.clear();
-                window.location.reload();
-              } catch (e) {
-                alert('Error al reiniciar pruebas');
-              }
-            }
-          }}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-300 text-amber-900 text-xs font-bold transition-colors shadow-sm cursor-pointer shrink-0"
-        >
-          ⚙️ ¿Haciendo pruebas? Reabrir jornada de hoy
-        </button>
+      <div className="mb-8">
+        <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+          <History className="w-7 h-7 text-amber-500" />
+          Mi Historial de Bitácoras
+        </h3>
+        <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados y descarga los documentos PDF de cada jornada.</p>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">

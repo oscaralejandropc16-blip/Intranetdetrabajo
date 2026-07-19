@@ -220,6 +220,24 @@ export default function AdminDashboard() {
             </div>
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Centro de Mando</h2>
             <p className="text-slate-400 text-lg font-medium">Supervisión en tiempo real de bitácoras y asistencia del equipo.</p>
+            <div className="mt-4">
+              <button
+                onClick={async () => {
+                  if (confirm('¿Deseas reiniciar la base de datos de pruebas (borrar bitácoras y reabrir jornadas para todos) para realizar nuevas pruebas como Jefatura?')) {
+                    try {
+                      await api.post('/rd-intranet/v1/reset-test-data');
+                      localStorage.clear();
+                      window.location.reload();
+                    } catch (e) {
+                      alert('Error al reiniciar pruebas');
+                    }
+                  }
+                }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all duration-200 shadow-sm cursor-pointer"
+              >
+                ⚙️ Reiniciar Datos de Prueba / Reabrir Jornada (Exclusivo Jefatura)
+              </button>
+            </div>
           </div>
           
           {/* Stats & Notifications Row */}
