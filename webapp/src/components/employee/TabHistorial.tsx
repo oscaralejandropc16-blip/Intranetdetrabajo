@@ -391,7 +391,7 @@ export default function TabHistorial() {
                   <td className="px-6 py-4 text-center">
                     {bitacora.pdfBase64 ? (
                       <a 
-                        href={bitacora.pdfBase64} 
+                        href={bitacora.pdfBase64.startsWith('data:') ? bitacora.pdfBase64 : `data:application/pdf;base64,${bitacora.pdfBase64}`} 
                         download={`Bitacora_${bitacora.date}.pdf`}
                         className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl transition-all shadow-md text-xs"
                       >
