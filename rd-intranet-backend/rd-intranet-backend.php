@@ -267,23 +267,31 @@ add_action('rest_api_init', function () {
         'permission_callback' => '__return_true' // Abierto para lectura rápida en la UI, o verificar auth
     ));
 
+    // Helper para verificar si el usuario es jefe/administrador autorizado en la Intranet
+    $is_authorized_admin = function () {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+        $user = wp_get_current_user();
+        if (!$user || !$user->ID) {
+            return false;
+        }
+        $admin_users = array('victor', 'luis', 'romanydelgado', 'admin');
+        return in_array(strtolower($user->user_login), $admin_users) || in_array('administrator', (array)$user->roles) || current_user_can('administrator');
+    };
+
     // Endpoint: GET /rd-intranet/v1/bitacoras (Obtener para el Dashboard del Admin)
     register_rest_route('rd-intranet/v1', '/bitacoras', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_bitacoras',
-        'permission_callback' => function () {
-            // Solo los jefes pueden ver esto
-            return current_user_can('administrator'); 
-        }
+        'permission_callback' => $is_authorized_admin
     ));
     
     // Endpoint: POST /rd-intranet/v1/admin-update (Modificar y Comentar por el Jefe)
     register_rest_route('rd-intranet/v1', '/admin-update', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_handle_admin_update',
-        'permission_callback' => function () {
-            return current_user_can('administrator'); 
-        }
+        'permission_callback' => $is_authorized_admin
     ));
 
     // Endpoint: GET /rd-intranet/v1/my-tasks (Obtener programación y comentarios del usuario logueado)
@@ -638,8 +646,8 @@ function rd_intranet_handle_submit($request) {
 function rd_intranet_get_bitacoras() {
     $args = array(
         'post_type' => 'rd_bitacora',
-        'posts_per_page' => 50, // Últimas 50
-        'post_status' => 'publish',
+        'posts_per_page' => 100, // Últimas 100
+        'post_status' => array('publish', 'private', 'draft', 'pending'),
         'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
     
@@ -649,9 +657,13 @@ function rd_intranet_get_bitacoras() {
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
+            $author_id = get_post_field('post_author', get_the_ID());
+            $author_obj = get_userdata($author_id);
+            $user_display = $author_obj ? ($author_obj->display_name ?: ($author_obj->user_nicename ?: $author_obj->user_login)) : get_the_author();
+
             $resultados[] = array(
                 'id' => get_the_ID(),
-                'user' => get_the_author(),
+                'user' => $user_display,
                 'date' => get_the_date('Y-m-d'),
                 'clockIn' => get_post_meta(get_the_ID(), 'hora_entrada', true),
                 'clockOut' => get_post_meta(get_the_ID(), 'hora_salida', true),
