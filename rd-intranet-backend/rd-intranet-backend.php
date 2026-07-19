@@ -412,7 +412,7 @@ function rd_intranet_get_draft() {
 
     if (!empty($today_clock)) {
         $imm = json_decode($today_clock, true);
-        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(String($today_clock), 0, 10);
+        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(strval($today_clock), 0, 10);
         
         // Si el clockin guardado no es de hoy, purgar el transitorio para que el nuevo día inicie limpio
         if ($stored_date && $stored_date !== $today_str) {
@@ -476,7 +476,7 @@ function rd_intranet_save_draft($request) {
 
     if (!empty($today_clock)) {
         $imm = json_decode($today_clock, true);
-        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(String($today_clock), 0, 10);
+        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(strval($today_clock), 0, 10);
         if ($stored_date && $stored_date !== $today_str) {
             delete_user_meta($user_id, 'rd_intranet_today_clockin');
             $today_clock = '';
@@ -516,7 +516,7 @@ function rd_intranet_handle_clock_in($request) {
 
     if (!empty($existing)) {
         $existing_data = json_decode($existing, true);
-        $stored_date = is_array($existing_data) && !empty($existing_data['clockIn']) ? substr($existing_data['clockIn'], 0, 10) : substr(String($existing), 0, 10);
+        $stored_date = is_array($existing_data) && !empty($existing_data['clockIn']) ? substr($existing_data['clockIn'], 0, 10) : substr(strval($existing), 0, 10);
         if ($stored_date && $stored_date !== $fecha) {
             delete_user_meta($user_id, 'rd_intranet_today_clockin');
             $existing = '';
