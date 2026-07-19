@@ -691,28 +691,48 @@ function rd_intranet_upload_pdf($request) {
 
     $params = rd_intranet_get_request_data($request);
     $post_id = intval($params['post_id'] ?? 0);
-    if (!empty($_FILES['pdf_file']) && $_FILES['pdf_file']['error'] === UPLOAD_ERR_OK) {
-        $file_tmp = $_FILES['pdf_file']['tmp_name'];
-        $file_content = file_get_contents($file_tmp);
-        if ($file_content !== false) {
-            $full_base64 = base64_encode($file_content);
+    
+    $chunk_index = intval($params['chunk_index'] ?? 0);
+    $total_chunks = intval($params['total_chunks'] ?? 1);
+    $chunk_data = $params['chunk_data'] ?? '';
+
+    if ($post_id <= 0 || empty($chunk_data)) {
+        return new WP_Error('bad_request', 'Datos de fragmento inválidos', array('status' => 400));
+    }
+
+    // Verificar que el post pertenezca al usuario o que sea admin
+    $post = get_post($post_id);
+    if (!$post || ($post->post_author != $user_id && !rd_intranet_is_authorized_admin($user_id))) {
+        return new WP_Error('forbidden', 'No tienes permiso para modificar esta bitácora', array('status' => 403));
+    }
+
+    // Guardar el fragmento en un post_meta temporal
+    update_post_meta($post_id, '_rd_pdf_chunk_' . $chunk_index, $chunk_data);
+
+    // Si es el último fragmento, ensamblar todo el PDF
+    if ($chunk_index === $total_chunks - 1) {
+        $full_base64 = '';
+        for ($i = 0; $i < $total_chunks; $i++) {
+            $chunk = get_post_meta($post_id, '_rd_pdf_chunk_' . $i, true);
+            $full_base64 .= $chunk;
+            delete_post_meta($post_id, '_rd_pdf_chunk_' . $i);
+        }
+
+        if (!empty($full_base64)) {
             update_post_meta($post_id, 'bitacora_pdf_base64', $full_base64);
             return rest_ensure_response(array(
                 'success' => true,
-                'message' => 'PDF completado y almacenado exitosamente en el servidor mediante carga nativa.',
+                'message' => 'PDF completado y almacenado exitosamente en el servidor.',
                 'post_id' => $post_id
             ));
         }
     }
 
-    // Fallback: Si por alguna razón sigue usando el método antiguo (Base64) en una sola petición
-    $chunk_data = $params['chunk_data'] ?? '';
-    if (!empty($chunk_data)) {
-        update_post_meta($post_id, 'bitacora_pdf_base64', $chunk_data);
-        return rest_ensure_response(array('success' => true, 'message' => 'PDF almacenado vía texto.', 'post_id' => $post_id));
-    }
-
-    return new WP_Error('bad_request', 'No se recibió ningún archivo PDF válido', array('status' => 400));
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => "Fragmento $chunk_index de $total_chunks guardado.",
+        'chunk_index' => $chunk_index
+    ));
 }
 
 function rd_intranet_decode_meta_json($post_id, $meta_key) {

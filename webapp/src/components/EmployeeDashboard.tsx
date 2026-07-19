@@ -252,9 +252,6 @@ export default function EmployeeDashboard() {
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
     try {
-      setClockOut(new Date());
-      setReportSubmitted(true);
-
       // Obtener ubicación de salida antes de generar el PDF
       const locSalida = await getGeolocation();
 
@@ -511,6 +508,11 @@ export default function EmployeeDashboard() {
         }
 
         localStorage.removeItem(STORAGE_KEY); // Limpiar el borrador al enviar con éxito
+        
+        // Confirmar en UI solo si todo salió exitoso
+        setClockOut(new Date());
+        setReportSubmitted(true);
+        
         setSystemAlert({
           isOpen: true,
           type: 'success',
