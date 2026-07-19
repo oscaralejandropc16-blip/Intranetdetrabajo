@@ -146,22 +146,37 @@ export default function AdminDashboard() {
 
       let logoBase64: string | null = null;
       try {
-        const res = await fetch('/logo.png');
-        const blob = await res.blob();
         logoBase64 = await new Promise<string | null>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(null);
-          reader.readAsDataURL(blob);
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDim = 250;
+            let w = img.width || 250;
+            let h = img.height || 250;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+              else { w = Math.round((w * maxDim) / h); h = maxDim; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/png', 0.8));
+            } else { resolve(null); }
+          };
+          img.onerror = () => resolve(null);
+          img.src = '/logo.png';
         });
       } catch (e) {
-        console.warn('No se pudo cargar el logo para PDF', e);
+        console.warn('No se pudo cargar o redimensionar el logo para PDF', e);
       }
 
       if (logoBase64 && (doc as any).GState) {
         try {
           doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
-          doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100);
+          doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
           doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
         } catch (e) {}
       }
@@ -318,13 +333,13 @@ export default function AdminDashboard() {
         if (logoBase64 && (doc as any).GState) {
           try {
             doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
-            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17);
+            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST');
           } catch (e) {}
         }
         doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
         doc.rect(0, 0, 297, 24, 'F');
         if (logoBase64) {
-          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17); } catch (e) {}
+          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST'); } catch (e) {}
         }
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(14);
