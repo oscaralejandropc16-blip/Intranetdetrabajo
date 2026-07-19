@@ -69,9 +69,8 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
   formData.append('pdf_file', blob, `bitacora_${postId}.pdf`);
 
   // Enviarlo como archivo nativo de una sola vez, sin chunks, para evadir el rate limiting de 429 CORS/CDN
-  const response = await api.post('/rd-intranet/v1/upload-pdf', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  // No establecer Content-Type manualmente, Axios lo hace automáticamente con el 'boundary' correcto
+  const response = await api.post('/rd-intranet/v1/upload-pdf', formData);
   
   return response?.data;
 }
