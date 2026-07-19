@@ -118,123 +118,87 @@ export default function TabHistorial() {
       const cleanLocOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
       doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
 
-      // 1. Libro de Actuaciones
+      // 1. Libro de Actuaciones (Siempre mostrar)
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('▪  LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
+      
+      let actData: any[][] = [];
       if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
-        
-        const actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
-          body: actData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
+        actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+      } else if (bitacora.content && bitacora.content.trim() !== '') {
+        const cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '').trim();
+        actData = [['—', '—', '—', cleanContent || 'Sin detalle adicional', '—']];
+      } else {
+        actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
       }
 
-      // 2. Libro de Ingresos
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
+        body: actData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 12;
+
+      // 2. Libro de Ingresos (Siempre mostrar)
+      if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
+
+      let ingData: any[][] = [];
       if (bitacora.ingresos && bitacora.ingresos.length > 0) {
-        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
-
-        const ingData = bitacora.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
-          body: ingData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
+        ingData = bitacora.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
+      } else {
+        ingData = [['—', '—', '—', '—', 'Sin nuevos ingresos o causas registradas en esta jornada', '—']];
       }
 
-      // 3. Libro de Programación
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
+        body: ingData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 12;
+
+      // 3. Libro de Programación (Siempre mostrar)
+      if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
+
+      let progData: any[][] = [];
       if (bitacora.programaciones && bitacora.programaciones.length > 0) {
-        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
-
-        const progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`, p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
-          body: progData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
+        progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
+      } else {
+        progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }
 
-      // Si por alguna razón no hay tablas estructuradas pero hay reporte de texto
-      const hasStructuredData = (bitacora.actuaciones && bitacora.actuaciones.length > 0) || (bitacora.ingresos && bitacora.ingresos.length > 0) || (bitacora.programaciones && bitacora.programaciones.length > 0);
-      if (!hasStructuredData && bitacora.content && bitacora.content.trim() !== '') {
-        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 14, finalY + 5);
-
-        const cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '');
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['DETALLE DE LAS ACTUACIONES, DILIGENCIAS Y PROGRAMACIÓN REGISTRADA EN LA JORNADA']],
-          body: [[cleanContent]],
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59], cellPadding: 4 },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
-      }
-
-      // Si tampoco hubo content ni tablas estructuradas
-      if (!hasStructuredData && (!bitacora.content || bitacora.content.trim() === '')) {
-        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('▪  ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 14, finalY + 5);
-
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['PARÁMETRO REGISTRADO', 'INFORMACIÓN OFICIAL DEL EXPEDIENTE']],
-          body: [
-            ['Estado de Revisión', bitacora.status || 'Enviado'],
-            ['ID de Registro KANT', `#${bitacora.id}`],
-            ['Coordenadas de Entrada', bitacora.ubicacionEntrada || 'N/A'],
-            ['Coordenadas de Salida', bitacora.ubicacionSalida || 'N/A'],
-            ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
-          ],
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { fontSize: 9, textColor: [30, 41, 59], cellPadding: 3 },
-          columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { left: 14, right: 14 }
-        });
-      }
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+        body: progData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
 
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {

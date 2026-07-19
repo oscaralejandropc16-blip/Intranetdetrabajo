@@ -734,6 +734,27 @@ function rd_intranet_upload_pdf($request) {
     ));
 }
 
+function rd_intranet_decode_meta_json($post_id, $meta_key) {
+    $raw = get_post_meta($post_id, $meta_key, true);
+    if (empty($raw)) {
+        $raw = get_post_meta($post_id, str_replace('_json', '', $meta_key), true);
+    }
+    if (is_array($raw)) {
+        return $raw;
+    }
+    if (is_string($raw) && !empty($raw)) {
+        $decoded = json_decode($raw, true);
+        if ($decoded !== null) {
+            return $decoded;
+        }
+        $decoded = json_decode(stripslashes($raw), true);
+        if ($decoded !== null) {
+            return $decoded;
+        }
+    }
+    return array();
+}
+
 function rd_intranet_get_bitacoras() {
     $args = array(
         'post_type' => 'rd_bitacora',
@@ -767,7 +788,7 @@ function rd_intranet_get_bitacoras() {
             if ($clock_in !== 'N/A' && $clock_out !== 'N/A' && strcmp(substr($clock_in, 0, 5), substr($clock_out, 0, 5)) > 0) {
                 $t_in = strtotime($clock_in);
                 $t_out = strtotime($clock_out);
-                if ($t_in !== false && $t_out !== false && $t_in > $t_out && ($t_in - $t_out) >= 10000) {
+                if ($t_in !== false && $t_out !== false && $t_in > $t_out) {
                     $clock_in = date('H:i', $t_in - 14400);
                 }
             }
@@ -784,9 +805,9 @@ function rd_intranet_get_bitacoras() {
                 'content' => $query->post->post_content ?: get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
                 'cierreRetrasado' => get_post_meta(get_the_ID(), 'cierre_retrasado', true) === '1',
-                'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
-                'ingresos' => json_decode(get_post_meta(get_the_ID(), 'ingresos_json', true), true) ?: array(),
-                'programaciones' => json_decode(get_post_meta(get_the_ID(), 'programaciones_json', true), true) ?: array()
+                'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
+                'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
+                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json')
             );
         }
         wp_reset_postdata();
@@ -1021,7 +1042,7 @@ function rd_intranet_get_my_history() {
             if ($clock_in !== 'N/A' && $clock_out !== 'N/A' && strcmp(substr($clock_in, 0, 5), substr($clock_out, 0, 5)) > 0) {
                 $t_in = strtotime($clock_in);
                 $t_out = strtotime($clock_out);
-                if ($t_in !== false && $t_out !== false && $t_in > $t_out && ($t_in - $t_out) >= 10000) {
+                if ($t_in !== false && $t_out !== false && $t_in > $t_out) {
                     $clock_in = date('H:i', $t_in - 14400);
                 }
             }
@@ -1035,9 +1056,9 @@ function rd_intranet_get_my_history() {
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
                 'content' => $query->post->post_content ?: get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
-                'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
-                'ingresos' => json_decode(get_post_meta(get_the_ID(), 'ingresos_json', true), true) ?: array(),
-                'programaciones' => json_decode(get_post_meta(get_the_ID(), 'programaciones_json', true), true) ?: array()
+                'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
+                'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
+                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json')
             );
         }
         wp_reset_postdata();
