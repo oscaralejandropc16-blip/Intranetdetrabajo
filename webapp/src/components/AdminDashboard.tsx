@@ -238,8 +238,15 @@ export default function AdminDashboard() {
       if (report.actuaciones && report.actuaciones.length > 0) {
         actData = report.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
       } else if (report.content && report.content.trim() !== '') {
-        const cleanContent = report.content.replace(/<[^>]*>?/gm, '').trim();
-        actData = [['—', '—', '—', cleanContent || 'Sin detalle adicional', '—']];
+        let cleanContent = report.content.replace(/<[^>]*>?/gm, '').trim();
+        if (cleanContent.includes('PROGRAMACIÓN FUTURA:')) {
+          cleanContent = cleanContent.split('PROGRAMACIÓN FUTURA:')[0].replace('REPORTE HOY:', '').trim();
+        }
+        if (cleanContent === '' || cleanContent.toLowerCase().includes('sin actuaciones hoy')) {
+          actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
+        } else {
+          actData = [['—', '—', '—', cleanContent || 'Sin detalle adicional', '—']];
+        }
       } else {
         actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
       }

@@ -278,72 +278,84 @@ export default function EmployeeDashboard() {
       const cleanLocOut = locSalida ? (locSalida.includes('|||') ? locSalida.split('|||')[1] : locSalida) : 'N/A';
       doc.text(cleanLocOut.substring(0, 50), 180, 51);
 
-      // 1. Libro de Actuaciones
-      if (actuaciones.length > 0) {
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('1. LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
-        
-        const actData = actuaciones.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
-          body: actData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { top: 30, bottom: 20, left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
+      // 1. Libro de Actuaciones (Siempre mostrar)
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('1. LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
+      
+      let actData: any[][] = [];
+      if (actuaciones && actuaciones.length > 0) {
+        actData = actuaciones.map(a => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+      } else {
+        actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
       }
 
-      // 2. Libro de Ingresos
-      if (ingresos.length > 0) {
-        if (finalY > 165) { doc.addPage(); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
-        
-        const ingData = ingresos.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['N° EXPEDIENTE', 'FECHA/HORA INGRESO', 'TIPO', 'TRIBUNAL / ORGANISMO', 'PARTES INVOLUCRADAS', 'RESUMEN DEL ASUNTO', 'OBSERVACIONES']],
-          body: ingData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { top: 30, bottom: 20, left: 14, right: 14 }
-        });
-        finalY = (doc as any).lastAutoTable.finalY + 12;
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
+        body: actData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { top: 30, bottom: 20, left: 14, right: 14 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 12;
+
+      // 2. Libro de Ingresos (Siempre mostrar)
+      if (finalY > 155) { doc.addPage(); finalY = 32; }
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
+      
+      let ingData: any[][] = [];
+      if (ingresos && ingresos.length > 0) {
+        ingData = ingresos.map(i => [i.numeroExpediente || 'N/A', `${i.fechaIngreso || ''} ${i.horaIngreso || ''}`.trim() || 'N/A', i.tipo || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || '—', i.observaciones || '—']);
+      } else {
+        ingData = [['—', '—', '—', '—', '—', 'Sin nuevos ingresos o causas registradas en esta jornada', '—']];
       }
 
-      // 3. Libro de Programación
-      if (programaciones.length > 0) {
-        if (finalY > 165) { doc.addPage(); finalY = 32; }
-        doc.setFontSize(10.5);
-        doc.setTextColor(15, 23, 42);
-        doc.setFont('helvetica', 'bold');
-        doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
-        
-        const progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
-        autoTable(doc, {
-          startY: finalY + 8,
-          head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
-          body: progData,
-          theme: 'grid',
-          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
-          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
-          alternateRowStyles: { fillColor: [252, 253, 254] },
-          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
-          margin: { top: 30, bottom: 20, left: 14, right: 14 }
-        });
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['N° EXPEDIENTE', 'FECHA/HORA INGRESO', 'TIPO', 'TRIBUNAL / ORGANISMO', 'PARTES INVOLUCRADAS', 'RESUMEN DEL ASUNTO', 'OBSERVACIONES']],
+        body: ingData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { top: 30, bottom: 20, left: 14, right: 14 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 12;
+
+      // 3. Libro de Programación (Siempre mostrar)
+      if (finalY > 155) { doc.addPage(); finalY = 32; }
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
+      
+      let progData: any[][] = [];
+      if (programaciones && programaciones.length > 0) {
+        progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
+      } else {
+        progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }
+
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+        body: progData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { top: 30, bottom: 20, left: 14, right: 14 }
+      });
 
       // --- DECORACIÓN SUPERIOR, INFERIOR Y MARCA DE AGUA EN TODAS LAS PÁGINAS ---
       const totalPages = (doc as any).internal.getNumberOfPages();

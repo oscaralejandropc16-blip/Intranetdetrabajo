@@ -128,8 +128,15 @@ export default function TabHistorial() {
       if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
         actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
       } else if (bitacora.content && bitacora.content.trim() !== '') {
-        const cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '').trim();
-        actData = [['—', '—', '—', cleanContent || 'Sin detalle adicional', '—']];
+        let cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '').trim();
+        if (cleanContent.includes('PROGRAMACIÓN FUTURA:')) {
+          cleanContent = cleanContent.split('PROGRAMACIÓN FUTURA:')[0].replace('REPORTE HOY:', '').trim();
+        }
+        if (cleanContent === '' || cleanContent.toLowerCase().includes('sin actuaciones hoy')) {
+          actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
+        } else {
+          actData = [['—', '—', '—', cleanContent || 'Sin detalle adicional', '—']];
+        }
       } else {
         actData = [['—', '—', '—', 'Sin actuaciones o trámites registrados en esta jornada', '—']];
       }
