@@ -54,36 +54,36 @@ api.interceptors.response.use(
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
   if (!pdfBase64 || postId <= 0) return;
   
-  // Transformar de Base64 a Array de Bytes (enteros 0-255)
-  // El firewall (ModSecurity) escanea STRINGS en busca de firmas de virus o SQL injection.
-  // Al enviar un array puro de números, ModSecurity no puede aplicar sus reglas de texto y lo deja pasar 100% de las veces.
+  // Decodificar Base64 a Blob
   const byteCharacters = atob(pdfBase64);
-  const totalBytes = byteCharacters.length;
-  const CHUNK_SIZE = 50000; // 50 KB de bytes binarios por chunk
-  const totalChunks = Math.ceil(totalBytes / CHUNK_SIZE);
-  
-  let lastResponse = null;
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkBytes = [];
-    const start = i * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, totalBytes);
-    
-    for (let j = start; j < end; j++) {
-      chunkBytes.push(byteCharacters.charCodeAt(j));
-    }
-    
-    lastResponse = await api.post('/rd-intranet/v1/upload-pdf', {
-      post_id: postId,
-      chunk_index: i,
-      total_chunks: totalChunks,
-      chunk_bytes: chunkBytes
-    });
-    
-    if (i < totalChunks - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let i = 0; i < byteCharacters.length; i++) {
+    byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
-  return lastResponse?.data;
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'application/pdf' });
+  
+  // Usar FormData puro
+  const formData = new FormData();
+  formData.append('post_id', String(postId));
+  formData.append('pdf_file', blob, `bitacora_${postId}.pdf`);
+  
+  const token = localStorage.getItem('rd_jwt_token');
+  
+  // Usamos fetch nativo en lugar de Axios para garantizar que el navegador establezca el Content-Type multipart/form-data correcto con su 'boundary'
+  const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/upload-pdf`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error('Error al subir PDF');
+  }
+  
+  return await response.json();
 }
 
 export default api;

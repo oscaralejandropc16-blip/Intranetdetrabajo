@@ -689,9 +689,29 @@ function rd_intranet_upload_pdf($request) {
         return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
     }
 
-    $post_id = intval($_POST['post_id'] ?? 0);
-    if ($post_id <= 0 || empty($_FILES['pdf_file'])) {
-        return new WP_Error('bad_request', 'Datos de archivo inválidos', array('status' => 400));
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['post_id'] ?? 0);
+    $chunk_index = intval($params['chunk_index'] ?? 0);
+    $total_chunks = intval($params['total_chunks'] ?? 1);
+    
+    // WAF Bypass: Soporte para recepción de array de bytes nativos (enteros) en lugar de un string Base64
+    $chunk_bytes = $params['chunk_bytes'] ?? array();
+    $chunk_data = '';
+    if (!empty($chunk_bytes) && is_array($chunk_bytes)) {
+        foreach ($chunk_bytes as $byte) {
+            $chunk_data .= chr($byte);
+        }
+        // Guardamos los bytes RAW directamente (sin codificar a Base64 todavía) para poder concatenarlos correctamente
+    } else {
+        $chunk_data = $params['chunk_data'] ?? ''; // Fallback a Base64 directo
+        if (!empty($chunk_data)) {
+            // Si viene como Base64, lo decodificamos a RAW para estandarizar el proceso de guardado
+            $chunk_data = base64_decode($chunk_data);
+        }
+    }
+
+    if ($post_id <= 0 || empty($chunk_data)) {
+        return new WP_Error('bad_request', 'Datos de fragmento inválidos', array('status' => 400));
     }
 
     // Verificar que el post pertenezca al usuario o que sea admin
@@ -700,24 +720,34 @@ function rd_intranet_upload_pdf($request) {
         return new WP_Error('forbidden', 'No tienes permiso para modificar esta bitácora', array('status' => 403));
     }
 
-    $file = $_FILES['pdf_file'];
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        return new WP_Error('upload_error', 'Error en la transmisión del archivo', array('status' => 500));
-    }
+    // Guardar el fragmento en un post_meta temporal
+    update_post_meta($post_id, '_rd_pdf_chunk_' . $chunk_index, $chunk_data);
 
-    $raw_data = file_get_contents($file['tmp_name']);
-    if (empty($raw_data)) {
-        return new WP_Error('empty_file', 'El archivo subido está vacío', array('status' => 400));
-    }
+    // Si es el último fragmento, ensamblar todo el PDF
+    if ($chunk_index === $total_chunks - 1) {
+        $full_raw_data = '';
+        for ($i = 0; $i < $total_chunks; $i++) {
+            $chunk = get_post_meta($post_id, '_rd_pdf_chunk_' . $i, true);
+            $full_raw_data .= $chunk;
+            delete_post_meta($post_id, '_rd_pdf_chunk_' . $i);
+        }
 
-    // Codificar el archivo recibido en Base64 para almacenarlo en la base de datos
-    $final_base64 = base64_encode($raw_data);
-    update_post_meta($post_id, 'bitacora_pdf_base64', $final_base64);
+        if (!empty($full_raw_data)) {
+            // Una vez ensamblados todos los bytes crudos, lo convertimos a Base64 final
+            $final_base64 = base64_encode($full_raw_data);
+            update_post_meta($post_id, 'bitacora_pdf_base64', $final_base64);
+            return rest_ensure_response(array(
+                'success' => true,
+                'message' => 'PDF completado y almacenado exitosamente en el servidor.',
+                'post_id' => $post_id
+            ));
+        }
+    }
 
     return rest_ensure_response(array(
         'success' => true,
-        'message' => 'PDF completado y almacenado exitosamente en el servidor.',
-        'post_id' => $post_id
+        'message' => "Fragmento $chunk_index de $total_chunks guardado.",
+        'chunk_index' => $chunk_index
     ));
 }
 
