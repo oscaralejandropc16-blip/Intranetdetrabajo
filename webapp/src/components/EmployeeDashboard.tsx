@@ -242,7 +242,8 @@ export default function EmployeeDashboard() {
       doc.setFont('helvetica', 'bold');
       doc.text('EMPLEADO:', 18, 42);
       doc.setFont('helvetica', 'normal');
-      doc.text('Carmen Luisa', 45, 42);
+      const currentUserName = localStorage.getItem('rd_user_name') || 'Usuario';
+      doc.text(currentUserName, 45, 42);
 
       doc.setFont('helvetica', 'bold');
       doc.text('HORARIO:', 18, 51);
@@ -384,7 +385,7 @@ export default function EmployeeDashboard() {
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(9);
         doc.setTextColor(203, 213, 225);
-        doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')} — Empleado: Carmen Luisa`, 283, 17.5, { align: 'right' });
+        doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')} — Empleado: ${currentUserName}`, 283, 17.5, { align: 'right' });
 
         // Pie de página (Footer)
         doc.setDrawColor(226, 232, 240);
