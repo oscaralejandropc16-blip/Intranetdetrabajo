@@ -93,6 +93,11 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
       total_chunks: totalChunks,
       chunk_data: chunkData
     });
+    
+    // Anti-WAF / Anti-DDoS: Esperar 1 segundo entre envíos para no saturar el firewall (Evitar error 429)
+    if (i < totalChunks - 1) {
+      await new Promise(resolve => setTimeout(resolve, 1200));
+    }
   }
   return lastResponse?.data;
 }
