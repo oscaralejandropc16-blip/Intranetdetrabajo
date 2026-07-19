@@ -583,10 +583,11 @@ export default function EmployeeDashboard() {
   };
 
   const handleClockIn = async () => {
+    const now = new Date();
+    const nowIso = now.toISOString();
+    
     try {
       setLoadingLocation(true);
-      const now = new Date();
-      const nowIso = now.toISOString();
       
       const immediatePayload = {
         clockIn: nowIso,
