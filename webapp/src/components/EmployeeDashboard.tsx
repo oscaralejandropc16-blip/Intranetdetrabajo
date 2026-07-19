@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
@@ -8,6 +8,7 @@ import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabAgenda from './employee/TabAgenda';
 import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabHistorial from './employee/TabHistorial';
+import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -473,7 +474,7 @@ export default function EmployeeDashboard() {
   const tasksCompleted = pendingTasks.filter(t => t.completed).length;
   const progress = Math.round((tasksCompleted / pendingTasks.length) * 100) || 0;
 
-  const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial'>('ingresos');
+  const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>('ingresos');
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {
@@ -615,7 +616,7 @@ export default function EmployeeDashboard() {
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="text-xs font-semibold tracking-wider text-slate-200 uppercase">Jornada Activa</span>
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Mi Portal Diario</h2>
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Mi Jornada <span className="text-amber-400">KANT</span></h2>
             <p className="text-slate-400 text-lg font-medium capitalize flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-amber-400" />
               {format(new Date(), "EEEE, d 'de' MMMM, yyyy", { locale: es })}
@@ -680,6 +681,14 @@ export default function EmployeeDashboard() {
           >
             <History className="w-5 h-5" />
             Mi Historial
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('investigaciones')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'investigaciones' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+          >
+            <BookOpen className="w-5 h-5" />
+            Investigaciones & Sentencias
           </button>
         </div>
       </div>
@@ -839,6 +848,10 @@ export default function EmployeeDashboard() {
 
           {activeTab === 'historial' && (
             <TabHistorial />
+          )}
+
+          {activeTab === 'investigaciones' && (
+            <TabInvestigaciones />
           )}
         </div>
       </div>

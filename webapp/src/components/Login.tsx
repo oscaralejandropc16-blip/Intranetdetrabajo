@@ -129,7 +129,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
           </div>
           <p className="text-amber-400/90 font-medium tracking-[0.2em] uppercase text-xs sm:text-sm flex items-center justify-center gap-2 mt-4">
             <ShieldCheck className="w-4 h-4" />
-            Portal Intranet
+            Plataforma KANT
           </p>
         </div>
 

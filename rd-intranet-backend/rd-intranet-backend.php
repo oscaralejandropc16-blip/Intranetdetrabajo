@@ -58,7 +58,7 @@ function rd_intranet_clear_lockouts_automatically() {
     }
 }
 
-// 1. Registrar Custom Post Type: Bitácora Diaria
+// 1. Registrar Custom Post Type: Bitácora Diaria y Repositorio Jurídico (Investigaciones KANT)
 function rd_intranet_register_cpt() {
     $args = array(
         'public'       => false, // No visible en frontend público
@@ -68,6 +68,15 @@ function rd_intranet_register_cpt() {
         'show_in_rest' => true,
     );
     register_post_type('rd_bitacora', $args);
+
+    $args_inv = array(
+        'public'       => false,
+        'show_ui'      => true,
+        'label'        => 'Investigaciones KANT',
+        'supports'     => array('title', 'editor', 'author', 'custom-fields'),
+        'show_in_rest' => true,
+    );
+    register_post_type('rd_investigacion', $args_inv);
 }
 add_action('init', 'rd_intranet_register_cpt');
 
@@ -327,6 +336,29 @@ add_action('rest_api_init', function () {
         'permission_callback' => function () {
             return is_user_logged_in();
         }
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/reset-user-day (Exclusivo jefatura para reabrir jornada individual por empleado)
+    register_rest_route('rd-intranet/v1', '/reset-user-day', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_reset_user_day',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
+
+    // Endpoints: GET y POST /rd-intranet/v1/investigaciones (Repositorio Jurídico KANT)
+    register_rest_route('rd-intranet/v1', '/investigaciones', array(
+        array(
+            'methods' => 'GET',
+            'callback' => 'rd_intranet_get_investigaciones',
+            'permission_callback' => function () { return is_user_logged_in(); }
+        ),
+        array(
+            'methods' => 'POST',
+            'callback' => 'rd_intranet_save_investigacion',
+            'permission_callback' => function () { return is_user_logged_in(); }
+        )
     ));
 
     // Endpoint: GET /rd-intranet/v1/expedientes (Obtener todos los expedientes globales)
@@ -901,6 +933,43 @@ function rd_intranet_reset_test_data() {
     return rest_ensure_response(array('success' => true, 'message' => 'Base de datos de pruebas reseteada y cachés limpiadas correctamente.'));
 }
 
+function rd_intranet_reset_user_day($request) {
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['post_id'] ?? 0);
+    $target_date = sanitize_text_field($params['date'] ?? current_time('Y-m-d'));
+    
+    if ($post_id <= 0) {
+        return new WP_Error('invalid_post', 'ID de bitácora inválido', array('status' => 400));
+    }
+    
+    $author_id = intval(get_post_field('post_author', $post_id));
+    if ($author_id <= 0) {
+        return new WP_Error('invalid_user', 'No se pudo identificar al empleado de esta bitácora', array('status' => 400));
+    }
+    
+    wp_delete_post($post_id, true);
+    
+    $fechas = array(
+        $target_date,
+        date('Y-m-d'),
+        current_time('Y-m-d'),
+        gmdate('Y-m-d')
+    );
+    
+    foreach ($fechas as $f) {
+        delete_user_meta($author_id, 'rd_intranet_day_closed_' . $f);
+        delete_user_meta($author_id, 'rd_intranet_clockin_' . $f);
+    }
+    delete_user_meta($author_id, 'rd_intranet_today_clockin');
+    delete_user_meta($author_id, 'rd_intranet_draft');
+    clean_user_cache($author_id);
+    
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => 'Jornada del empleado reabierta y bitácora del día reiniciada correctamente.'
+    ));
+}
+
 function rd_intranet_get_my_history() {
     $user_id = get_current_user_id();
     $args = array(
@@ -940,4 +1009,85 @@ function rd_intranet_get_my_history() {
     }
     
     return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
+}
+
+function rd_intranet_get_investigaciones() {
+    $args = array(
+        'post_type' => 'rd_investigacion',
+        'posts_per_page' => 100,
+        'post_status' => array('publish', 'private'),
+        'orderby' => 'date',
+        'order' => 'DESC'
+    );
+    $query = new WP_Query($args);
+    $resultados = array();
+    
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $author_id = get_post_field('post_author', get_the_ID());
+            $author_obj = get_userdata($author_id);
+            $user_display = $author_obj ? ($author_obj->display_name ?: ($author_obj->user_nicename ?: $author_obj->user_login)) : get_the_author();
+            
+            $resultados[] = array(
+                'id' => get_the_ID(),
+                'user' => $user_display,
+                'date' => get_the_date('Y-m-d H:i'),
+                'tema' => get_post_meta(get_the_ID(), 'inv_tema', true),
+                'resumen' => get_post_meta(get_the_ID(), 'inv_resumen', true),
+                'sentencia' => get_post_meta(get_the_ID(), 'inv_sentencia', true),
+                'libros' => get_post_meta(get_the_ID(), 'inv_libros', true),
+                'articulos_cientificos' => get_post_meta(get_the_ID(), 'inv_articulos', true),
+                'opinion_rd' => get_post_meta(get_the_ID(), 'inv_opinion', true)
+            );
+        }
+        wp_reset_postdata();
+    }
+    
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
+}
+
+function rd_intranet_save_investigacion($request) {
+    $user_id = get_current_user_id();
+    $params = rd_intranet_get_request_data($request);
+    
+    $tema = sanitize_text_field($params['tema'] ?? '');
+    $resumen = sanitize_textarea_field($params['resumen'] ?? '');
+    $sentencia = sanitize_textarea_field($params['sentencia'] ?? '');
+    $libros = sanitize_textarea_field($params['libros'] ?? '');
+    $articulos = sanitize_textarea_field($params['articulos_cientificos'] ?? '');
+    $opinion = sanitize_textarea_field($params['opinion_rd'] ?? '');
+    
+    if (empty($tema) || empty($resumen)) {
+        return new WP_Error('invalid_fields', 'El tema y el resumen son obligatorios', array('status' => 400));
+    }
+    
+    $post_id = intval($params['id'] ?? 0);
+    $post_data = array(
+        'post_title' => 'Investigación: ' . $tema,
+        'post_content' => "TEMA: $tema\n\nRESUMEN: $resumen\n\nSENTENCIA: $sentencia\n\nLIBROS: $libros\n\nARTICULOS: $articulos\n\nOPINION R&D: $opinion",
+        'post_status' => 'publish',
+        'post_author' => $user_id,
+        'post_type' => 'rd_investigacion'
+    );
+    
+    if ($post_id > 0) {
+        $post_data['ID'] = $post_id;
+        wp_update_post($post_data);
+    } else {
+        $post_id = wp_insert_post($post_data);
+    }
+    
+    if (is_wp_error($post_id)) {
+        return new WP_Error('db_error', 'No se pudo guardar la investigación', array('status' => 500));
+    }
+    
+    update_post_meta($post_id, 'inv_tema', $tema);
+    update_post_meta($post_id, 'inv_resumen', $resumen);
+    update_post_meta($post_id, 'inv_sentencia', $sentencia);
+    update_post_meta($post_id, 'inv_libros', $libros);
+    update_post_meta($post_id, 'inv_articulos', $articulos);
+    update_post_meta($post_id, 'inv_opinion', $opinion);
+    
+    return rest_ensure_response(array('success' => true, 'id' => $post_id, 'message' => 'Investigación jurídica guardada exitosamente.'));
 }

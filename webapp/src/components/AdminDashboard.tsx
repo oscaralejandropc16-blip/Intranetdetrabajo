@@ -25,7 +25,8 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
+  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'investigaciones'>('bitacoras');
+  const [investigacionesAdmin, setInvestigacionesAdmin] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>('actuaciones');
   
   // Estado local para Libros de Jefatura (sin horario/GPS)
@@ -75,8 +76,12 @@ export default function AdminDashboard() {
         if (response.data && Array.isArray(response.data)) {
           setReports(response.data);
         }
+        const invRes = await api.get('/rd-intranet/v1/investigaciones');
+        if (invRes.data && Array.isArray(invRes.data)) {
+          setInvestigacionesAdmin(invRes.data);
+        }
       } catch (error) {
-        console.error('Error fetching bitacoras', error);
+        console.error('Error fetching bitacoras / investigaciones', error);
       } finally {
         setLoading(false);
       }
@@ -218,26 +223,8 @@ export default function AdminDashboard() {
               <span className="w-2 h-2 rounded-full bg-amber-500"></span>
               <span className="text-xs font-bold tracking-widest text-amber-500 uppercase">Jefatura</span>
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Centro de Mando</h2>
+            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Centro de Mando KANT</h2>
             <p className="text-slate-400 text-lg font-medium">Supervisión en tiempo real de bitácoras y asistencia del equipo.</p>
-            <div className="mt-4">
-              <button
-                onClick={async () => {
-                  if (confirm('¿Deseas reiniciar la base de datos de pruebas (borrar bitácoras y reabrir jornadas para todos) para realizar nuevas pruebas como Jefatura?')) {
-                    try {
-                      await api.post('/rd-intranet/v1/reset-test-data');
-                      localStorage.clear();
-                      window.location.reload();
-                    } catch (e) {
-                      alert('Error al reiniciar pruebas');
-                    }
-                  }
-                }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-bold transition-all duration-200 shadow-sm cursor-pointer"
-              >
-                ⚙️ Reiniciar Datos de Prueba / Reabrir Jornada (Exclusivo Jefatura)
-              </button>
-            </div>
           </div>
           
           {/* Stats & Notifications Row */}
@@ -326,6 +313,12 @@ export default function AdminDashboard() {
         >
           <History className="w-5 h-5" /> Mi Historial de Jefatura
         </button>
+        <button 
+          onClick={() => setActiveView('investigaciones')}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'investigaciones' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+        >
+          <BookOpen className="w-5 h-5" /> Investigaciones & Sentencias
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -403,6 +396,7 @@ export default function AdminDashboard() {
                 <th className="p-6">Jornada</th>
                 <th className="p-6 w-48">Progreso</th>
                 <th className="p-6">Estado</th>
+                <th className="p-6">PDF Oficial</th>
                 <th className="p-6 text-right">Acciones</th>
               </tr>
             </thead>
@@ -479,6 +473,25 @@ export default function AdminDashboard() {
                       {report.status}
                     </span>
                   </td>
+                  <td className="p-6">
+                    {report.pdfBase64 ? (
+                      <a
+                        href={report.pdfBase64}
+                        download={`Bitacora_${report.user}_${report.date}.pdf`}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
+                        title="Haz clic para descargar el PDF completo"
+                      >
+                        ⬇️ PDF
+                      </a>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md border border-slate-200 cursor-help"
+                        title="El archivo PDF no se adjuntó en el servidor durante este cierre o se envió antes de activar la fragmentación."
+                      >
+                        No disponible (?)
+                      </span>
+                    )}
+                  </td>
                   <td className="p-6 text-right">
                     <button 
                       onClick={() => { setSelectedReport(report); setAdminComment(''); setAdminProgramaciones(report.programaciones || []); }}
@@ -492,10 +505,8 @@ export default function AdminDashboard() {
             </tbody>
           </table>
         </div>
-        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-3xl">
-           <button onClick={() => setShowResetModal(true)} className="text-xs font-bold text-rose-500 hover:text-white bg-rose-50 hover:bg-rose-500 px-4 py-2 rounded-lg transition-colors flex items-center gap-2">
-             <AlertCircle className="w-4 h-4" /> Resetear Datos de Prueba
-           </button>
+        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-3xl text-xs text-slate-400 font-medium px-6">
+           <span>Mostrando registros oficiales de bitácora en la base de datos central KANT</span>
         </div>
       </div>
       )}
@@ -855,6 +866,79 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* VISTA: INVESTIGACIONES & SENTENCIAS (JEFATURA) */}
+      {activeView === 'investigaciones' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
+          <div className="mb-8 border-b border-slate-100 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                <BookOpen className="w-8 h-8 text-amber-500" /> Repositorio Jurídico KANT: Investigaciones & Sentencias
+              </h3>
+              <p className="text-slate-500 font-medium mt-1 text-lg">Supervisión y consulta doctrinal de las investigaciones, resúmenes y sentencias subidas por el equipo legal.</p>
+            </div>
+            <span className="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-sm">
+              Total Registrados: {investigacionesAdmin.length}
+            </span>
+          </div>
+
+          {investigacionesAdmin.length === 0 ? (
+            <div className="p-16 text-center bg-slate-50 rounded-2xl border border-slate-200">
+              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-lg font-bold text-slate-600">Aún no hay investigaciones subidas en el Repositorio Jurídico KANT.</p>
+              <p className="text-sm text-slate-400 mt-1">Los abogados pueden cargar doctrina y resúmenes de sentencia desde su panel de empleado.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {investigacionesAdmin.map((inv) => (
+                <div key={inv.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 hover:shadow-md transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-start gap-4 mb-4">
+                      <span className="px-3 py-1 bg-amber-500/10 text-amber-700 border border-amber-300 rounded-lg text-xs font-bold uppercase tracking-wider">
+                        Doctrina / Sentencia
+                      </span>
+                      <span className="text-xs text-slate-400 font-medium">{inv.date}</span>
+                    </div>
+                    <h4 className="text-xl font-extrabold text-slate-900 mb-2 leading-snug">{inv.tema || 'Investigación sin título'}</h4>
+                    <p className="text-xs font-bold text-blue-600 mb-4 uppercase tracking-wide">👨‍⚖️ Autor: {inv.user}</p>
+                    
+                    <div className="space-y-3 text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-100 mb-4">
+                      {inv.resumen && (
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-xs uppercase mb-0.5">📌 Resumen / Hechos:</p>
+                          <p className="text-slate-600 line-clamp-3">{inv.resumen}</p>
+                        </div>
+                      )}
+                      {inv.sentencia && (
+                        <div>
+                          <p className="font-extrabold text-slate-900 text-xs uppercase mb-0.5 mt-2">⚖️ Sentencia / Tribunal:</p>
+                          <p className="text-slate-600 line-clamp-2">{inv.sentencia}</p>
+                        </div>
+                      )}
+                      {inv.opinion_rd && (
+                        <div>
+                          <p className="font-extrabold text-amber-700 text-xs uppercase mb-0.5 mt-2">💡 Opinión R&D:</p>
+                          <p className="text-slate-600 line-clamp-2 italic">{inv.opinion_rd}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-200/60 flex justify-between items-center text-xs text-slate-500">
+                    <span>📚 Libros/Artículos adjuntos en expediente</span>
+                    <button 
+                      onClick={() => alert(`TEMA: ${inv.tema}\n\nAUTOR: ${inv.user}\n\nRESUMEN:\n${inv.resumen}\n\nSENTENCIA:\n${inv.sentencia}\n\nLIBROS:\n${inv.libros}\n\nARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\nOPINION R&D:\n${inv.opinion_rd}`)}
+                      className="text-amber-600 hover:text-amber-800 font-extrabold underline cursor-pointer"
+                    >
+                      Ver Expediente Completo →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Modal de Revisión y Edición con Glassmorphism */}
       {selectedReport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 animate-in fade-in duration-200">
@@ -1036,44 +1120,46 @@ export default function AdminDashboard() {
               </div>
 
               {/* Archivos Adjuntos y PDF de Jornada */}
-              {(selectedReport.pdfBase64 || (selectedReport.files && selectedReport.files.length > 0)) && (
-                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
-                    <FileText className="w-5 h-5 text-blue-500" /> Documentos de la Jornada
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    
-                    {/* Botón para descargar el PDF principal generado automáticamente */}
-                    {selectedReport.pdfBase64 && (
-                      <a 
-                        href={selectedReport.pdfBase64} 
-                        download={`Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`}
-                        className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl hover:border-amber-400 hover:bg-amber-100 transition-colors cursor-pointer group"
-                      >
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-amber-200 group-hover:border-amber-400 transition-colors shadow-sm">
-                          <FileText className="w-5 h-5 text-amber-500 group-hover:text-amber-600 transition-colors" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <p className="font-bold text-slate-800 truncate">Reporte_Libros.pdf</p>
-                          <p className="text-xs text-amber-700 font-bold">Generado automáticamente • Descargar</p>
-                        </div>
-                      </a>
-                    )}
-
-                    {selectedReport.files && selectedReport.files.map((file: any, index: number) => (
-                      <div key={index} className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer group">
-                        <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200 group-hover:border-blue-300 transition-colors">
-                          <FileText className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <p className="font-bold text-slate-700 truncate">{file.name}</p>
-                          <p className="text-xs text-slate-500 font-medium">{file.size} • Haz clic para descargar</p>
-                        </div>
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
+                  <FileText className="w-5 h-5 text-blue-500" /> Documentos de la Jornada
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  {/* Botón para descargar el PDF principal generado automáticamente */}
+                  {selectedReport.pdfBase64 ? (
+                    <a 
+                      href={selectedReport.pdfBase64} 
+                      download={`Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`}
+                      className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 transition-all cursor-pointer group shadow-sm"
+                    >
+                      <div className="w-10 h-10 bg-emerald-600 text-white rounded-lg flex items-center justify-center shadow-md">
+                        <FileText className="w-5 h-5" />
                       </div>
-                    ))}
-                  </div>
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-slate-900 truncate">Bitacora_{selectedReport.user}.pdf</p>
+                        <p className="text-xs text-emerald-800 font-extrabold flex items-center gap-1">⬇️ Ver / Descargar PDF Oficial</p>
+                      </div>
+                    </a>
+                  ) : (
+                    <div className="col-span-1 sm:col-span-2 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500 font-medium">
+                      ⚠️ El archivo PDF oficial no se cargó en el servidor para este cierre (corresponde a una bitácora enviada antes de activar la fragmentación de archivos por bloques). Para nuevos cierres, el PDF se cargará y aparecerá aquí automáticamente.
+                    </div>
+                  )}
+
+                  {selectedReport.files && selectedReport.files.map((file: any, index: number) => (
+                    <div key={index} className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer group">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200 group-hover:border-blue-300 transition-colors">
+                        <FileText className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="font-bold text-slate-700 truncate">{file.name}</p>
+                        <p className="text-xs text-slate-500 font-medium">{file.size} • Haz clic para descargar</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )}
+              </div>
 
               {/* Feedback */}
               <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
@@ -1093,13 +1179,33 @@ export default function AdminDashboard() {
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-end gap-4 rounded-b-3xl">
-              <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
-                Cerrar
+            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
+              <button 
+                onClick={async () => {
+                  if (confirm(`¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`)) {
+                    try {
+                      await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                      alert('Jornada reabierta exitosamente.');
+                      setSelectedReport(null);
+                      window.location.reload();
+                    } catch (e) {
+                      alert('Error al reabrir la jornada.');
+                    }
+                  }
+                }}
+                className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
+              >
+                ⚙️ Reabrir y Reiniciar Día de este Empleado
               </button>
-              <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
-                <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
-              </button>
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
+                  Cerrar
+                </button>
+                <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
+                  <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
+                </button>
+              </div>
             </div>
           </div>
         </div>

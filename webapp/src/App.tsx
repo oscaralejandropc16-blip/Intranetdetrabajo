@@ -88,7 +88,7 @@ function App() {
             <div className="hidden w-8 h-8 sm:w-10 sm:h-10 bg-amber-500 rounded-md flex items-center justify-center text-slate-900 font-bold text-lg sm:text-xl shadow-md">
               R&D
             </div>
-            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide hidden sm:block">Portal <span className="text-amber-400">Intranet</span></h1>
+            <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide hidden sm:block">Plataforma <span className="text-amber-400 font-black">KANT</span></h1>
           </div>
           <div className="flex gap-3 sm:gap-4 items-center">
             {isAdmin && (
