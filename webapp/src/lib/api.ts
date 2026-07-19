@@ -81,7 +81,7 @@ api.interceptors.response.use(
 
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
   if (!pdfBase64 || postId <= 0) return;
-  const CHUNK_SIZE = 250000; // 250 KB por fragmento
+  const CHUNK_SIZE = 40000; // 40 KB por fragmento para eludir los límites estrictos de ModSecurity WAF
   const totalChunks = Math.ceil(pdfBase64.length / CHUNK_SIZE);
   
   let lastResponse = null;

@@ -58,7 +58,16 @@ export default function EmployeeDashboard() {
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(true);
-  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+  const [systemAlert, setSystemAlert] = useState<{ 
+    isOpen: boolean; 
+    type: AlertType; 
+    title: string; 
+    message: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
     isOpen: false,
     type: 'info',
     title: '',
@@ -629,7 +638,11 @@ export default function EmployeeDashboard() {
         type={systemAlert.type}
         title={systemAlert.title}
         message={systemAlert.message}
-        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+        showCancel={systemAlert.showCancel}
+        onConfirm={systemAlert.onConfirm}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
       />
 
       {/* BANNER DE RETRASO */}
@@ -840,6 +853,56 @@ export default function EmployeeDashboard() {
                     <span className="text-xs font-medium opacity-80">(Guardar y Enviar PDF)</span>
                   </>
                 )}
+              </button>
+            </div>
+            
+            {/* Botón de Limpiar Día Manual (Ayuda) */}
+            <div className="mt-4 pb-2">
+              <button 
+                type="button"
+                onClick={() => {
+                  setSystemAlert({
+                    isOpen: true,
+                    type: 'warning',
+                    title: '¿Reiniciar Jornada?',
+                    message: 'Si la jefatura eliminó o reabrió tu bitácora, debes confirmar para limpiar los datos locales y volver a marcar tu entrada. \n\n¿Deseas reiniciar tu día desde cero?',
+                    showCancel: true,
+                    confirmText: 'Sí, Reiniciar Día',
+                    cancelText: 'Cancelar',
+                    onConfirm: async () => {
+                      setClockIn(null);
+                      setClockOut(null);
+                      setReportSubmitted(false);
+                      setActuaciones([]);
+                      setIngresos([]);
+                      setProgramaciones([]);
+                      setUbicacionEntrada(null);
+                      localStorage.removeItem(STORAGE_KEY);
+                      
+                      try {
+                        // Forzar guardado vacío en el servidor para limpiar su caché
+                        await api.post('/rd-intranet/v1/draft', {
+                          clockIn: null,
+                          ubicacionEntrada: null,
+                          actuaciones: [],
+                          ingresos: [],
+                          programaciones: []
+                        });
+                      } catch (e) {}
+
+                      setSystemAlert({
+                        isOpen: true,
+                        type: 'success',
+                        title: 'Día Reiniciado',
+                        message: 'Tus datos se han limpiado. Ya puedes volver a marcar entrada y registrar tu jornada.',
+                        onConfirm: () => setSystemAlert(prev => ({ ...prev, isOpen: false }))
+                      });
+                    }
+                  });
+                }}
+                className="w-full text-xs font-bold text-slate-400 hover:text-amber-600 transition-colors underline underline-offset-2 flex justify-center items-center gap-1 cursor-pointer"
+              >
+                ¿Problemas? Limpiar y Reiniciar Día
               </button>
             </div>
           </div>
