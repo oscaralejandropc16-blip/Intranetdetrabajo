@@ -84,7 +84,7 @@ function App() {
         {/* Navbar Corporativo Responsive */}
         <nav className="bg-slate-900 border-b border-amber-500/20 px-4 sm:px-8 py-4 flex justify-between items-center shadow-lg sticky top-0 z-50">
           <div className="flex items-center gap-2 sm:gap-3">
-            <img src="/logo.png" alt="Logo R&D" className="h-8 sm:h-10 w-auto object-contain drop-shadow-md" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+            <img src="/dog_logo.png" alt="Logo R&D" className="h-8 sm:h-10 w-auto object-contain drop-shadow-md" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
             <div className="hidden w-8 h-8 sm:w-10 sm:h-10 bg-amber-500 rounded-md flex items-center justify-center text-slate-900 font-bold text-lg sm:text-xl shadow-md">
               R&D
             </div>

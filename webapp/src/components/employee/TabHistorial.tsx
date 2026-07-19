@@ -95,7 +95,7 @@ export default function TabHistorial() {
             } else { resolve(null); }
           };
           img.onerror = () => resolve(null);
-          img.src = '/logo.png';
+          img.src = '/dog_logo.png';
         });
       } catch (e) {
         console.warn('No se pudo cargar o redimensionar el logo para PDF', e);
