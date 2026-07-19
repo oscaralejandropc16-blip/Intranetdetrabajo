@@ -173,6 +173,17 @@ export default function EmployeeDashboard() {
             ingresos: parsedIngresos,
             programaciones: parsedProgramaciones
           }));
+        } else {
+          // Si el servidor responde exitosamente pero sin data (null/vacío), significa
+          // que Jefatura reseteó o eliminó el borrador del día. Debemos purgar la memoria local.
+          setClockIn(null);
+          setUbicacionEntrada(null);
+          setActuaciones([]);
+          setIngresos([]);
+          setProgramaciones([]);
+          setReportSubmitted(false);
+          setClockOut(null);
+          localStorage.removeItem(STORAGE_KEY);
         }
       } catch (error) {
         console.error('Error fetching draft:', error);
@@ -853,56 +864,6 @@ export default function EmployeeDashboard() {
                     <span className="text-xs font-medium opacity-80">(Guardar y Enviar PDF)</span>
                   </>
                 )}
-              </button>
-            </div>
-            
-            {/* Botón de Limpiar Día Manual (Ayuda) */}
-            <div className="mt-4 pb-2">
-              <button 
-                type="button"
-                onClick={() => {
-                  setSystemAlert({
-                    isOpen: true,
-                    type: 'warning',
-                    title: '¿Reiniciar Jornada?',
-                    message: 'Si la jefatura eliminó o reabrió tu bitácora, debes confirmar para limpiar los datos locales y volver a marcar tu entrada. \n\n¿Deseas reiniciar tu día desde cero?',
-                    showCancel: true,
-                    confirmText: 'Sí, Reiniciar Día',
-                    cancelText: 'Cancelar',
-                    onConfirm: async () => {
-                      setClockIn(null);
-                      setClockOut(null);
-                      setReportSubmitted(false);
-                      setActuaciones([]);
-                      setIngresos([]);
-                      setProgramaciones([]);
-                      setUbicacionEntrada(null);
-                      localStorage.removeItem(STORAGE_KEY);
-                      
-                      try {
-                        // Forzar guardado vacío en el servidor para limpiar su caché
-                        await api.post('/rd-intranet/v1/draft', {
-                          clockIn: null,
-                          ubicacionEntrada: null,
-                          actuaciones: [],
-                          ingresos: [],
-                          programaciones: []
-                        });
-                      } catch (e) {}
-
-                      setSystemAlert({
-                        isOpen: true,
-                        type: 'success',
-                        title: 'Día Reiniciado',
-                        message: 'Tus datos se han limpiado. Ya puedes volver a marcar entrada y registrar tu jornada.',
-                        onConfirm: () => setSystemAlert(prev => ({ ...prev, isOpen: false }))
-                      });
-                    }
-                  });
-                }}
-                className="w-full text-xs font-bold text-slate-400 hover:text-amber-600 transition-colors underline underline-offset-2 flex justify-center items-center gap-1 cursor-pointer"
-              >
-                ¿Problemas? Limpiar y Reiniciar Día
               </button>
             </div>
           </div>
