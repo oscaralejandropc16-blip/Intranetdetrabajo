@@ -123,7 +123,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
         
         {/* Header Section */}
         <div className="text-center mb-8">
-          <img src="/dog_logo.png" alt="Román & Delgado Logo" className="h-40 sm:h-48 md:h-56 mx-auto object-contain hover:scale-105 transition-transform duration-500 mb-4 drop-shadow-2xl" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
+          <img src="/logo.png" alt="Román & Delgado Logo" className="h-40 sm:h-48 md:h-56 mx-auto object-contain hover:scale-105 transition-transform duration-500 mb-4 drop-shadow-2xl" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
           <div className="hidden w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-6 rotate-3 hover:rotate-0 transition-transform duration-500">
             <span className="text-3xl font-black text-slate-900 tracking-tighter">R&D</span>
           </div>
