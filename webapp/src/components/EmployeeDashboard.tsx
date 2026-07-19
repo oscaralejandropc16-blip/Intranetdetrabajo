@@ -91,21 +91,28 @@ export default function EmployeeDashboard() {
     // Protección multi-dispositivo: No autoguardar ni sobrescribir en la nube mientras descargamos el borrador del servidor
     if (loadingDraft) return;
 
-    const draft = {
+    const localDraft = {
       clockIn: clockIn ? clockIn.toISOString() : null,
       ubicacionEntrada,
       actuaciones,
       ingresos,
       programaciones
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(draft));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(localDraft));
 
     // Guardar en la nube con debounce de 800 milisegundos
     const handler = setTimeout(async () => {
       try {
         // No sincronizamos si todo está vacío (estado inicial sin modificaciones)
-        if (!draft.clockIn && draft.actuaciones.length === 0 && draft.ingresos.length === 0 && draft.programaciones.length === 0) return;
-        await api.post('/rd-intranet/v1/draft', draft);
+        if (!localDraft.clockIn && localDraft.actuaciones.length === 0 && localDraft.ingresos.length === 0 && localDraft.programaciones.length === 0) return;
+        
+        const apiDraft = {
+          ...localDraft,
+          actuaciones,
+          ingresos,
+          programaciones
+        };
+        await api.post('/rd-intranet/v1/draft', apiDraft);
       } catch (e) {
         console.error('Error saving draft to cloud', e);
       }
@@ -122,6 +129,9 @@ export default function EmployeeDashboard() {
           const todayStr = format(new Date(), 'yyyy-MM-dd');
           if (response.data.dayClosed) {
             setReportSubmitted(true);
+            if (response.data.clockOut) {
+              setClockOut(new Date(response.data.clockOut));
+            }
           }
           if (response.data.clockIn) {
             if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
@@ -133,10 +143,27 @@ export default function EmployeeDashboard() {
             setClockIn(new Date(response.data.clockIn));
           }
           if (response.data.ubicacionEntrada) setUbicacionEntrada(response.data.ubicacionEntrada);
-          if (response.data.actuaciones && Array.isArray(response.data.actuaciones)) setActuaciones(response.data.actuaciones);
-          if (response.data.ingresos && Array.isArray(response.data.ingresos)) setIngresos(response.data.ingresos);
-          if (response.data.programaciones && Array.isArray(response.data.programaciones)) setProgramaciones(response.data.programaciones);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(response.data));
+          const parseJson = (val: any) => {
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string') {
+              try { return JSON.parse(val); } catch(e) { return []; }
+            }
+            return [];
+          };
+          const parsedActuaciones = parseJson(response.data.actuaciones);
+          const parsedIngresos = parseJson(response.data.ingresos);
+          const parsedProgramaciones = parseJson(response.data.programaciones);
+          
+          if (parsedActuaciones.length > 0) setActuaciones(parsedActuaciones);
+          if (parsedIngresos.length > 0) setIngresos(parsedIngresos);
+          if (parsedProgramaciones.length > 0) setProgramaciones(parsedProgramaciones);
+          
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+            ...response.data,
+            actuaciones: parsedActuaciones,
+            ingresos: parsedIngresos,
+            programaciones: parsedProgramaciones
+          }));
         }
       } catch (error) {
         console.error('Error fetching draft:', error);
@@ -445,9 +472,9 @@ export default function EmployeeDashboard() {
         hora_salida: format(now, 'HH:mm'),
         ubicacion_entrada: ubicacionEntrada || 'N/A',
         ubicacion_salida: locSalida,
-        ingresos: ingresos,
-        actuaciones: actuaciones,
-        programaciones: programaciones,
+        ingresos,
+        actuaciones,
+        programaciones,
         pdf_base64: '',
         fecha_reporte: clockInDateStr,
         cierre_retrasado: isLateClosure
@@ -774,14 +801,14 @@ export default function EmployeeDashboard() {
               </button>
 
               <div className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm border-2 ${
-                  clockOut
+                  (clockOut || reportSubmitted)
                     ? 'bg-rose-50 text-rose-700 border-rose-100'
                     : 'bg-slate-50 text-slate-400 border-slate-100 border-dashed'
                 }`}
               >
                 <span className="flex items-center gap-2 mb-1">
-                  {clockOut ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 opacity-50" />}
-                  {clockOut ? 'Salida Registrada' : 'Salida Pendiente'}
+                  {(clockOut || reportSubmitted) ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 opacity-50" />}
+                  {(clockOut || reportSubmitted) ? 'Salida Registrada' : 'Salida Pendiente'}
                 </span>
                 {clockOut && <span className="text-rose-900 bg-rose-200/50 px-3 py-1 rounded-lg text-xs tracking-wider mt-1">{format(clockOut, 'hh:mm a')}</span>}
               </div>

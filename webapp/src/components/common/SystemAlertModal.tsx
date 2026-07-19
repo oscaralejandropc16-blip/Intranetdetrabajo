@@ -8,6 +8,10 @@ export interface SystemAlertModalProps {
   title: string;
   message: string;
   onClose: () => void;
+  showCancel?: boolean;
+  onConfirm?: () => void;
+  confirmText?: string;
+  cancelText?: string;
 }
 
 export default function SystemAlertModal({
@@ -16,6 +20,10 @@ export default function SystemAlertModal({
   title,
   message,
   onClose,
+  showCancel = false,
+  onConfirm,
+  confirmText = 'Entendido',
+  cancelText = 'Cancelar'
 }: SystemAlertModalProps) {
   if (!isOpen) return null;
 
@@ -96,18 +104,29 @@ export default function SystemAlertModal({
             {title}
           </h3>
 
-          <p className="text-slate-300 text-sm md:text-base font-medium leading-relaxed max-h-60 overflow-y-auto pr-1">
+          <p className="text-slate-300 text-sm md:text-base font-medium leading-relaxed max-h-60 overflow-y-auto pr-1 whitespace-pre-wrap text-left">
             {message}
           </p>
         </div>
 
         {/* Botones de acción */}
-        <div className="mt-8">
+        <div className={`mt-8 flex ${showCancel ? 'flex-col sm:flex-row gap-3' : 'flex-col'}`}>
+          {showCancel && (
+            <button
+              onClick={onClose}
+              className="w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all duration-200 cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300"
+            >
+              {cancelText}
+            </button>
+          )}
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (onConfirm) onConfirm();
+              else onClose();
+            }}
             className={`w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all duration-200 shadow-lg cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 ${config.buttonBg}`}
           >
-            Entendido
+            {confirmText}
           </button>
         </div>
       </div>

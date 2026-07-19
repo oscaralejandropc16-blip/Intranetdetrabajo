@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw } from 'lucide-react';
 import api from '../../lib/api';
+import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export const TabInvestigaciones: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'explorar' | 'subir'>('explorar');
@@ -9,6 +10,12 @@ export const TabInvestigaciones: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   // Form state para los 6 campos solicitados
   const [formData, setFormData] = useState({
@@ -91,6 +98,13 @@ export const TabInvestigaciones: React.FC = () => {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-300">
+      <SystemAlertModal
+        isOpen={systemAlert.isOpen}
+        type={systemAlert.type}
+        title={systemAlert.title}
+        message={systemAlert.message}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+      />
       {/* Hero Header Glassmorphism */}
       <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 sm:p-8 lg:p-10 border border-slate-800 shadow-2xl">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -213,7 +227,12 @@ export const TabInvestigaciones: React.FC = () => {
                   <div className="pt-3 border-t border-slate-200/60 flex justify-between items-center text-xs">
                     <span className="text-slate-400 font-medium">Libros & Artículos adjuntos</span>
                     <button
-                      onClick={() => alert(`📌 TEMA: ${inv.tema}\n\n👨‍⚖️ AUTOR: ${inv.user}\n\n📝 RESUMEN / HECHOS:\n${inv.resumen}\n\n⚖️ SENTENCIA:\n${inv.sentencia}\n\n📚 LIBROS:\n${inv.libros}\n\n🔬 ARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\n💡 OPINION JURIDICA R&D:\n${inv.opinion_rd}`)}
+                      onClick={() => setSystemAlert({
+                        isOpen: true,
+                        type: 'info',
+                        title: `Expediente: ${inv.tema}`,
+                        message: `AUTOR: ${inv.user}\n\nRESUMEN:\n${inv.resumen}\n\nSENTENCIA:\n${inv.sentencia}\n\nLIBROS:\n${inv.libros}\n\nARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\nOPINION R&D:\n${inv.opinion_rd}`
+                      })}
                       className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl shadow transition-colors"
                     >
                       Ver Estudio Completo

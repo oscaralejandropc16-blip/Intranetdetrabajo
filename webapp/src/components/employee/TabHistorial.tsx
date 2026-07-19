@@ -3,6 +3,7 @@ import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText }
 import api from '../../lib/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 interface BitacoraHistorial {
   id: number;
@@ -22,13 +23,34 @@ interface BitacoraHistorial {
 export default function TabHistorial() {
   const [historial, setHistorial] = useState<BitacoraHistorial[]>([]);
   const [loading, setLoading] = useState(true);
+  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
 
   useEffect(() => {
     const fetchHistory = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/my-history');
         if (response.data && Array.isArray(response.data)) {
-          setHistorial(response.data);
+          const parsedData = response.data.map((r: any) => {
+            const parseJson = (val: any) => {
+              if (Array.isArray(val)) return val;
+              if (typeof val === 'string') {
+                try { return JSON.parse(val); } catch(e) { return []; }
+              }
+              return [];
+            };
+            return {
+              ...r,
+              actuaciones: parseJson(r.actuaciones),
+              ingresos: parseJson(r.ingresos),
+              programaciones: parseJson(r.programaciones)
+            };
+          });
+          setHistorial(parsedData);
         }
       } catch (error) {
         console.error('Error cargando el historial', error);
@@ -118,6 +140,25 @@ export default function TabHistorial() {
       const cleanLocOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
       doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
 
+      // Utility for parsing potentially stringified JSON arrays
+      const parseJsonArray = (data: any) => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (typeof data === 'string') {
+          try {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (e) {
+            return [];
+          }
+        }
+        return [];
+      };
+
+      const parsedActuaciones = parseJsonArray(bitacora.actuaciones);
+      const parsedIngresos = parseJsonArray(bitacora.ingresos);
+      const parsedProgramaciones = parseJsonArray(bitacora.programaciones);
+
       // 1. Libro de Actuaciones (Siempre mostrar)
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
@@ -125,9 +166,9 @@ export default function TabHistorial() {
       doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
       
       let actData: any[][] = [];
-      if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
-        actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
-      } else if (bitacora.content && bitacora.content.trim() !== '') {
+      if (parsedActuaciones.length > 0) {
+        actData = parsedActuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+      } else if (bitacora.content && typeof bitacora.content === 'string' && bitacora.content.trim() !== '') {
         let cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '').trim();
         if (cleanContent.includes('PROGRAMACIÓN FUTURA:')) {
           cleanContent = cleanContent.split('PROGRAMACIÓN FUTURA:')[0].replace('REPORTE HOY:', '').trim();
@@ -162,8 +203,8 @@ export default function TabHistorial() {
       doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
       let ingData: any[][] = [];
-      if (bitacora.ingresos && bitacora.ingresos.length > 0) {
-        ingData = bitacora.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
+      if (parsedIngresos.length > 0) {
+        ingData = parsedIngresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
       } else {
         ingData = [['—', '—', '—', '—', 'Sin nuevos ingresos o causas registradas en esta jornada', '—']];
       }
@@ -189,8 +230,8 @@ export default function TabHistorial() {
       doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
 
       let progData: any[][] = [];
-      if (bitacora.programaciones && bitacora.programaciones.length > 0) {
-        progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
+      if (parsedProgramaciones.length > 0) {
+        progData = parsedProgramaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
       } else {
         progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }
@@ -254,12 +295,24 @@ export default function TabHistorial() {
       doc.save(`Bitacora_${userName}_${bitacora.date}_OFICIAL.pdf`);
     } catch (error) {
       console.error('Error generando PDF de respaldo:', error);
-      alert('Hubo un error al generar el PDF. Por favor reintenta.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error de PDF',
+        message: 'Hubo un error al generar el documento oficial en formato PDF. Por favor, verifica tu conexión e intenta de nuevo.'
+      });
     }
   };
 
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
+      <SystemAlertModal
+        isOpen={systemAlert.isOpen}
+        type={systemAlert.type}
+        title={systemAlert.title}
+        message={systemAlert.message}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+      />
       <div className="mb-8">
         <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
           <History className="w-7 h-7 text-amber-500" />

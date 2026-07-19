@@ -62,7 +62,16 @@ export default function AdminDashboard() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
-  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+  const [systemAlert, setSystemAlert] = useState<{ 
+    isOpen: boolean; 
+    type: AlertType; 
+    title: string; 
+    message: string;
+    showCancel?: boolean;
+    onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
+  }>({
     isOpen: false,
     type: 'info',
     title: '',
@@ -74,7 +83,22 @@ export default function AdminDashboard() {
       try {
         const response = await api.get('/rd-intranet/v1/bitacoras');
         if (response.data && Array.isArray(response.data)) {
-          setReports(response.data);
+          const parsedData = response.data.map((r: any) => {
+            const parseJson = (val: any) => {
+              if (Array.isArray(val)) return val;
+              if (typeof val === 'string') {
+                try { return JSON.parse(val); } catch(e) { return []; }
+              }
+              return [];
+            };
+            return {
+              ...r,
+              actuaciones: parseJson(r.actuaciones),
+              ingresos: parseJson(r.ingresos),
+              programaciones: parseJson(r.programaciones)
+            };
+          });
+          setReports(parsedData);
         }
         const invRes = await api.get('/rd-intranet/v1/investigaciones');
         if (invRes.data && Array.isArray(invRes.data)) {
@@ -228,6 +252,25 @@ export default function AdminDashboard() {
       doc.text(`Ubicación Salida: ${String(cleanLocOut).substring(0, 60)}`, 145, finalY);
       finalY += 8;
 
+      // Utility for parsing potentially stringified JSON arrays
+      const parseJsonArray = (data: any) => {
+        if (!data) return [];
+        if (Array.isArray(data)) return data;
+        if (typeof data === 'string') {
+          try {
+            const parsed = JSON.parse(data);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (e) {
+            return [];
+          }
+        }
+        return [];
+      };
+
+      const parsedActuaciones = parseJsonArray(report.actuaciones);
+      const parsedIngresos = parseJsonArray(report.ingresos);
+      const parsedProgramaciones = parseJsonArray(report.programaciones);
+
       // 1. Libro de Actuaciones (Siempre mostrar)
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
@@ -235,9 +278,9 @@ export default function AdminDashboard() {
       doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
       
       let actData: any[][] = [];
-      if (report.actuaciones && report.actuaciones.length > 0) {
-        actData = report.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
-      } else if (report.content && report.content.trim() !== '') {
+      if (parsedActuaciones.length > 0) {
+        actData = parsedActuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+      } else if (report.content && typeof report.content === 'string' && report.content.trim() !== '') {
         let cleanContent = report.content.replace(/<[^>]*>?/gm, '').trim();
         if (cleanContent.includes('PROGRAMACIÓN FUTURA:')) {
           cleanContent = cleanContent.split('PROGRAMACIÓN FUTURA:')[0].replace('REPORTE HOY:', '').trim();
@@ -272,8 +315,8 @@ export default function AdminDashboard() {
       doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
       let ingData: any[][] = [];
-      if (report.ingresos && report.ingresos.length > 0) {
-        ingData = report.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
+      if (parsedIngresos.length > 0) {
+        ingData = parsedIngresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
       } else {
         ingData = [['—', '—', '—', '—', 'Sin nuevos ingresos o causas registradas en esta jornada', '—']];
       }
@@ -299,8 +342,8 @@ export default function AdminDashboard() {
       doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
 
       let progData: any[][] = [];
-      if (report.programaciones && report.programaciones.length > 0) {
-        progData = report.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
+      if (parsedProgramaciones.length > 0) {
+        progData = parsedProgramaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
       } else {
         progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }
@@ -343,7 +386,12 @@ export default function AdminDashboard() {
     } catch (err) {
       console.error('Error al regenerar PDF desde datos oficiales:', err);
       if (!returnBase64) {
-        alert('Hubo un error al reconstruir el PDF. Intenta nuevamente.');
+        setSystemAlert({
+          isOpen: true,
+          type: 'error',
+          title: 'Error de PDF',
+          message: 'Hubo un error al reconstruir el PDF oficial. Intenta nuevamente o verifica la conexión.'
+        });
       }
     }
   };
@@ -417,7 +465,11 @@ export default function AdminDashboard() {
         type={systemAlert.type}
         title={systemAlert.title}
         message={systemAlert.message}
-        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
+        showCancel={systemAlert.showCancel}
+        onConfirm={systemAlert.onConfirm}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
+        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
       />
       
       {/* Header Premium Glassmorphism */}
@@ -1135,7 +1187,12 @@ export default function AdminDashboard() {
                   <div className="pt-3 border-t border-slate-200/60 flex justify-between items-center text-xs text-slate-500">
                     <span>📚 Libros/Artículos adjuntos en expediente</span>
                     <button 
-                      onClick={() => alert(`TEMA: ${inv.tema}\n\nAUTOR: ${inv.user}\n\nRESUMEN:\n${inv.resumen}\n\nSENTENCIA:\n${inv.sentencia}\n\nLIBROS:\n${inv.libros}\n\nARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\nOPINION R&D:\n${inv.opinion_rd}`)}
+                      onClick={() => setSystemAlert({
+                        isOpen: true,
+                        type: 'info',
+                        title: `Expediente: ${inv.tema}`,
+                        message: `AUTOR: ${inv.user}\n\nRESUMEN:\n${inv.resumen}\n\nSENTENCIA:\n${inv.sentencia}\n\nLIBROS:\n${inv.libros}\n\nARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\nOPINION R&D:\n${inv.opinion_rd}`
+                      })}
                       className="text-amber-600 hover:text-amber-800 font-extrabold underline cursor-pointer"
                     >
                       Ver Expediente Completo →
@@ -1410,17 +1467,39 @@ export default function AdminDashboard() {
             {/* Modal Footer */}
             <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
               <button 
-                onClick={async () => {
-                  if (confirm(`¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`)) {
-                    try {
-                      await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
-                      alert('Jornada reabierta exitosamente.');
-                      setSelectedReport(null);
-                      window.location.reload();
-                    } catch (e) {
-                      alert('Error al reabrir la jornada.');
+                onClick={() => {
+                  setSystemAlert({
+                    isOpen: true,
+                    type: 'warning',
+                    title: '¿Confirmar Reapertura?',
+                    message: `¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`,
+                    showCancel: true,
+                    confirmText: 'Sí, Reabrir Jornada',
+                    cancelText: 'Cancelar',
+                    onConfirm: async () => {
+                      setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                      try {
+                        await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                        setSystemAlert({
+                          isOpen: true,
+                          type: 'success',
+                          title: 'Jornada Reabierta',
+                          message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
+                          onConfirm: () => {
+                            setSelectedReport(null);
+                            window.location.reload();
+                          }
+                        });
+                      } catch (e) {
+                        setSystemAlert({
+                          isOpen: true,
+                          type: 'error',
+                          title: 'Error de Servidor',
+                          message: 'No se pudo reabrir la jornada. Intenta de nuevo más tarde.'
+                        });
+                      }
                     }
-                  }
+                  });
                 }}
                 className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
               >
