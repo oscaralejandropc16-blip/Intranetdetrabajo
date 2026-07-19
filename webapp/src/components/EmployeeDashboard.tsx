@@ -631,11 +631,26 @@ export default function EmployeeDashboard() {
     } catch (error) {
       console.error('Error al registrar entrada en el servidor', error);
       setLoadingLocation(false);
+      
+      // Fallback: Proceed locally if server is unreachable or rate-limiting
+      setClockIn(now);
+      const immediateDraft = {
+        clockIn: nowIso,
+        ubicacionEntrada: 'Obteniendo ubicación (Offline)...',
+        actuaciones,
+        ingresos,
+        programaciones
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
+      setReportSubmitted(false);
+      setClockOut(null);
+      setActiveTab('registro');
+      
       setSystemAlert({
         isOpen: true,
-        type: 'error',
-        title: 'Error al Sellar Entrada en Servidor',
-        message: 'No se pudo registrar tu hora de entrada en la base de datos oficial de WordPress. Por favor verifica tu conexión a internet, o que el plugin esté actualizado, y recarga la página antes de reintentar.'
+        type: 'warning',
+        title: 'Modo Fuera de Línea',
+        message: 'Se ha registrado tu entrada localmente porque hay un problema de conexión con el servidor. Tu trabajo de hoy está a salvo y se sincronizará más tarde.'
       });
     }
   };
