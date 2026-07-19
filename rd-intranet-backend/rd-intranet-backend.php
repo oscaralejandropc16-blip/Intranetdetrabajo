@@ -456,7 +456,7 @@ function rd_intranet_save_draft($request) {
         }
     }
 
-    update_user_meta($user_id, 'rd_intranet_draft', wp_json_encode($params));
+    update_user_meta($user_id, 'rd_intranet_draft', wp_json_encode($params, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     return rest_ensure_response(array('success' => true));
 }
 
@@ -633,9 +633,9 @@ function rd_intranet_handle_submit($request) {
     if (!empty($pdf_base64)) {
         update_post_meta($post_id, 'bitacora_pdf_base64', $pdf_base64);
     }
-    update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos));
-    update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones));
-    update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones));
+    update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     
     if ($cierre_retrasado) {
         update_post_meta($post_id, 'cierre_retrasado', '1');
@@ -740,7 +740,7 @@ function rd_intranet_get_bitacoras() {
         wp_reset_postdata();
     }
     
-    return rest_ensure_response($resultados);
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
 }
 
 function rd_intranet_handle_admin_update($request) {
@@ -754,7 +754,7 @@ function rd_intranet_handle_admin_update($request) {
             update_post_meta($post_id, 'comentario_admin', $nuevo_comentario);
         }
         if (is_array($programaciones_editadas)) {
-            update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones_editadas));
+            update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
         update_post_meta($post_id, 'estado_revision', 'Revisado');
         
@@ -828,14 +828,35 @@ function rd_intranet_get_my_tasks() {
         
         wp_reset_postdata();
         
-        return rest_ensure_response(array(
+        return rest_ensure_response(rd_intranet_fix_unicode_escapes(array(
             'success' => true,
             'programaciones' => $todas_las_programaciones,
             'comentario_admin' => $comentario_admin,
             'fecha_bitacora' => $fecha_bitacora
-        ));
+        )));
     }
     return rest_ensure_response(array('success' => true, 'programaciones' => array(), 'comentario_admin' => '', 'fecha_bitacora' => ''));
+}
+
+function rd_intranet_fix_unicode_escapes($data) {
+    if (is_array($data)) {
+        foreach ($data as $key => $val) {
+            $data[$key] = rd_intranet_fix_unicode_escapes($val);
+        }
+        return $data;
+    } elseif (is_string($data)) {
+        $replacements = array(
+            '\\u00e1' => 'á', 'u00e1' => 'á', '\\u00c1' => 'Á', 'u00c1' => 'Á',
+            '\\u00e9' => 'é', 'u00e9' => 'é', '\\u00c9' => 'É', 'u00c9' => 'É',
+            '\\u00ed' => 'í', 'u00ed' => 'í', '\\u00cd' => 'Í', 'u00cd' => 'Í',
+            '\\u00f3' => 'ó', 'u00f3' => 'ó', '\\u00d3' => 'Ó', 'u00d3' => 'Ó',
+            '\\u00fa' => 'ú', 'u00fa' => 'ú', '\\u00da' => 'Ú', 'u00da' => 'Ú',
+            '\\u00f1' => 'ñ', 'u00f1' => 'ñ', '\\u00d1' => 'Ñ', 'u00d1' => 'Ñ',
+            '\\u00bf' => '¿', 'u00bf' => '¿', '\\u00a1' => '¡', 'u00a1' => '¡',
+        );
+        return str_replace(array_keys($replacements), array_values($replacements), $data);
+    }
+    return $data;
 }
 
 function rd_intranet_reset_test_data() {
@@ -899,5 +920,5 @@ function rd_intranet_get_my_history() {
         wp_reset_postdata();
     }
     
-    return rest_ensure_response($resultados);
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
 }

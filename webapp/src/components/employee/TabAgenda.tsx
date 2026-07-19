@@ -18,6 +18,18 @@ export default function TabAgenda({
   allFutureTasks = []
 }: TabAgendaProps) {
 
+  const decodeAccents = (str?: string) => {
+    if (!str) return '';
+    return str
+      .replace(/\\u00e1|u00e1/g, 'á').replace(/\\u00c1|u00c1/g, 'Á')
+      .replace(/\\u00e9|u00e9/g, 'é').replace(/\\u00c9|u00c9/g, 'É')
+      .replace(/\\u00ed|u00ed/g, 'í').replace(/\\u00cd|u00cd/g, 'Í')
+      .replace(/\\u00f3|u00f3/g, 'ó').replace(/\\u00d3|u00d3/g, 'Ó')
+      .replace(/\\u00fa|u00fa/g, 'ú').replace(/\\u00da|u00da/g, 'Ú')
+      .replace(/\\u00f1|u00f1/g, 'ñ').replace(/\\u00d1|u00d1/g, 'Ñ')
+      .replace(/\\u00bf|u00bf/g, '¿').replace(/\\u00a1|u00a1/g, '¡');
+  };
+
   const handleAddRow = () => {
     // Por defecto, sugerimos planificar para el día siguiente
     const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
@@ -103,15 +115,15 @@ export default function TabAgenda({
                               </span>
                             </div>
                             
-                            <p className="font-bold text-slate-800 text-sm mb-1">{task.tipoActuacion}</p>
+                            <p className="font-bold text-slate-800 text-sm mb-1">{decodeAccents(task.tipoActuacion)}</p>
                             <p className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-1.5">
-                              <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {task.organismoTribunal}
+                              <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {decodeAccents(task.organismoTribunal)}
                             </p>
                             
                             {task.observaciones && (
                               <div className="mt-3 pt-3 border-t border-slate-100 bg-amber-50/50 -mx-4 -mb-4 px-4 pb-4">
                                 <span className="font-bold text-amber-700 block mb-0.5 text-xs">Nota de Jefatura:</span>
-                                <p className="text-xs text-amber-800">{task.observaciones}</p>
+                                <p className="text-xs text-amber-800">{decodeAccents(task.observaciones)}</p>
                               </div>
                             )}
                           </div>
