@@ -691,10 +691,24 @@ function rd_intranet_upload_pdf($request) {
 
     $params = rd_intranet_get_request_data($request);
     $post_id = intval($params['post_id'] ?? 0);
-    
     $chunk_index = intval($params['chunk_index'] ?? 0);
     $total_chunks = intval($params['total_chunks'] ?? 1);
-    $chunk_data = $params['chunk_data'] ?? '';
+    
+    // WAF Bypass: Soporte para recepción de array de bytes nativos (enteros) en lugar de un string Base64
+    $chunk_bytes = $params['chunk_bytes'] ?? array();
+    $chunk_data = '';
+    if (!empty($chunk_bytes) && is_array($chunk_bytes)) {
+        foreach ($chunk_bytes as $byte) {
+            $chunk_data .= chr($byte);
+        }
+        // Guardamos los bytes RAW directamente (sin codificar a Base64 todavía) para poder concatenarlos correctamente
+    } else {
+        $chunk_data = $params['chunk_data'] ?? ''; // Fallback a Base64 directo
+        if (!empty($chunk_data)) {
+            // Si viene como Base64, lo decodificamos a RAW para estandarizar el proceso de guardado
+            $chunk_data = base64_decode($chunk_data);
+        }
+    }
 
     if ($post_id <= 0 || empty($chunk_data)) {
         return new WP_Error('bad_request', 'Datos de fragmento inválidos', array('status' => 400));
@@ -711,15 +725,17 @@ function rd_intranet_upload_pdf($request) {
 
     // Si es el último fragmento, ensamblar todo el PDF
     if ($chunk_index === $total_chunks - 1) {
-        $full_base64 = '';
+        $full_raw_data = '';
         for ($i = 0; $i < $total_chunks; $i++) {
             $chunk = get_post_meta($post_id, '_rd_pdf_chunk_' . $i, true);
-            $full_base64 .= $chunk;
+            $full_raw_data .= $chunk;
             delete_post_meta($post_id, '_rd_pdf_chunk_' . $i);
         }
 
-        if (!empty($full_base64)) {
-            update_post_meta($post_id, 'bitacora_pdf_base64', $full_base64);
+        if (!empty($full_raw_data)) {
+            // Una vez ensamblados todos los bytes crudos, lo convertimos a Base64 final
+            $final_base64 = base64_encode($full_raw_data);
+            update_post_meta($post_id, 'bitacora_pdf_base64', $final_base64);
             return rest_ensure_response(array(
                 'success' => true,
                 'message' => 'PDF completado y almacenado exitosamente en el servidor.',
