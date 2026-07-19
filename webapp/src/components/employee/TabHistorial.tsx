@@ -122,7 +122,7 @@ export default function TabHistorial() {
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
+      doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
       
       let actData: any[][] = [];
       if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
@@ -152,7 +152,7 @@ export default function TabHistorial() {
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
+      doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
       let ingData: any[][] = [];
       if (bitacora.ingresos && bitacora.ingresos.length > 0) {
@@ -179,11 +179,11 @@ export default function TabHistorial() {
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
+      doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
 
       let progData: any[][] = [];
       if (bitacora.programaciones && bitacora.programaciones.length > 0) {
-        progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
+        progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
       } else {
         progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }

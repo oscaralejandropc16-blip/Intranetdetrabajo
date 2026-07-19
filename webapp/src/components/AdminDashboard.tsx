@@ -91,19 +91,35 @@ export default function AdminDashboard() {
 
   const handleSaveComment = async () => {
     try {
+      const updatedReport = {
+        ...selectedReport,
+        programaciones: adminProgramaciones,
+        comentario_admin: adminComment
+      };
+      let newPdfBase64 = '';
+      try {
+        const resPdf = await generateFallbackReportPdf(updatedReport, true);
+        if (resPdf && typeof resPdf === 'string') {
+          newPdfBase64 = resPdf;
+        }
+      } catch (e) {
+        console.warn('No se pudo regenerar base64 PDF al aprobar:', e);
+      }
+
       await api.post('/rd-intranet/v1/admin-update', {
         post_id: selectedReport.id,
         comentario_admin: adminComment,
-        programaciones: adminProgramaciones
+        programaciones: adminProgramaciones,
+        pdf_base64: newPdfBase64
       });
       setSystemAlert({
         isOpen: true,
         type: 'success',
         title: '¡Comentario y Cambios Guardados!',
-        message: 'Las observaciones de Jefatura y modificaciones en la programación han sido registradas y se ha notificado al empleado.'
+        message: 'Las observaciones de Jefatura y modificaciones en la programación han sido registradas en el PDF oficial y se ha notificado al empleado.'
       });
       
-      setReports(reports.map(r => r.id === selectedReport.id ? { ...r, status: 'Revisado', unread: false, programaciones: adminProgramaciones } : r));
+      setReports(reports.map(r => r.id === selectedReport.id ? { ...r, status: 'Revisado', unread: false, programaciones: adminProgramaciones, pdfBase64: newPdfBase64 || r.pdfBase64 } : r));
       setSelectedReport(null);
     } catch (error) {
       console.error('Error al guardar comentario', error);
@@ -138,7 +154,7 @@ export default function AdminDashboard() {
     setAdminProgramaciones(adminProgramaciones.filter((_, i) => i !== index));
   };
 
-  const generateFallbackReportPdf = async (report: any) => {
+  const generateFallbackReportPdf = async (report: any, returnBase64 = false): Promise<string | void> => {
     try {
       const doc = new jsPDF({ orientation: 'landscape', compress: true });
 
@@ -179,41 +195,44 @@ export default function AdminDashboard() {
         } catch (e) {}
       }
 
-      let finalY = 62;
+      let finalY = 32;
 
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(14, 34, 269, 22, 2.5, 2.5, 'FD');
-
-      doc.setFontSize(9.5);
+      doc.setFontSize(14);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('EMPLEADO / ABOGADO:', 18, 42);
-      doc.setFont('helvetica', 'normal');
-      doc.text(report.user || 'Empleado', 68, 42);
+      doc.text('Román & Delgado Abogados — Bitácora e Informe de Gestión Diario', 14, finalY);
+      
+      finalY += 10;
+      autoTable(doc, {
+        startY: finalY,
+        head: [['EMPLEADO / ABOGADO', 'FECHA DE JORNADA', 'HORARIO REGISTRADO', 'ESTADO REVISIÓN']],
+        body: [[
+          report.user || 'Empleado',
+          report.date || 'N/A',
+          `${report.clockIn || 'N/A'} — ${report.clockOut || 'N/A'}`,
+          report.status || 'Enviado'
+        ]],
+        theme: 'grid',
+        headStyles: { fillColor: [15, 23, 42], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 9, cellPadding: 3.5 },
+        bodyStyles: { fontSize: 9.5, textColor: [15, 23, 42], fontStyle: 'bold', cellPadding: 4 },
+        margin: { left: 14, right: 14 }
+      });
+      finalY = (doc as any).lastAutoTable.finalY + 8;
 
-      doc.setFont('helvetica', 'bold');
-      doc.text('HORARIO REGISTRADO:', 18, 51);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Entrada: ${report.clockIn || 'N/A'}   —   Salida: ${report.clockOut || 'N/A'}`, 68, 51);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('UBICACIÓN ENTRADA:', 145, 42);
+      doc.setFontSize(8.5);
+      doc.setTextColor(71, 85, 105);
       doc.setFont('helvetica', 'normal');
       const cleanLocIn = report.ubicacionEntrada ? (report.ubicacionEntrada.includes('|||') ? report.ubicacionEntrada.split('|||')[1] : report.ubicacionEntrada) : 'N/A';
-      doc.text(String(cleanLocIn).substring(0, 50), 190, 42);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('UBICACIÓN SALIDA:', 145, 51);
-      doc.setFont('helvetica', 'normal');
+      doc.text(`Ubicación Entrada: ${String(cleanLocIn).substring(0, 60)}`, 14, finalY);
       const cleanLocOut = report.ubicacionSalida ? (report.ubicacionSalida.includes('|||') ? report.ubicacionSalida.split('|||')[1] : report.ubicacionSalida) : 'N/A';
-      doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
+      doc.text(`Ubicación Salida: ${String(cleanLocOut).substring(0, 60)}`, 145, finalY);
+      finalY += 8;
 
       // 1. Libro de Actuaciones (Siempre mostrar)
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
+      doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
       
       let actData: any[][] = [];
       if (report.actuaciones && report.actuaciones.length > 0) {
@@ -243,7 +262,7 @@ export default function AdminDashboard() {
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
+      doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
       let ingData: any[][] = [];
       if (report.ingresos && report.ingresos.length > 0) {
@@ -270,11 +289,11 @@ export default function AdminDashboard() {
       doc.setFontSize(10.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
+      doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
 
       let progData: any[][] = [];
       if (report.programaciones && report.programaciones.length > 0) {
-        progData = report.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
+        progData = report.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
       } else {
         progData = [['—', '—', '—', 'Sin programación o agenda futura registrada en la jornada', '—']];
       }
@@ -294,38 +313,12 @@ export default function AdminDashboard() {
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        doc.setDrawColor(203, 213, 225);
-        doc.setLineWidth(0.4);
-        doc.line(14, 24, 283, 24);
-
-        if (logoBase64) {
-          try {
-            doc.addImage(logoBase64, 'PNG', 14, 4, 24, 17, 'logo', 'FAST');
-            if ((doc as any).GState) {
-              doc.setGState(new (doc as any).GState({ opacity: 0.03 }));
-            }
-            doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
-            if ((doc as any).GState) {
-              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
-            }
-          } catch (e) {}
-        }
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(15, 23, 42);
-        doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
         doc.setFontSize(8);
         doc.setTextColor(100, 116, 139);
         doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
         doc.setFontSize(11);
         doc.setTextColor(15, 23, 42);
         doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Fecha: ${report.date || ''} — Empleado: ${report.user || ''}`, 283, 17.5, { align: 'right' });
-
         doc.setDrawColor(226, 232, 240);
         doc.line(14, 196, 283, 196);
         doc.setFont('helvetica', 'normal');
@@ -335,10 +328,16 @@ export default function AdminDashboard() {
         doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
       }
 
+      if (returnBase64) {
+        return doc.output('datauristring');
+      }
+
       doc.save(`Bitacora_${report.user || 'Empleado'}_${report.date || ''}_OFICIAL.pdf`);
     } catch (err) {
       console.error('Error al regenerar PDF desde datos oficiales:', err);
-      alert('Hubo un error al reconstruir el PDF. Intenta nuevamente.');
+      if (!returnBase64) {
+        alert('Hubo un error al reconstruir el PDF. Intenta nuevamente.');
+      }
     }
   };
 
@@ -1346,7 +1345,11 @@ export default function AdminDashboard() {
                     </a>
                   ) : (
                     <button
-                      onClick={() => generateFallbackReportPdf(selectedReport)}
+                      onClick={() => generateFallbackReportPdf({
+                        ...selectedReport,
+                        programaciones: adminProgramaciones || selectedReport.programaciones,
+                        comentario_admin: adminComment || selectedReport.comentario_admin
+                      })}
                       className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 bg-amber-50 border-2 border-amber-300 rounded-xl hover:border-amber-500 hover:bg-amber-100 transition-all cursor-pointer group shadow-sm text-left"
                     >
                       <div className="flex items-center gap-3">

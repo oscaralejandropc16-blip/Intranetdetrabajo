@@ -283,7 +283,7 @@ export default function EmployeeDashboard() {
         doc.setFontSize(10.5);
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
+        doc.text('1. LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
         
         const actData = actuaciones.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
         autoTable(doc, {
@@ -306,7 +306,7 @@ export default function EmployeeDashboard() {
         doc.setFontSize(10.5);
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
+        doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
         
         const ingData = ingresos.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
         autoTable(doc, {
@@ -329,12 +329,12 @@ export default function EmployeeDashboard() {
         doc.setFontSize(10.5);
         doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
+        doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
         
-        const progData = programaciones.map(p => [p.fecha, p.hora, p.organismoTribunal, p.tipoActuacion, p.resumen, p.observaciones]);
+        const progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
         autoTable(doc, {
           startY: finalY + 8,
-          head: [['FECHA', 'HORA', 'ORGANISMO/TRIBUNAL', 'TIPO DE ACTUACIÓN', 'RESUMEN', 'OBSERVACIONES']],
+          head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
           body: progData,
           theme: 'grid',
           headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },

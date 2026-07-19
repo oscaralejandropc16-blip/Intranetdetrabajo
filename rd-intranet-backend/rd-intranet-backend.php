@@ -829,6 +829,9 @@ function rd_intranet_handle_admin_update($request) {
         if (is_array($programaciones_editadas)) {
             update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
+        if (!empty($params['pdf_base64'])) {
+            update_post_meta($post_id, 'bitacora_pdf_base64', $params['pdf_base64']);
+        }
         update_post_meta($post_id, 'estado_revision', 'Revisado');
         
         // Aquí se dispararía una notificación al empleado de que su jefe le dejó un comentario
