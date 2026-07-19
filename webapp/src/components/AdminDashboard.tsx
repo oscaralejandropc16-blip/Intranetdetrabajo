@@ -258,6 +258,58 @@ export default function AdminDashboard() {
           bodyStyles: { fontSize: 8, textColor: 50 },
           margin: { left: 14, right: 14 }
         });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // Si por alguna razón no hay tablas estructuradas pero hay reporte de texto
+      const hasStructuredData = (report.actuaciones && report.actuaciones.length > 0) || (report.ingresos && report.ingresos.length > 0) || (report.programaciones && report.programaciones.length > 0);
+      if (!hasStructuredData && report.content) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 19, finalY + 4.5);
+
+        const cleanContent = report.content.replace(/<[^>]*>?/gm, '');
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['DETALLE DE LAS ACTUACIONES, DILIGENCIAS Y PROGRAMACIÓN REGISTRADA EN LA JORNADA']],
+          body: [[cleanContent]],
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 8.5, textColor: 40 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // Si tampoco hubo content ni tablas estructuradas
+      if (!hasStructuredData && !report.content) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, finalY + 4.5);
+
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['PARÁMETRO REGISTRADO', 'INFORMACIÓN OFICIAL DEL EXPEDIENTE']],
+          body: [
+            ['Estado de Revisión', report.status || 'Enviado'],
+            ['ID de Registro KANT', `#${report.id}`],
+            ['Coordenadas de Entrada', report.ubicacionEntrada || 'N/A'],
+            ['Coordenadas de Salida', report.ubicacionSalida || 'N/A'],
+            ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 9, textColor: 50 },
+          columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
+          margin: { left: 14, right: 14 }
+        });
       }
 
       const totalPages = (doc as any).internal.getNumberOfPages();

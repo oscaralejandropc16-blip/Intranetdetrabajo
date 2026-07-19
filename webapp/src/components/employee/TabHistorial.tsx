@@ -13,6 +13,10 @@ interface BitacoraHistorial {
   ubicacionEntrada?: string;
   ubicacionSalida?: string;
   pdfBase64: string;
+  content?: string;
+  actuaciones?: any[];
+  ingresos?: any[];
+  programaciones?: any[];
 }
 
 export default function TabHistorial() {
@@ -70,89 +74,193 @@ export default function TabHistorial() {
         } catch (e) {}
       }
 
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(0, 0, 297, 24, 'F');
-
-      if (logoBase64) {
-        try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17); } catch (e) {}
-      }
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(255, 255, 255);
-      doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
-
-      doc.setFontSize(8.5);
-      doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
-      doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
-
-      doc.setFontSize(11);
-      doc.setTextColor(255, 255, 255);
-      doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(203, 213, 225);
-      const userName = localStorage.getItem('rd_user_name') || 'Empleado';
-      doc.text(`Fecha: ${bitacora.date} — Empleado: ${userName}`, 283, 17.5, { align: 'right' });
+      let finalY = 62;
 
       doc.setFillColor(248, 250, 252);
       doc.setDrawColor(226, 232, 240);
-      doc.roundedRect(14, 34, 269, 26, 2.5, 2.5, 'FD');
+      doc.roundedRect(14, 34, 269, 22, 2.5, 2.5, 'FD');
 
-      doc.setFontSize(10);
+      doc.setFontSize(9.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      doc.text('EMPLEADO / ABOGADO:', 18, 43);
+      const userName = localStorage.getItem('rd_user_name') || 'Empleado';
+      doc.text('EMPLEADO / ABOGADO:', 18, 42);
       doc.setFont('helvetica', 'normal');
-      doc.text(userName, 68, 43);
+      doc.text(userName, 68, 42);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('FECHA DE JORNADA:', 18, 53);
+      doc.text('HORARIO REGISTRADO:', 18, 51);
       doc.setFont('helvetica', 'normal');
-      doc.text(bitacora.date, 68, 53);
+      doc.text(`Entrada: ${bitacora.clockIn || 'N/A'}   —   Salida: ${bitacora.clockOut || 'N/A'}`, 68, 51);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('HORARIO DE REGISTRO:', 145, 43);
+      doc.text('UBICACIÓN ENTRADA:', 145, 42);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Entrada: ${bitacora.clockIn || 'N/A'}  —  Salida: ${bitacora.clockOut || 'N/A'}`, 198, 43);
+      const cleanLocIn = bitacora.ubicacionEntrada ? (bitacora.ubicacionEntrada.includes('|||') ? bitacora.ubicacionEntrada.split('|||')[1] : bitacora.ubicacionEntrada) : 'N/A';
+      doc.text(String(cleanLocIn).substring(0, 50), 190, 42);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('UBICACIONES GPS:', 145, 53);
+      doc.text('UBICACIÓN SALIDA:', 145, 51);
       doc.setFont('helvetica', 'normal');
-      const cleanIn = bitacora.ubicacionEntrada ? (bitacora.ubicacionEntrada.includes('|||') ? bitacora.ubicacionEntrada.split('|||')[1] : bitacora.ubicacionEntrada) : 'N/A';
-      const cleanOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
-      doc.text(`In: ${cleanIn.substring(0, 20)} | Out: ${cleanOut.substring(0, 20)}`, 198, 53);
+      const cleanLocOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
+      doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
 
-      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-      doc.rect(14, 70, 3, 6, 'F');
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, 74.5);
+      // 1. Libro de Actuaciones
+      if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 19, finalY + 4.5);
+        
+        const actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
+          body: actData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
 
-      autoTable(doc, {
-        startY: 80,
-        head: [['PARÁMETRO REGISTRADO', 'INFORMACIÓN OFICIAL DEL EXPEDIENTE']],
-        body: [
-          ['Estado de Revisión', bitacora.status || 'Enviado'],
-          ['ID de Registro KANT', `#${bitacora.id}`],
-          ['Coordenadas de Entrada', bitacora.ubicacionEntrada || 'N/A'],
-          ['Coordenadas de Salida', bitacora.ubicacionSalida || 'N/A'],
-          ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
-        ],
-        theme: 'grid',
-        headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
-        bodyStyles: { fontSize: 9, textColor: 50 },
-        columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
-        margin: { left: 14, right: 14 }
-      });
+      // 2. Libro de Ingresos
+      if (bitacora.ingresos && bitacora.ingresos.length > 0) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 19, finalY + 4.5);
 
-      doc.setDrawColor(226, 232, 240);
-      doc.line(14, 196, 283, 196);
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
-      doc.setTextColor(100, 116, 139);
-      doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno (Plataforma KANT)', 14, 201);
+        const ingData = bitacora.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
+          body: ingData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // 3. Libro de Programación
+      if (bitacora.programaciones && bitacora.programaciones.length > 0) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 19, finalY + 4.5);
+
+        const progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`, p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+          body: progData,
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
+          bodyStyles: { fontSize: 8, textColor: 50 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // Si por alguna razón no hay tablas estructuradas pero hay reporte de texto
+      const hasStructuredData = (bitacora.actuaciones && bitacora.actuaciones.length > 0) || (bitacora.ingresos && bitacora.ingresos.length > 0) || (bitacora.programaciones && bitacora.programaciones.length > 0);
+      if (!hasStructuredData && bitacora.content) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFont('helvetica', 'bold');
+        doc.text('LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 19, finalY + 4.5);
+
+        const cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '');
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['DETALLE DE LAS ACTUACIONES, DILIGENCIAS Y PROGRAMACIÓN REGISTRADA EN LA JORNADA']],
+          body: [[cleanContent]],
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 8.5, textColor: 40 },
+          margin: { left: 14, right: 14 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY + 12;
+      }
+
+      // Si tampoco hubo content ni tablas estructuradas
+      if (!hasStructuredData && !bitacora.content) {
+        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(14, finalY, 3, 6, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, finalY + 4.5);
+
+        autoTable(doc, {
+          startY: finalY + 8,
+          head: [['PARÁMETRO REGISTRADO', 'INFORMACIÓN OFICIAL DEL EXPEDIENTE']],
+          body: [
+            ['Estado de Revisión', bitacora.status || 'Enviado'],
+            ['ID de Registro KANT', `#${bitacora.id}`],
+            ['Coordenadas de Entrada', bitacora.ubicacionEntrada || 'N/A'],
+            ['Coordenadas de Salida', bitacora.ubicacionSalida || 'N/A'],
+            ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+          bodyStyles: { fontSize: 9, textColor: 50 },
+          columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
+          margin: { left: 14, right: 14 }
+        });
+      }
+
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        if (logoBase64 && (doc as any).GState) {
+          try {
+            doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17);
+          } catch (e) {}
+        }
+        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.rect(0, 0, 297, 24, 'F');
+        if (logoBase64) {
+          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17); } catch (e) {}
+        }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(14);
+        doc.setTextColor(255, 255, 255);
+        doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
+        doc.setFontSize(8.5);
+        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
+        doc.setFontSize(11);
+        doc.setTextColor(255, 255, 255);
+        doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(9);
+        doc.setTextColor(203, 213, 225);
+        doc.text(`Fecha: ${bitacora.date} — Empleado: ${userName}`, 283, 17.5, { align: 'right' });
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 196, 283, 196);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno (Plataforma KANT)', 14, 201);
+        doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
+      }
 
       doc.save(`Bitacora_${userName}_${bitacora.date}_OFICIAL.pdf`);
     } catch (error) {

@@ -1002,7 +1002,11 @@ function rd_intranet_get_my_history() {
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
-                'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true)
+                'content' => get_the_content(),
+                'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
+                'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
+                'ingresos' => json_decode(get_post_meta(get_the_ID(), 'ingresos_json', true), true) ?: array(),
+                'programaciones' => json_decode(get_post_meta(get_the_ID(), 'programaciones_json', true), true) ?: array()
             );
         }
         wp_reset_postdata();
