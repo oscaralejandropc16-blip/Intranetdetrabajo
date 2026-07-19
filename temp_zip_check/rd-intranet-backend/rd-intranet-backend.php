@@ -411,8 +411,13 @@ function rd_intranet_get_draft() {
     }
 
     if (!empty($today_clock)) {
-        $imm = json_decode($today_clock, true);
-        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(strval($today_clock), 0, 10);
+        $imm = is_array($today_clock) ? $today_clock : json_decode($today_clock, true);
+        $stored_date = '';
+        if (is_array($imm) && !empty($imm['clockIn'])) {
+            $stored_date = substr($imm['clockIn'], 0, 10);
+        } else {
+            $stored_date = substr(is_scalar($today_clock) ? strval($today_clock) : '', 0, 10);
+        }
         
         // Si el clockin guardado no es de hoy, purgar el transitorio para que el nuevo día inicie limpio
         if ($stored_date && $stored_date !== $today_str) {
@@ -515,8 +520,14 @@ function rd_intranet_handle_clock_in($request) {
     }
 
     if (!empty($existing)) {
-        $existing_data = json_decode($existing, true);
-        $stored_date = is_array($existing_data) && !empty($existing_data['clockIn']) ? substr($existing_data['clockIn'], 0, 10) : substr(strval($existing), 0, 10);
+        $existing_data = is_array($existing) ? $existing : json_decode($existing, true);
+        $stored_date = '';
+        if (is_array($existing_data) && !empty($existing_data['clockIn'])) {
+            $stored_date = substr($existing_data['clockIn'], 0, 10);
+        } else {
+            $stored_date = substr(is_scalar($existing) ? strval($existing) : '', 0, 10);
+        }
+        
         if ($stored_date && $stored_date !== $fecha) {
             delete_user_meta($user_id, 'rd_intranet_today_clockin');
             $existing = '';
