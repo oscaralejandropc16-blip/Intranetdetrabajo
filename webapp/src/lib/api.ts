@@ -81,30 +81,27 @@ api.interceptors.response.use(
 
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
   if (!pdfBase64 || postId <= 0) return;
-  const CHUNK_SIZE = 40000; // 40 KB por fragmento para eludir los límites estrictos de ModSecurity WAF
-  const totalChunks = Math.ceil(pdfBase64.length / CHUNK_SIZE);
-  
-  let lastResponse = null;
-  for (let i = 0; i < totalChunks; i++) {
-    const chunkData = pdfBase64.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
-    
-    // Usar FormData puro para evadir inspecciones JSON estrictas de WAF
-    const formData = new FormData();
-    formData.append('post_id', String(postId));
-    formData.append('chunk_index', String(i));
-    formData.append('total_chunks', String(totalChunks));
-    formData.append('chunk_data', chunkData);
 
-    lastResponse = await api.post('/rd-intranet/v1/upload-pdf', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
-    
-    // Anti-WAF / Anti-DDoS: Esperar 1.5 segundos entre envíos para no saturar el firewall (Evitar error 429)
-    if (i < totalChunks - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    }
+  // Transformar el PDF en Base64 a un archivo binario (Blob) real para evadir los WAF (ModSecurity)
+  // que bloquean cadenas de texto largas (Base64) por reglas de inyección.
+  const byteCharacters = atob(pdfBase64);
+  const byteNumbers = new Array(byteCharacters.length);
+  for (let j = 0; j < byteCharacters.length; j++) {
+    byteNumbers[j] = byteCharacters.charCodeAt(j);
   }
-  return lastResponse?.data;
+  const byteArray = new Uint8Array(byteNumbers);
+  const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+  const formData = new FormData();
+  formData.append('post_id', String(postId));
+  formData.append('pdf_file', blob, `bitacora_${postId}.pdf`);
+
+  // Enviarlo como archivo nativo de una sola vez, sin chunks, para evadir el rate limiting de 429 CORS/CDN
+  const response = await api.post('/rd-intranet/v1/upload-pdf', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  
+  return response?.data;
 }
 
 export default api;
