@@ -48,6 +48,7 @@ export default function TabLibroIngresos({
       fechaIngreso: format(new Date(), 'yyyy-MM-dd'),
       horaIngreso: format(new Date(), 'HH:mm'),
       tipo: 'Judicial',
+      organismoTribunal: '',
       partes: '',
       resumen: '',
       observaciones: ''
@@ -139,6 +140,7 @@ export default function TabLibroIngresos({
               <th className="px-4 py-4 min-w-[150px]">Tipo de Ingreso</th>
               <th className="px-4 py-4 whitespace-nowrap min-w-[250px]">N° Expediente</th>
               <th className="px-4 py-4 whitespace-nowrap">Fecha/Hora</th>
+              <th className="px-4 py-4 min-w-[180px]">Tribunal / Organismo</th>
               <th className="px-4 py-4 min-w-[200px]">Partes</th>
               <th className="px-4 py-4 min-w-[250px]">Resumen</th>
               <th className="px-4 py-4 min-w-[200px]">Observaciones</th>
@@ -148,7 +150,7 @@ export default function TabLibroIngresos({
           <tbody className="divide-y divide-slate-100">
             {ingresos.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-500 font-medium">
+                <td colSpan={8} className="px-4 py-12 text-center text-slate-500 font-medium">
                   No se han registrado nuevos ingresos de expedientes hoy.
                 </td>
               </tr>
@@ -220,6 +222,16 @@ export default function TabLibroIngresos({
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(ingreso.id, 'horaIngreso', e.target.value)}
                       className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 bg-white"
+                    />
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <input 
+                      type="text" 
+                      value={ingreso.organismoTribunal || ''}
+                      disabled={reportSubmitted}
+                      onChange={(e) => updateField(ingreso.id, 'organismoTribunal', e.target.value)}
+                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 bg-white placeholder:text-slate-400 font-medium"
+                      placeholder="Ej: Primero Civil, Notaría 1ª..."
                     />
                   </td>
                   <td className="px-4 py-3 align-top">

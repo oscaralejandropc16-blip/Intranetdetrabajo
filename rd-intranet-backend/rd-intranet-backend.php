@@ -548,7 +548,7 @@ function rd_intranet_handle_submit($request) {
     $programaciones = $params['programaciones'] ?? array();
     $fecha_reporte = sanitize_text_field($params['fecha_reporte'] ?? date('Y-m-d'));
     $cierre_retrasado = isset($params['cierre_retrasado']) ? (bool) $params['cierre_retrasado'] : false;
-    $hora_salida = current_time('mysql');
+    $hora_salida = !empty($params['hora_salida']) ? sanitize_text_field($params['hora_salida']) : current_time('H:i');
 
     // Registrar los correlativos usados y expedientes globales
     if (!empty($ingresos) && is_array($ingresos)) {
@@ -808,7 +808,7 @@ function rd_intranet_get_my_history() {
         'post_type' => 'rd_bitacora',
         'author' => $user_id,
         'posts_per_page' => 50,
-        'post_status' => 'publish',
+        'post_status' => array('publish', 'private', 'draft', 'pending'),
         'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
     
@@ -818,11 +818,19 @@ function rd_intranet_get_my_history() {
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
+            $clock_in = get_post_meta(get_the_ID(), 'hora_entrada', true) ?: 'N/A';
+            $clock_out = get_post_meta(get_the_ID(), 'hora_salida', true) ?: 'N/A';
+            if (strpos($clock_out, ' ') !== false) {
+                $clock_out = date('H:i:s', strtotime($clock_out));
+            }
+            if (strpos($clock_in, ' ') !== false) {
+                $clock_in = date('H:i:s', strtotime($clock_in));
+            }
             $resultados[] = array(
                 'id' => get_the_ID(),
                 'date' => get_the_date('Y-m-d'),
-                'clockIn' => get_post_meta(get_the_ID(), 'hora_entrada', true),
-                'clockOut' => get_post_meta(get_the_ID(), 'hora_salida', true),
+                'clockIn' => $clock_in,
+                'clockOut' => $clock_out,
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),

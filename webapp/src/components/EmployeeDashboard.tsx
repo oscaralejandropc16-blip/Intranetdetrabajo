@@ -297,10 +297,10 @@ export default function EmployeeDashboard() {
         doc.setFont('helvetica', 'bold');
         doc.text('LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 19, finalY + 4.5);
         
-        const ingData = ingresos.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.partes, i.resumen, i.observaciones]);
+        const ingData = ingresos.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
         autoTable(doc, {
           startY: finalY + 8,
-          head: [['N° EXPEDIENTE', 'FECHA/HORA INGRESO', 'TIPO', 'PARTES INVOLUCRADAS', 'RESUMEN DEL ASUNTO', 'OBSERVACIONES']],
+          head: [['N° EXPEDIENTE', 'FECHA/HORA INGRESO', 'TIPO', 'TRIBUNAL / ORGANISMO', 'PARTES INVOLUCRADAS', 'RESUMEN DEL ASUNTO', 'OBSERVACIONES']],
           body: ingData,
           theme: 'grid',
           headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3.5 },

@@ -80,8 +80,8 @@ export default function TabHistorial() {
                   <td className="px-6 py-4 font-bold text-slate-800">{bitacora.date}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1 text-sm font-medium">
-                      <span className="flex items-center gap-1.5 text-emerald-600"><Clock className="w-3.5 h-3.5" /> Entrada: {bitacora.clockIn}</span>
-                      <span className="flex items-center gap-1.5 text-rose-500"><Clock className="w-3.5 h-3.5" /> Salida: {bitacora.clockOut}</span>
+                      <span className="flex items-center gap-1.5 text-emerald-600"><Clock className="w-3.5 h-3.5" /> Entrada: {bitacora.clockIn?.includes(' ') ? bitacora.clockIn.split(' ')[1] : bitacora.clockIn}</span>
+                      <span className="flex items-center gap-1.5 text-rose-500"><Clock className="w-3.5 h-3.5" /> Salida: {bitacora.clockOut?.includes(' ') ? bitacora.clockOut.split(' ')[1] : bitacora.clockOut}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -127,7 +127,12 @@ export default function TabHistorial() {
                         <Download className="w-4 h-4" /> PDF
                       </a>
                     ) : (
-                      <span className="text-xs text-slate-400 font-medium">No disponible</span>
+                      <span 
+                        className="text-xs text-slate-400 font-medium cursor-help border-b border-dotted border-slate-400"
+                        title="El archivo PDF de este reporte anterior no se pudo adjuntar al servidor en ese momento (o superó el límite de peso del WAF/hosting), por lo cual en esa ocasión se guardó de forma directa solo en tu dispositivo/PC."
+                      >
+                        No disponible (?)
+                      </span>
                     )}
                   </td>
                 </tr>

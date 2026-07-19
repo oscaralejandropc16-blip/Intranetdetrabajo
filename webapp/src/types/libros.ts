@@ -13,6 +13,7 @@ export interface Ingreso {
   fechaIngreso: string;
   horaIngreso: string;
   tipo: string;
+  organismoTribunal?: string;
   partes: string;
   resumen: string;
   observaciones: string;

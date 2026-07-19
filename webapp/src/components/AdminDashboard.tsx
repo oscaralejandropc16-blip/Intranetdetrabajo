@@ -1,9 +1,15 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../lib/api';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
+import TabRegistroDiario from './employee/TabRegistroDiario';
+import TabLibroIngresos from './employee/TabLibroIngresos';
+import TabAgenda from './employee/TabAgenda';
+import TabHistorial from './employee/TabHistorial';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
@@ -19,7 +25,39 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda'>('bitacoras');
+  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
+  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>('actuaciones');
+  
+  // Estado local para Libros de Jefatura (sin horario/GPS)
+  const [actuacionesJefe, setActuacionesJefe] = useState<any[]>(() => {
+    const saved = localStorage.getItem('rd_jefe_actuaciones');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [ingresosJefe, setIngresosJefe] = useState<any[]>(() => {
+    const saved = localStorage.getItem('rd_jefe_ingresos');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [programacionesJefe, setProgramacionesJefe] = useState<any[]>(() => {
+    const saved = localStorage.getItem('rd_jefe_programacion');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [attachedFilesJefe, setAttachedFilesJefe] = useState<{file: any, note: string}[]>([]);
+  const [pendingTasksJefe, setPendingTasksJefe] = useState<any[]>([]);
+  const [jefeReportSubmitted, setJefeReportSubmitted] = useState(false);
+  const [submittingJefe, setSubmittingJefe] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('rd_jefe_actuaciones', JSON.stringify(actuacionesJefe));
+  }, [actuacionesJefe]);
+
+  useEffect(() => {
+    localStorage.setItem('rd_jefe_ingresos', JSON.stringify(ingresosJefe));
+  }, [ingresosJefe]);
+
+  useEffect(() => {
+    localStorage.setItem('rd_jefe_programacion', JSON.stringify(programacionesJefe));
+  }, [programacionesJefe]);
+
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
@@ -245,18 +283,30 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs Vistas */}
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <button 
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-1 p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <FileText className="w-5 h-5" /> Revisión de Bitácoras
         </button>
         <button 
           onClick={() => setActiveView('agenda')}
-          className={`flex-1 p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <CalendarIcon className="w-5 h-5" /> Agenda Global (Línea de Tiempo)
+        </button>
+        <button 
+          onClick={() => setActiveView('mis_libros')}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+        >
+          <BookOpen className="w-5 h-5" /> Mis Libros (Jefatura)
+        </button>
+        <button 
+          onClick={() => setActiveView('historial')}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'historial' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+        >
+          <History className="w-5 h-5" /> Mi Historial de Jefatura
         </button>
       </div>
 
@@ -508,6 +558,279 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* VISTA: MIS LIBROS (JEFATURA SIN HORARIO / SIN GPS) */}
+      {activeView === 'mis_libros' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-md border border-blue-500/20 mb-2">
+                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                <span className="text-xs font-bold tracking-widest text-blue-600 uppercase">Régimen Especial Jefatura</span>
+              </div>
+              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                <BookOpen className="w-7 h-7 text-blue-600" /> Mis Libros y Registros de Gestión
+              </h3>
+              <p className="text-slate-500 font-medium mt-1">
+                Organiza tus actuaciones, casos recibidos y agenda ejecutiva. Sin marcaje de entrada, salida o GPS.
+              </p>
+            </div>
+
+            {/* Sub-Tabs de Libros de Jefe */}
+            <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+              <button 
+                onClick={() => setBossSubTab('actuaciones')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'actuaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                <Activity className="w-4 h-4" /> Actuaciones Diarias
+              </button>
+              <button 
+                onClick={() => setBossSubTab('ingresos')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'ingresos' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                <FileText className="w-4 h-4" /> Libro de Ingresos
+              </button>
+              <button 
+                onClick={() => setBossSubTab('programacion')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'programacion' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                <CalendarIcon className="w-4 h-4" /> Programación
+              </button>
+              <button 
+                onClick={() => setBossSubTab('cierre')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
+              >
+                <Send className="w-4 h-4" /> Generar Bitácora PDF
+              </button>
+            </div>
+          </div>
+
+          {bossSubTab === 'actuaciones' && (
+            <TabRegistroDiario 
+              reportSubmitted={jefeReportSubmitted}
+              actuaciones={actuacionesJefe}
+              setActuaciones={setActuacionesJefe}
+              attachedFiles={attachedFilesJefe}
+              setAttachedFiles={setAttachedFilesJefe}
+              pendingTasks={pendingTasksJefe}
+              setPendingTasks={setPendingTasksJefe}
+              globalExpedientes={[]}
+              ingresosActivos={ingresosJefe}
+            />
+          )}
+
+          {bossSubTab === 'ingresos' && (
+            <TabLibroIngresos 
+              ingresos={ingresosJefe}
+              setIngresos={setIngresosJefe}
+              reportSubmitted={jefeReportSubmitted}
+            />
+          )}
+
+          {bossSubTab === 'programacion' && (
+            <TabAgenda 
+              programaciones={programacionesJefe}
+              setProgramaciones={setProgramacionesJefe}
+              reportSubmitted={jefeReportSubmitted}
+            />
+          )}
+
+          {bossSubTab === 'cierre' && (
+            <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 text-center space-y-6 max-w-2xl mx-auto">
+              <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <Send className="w-8 h-8" />
+              </div>
+              <div>
+                <h4 className="text-2xl font-bold text-slate-800 mb-2">Cierre de Gestión y Generación Oficial</h4>
+                <p className="text-slate-500 font-medium">
+                  Al generar tu bitácora, se compilarán tus Actuaciones ({actuacionesJefe.length}), Ingresos ({ingresosJefe.length}) y Programación ({programacionesJefe.length}) en un PDF oficial membretado bajo modalidad ejecutiva sin horarios ni ubicación.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-center gap-4 pt-4">
+                <button
+                  onClick={async () => {
+                    if (actuacionesJefe.length === 0 && ingresosJefe.length === 0 && programacionesJefe.length === 0) {
+                      setSystemAlert({
+                        isOpen: true,
+                        type: 'warning',
+                        title: 'Registros Vacíos',
+                        message: 'Debes registrar al menos una actuación, un ingreso o una programación para generar la bitácora de jefatura.'
+                      });
+                      return;
+                    }
+
+                    setSubmittingJefe(true);
+                    try {
+                      const doc = new jsPDF({ format: 'a4', unit: 'mm' });
+                      let finalY = 36;
+                      const primaryColor: [number, number, number] = [15, 23, 42];
+                      const accentColor: [number, number, number] = [217, 119, 6];
+
+                      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                      doc.rect(0, 0, 297, 26, 'F');
+                      doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
+                      doc.rect(0, 26, 297, 1.5, 'F');
+
+                      doc.setFont('helvetica', 'bold');
+                      doc.setFontSize(16);
+                      doc.setTextColor(255, 255, 255);
+                      doc.text('BITÁCORA DE GESTIÓN Y LIBROS - JEFATURA', 14, 15);
+                      doc.setFontSize(9);
+                      doc.setFont('helvetica', 'normal');
+                      doc.text('ROMÁN & DELGADO ABOGADOS / ADMINISTRACIÓN', 14, 21);
+
+                      doc.setFillColor(248, 250, 252);
+                      doc.setDrawColor(226, 232, 240);
+                      doc.roundedRect(14, 33, 182, 22, 3, 3, 'FD');
+
+                      doc.setFontSize(10);
+                      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                      doc.setFont('helvetica', 'bold');
+                      const currentUserObj = JSON.parse(localStorage.getItem('rd_user') || '{}');
+                      const jefeName = currentUserObj.name || currentUserObj.username || 'Jefe Administrador';
+                      doc.text(`TÍTULAR / JEFATURA: ${jefeName.toUpperCase()}`, 19, 41);
+                      doc.text(`FECHA DE GESTIÓN: ${format(new Date(), 'dd/MM/yyyy')}`, 115, 41);
+
+                      doc.setFontSize(8.5);
+                      doc.setTextColor(100, 116, 139);
+                      doc.text('MODALIDAD: RÉGIMEN ADMINISTRATIVO EJECUTIVO (SIN MARCADO DE HORARIOS NI GPS)', 19, 49);
+
+                      finalY = 63;
+
+                      if (actuacionesJefe.length > 0) {
+                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.rect(14, finalY, 3, 6, 'F');
+                        doc.setFontSize(11);
+                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('1. LIBRO DE ACTUACIONES DIARIAS (GESTIÓN ADMINISTRATIVA)', 19, finalY + 4.5);
+
+                        const actData = actuacionesJefe.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
+                        autoTable(doc, {
+                          startY: finalY + 8,
+                          head: [['HORA', 'N° ASUNTO / EXP.', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / GESTIÓN REALIZADA', 'OBSERVACIONES']],
+                          body: actData,
+                          theme: 'grid',
+                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          margin: { left: 14, right: 14 }
+                        });
+                        finalY = (doc as any).lastAutoTable.finalY + 12;
+                      }
+
+                      if (ingresosJefe.length > 0) {
+                        if (finalY > 230) { doc.addPage(); finalY = 36; }
+                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.rect(14, finalY, 3, 6, 'F');
+                        doc.setFontSize(11);
+                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 19, finalY + 4.5);
+
+                        const ingData = ingresosJefe.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
+                        autoTable(doc, {
+                          startY: finalY + 8,
+                          head: [['N° EXPEDIENTE', 'FECHA/HORA', 'TIPO', 'TRIBUNAL / ORGANISMO', 'PARTES INVOLUCRADAS', 'RESUMEN', 'OBSERVACIONES']],
+                          body: ingData,
+                          theme: 'grid',
+                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          margin: { left: 14, right: 14 }
+                        });
+                        finalY = (doc as any).lastAutoTable.finalY + 12;
+                      }
+
+                      if (programacionesJefe.length > 0) {
+                        if (finalY > 230) { doc.addPage(); finalY = 36; }
+                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.rect(14, finalY, 3, 6, 'F');
+                        doc.setFontSize(11);
+                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA Y AUDIENCIAS FUTURAS)', 19, finalY + 4.5);
+
+                        const progData = programacionesJefe.map(p => [p.fecha, p.hora, p.organismoTribunal, p.tipoActuacion, p.resumen, p.observaciones]);
+                        autoTable(doc, {
+                          startY: finalY + 8,
+                          head: [['FECHA', 'HORA', 'ORGANISMO/TRIBUNAL', 'TIPO DE ACTUACIÓN', 'RESUMEN', 'OBSERVACIONES']],
+                          body: progData,
+                          theme: 'grid',
+                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          margin: { left: 14, right: 14 }
+                        });
+                      }
+
+                      doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+                      const pdfBase64 = doc.output('datauristring');
+                      await api.post('/rd-intranet/v1/submit', {
+                        fecha: format(new Date(), 'yyyy-MM-dd'),
+                        hora_entrada: 'N/A (Jefatura)',
+                        hora_salida: 'N/A (Jefatura)',
+                        actuaciones_json: JSON.stringify(actuacionesJefe),
+                        ingresos_json: JSON.stringify(ingresosJefe),
+                        programaciones_json: JSON.stringify(programacionesJefe),
+                        contenido_bitacora: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
+                        bitacora_pdf_base64: pdfBase64,
+                        ubicacion_entrada: 'Régimen de Jefatura (Sin GPS)',
+                        ubicacion_salida: 'Régimen de Jefatura (Sin GPS)',
+                        cierre_retrasado: false,
+                        estado_revision: 'Jefatura'
+                      });
+
+                      setJefeReportSubmitted(true);
+                      setSystemAlert({
+                        isOpen: true,
+                        type: 'success',
+                        title: '¡Bitácora de Jefatura Guardada!',
+                        message: 'Tu bitácora y registros oficiales de jefatura se han generado en PDF y archivado en el sistema con éxito.'
+                      });
+                    } catch (error) {
+                      console.error('Error al generar bitácora de jefatura:', error);
+                      setSystemAlert({
+                        isOpen: true,
+                        type: 'error',
+                        title: 'Error de Envío',
+                        message: 'No se pudo guardar la bitácora de jefatura en el servidor.'
+                      });
+                    } finally {
+                      setSubmittingJefe(false);
+                    }
+                  }}
+                  disabled={submittingJefe || jefeReportSubmitted}
+                  className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50 cursor-pointer"
+                >
+                  {submittingJefe ? (
+                    <span>Generando y Guardando...</span>
+                  ) : jefeReportSubmitted ? (
+                    <>
+                      <CheckCircle2 className="w-6 h-6 text-emerald-400" /> Bitácora del Día Generada
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-6 h-6" /> Descargar PDF y Guardar Registro
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VISTA: MI HISTORIAL DE JEFATURA */}
+      {activeView === 'historial' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+              <History className="w-7 h-7 text-blue-600" /> Mi Historial de Bitácoras de Jefatura
+            </h3>
+            <p className="text-slate-500 font-medium mt-1">Consulta y descarga los reportes PDF de gestión que has generado anteriormente.</p>
+          </div>
+          <TabHistorial />
+        </div>
+      )}
+
       {/* Modal de Revisión y Edición con Glassmorphism */}
       {selectedReport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 animate-in fade-in duration-200">
@@ -619,7 +942,7 @@ export default function AdminDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
-                        <tr><th className="p-3">Tipo / N°</th><th className="p-3">Partes</th><th className="p-3">Resumen</th><th className="p-3">Observaciones</th></tr>
+                        <tr><th className="p-3">Tipo / N°</th><th className="p-3">Tribunal / Organismo</th><th className="p-3">Partes</th><th className="p-3">Resumen</th><th className="p-3">Observaciones</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {selectedReport.ingresos.map((ing: any, i: number) => (
@@ -628,6 +951,7 @@ export default function AdminDashboard() {
                               <span className="font-bold text-slate-800 block">{ing.tipo}</span>
                               <span className="font-bold text-blue-600 text-xs">{ing.numeroExpediente}</span>
                             </td>
+                            <td className="p-3 text-slate-700 font-bold text-xs">{ing.organismoTribunal || 'N/A'}</td>
                             <td className="p-3 text-slate-600 font-medium">{ing.partes}</td>
                             <td className="p-3 text-slate-600 text-xs">{ing.resumen}</td>
                             <td className="p-3 text-slate-500 text-xs">{ing.observaciones}</td>
