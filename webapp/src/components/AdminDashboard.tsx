@@ -141,8 +141,6 @@ export default function AdminDashboard() {
   const generateFallbackReportPdf = async (report: any) => {
     try {
       const doc = new jsPDF({ orientation: 'landscape', compress: true });
-      const primaryColor: [number, number, number] = [15, 23, 42];
-      const accentColor: [number, number, number] = [245, 158, 11];
 
       let logoBase64: string | null = null;
       try {
@@ -212,12 +210,10 @@ export default function AdminDashboard() {
       doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
 
       if (report.actuaciones && report.actuaciones.length > 0) {
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE ACTUACIONES (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
         
         const actData = report.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
         autoTable(doc, {
@@ -225,21 +221,21 @@ export default function AdminDashboard() {
           head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
           body: actData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       if (report.ingresos && report.ingresos.length > 0) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
         const ingData = report.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
         autoTable(doc, {
@@ -247,21 +243,21 @@ export default function AdminDashboard() {
           head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
           body: ingData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       if (report.programaciones && report.programaciones.length > 0) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE PROGRAMACIÓN (AGENDA FUTURA REGISTRADA)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA FUTURA REGISTRADA)', 14, finalY + 5);
 
         const progData = report.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`, p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
         autoTable(doc, {
@@ -269,8 +265,10 @@ export default function AdminDashboard() {
           head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
           body: progData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -278,14 +276,12 @@ export default function AdminDashboard() {
 
       // Si por alguna razón no hay tablas estructuradas pero hay reporte de texto
       const hasStructuredData = (report.actuaciones && report.actuaciones.length > 0) || (report.ingresos && report.ingresos.length > 0) || (report.programaciones && report.programaciones.length > 0);
-      if (!hasStructuredData && report.content) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      if (!hasStructuredData && report.content && report.content.trim() !== '') {
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 14, finalY + 5);
 
         const cleanContent = report.content.replace(/<[^>]*>?/gm, '');
         autoTable(doc, {
@@ -293,21 +289,21 @@ export default function AdminDashboard() {
           head: [['DETALLE DE LAS ACTUACIONES, DILIGENCIAS Y PROGRAMACIÓN REGISTRADA EN LA JORNADA']],
           body: [[cleanContent]],
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { fontSize: 8.5, textColor: 40 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59], cellPadding: 4 },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       // Si tampoco hubo content ni tablas estructuradas
-      if (!hasStructuredData && !report.content) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
+      if (!hasStructuredData && (!report.content || report.content.trim() === '')) {
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, finalY + 4.5);
+        doc.text('▪  ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 14, finalY + 5);
 
         autoTable(doc, {
           startY: finalY + 8,
@@ -320,9 +316,10 @@ export default function AdminDashboard() {
             ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
           ],
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { fontSize: 9, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 9, textColor: [30, 41, 59], cellPadding: 3 },
           columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
       }
@@ -330,30 +327,36 @@ export default function AdminDashboard() {
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        if (logoBase64 && (doc as any).GState) {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.4);
+        doc.line(14, 24, 283, 24);
+
+        if (logoBase64) {
           try {
-            doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
-            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST');
+            doc.addImage(logoBase64, 'PNG', 14, 4, 24, 17, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 0.03 }));
+            }
+            doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            }
           } catch (e) {}
         }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(0, 0, 297, 24, 'F');
-        if (logoBase64) {
-          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST'); } catch (e) {}
-        }
+
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
         doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
-        doc.setFontSize(8.5);
-        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
         doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
         doc.setFontSize(11);
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(15, 23, 42);
         doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(203, 213, 225);
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
         doc.text(`Fecha: ${report.date || ''} — Empleado: ${report.user || ''}`, 283, 17.5, { align: 'right' });
 
         doc.setDrawColor(226, 232, 240);
@@ -927,32 +930,30 @@ export default function AdminDashboard() {
                     try {
                       const doc = new jsPDF({ format: 'a4', unit: 'mm' });
                       let finalY = 36;
-                      const primaryColor: [number, number, number] = [15, 23, 42];
-                      const accentColor: [number, number, number] = [217, 119, 6];
 
-                      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                      doc.rect(0, 0, 297, 26, 'F');
-                      doc.setFillColor(accentColor[0], accentColor[1], accentColor[2]);
-                      doc.rect(0, 26, 297, 1.5, 'F');
+                      doc.setDrawColor(203, 213, 225);
+                      doc.setLineWidth(0.4);
+                      doc.line(14, 24, 283, 24);
 
                       doc.setFont('helvetica', 'bold');
-                      doc.setFontSize(16);
-                      doc.setTextColor(255, 255, 255);
+                      doc.setFontSize(15);
+                      doc.setTextColor(15, 23, 42);
                       doc.text('BITÁCORA DE GESTIÓN Y LIBROS - JEFATURA', 14, 15);
-                      doc.setFontSize(9);
+                      doc.setFontSize(8.5);
                       doc.setFont('helvetica', 'normal');
-                      doc.text('ROMÁN & DELGADO ABOGADOS / ADMINISTRACIÓN', 14, 21);
+                      doc.setTextColor(100, 116, 139);
+                      doc.text('ROMÁN & DELGADO ABOGADOS / ADMINISTRACIÓN OFICIAL', 14, 21);
 
-                      doc.setFillColor(248, 250, 252);
+                      doc.setFillColor(252, 253, 254);
                       doc.setDrawColor(226, 232, 240);
                       doc.roundedRect(14, 33, 182, 22, 3, 3, 'FD');
 
                       doc.setFontSize(10);
-                      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                      doc.setTextColor(15, 23, 42);
                       doc.setFont('helvetica', 'bold');
                       const currentUserObj = JSON.parse(localStorage.getItem('rd_user') || '{}');
                       const jefeName = currentUserObj.name || currentUserObj.username || 'Jefe Administrador';
-                      doc.text(`TÍTULAR / JEFATURA: ${jefeName.toUpperCase()}`, 19, 41);
+                      doc.text(`TITULAR / JEFATURA: ${jefeName.toUpperCase()}`, 19, 41);
                       doc.text(`FECHA DE GESTIÓN: ${format(new Date(), 'dd/MM/yyyy')}`, 115, 41);
 
                       doc.setFontSize(8.5);
@@ -962,12 +963,10 @@ export default function AdminDashboard() {
                       finalY = 63;
 
                       if (actuacionesJefe.length > 0) {
-                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                        doc.rect(14, finalY, 3, 6, 'F');
-                        doc.setFontSize(11);
-                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFontSize(10.5);
+                        doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('1. LIBRO DE ACTUACIONES DIARIAS (GESTIÓN ADMINISTRATIVA)', 19, finalY + 4.5);
+                        doc.text('▪  1. LIBRO DE ACTUACIONES DIARIAS (GESTIÓN ADMINISTRATIVA)', 14, finalY + 5);
 
                         const actData = actuacionesJefe.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
                         autoTable(doc, {
@@ -975,8 +974,10 @@ export default function AdminDashboard() {
                           head: [['HORA', 'N° ASUNTO / EXP.', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / GESTIÓN REALIZADA', 'OBSERVACIONES']],
                           body: actData,
                           theme: 'grid',
-                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+                          alternateRowStyles: { fillColor: [252, 253, 254] },
+                          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
                           margin: { left: 14, right: 14 }
                         });
                         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -984,12 +985,10 @@ export default function AdminDashboard() {
 
                       if (ingresosJefe.length > 0) {
                         if (finalY > 230) { doc.addPage(); finalY = 36; }
-                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                        doc.rect(14, finalY, 3, 6, 'F');
-                        doc.setFontSize(11);
-                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFontSize(10.5);
+                        doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 19, finalY + 4.5);
+                        doc.text('▪  2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
 
                         const ingData = ingresosJefe.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
                         autoTable(doc, {
@@ -997,8 +996,10 @@ export default function AdminDashboard() {
                           head: [['N° EXPEDIENTE', 'FECHA/HORA', 'TIPO', 'TRIBUNAL / ORGANISMO', 'PARTES INVOLUCRADAS', 'RESUMEN', 'OBSERVACIONES']],
                           body: ingData,
                           theme: 'grid',
-                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+                          alternateRowStyles: { fillColor: [252, 253, 254] },
+                          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
                           margin: { left: 14, right: 14 }
                         });
                         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -1006,12 +1007,10 @@ export default function AdminDashboard() {
 
                       if (programacionesJefe.length > 0) {
                         if (finalY > 230) { doc.addPage(); finalY = 36; }
-                        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-                        doc.rect(14, finalY, 3, 6, 'F');
-                        doc.setFontSize(11);
-                        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+                        doc.setFontSize(10.5);
+                        doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA Y AUDIENCIAS FUTURAS)', 19, finalY + 4.5);
+                        doc.text('▪  3. LIBRO DE PROGRAMACIÓN (AGENDA Y AUDIENCIAS FUTURAS)', 14, finalY + 5);
 
                         const progData = programacionesJefe.map(p => [p.fecha, p.hora, p.organismoTribunal, p.tipoActuacion, p.resumen, p.observaciones]);
                         autoTable(doc, {
@@ -1019,8 +1018,10 @@ export default function AdminDashboard() {
                           head: [['FECHA', 'HORA', 'ORGANISMO/TRIBUNAL', 'TIPO DE ACTUACIÓN', 'RESUMEN', 'OBSERVACIONES']],
                           body: progData,
                           theme: 'grid',
-                          headStyles: { fillColor: primaryColor, textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
-                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8 },
+                          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+                          alternateRowStyles: { fillColor: [252, 253, 254] },
+                          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
                           margin: { left: 14, right: 14 }
                         });
                       }

@@ -752,16 +752,36 @@ function rd_intranet_get_bitacoras() {
             $author_obj = get_userdata($author_id);
             $user_display = $author_obj ? ($author_obj->display_name ?: ($author_obj->user_nicename ?: $author_obj->user_login)) : get_the_author();
 
+            $clock_in = get_post_meta(get_the_ID(), 'hora_entrada', true) ?: 'N/A';
+            $clock_out = get_post_meta(get_the_ID(), 'hora_salida', true) ?: 'N/A';
+            if (strpos($clock_in, 'T') !== false && strpos($clock_in, 'Z') !== false) {
+                $clock_in = date('H:i', strtotime($clock_in) - 14400);
+            } elseif (strpos($clock_in, ' ') !== false) {
+                $clock_in = date('H:i', strtotime($clock_in));
+            }
+            if (strpos($clock_out, 'T') !== false && strpos($clock_out, 'Z') !== false) {
+                $clock_out = date('H:i', strtotime($clock_out) - 14400);
+            } elseif (strpos($clock_out, ' ') !== false) {
+                $clock_out = date('H:i', strtotime($clock_out));
+            }
+            if ($clock_in !== 'N/A' && $clock_out !== 'N/A' && strcmp(substr($clock_in, 0, 5), substr($clock_out, 0, 5)) > 0) {
+                $t_in = strtotime($clock_in);
+                $t_out = strtotime($clock_out);
+                if ($t_in !== false && $t_out !== false && $t_in > $t_out && ($t_in - $t_out) >= 10000) {
+                    $clock_in = date('H:i', $t_in - 14400);
+                }
+            }
+
             $resultados[] = array(
                 'id' => get_the_ID(),
                 'user' => $user_display,
                 'date' => get_the_date('Y-m-d'),
-                'clockIn' => get_post_meta(get_the_ID(), 'hora_entrada', true),
-                'clockOut' => get_post_meta(get_the_ID(), 'hora_salida', true),
+                'clockIn' => substr($clock_in, 0, 5),
+                'clockOut' => substr($clock_out, 0, 5),
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
-                'content' => get_the_content(),
+                'content' => $query->post->post_content ?: get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
                 'cierreRetrasado' => get_post_meta(get_the_ID(), 'cierre_retrasado', true) === '1',
                 'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
@@ -988,21 +1008,32 @@ function rd_intranet_get_my_history() {
             $query->the_post();
             $clock_in = get_post_meta(get_the_ID(), 'hora_entrada', true) ?: 'N/A';
             $clock_out = get_post_meta(get_the_ID(), 'hora_salida', true) ?: 'N/A';
-            if (strpos($clock_out, ' ') !== false) {
-                $clock_out = date('H:i:s', strtotime($clock_out));
+            if (strpos($clock_in, 'T') !== false && strpos($clock_in, 'Z') !== false) {
+                $clock_in = date('H:i', strtotime($clock_in) - 14400);
+            } elseif (strpos($clock_in, ' ') !== false) {
+                $clock_in = date('H:i', strtotime($clock_in));
             }
-            if (strpos($clock_in, ' ') !== false) {
-                $clock_in = date('H:i:s', strtotime($clock_in));
+            if (strpos($clock_out, 'T') !== false && strpos($clock_out, 'Z') !== false) {
+                $clock_out = date('H:i', strtotime($clock_out) - 14400);
+            } elseif (strpos($clock_out, ' ') !== false) {
+                $clock_out = date('H:i', strtotime($clock_out));
+            }
+            if ($clock_in !== 'N/A' && $clock_out !== 'N/A' && strcmp(substr($clock_in, 0, 5), substr($clock_out, 0, 5)) > 0) {
+                $t_in = strtotime($clock_in);
+                $t_out = strtotime($clock_out);
+                if ($t_in !== false && $t_out !== false && $t_in > $t_out && ($t_in - $t_out) >= 10000) {
+                    $clock_in = date('H:i', $t_in - 14400);
+                }
             }
             $resultados[] = array(
                 'id' => get_the_ID(),
                 'date' => get_the_date('Y-m-d'),
-                'clockIn' => $clock_in,
-                'clockOut' => $clock_out,
+                'clockIn' => substr($clock_in, 0, 5),
+                'clockOut' => substr($clock_out, 0, 5),
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
-                'content' => get_the_content(),
+                'content' => $query->post->post_content ?: get_the_content(),
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
                 'actuaciones' => json_decode(get_post_meta(get_the_ID(), 'actuaciones_json', true), true) ?: array(),
                 'ingresos' => json_decode(get_post_meta(get_the_ID(), 'ingresos_json', true), true) ?: array(),

@@ -49,8 +49,6 @@ export default function TabHistorial() {
   const generateFallbackPdf = async (bitacora: BitacoraHistorial) => {
     try {
       const doc = new jsPDF({ orientation: 'landscape', compress: true });
-      const primaryColor: [number, number, number] = [15, 23, 42];
-      const accentColor: [number, number, number] = [245, 158, 11];
 
       let logoBase64: string | null = null;
       try {
@@ -122,12 +120,10 @@ export default function TabHistorial() {
 
       // 1. Libro de Actuaciones
       if (bitacora.actuaciones && bitacora.actuaciones.length > 0) {
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
         
         const actData = bitacora.actuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
         autoTable(doc, {
@@ -135,8 +131,10 @@ export default function TabHistorial() {
           head: [['HORA', 'N° ASUNTO', 'PARTES INVOLUCRADAS', 'ACTUACIÓN / DILIGENCIA', 'OBSERVACIONES']],
           body: actData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -144,13 +142,11 @@ export default function TabHistorial() {
 
       // 2. Libro de Ingresos
       if (bitacora.ingresos && bitacora.ingresos.length > 0) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('2. LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE INGRESOS (CAUSAS Y ASUNTOS ASIGNADOS)', 14, finalY + 5);
 
         const ingData = bitacora.ingresos.map((i: any) => [i.tipo || 'N/A', i.numeroExpediente || 'N/A', i.organismoTribunal || 'N/A', i.partes || 'N/A', i.resumen || 'N/A', i.observaciones || '']);
         autoTable(doc, {
@@ -158,8 +154,10 @@ export default function TabHistorial() {
           head: [['TIPO ASUNTO', 'N° EXPEDIENTE', 'TRIBUNAL / ORGANISMO', 'PARTES', 'SÍNTESIS DEL ASUNTO', 'OBSERVACIONES']],
           body: ingData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -167,13 +165,11 @@ export default function TabHistorial() {
 
       // 3. Libro de Programación
       if (bitacora.programaciones && bitacora.programaciones.length > 0) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY + 5);
 
         const progData = bitacora.programaciones.map((p: any) => [`${p.fecha || ''} ${p.hora || ''}`, p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || 'N/A', p.observaciones || '']);
         autoTable(doc, {
@@ -181,8 +177,10 @@ export default function TabHistorial() {
           head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
           body: progData,
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 8.5 },
-          bodyStyles: { fontSize: 8, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8, textColor: [30, 41, 59], cellPadding: 3 },
+          alternateRowStyles: { fillColor: [252, 253, 254] },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
@@ -190,14 +188,12 @@ export default function TabHistorial() {
 
       // Si por alguna razón no hay tablas estructuradas pero hay reporte de texto
       const hasStructuredData = (bitacora.actuaciones && bitacora.actuaciones.length > 0) || (bitacora.ingresos && bitacora.ingresos.length > 0) || (bitacora.programaciones && bitacora.programaciones.length > 0);
-      if (!hasStructuredData && bitacora.content) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
-        doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      if (!hasStructuredData && bitacora.content && bitacora.content.trim() !== '') {
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 19, finalY + 4.5);
+        doc.text('▪  LIBRO DE GESTIÓN DIARIA Y ACTUACIONES (REPORTE DE JORNADA REGISTRADO)', 14, finalY + 5);
 
         const cleanContent = bitacora.content.replace(/<[^>]*>?/gm, '');
         autoTable(doc, {
@@ -205,21 +201,21 @@ export default function TabHistorial() {
           head: [['DETALLE DE LAS ACTUACIONES, DILIGENCIAS Y PROGRAMACIÓN REGISTRADA EN LA JORNADA']],
           body: [[cleanContent]],
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { fontSize: 8.5, textColor: 40 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59], cellPadding: 4 },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
         finalY = (doc as any).lastAutoTable.finalY + 12;
       }
 
       // Si tampoco hubo content ni tablas estructuradas
-      if (!hasStructuredData && !bitacora.content) {
-        if (finalY > 150) { doc.addPage('landscape'); finalY = 25; }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(14, finalY, 3, 6, 'F');
-        doc.setFontSize(11);
+      if (!hasStructuredData && (!bitacora.content || bitacora.content.trim() === '')) {
+        if (finalY > 155) { doc.addPage('landscape'); finalY = 32; }
+        doc.setFontSize(10.5);
+        doc.setTextColor(15, 23, 42);
         doc.setFont('helvetica', 'bold');
-        doc.text('ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 19, finalY + 4.5);
+        doc.text('▪  ESTADO Y RESUMEN OFICIAL DE LA BITÁCORA EN BASE DE DATOS KANT', 14, finalY + 5);
 
         autoTable(doc, {
           startY: finalY + 8,
@@ -232,9 +228,10 @@ export default function TabHistorial() {
             ['Certificación del Sistema', 'Documento regenerado desde registros oficiales en Plataforma KANT']
           ],
           theme: 'grid',
-          headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold', fontSize: 9 },
-          bodyStyles: { fontSize: 9, textColor: 50 },
+          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 9, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+          bodyStyles: { fontSize: 9, textColor: [30, 41, 59], cellPadding: 3 },
           columnStyles: { 0: { cellWidth: 70, fontStyle: 'bold' } },
+          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
           margin: { left: 14, right: 14 }
         });
       }
@@ -242,30 +239,36 @@ export default function TabHistorial() {
       const totalPages = (doc as any).internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        if (logoBase64 && (doc as any).GState) {
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.4);
+        doc.line(14, 24, 283, 24);
+
+        if (logoBase64) {
           try {
-            doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
-            doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST');
+            doc.addImage(logoBase64, 'PNG', 14, 4, 24, 17, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 0.03 }));
+            }
+            doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            }
           } catch (e) {}
         }
-        doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
-        doc.rect(0, 0, 297, 24, 'F');
-        if (logoBase64) {
-          try { doc.addImage(logoBase64, 'PNG', 14, 3.5, 22, 17, 'logo', 'FAST'); } catch (e) {}
-        }
+
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(14);
-        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
         doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
-        doc.setFontSize(8.5);
-        doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
         doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
         doc.setFontSize(11);
-        doc.setTextColor(255, 255, 255);
+        doc.setTextColor(15, 23, 42);
         doc.text('REPORTE OFICIAL DE JORNADA', 283, 11, { align: 'right' });
         doc.setFont('helvetica', 'normal');
-        doc.setFontSize(9);
-        doc.setTextColor(203, 213, 225);
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
         doc.text(`Fecha: ${bitacora.date} — Empleado: ${userName}`, 283, 17.5, { align: 'right' });
 
         doc.setDrawColor(226, 232, 240);
