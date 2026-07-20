@@ -1435,7 +1435,7 @@ export default function AdminDashboard() {
 
             {/* Modal Footer */}
             <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
-              {!selectedReport.isDraft && (
+              {!selectedReport.isDraft ? (
                 <button 
                   onClick={() => {
                     setSystemAlert({
@@ -1474,6 +1474,27 @@ export default function AdminDashboard() {
                   className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
                 >
                   ⚙️ Eliminar Bitácora / Reiniciar Día
+                </button>
+              ) : (
+                <button 
+                  onClick={async () => {
+                    if (window.confirm("¿Seguro que deseas descartar este avance? Se borrarán sus tareas de prueba, pero NO se cerrará su sesión.")) {
+                      try {
+                        await api.post('/rd-intranet/v1/admin-update-draft', {
+                          target_user_id: selectedReport.user_id,
+                          comentario_admin: '',
+                          programaciones: []
+                        });
+                        setAllDrafts(allDrafts.filter(d => d.user_id !== selectedReport.user_id));
+                        setSelectedReport(null);
+                      } catch (e) {
+                        console.error("Error al descartar avance", e);
+                      }
+                    }
+                  }}
+                  className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
+                >
+                  🗑️ Descartar Avance
                 </button>
               )}
 
