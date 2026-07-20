@@ -1231,7 +1231,11 @@ export default function AdminDashboard() {
                         isOpen: true,
                         type: 'success',
                         title: '¡Bitácora de Jefatura Guardada!',
-                        message: 'Tu bitácora y registros oficiales de jefatura se han generado en PDF y archivado en el sistema con éxito.'
+                        message: 'Tu bitácora y registros oficiales de jefatura se han generado en PDF y archivado en el sistema con éxito.',
+                        onConfirm: () => {
+                          setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                          window.location.reload();
+                        }
                       });
                     } catch (error) {
                       console.error('Error al generar bitácora de jefatura:', error);

@@ -1243,7 +1243,6 @@ function rd_intranet_save_investigacion($request) {
         'post_title' => 'Investigación: ' . $tema,
         'post_content' => "TEMA: $tema\n\nRESUMEN: $resumen\n\nSENTENCIA: $sentencia\n\nLIBROS: $libros\n\nARTICULOS: $articulos\n\nOPINION R&D: $opinion",
         'post_status' => 'publish',
-        'post_author' => $user_id,
         'post_type' => 'rd_investigacion'
     );
     
@@ -1251,6 +1250,7 @@ function rd_intranet_save_investigacion($request) {
         $post_data['ID'] = $post_id;
         wp_update_post($post_data);
     } else {
+        $post_data['post_author'] = $user_id;
         $post_id = wp_insert_post($post_data);
     }
     
@@ -1290,3 +1290,4 @@ function rd_intranet_delete_investigacion($request) {
     
     return rest_ensure_response(array('success' => true, 'message' => 'Investigación eliminada con éxito'));
 }
+

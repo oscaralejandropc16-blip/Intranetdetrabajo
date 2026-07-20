@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb, Trash2 } from 'lucide-react';
+import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb, Trash2, Edit3 } from 'lucide-react';
 import api from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
@@ -18,7 +18,7 @@ export const TabInvestigaciones: React.FC = () => {
   });
 
   // Form state para los 6 campos solicitados
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{ id?: number; tema: string; resumen: string; sentencia: string; libros: string; articulos_cientificos: string; opinion_rd: string; }>({
     tema: '',
     resumen: '',
     sentencia: '',
@@ -86,6 +86,19 @@ export const TabInvestigaciones: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleEdit = (inv: any) => {
+    setFormData({
+      id: inv.id,
+      tema: inv.tema || '',
+      resumen: inv.resumen || '',
+      sentencia: inv.sentencia || '',
+      libros: inv.libros || '',
+      articulos_cientificos: inv.articulos_cientificos || '',
+      opinion_rd: inv.opinion_rd || ''
+    });
+    setActiveTab('subir');
   };
 
   const handleDelete = async (id: number) => {
@@ -227,14 +240,23 @@ export const TabInvestigaciones: React.FC = () => {
                       </span>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-400">{inv.date}</span>
-                        {(isAdmin || currentUserName === inv.user) && (
-                          <button 
-                            onClick={() => handleDelete(inv.id)}
-                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Eliminar Investigación"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                        {isAdmin && (
+                          <div className="flex items-center gap-1">
+                            <button 
+                              onClick={() => handleEdit(inv)}
+                              className="p-1.5 text-slate-300 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Editar Investigación"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(inv.id)}
+                              className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Eliminar Investigación"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         )}
                       </div>
                     </div>
