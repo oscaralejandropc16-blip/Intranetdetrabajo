@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks } from '../lib/api';
@@ -879,9 +879,13 @@ export default function AdminDashboard() {
                           {userGroup.tasks.length > 3 && (
                             <button
                               onClick={() => setExpandedUsers(prev => ({ ...prev, [`${dateStr}-${userGroup.user}`]: !prev[`${dateStr}-${userGroup.user}`] }))}
-                              className="w-full mt-2 py-2.5 bg-slate-100/50 hover:bg-slate-100 text-slate-600 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-colors border border-slate-200/50 hover:border-slate-300"
+                              className="w-full mt-3 py-3 flex items-center justify-center gap-2 bg-gradient-to-b from-slate-50/30 to-slate-100 hover:to-blue-50 text-slate-500 hover:text-blue-600 font-bold text-[10px] uppercase tracking-widest rounded-xl transition-all border border-slate-100 hover:border-blue-200 group"
                             >
-                              {expandedUsers[`${dateStr}-${userGroup.user}`] ? 'Ocultar Tareas Adicionales' : `Ver ${userGroup.tasks.length - 3} Tareas Más 👇`}
+                              {expandedUsers[`${dateStr}-${userGroup.user}`] ? (
+                                <>Ocultar Tareas <ChevronUp className="w-4 h-4 group-hover:-translate-y-0.5 transition-transform" /></>
+                              ) : (
+                                <>Ver {userGroup.tasks.length - 3} Tareas Más <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" /></>
+                              )}
                             </button>
                           )}
                         </div>
