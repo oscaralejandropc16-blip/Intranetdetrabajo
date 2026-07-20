@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw } from 'lucide-react';
+import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb } from 'lucide-react';
 import api from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
@@ -200,25 +200,25 @@ export const TabInvestigaciones: React.FC = () => {
                     </div>
 
                     <h3 className="text-xl font-extrabold text-slate-900 leading-tight mb-2">{inv.tema || 'Sin Título'}</h3>
-                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-4">👨‍⚖️ Por: {inv.user}</p>
+                    <p className="text-xs font-bold text-blue-600 uppercase tracking-wide mb-4 flex items-center gap-1.5"><User className="w-4 h-4" /> Por: {inv.user}</p>
 
                     <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-200/70 text-sm">
                       {inv.resumen && (
                         <div>
-                          <p className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1">📌 Resumen / Hechos:</p>
+                          <p className="text-xs font-black text-slate-800 flex items-center gap-1.5 uppercase tracking-wider mb-1.5"><FileText className="w-4 h-4 text-slate-500" /> Resumen / Hechos:</p>
                           <p className="text-slate-600 line-clamp-3 leading-relaxed">{inv.resumen}</p>
                         </div>
                       )}
                       {inv.sentencia && (
                         <div>
-                          <p className="text-xs font-black text-slate-900 uppercase tracking-wider mb-1 mt-3">⚖️ Sentencia / Jurisprudencia:</p>
+                          <p className="text-xs font-black text-slate-800 flex items-center gap-1.5 uppercase tracking-wider mb-1.5 mt-3"><Scale className="w-4 h-4 text-slate-500" /> Sentencia / Jurisprudencia:</p>
                           <p className="text-slate-600 line-clamp-2">{inv.sentencia}</p>
                         </div>
                       )}
                       {inv.opinion_rd && (
                         <div>
-                          <p className="text-xs font-black text-amber-700 uppercase tracking-wider mb-1 mt-3">💡 Opinión y Análisis R&D:</p>
-                          <p className="text-slate-700 font-medium italic line-clamp-2 bg-amber-50/50 p-2 rounded-lg border border-amber-100/60">{inv.opinion_rd}</p>
+                          <p className="text-xs font-black text-amber-700 flex items-center gap-1.5 uppercase tracking-wider mb-1.5 mt-3"><Lightbulb className="w-4 h-4 text-amber-600" /> Opinión y Análisis R&D:</p>
+                          <p className="text-slate-700 font-medium italic line-clamp-2 bg-amber-50/50 p-3 rounded-lg border border-amber-100/60 leading-relaxed shadow-sm">{inv.opinion_rd}</p>
                         </div>
                       )}
                     </div>

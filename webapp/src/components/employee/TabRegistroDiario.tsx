@@ -179,6 +179,7 @@ export default function TabRegistroDiario({
                             list="expedientes-list"
                             value={actuacion.numeroAsunto}
                             disabled={reportSubmitted}
+                            required
                             onChange={(e) => updateActuacionField(actuacion.id, 'numeroAsunto', e.target.value)}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 bg-white"
                             placeholder="Ej. RD-J-2026..."

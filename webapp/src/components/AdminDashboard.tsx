@@ -1120,6 +1120,41 @@ export default function AdminDashboard() {
                           styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
                           margin: { left: 14, right: 14 }
                         });
+                        finalY = (doc as any).lastAutoTable.finalY + 12;
+                      }
+
+                      let invesData: any[][] = [];
+                      try {
+                        const invesResponse = await api.get('/rd-intranet/v1/investigaciones');
+                        if (invesResponse.data && Array.isArray(invesResponse.data)) {
+                           const today = format(new Date(), 'yyyy-MM-dd');
+                           const myInves = invesResponse.data.filter(inv => inv.user === jefeName && inv.date && inv.date.startsWith(today));
+                           if (myInves.length > 0) {
+                             invesData = myInves.map(inv => [inv.tema || 'N/A', inv.resumen || 'N/A', inv.sentencia || 'N/A', inv.opinion_rd || 'N/A']);
+                           }
+                        }
+                      } catch (e) {
+                        console.warn('No se pudieron obtener las investigaciones', e);
+                      }
+
+                      if (invesData.length > 0) {
+                        if (finalY > 230) { doc.addPage(); finalY = 36; }
+                        doc.setFontSize(10.5);
+                        doc.setTextColor(15, 23, 42);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('▪  4. APORTES A LA BIBLIOTECA VIRTUAL (INVESTIGACIONES Y SENTENCIAS)', 14, finalY + 5);
+                        
+                        autoTable(doc, {
+                          startY: finalY + 8,
+                          head: [['TEMA / TÍTULO', 'RESUMEN / HECHOS', 'SENTENCIA / JURISPRUDENCIA', 'OPINIÓN Y ANÁLISIS R&D']],
+                          body: invesData,
+                          theme: 'grid',
+                          headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+                          bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+                          alternateRowStyles: { fillColor: [252, 253, 254] },
+                          styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+                          margin: { left: 14, right: 14 }
+                        });
                       }
 
                       doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);

@@ -104,7 +104,7 @@ export default function SystemAlertModal({
             {title}
           </h3>
 
-          <p className="text-slate-300 text-sm md:text-base font-medium leading-relaxed max-h-60 overflow-y-auto pr-1 whitespace-pre-wrap text-left">
+          <p className="text-slate-300 text-sm md:text-base font-medium leading-relaxed max-h-60 overflow-y-auto pr-2 whitespace-pre-wrap text-left [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-800/50 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-500">
             {message}
           </p>
         </div>
