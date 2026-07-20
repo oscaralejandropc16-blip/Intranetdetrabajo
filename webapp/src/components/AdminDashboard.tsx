@@ -63,6 +63,7 @@ export default function AdminDashboard() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
+  const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const [systemAlert, setSystemAlert] = useState<{ 
     isOpen: boolean; 
     type: AlertType; 
@@ -855,7 +856,7 @@ export default function AdminDashboard() {
                         </div>
                         
                         <div className="space-y-2">
-                          {userGroup.tasks.map((task: any, tIdx: number) => (
+                          {(expandedUsers[`${dateStr}-${userGroup.user}`] ? userGroup.tasks : userGroup.tasks.slice(0, 3)).map((task: any, tIdx: number) => (
                             <div key={tIdx} className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors">
                               <span className="bg-white text-slate-600 font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 shrink-0 w-max border border-slate-200">
                                 <Clock className="w-3.5 h-3.5"/> {task.hora}
@@ -874,6 +875,15 @@ export default function AdminDashboard() {
                               )}
                             </div>
                           ))}
+                          
+                          {userGroup.tasks.length > 3 && (
+                            <button
+                              onClick={() => setExpandedUsers(prev => ({ ...prev, [`${dateStr}-${userGroup.user}`]: !prev[`${dateStr}-${userGroup.user}`] }))}
+                              className="w-full mt-2 py-2.5 bg-slate-100/50 hover:bg-slate-100 text-slate-600 font-bold text-[11px] uppercase tracking-wider rounded-xl transition-colors border border-slate-200/50 hover:border-slate-300"
+                            >
+                              {expandedUsers[`${dateStr}-${userGroup.user}`] ? 'Ocultar Tareas Adicionales' : `Ver ${userGroup.tasks.length - 3} Tareas Más 👇`}
+                            </button>
+                          )}
                         </div>
                         
                       </div>
