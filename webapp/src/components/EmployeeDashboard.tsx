@@ -252,6 +252,19 @@ export default function EmployeeDashboard() {
 
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
+
+    const hasInvalidActuaciones = actuaciones.some(a => a.actuacion.trim() !== '' && (!a.numeroAsunto || a.numeroAsunto.trim() === ''));
+    if (hasInvalidActuaciones) {
+      setSystemAlert({ isOpen: true, type: 'error', title: 'Faltan Datos', message: 'Hay actuaciones registradas sin Número de Asunto. Por favor, completa el campo o elimina la fila si está vacía.' });
+      return;
+    }
+
+    const hasInvalidIngresos = ingresos.some(i => !i.numeroExpediente || i.numeroExpediente.trim() === '' || i.numeroExpediente.endsWith('-'));
+    if (hasInvalidIngresos) {
+      setSystemAlert({ isOpen: true, type: 'error', title: 'Faltan Datos', message: 'Hay ingresos registrados sin Número de Expediente válido. Por favor, completa el número o elimina la fila si está vacía.' });
+      return;
+    }
+
     setClosingDay(true);
     
     // Permitir que React renderice el estado de carga antes de bloquear el hilo principal con jsPDF
