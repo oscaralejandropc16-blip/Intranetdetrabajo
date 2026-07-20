@@ -1178,13 +1178,13 @@ export default function AdminDashboard() {
                       doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
                       const pdfBase64 = doc.output('datauristring');
                       const response = await api.post('/rd-intranet/v1/submit', {
-                        fecha: format(new Date(), 'yyyy-MM-dd'),
+                        fecha_reporte: format(new Date(), 'yyyy-MM-dd'),
                         hora_entrada: 'N/A (Jefatura)',
                         hora_salida: 'N/A (Jefatura)',
-                        actuaciones_json: JSON.stringify(actuacionesJefe),
-                        ingresos_json: JSON.stringify(ingresosJefe),
-                        programaciones_json: JSON.stringify(programacionesJefe),
-                        contenido_bitacora: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
+                        actuaciones: actuacionesJefe,
+                        ingresos: ingresosJefe,
+                        programaciones: programacionesJefe,
+                        reporte_hoy: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
                         bitacora_pdf_base64: '',
                         pdf_base64: '',
                         ubicacion_entrada: 'Régimen de Jefatura (Sin GPS)',
