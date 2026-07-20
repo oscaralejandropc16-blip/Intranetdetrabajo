@@ -14,18 +14,18 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 
-const STORAGE_KEY = 'rd_intranet_draft';
+const getStorageKey = () => `rd_intranet_draft_${localStorage.getItem('rd_user_name') || 'unknown'}`;
 
 export default function EmployeeDashboard() {
   const [clockIn, setClockIn] = useState<Date | null>(() => {
-    const draft = localStorage.getItem(STORAGE_KEY);
+    const draft = localStorage.getItem(getStorageKey());
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
         if (parsed.clockIn && typeof parsed.clockIn === 'string') {
           const todayStr = format(new Date(), 'yyyy-MM-dd');
           if (parsed.clockIn.slice(0, 10) !== todayStr) {
-            localStorage.removeItem(STORAGE_KEY);
+            localStorage.removeItem(getStorageKey());
             return null;
           }
           return new Date(parsed.clockIn);
@@ -37,7 +37,7 @@ export default function EmployeeDashboard() {
     return null;
   });
   const [ubicacionEntrada, setUbicacionEntrada] = useState<string | null>(() => {
-    const draft = localStorage.getItem(STORAGE_KEY);
+    const draft = localStorage.getItem(getStorageKey());
     if (draft) {
       try {
         const parsed = JSON.parse(draft);
@@ -77,15 +77,15 @@ export default function EmployeeDashboard() {
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
-    const draft = localStorage.getItem(STORAGE_KEY);
+    const draft = localStorage.getItem(getStorageKey());
     return draft ? JSON.parse(draft).actuaciones || [] : [];
   });
   const [ingresos, setIngresos] = useState<Ingreso[]>(() => {
-    const draft = localStorage.getItem(STORAGE_KEY);
+    const draft = localStorage.getItem(getStorageKey());
     return draft ? JSON.parse(draft).ingresos || [] : [];
   });
   const [programaciones, setProgramaciones] = useState<Programacion[]>(() => {
-    const draft = localStorage.getItem(STORAGE_KEY);
+    const draft = localStorage.getItem(getStorageKey());
     return draft ? JSON.parse(draft).programaciones || [] : [];
   });
   const [attachedFiles, setAttachedFiles] = useState<{file: any, note: string}[]>([]);
@@ -108,7 +108,7 @@ export default function EmployeeDashboard() {
       ingresos,
       programaciones
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(localDraft));
+    localStorage.setItem(getStorageKey(), JSON.stringify(localDraft));
 
     // Guardar en la nube con debounce de 800 milisegundos
     const handler = setTimeout(async () => {
@@ -147,7 +147,7 @@ export default function EmployeeDashboard() {
             if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
               setClockIn(null);
               setUbicacionEntrada(null);
-              localStorage.removeItem(STORAGE_KEY);
+              localStorage.removeItem(getStorageKey());
               return;
             }
             setClockIn(new Date(response.data.clockIn));
@@ -168,7 +168,7 @@ export default function EmployeeDashboard() {
           if (parsedIngresos.length > 0) setIngresos(parsedIngresos);
           if (parsedProgramaciones.length > 0) setProgramaciones(parsedProgramaciones);
           
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          localStorage.setItem(getStorageKey(), JSON.stringify({
             ...response.data,
             actuaciones: parsedActuaciones,
             ingresos: parsedIngresos,
@@ -184,7 +184,7 @@ export default function EmployeeDashboard() {
           setProgramaciones([]);
           setReportSubmitted(false);
           setClockOut(null);
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(getStorageKey());
         }
       } catch (error) {
         console.error('Error fetching draft:', error);
@@ -513,7 +513,7 @@ export default function EmployeeDashboard() {
           await uploadPdfInChunks(postId, pdfBase64);
         }
 
-        localStorage.removeItem(STORAGE_KEY); // Limpiar el borrador al enviar con éxito
+        localStorage.removeItem(getStorageKey()); // Limpiar el borrador al enviar con éxito
         
         // Confirmar en UI solo si todo salió exitoso
         setClockOut(new Date());
@@ -621,7 +621,7 @@ export default function EmployeeDashboard() {
         ingresos,
         programaciones
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
+      localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
       
       api.post('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
         console.warn('Sincronización de borrador demorada:', cloudError);
@@ -650,7 +650,7 @@ export default function EmployeeDashboard() {
         ingresos,
         programaciones
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(immediateDraft));
+      localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
       setReportSubmitted(false);
       setClockOut(null);
       setActiveTab('registro');
