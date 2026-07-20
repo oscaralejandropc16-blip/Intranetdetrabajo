@@ -855,24 +855,25 @@ export default function AdminDashboard() {
                           </button>
                         </div>
                         
-                        <div className="space-y-2">
+                        <div className="flex flex-col">
                           {(expandedUsers[`${dateStr}-${userGroup.user}`] ? userGroup.tasks : userGroup.tasks.slice(0, 3)).map((task: any, tIdx: number) => (
-                            <div key={tIdx} className="flex flex-col md:flex-row md:items-center gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100 hover:bg-slate-100 transition-colors">
-                              <span className="bg-white text-slate-600 font-bold text-xs px-2.5 py-1.5 rounded-lg shadow-sm flex items-center justify-center gap-1.5 shrink-0 w-max border border-slate-200">
-                                <Clock className="w-3.5 h-3.5"/> {task.hora}
-                              </span>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-bold text-slate-700 text-sm truncate">{task.tipoActuacion}</p>
-                                <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 truncate mt-0.5">
-                                  <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {task.organismoTribunal}
-                                </p>
+                            <div key={tIdx} className="flex gap-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors px-2 group/task">
+                              <div className="w-12 shrink-0 pt-0.5">
+                                <span className="text-slate-700 font-bold text-[13px] tracking-tight">{task.hora}</span>
                               </div>
-                              {task.observaciones && (
-                                <div className="md:ml-auto bg-amber-100/50 text-amber-800 text-[11px] font-medium p-2 rounded-lg border border-amber-200/50 flex flex-col md:items-end w-full md:w-1/3">
-                                  <span className="font-bold uppercase tracking-wider opacity-70 mb-0.5 text-[9px]">Nota Jefe:</span>
-                                  <span className="line-clamp-2 w-full md:text-right">{task.observaciones}</span>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-bold text-slate-800 text-[13px] leading-tight">{task.tipoActuacion}</p>
+                                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium mt-1">
+                                  <MapPin className="w-3 h-3 text-blue-500" />
+                                  <span className="truncate">{task.organismoTribunal}</span>
                                 </div>
-                              )}
+                                {task.observaciones && task.observaciones.trim().toUpperCase() !== 'SIN OBSERVACIONES' && (
+                                  <div className="mt-2 text-[11px] font-medium text-slate-600 bg-amber-50/50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 inline-flex items-start gap-1.5 w-full md:w-auto">
+                                    <span className="font-bold text-amber-700 uppercase tracking-wider shrink-0 text-[9px] pt-0.5">Nota:</span>
+                                    <span className="line-clamp-2 md:line-clamp-none">{task.observaciones}</span>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           ))}
                           
