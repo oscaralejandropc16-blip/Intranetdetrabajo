@@ -18,6 +18,13 @@ api.interceptors.request.use(
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
+    
+    // Eludir WAF convirtiendo POST/PUT a x-www-form-urlencoded
+    if ((config.method === 'post' || config.method === 'put') && config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
+      config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
+      config.data = `payload_json=${encodeURIComponent(JSON.stringify(config.data))}`;
+    }
+    
     return config;
   },
   (error) => {

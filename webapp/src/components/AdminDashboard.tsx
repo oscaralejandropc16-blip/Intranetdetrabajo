@@ -1059,8 +1059,7 @@ export default function AdminDashboard() {
                       doc.setFontSize(10);
                       doc.setTextColor(15, 23, 42);
                       doc.setFont('helvetica', 'bold');
-                      const currentUserObj = JSON.parse(localStorage.getItem('rd_user') || '{}');
-                      const jefeName = currentUserObj.name || currentUserObj.username || 'Jefe Administrador';
+                      const jefeName = localStorage.getItem('rd_user_name') || 'Jefe Administrador';
                       doc.text(`TITULAR / JEFATURA: ${jefeName.toUpperCase()}`, 19, 41);
                       doc.text(`FECHA DE GESTIÓN: ${format(new Date(), 'dd/MM/yyyy')}`, 115, 41);
 
