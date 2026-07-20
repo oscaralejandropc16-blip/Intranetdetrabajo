@@ -12,13 +12,15 @@ interface TabAgendaProps {
   setProgramaciones: React.Dispatch<React.SetStateAction<Programacion[]>>;
   reportSubmitted: boolean;
   allFutureTasks?: any[];
+  isAdmin?: boolean;
 }
 
 export default function TabAgenda({
   programaciones,
   setProgramaciones,
   reportSubmitted,
-  allFutureTasks = []
+  allFutureTasks = [],
+  isAdmin = false
 }: TabAgendaProps) {
 
   const decodeAccents = (str?: any) => {
@@ -290,10 +292,13 @@ export default function TabAgenda({
               className={`font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm ${
                 synced ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white border border-slate-700'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title="Notificar a jefatura sobre esta programación sin necesidad de cerrar el día"
+              title={isAdmin ? "Guardar programación temporalmente en el sistema" : "Notificar a jefatura sobre esta programación sin necesidad de cerrar el día"}
             >
               {syncing ? <Activity className="w-4 h-4 animate-spin" /> : (synced ? <Clock className="w-4 h-4" /> : <Activity className="w-4 h-4" />)}
-              {syncing ? 'Enviando...' : (synced ? '¡Adelanto Enviado a Jefatura!' : 'Enviar Avance a Jefatura')}
+              {isAdmin 
+                ? (syncing ? 'Guardando...' : (synced ? '¡Agenda Guardada!' : 'Guardar Agenda en Sistema'))
+                : (syncing ? 'Enviando...' : (synced ? '¡Adelanto Enviado a Jefatura!' : 'Enviar Avance a Jefatura'))
+              }
             </button>
             <button 
               onClick={handleAddRow}

@@ -985,6 +985,7 @@ export default function AdminDashboard() {
               programaciones={programacionesJefe}
               setProgramaciones={setProgramacionesJefe}
               reportSubmitted={jefeReportSubmitted}
+              isAdmin={true}
             />
           )}
 
