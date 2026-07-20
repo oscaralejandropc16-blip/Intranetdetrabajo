@@ -3,7 +3,7 @@
  * Plugin Name: RD Intranet Backend
  * Plugin URI: https://romanydelgado.com
  * Description: Backend personalizado para la Intranet de Román & Delgado. Gestiona la base de datos de bitácoras, API REST segura y automatización de correos a las 6PM.
- * Version: 1.2.1
+ * Version: 1.2.2
  * Author: Tu Agente Antigravity
  * Text Domain: rd-intranet
  */
@@ -481,10 +481,13 @@ function rd_intranet_get_all_drafts() {
 function rd_intranet_admin_update_draft($request) {
     $params = rd_intranet_get_request_data($request);
     $target_user_id = intval($params['target_user_id'] ?? 0);
-    $programaciones_editadas = $params['programaciones'] ?? null;
+    $programaciones_editadas = $params['programaciones'] ?? array();
+    if (!is_array($programaciones_editadas)) {
+        $programaciones_editadas = array();
+    }
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
 
-    if ($target_user_id > 0 && is_array($programaciones_editadas)) {
+    if ($target_user_id > 0) {
         $draft_str = get_user_meta($target_user_id, 'rd_intranet_draft', true);
         $draft = $draft_str ? json_decode($draft_str, true) : array();
         
@@ -497,7 +500,7 @@ function rd_intranet_admin_update_draft($request) {
         
         return rest_ensure_response(array('success' => true, 'message' => 'El borrador del empleado ha sido actualizado.'));
     }
-    return new WP_Error('invalid_data', 'Datos de borrador inválidos', array('status' => 400));
+    return new WP_Error('invalid_data', 'Datos de borrador inválidos o usuario no especificado.', array('status' => 400));
 }
 
 function rd_intranet_get_request_data($request) {
