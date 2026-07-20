@@ -1435,45 +1435,47 @@ export default function AdminDashboard() {
 
             {/* Modal Footer */}
             <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
-              <button 
-                onClick={() => {
-                  setSystemAlert({
-                    isOpen: true,
-                    type: 'warning',
-                    title: '¿Confirmar Reapertura?',
-                    message: `¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`,
-                    showCancel: true,
-                    confirmText: 'Sí, Reabrir Jornada',
-                    cancelText: 'Cancelar',
-                    onConfirm: async () => {
-                      setSystemAlert(prev => ({ ...prev, isOpen: false }));
-                      try {
-                        await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
-                        setSystemAlert({
-                          isOpen: true,
-                          type: 'success',
-                          title: 'Jornada Reabierta',
-                          message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
-                          onConfirm: () => {
-                            setSelectedReport(null);
-                            window.location.reload();
-                          }
-                        });
-                      } catch (e) {
-                        setSystemAlert({
-                          isOpen: true,
-                          type: 'error',
-                          title: 'Error de Servidor',
-                          message: 'No se pudo reabrir la jornada. Intenta de nuevo más tarde.'
-                        });
+              {!selectedReport.isDraft && (
+                <button 
+                  onClick={() => {
+                    setSystemAlert({
+                      isOpen: true,
+                      type: 'warning',
+                      title: '¿Confirmar Reapertura?',
+                      message: `¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`,
+                      showCancel: true,
+                      confirmText: 'Sí, Reabrir Jornada',
+                      cancelText: 'Cancelar',
+                      onConfirm: async () => {
+                        setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                        try {
+                          await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                          setSystemAlert({
+                            isOpen: true,
+                            type: 'success',
+                            title: 'Jornada Reabierta',
+                            message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
+                            onConfirm: () => {
+                              setSelectedReport(null);
+                              window.location.reload();
+                            }
+                          });
+                        } catch (e) {
+                          setSystemAlert({
+                            isOpen: true,
+                            type: 'error',
+                            title: 'Error de Servidor',
+                            message: 'No se pudo reabrir la jornada. Intenta de nuevo más tarde.'
+                          });
+                        }
                       }
-                    }
-                  });
-                }}
-                className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
-              >
-                ⚙️ Eliminar Bitácora / Reiniciar Día
-              </button>
+                    });
+                  }}
+                  className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
+                >
+                  ⚙️ Eliminar Bitácora / Reiniciar Día
+                </button>
+              )}
 
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                 <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
