@@ -1472,7 +1472,7 @@ export default function AdminDashboard() {
                 }}
                 className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
               >
-                ⚙️ Reabrir y Reiniciar Día de este Empleado
+                ⚙️ Eliminar Bitácora / Reiniciar Día
               </button>
 
               <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
