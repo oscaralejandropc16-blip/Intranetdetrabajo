@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks } from '../lib/api';
@@ -691,7 +691,14 @@ export default function AdminDashboard() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {loading ? (
-                <tr><td colSpan={4} className="text-center p-12 text-slate-500 font-medium">Conectando con la base de datos central...</td></tr>
+                <tr>
+                  <td colSpan={6} className="text-center p-16">
+                    <div className="flex flex-col items-center justify-center space-y-4">
+                      <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+                      <p className="text-slate-500 font-medium animate-pulse">Conectando con la base de datos central...</p>
+                    </div>
+                  </td>
+                </tr>
               ) : filteredReports.map((report) => (
                 <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-amber-50/10' : ''}`}>
                   <td className="p-6">
