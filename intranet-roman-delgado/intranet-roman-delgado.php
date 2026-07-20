@@ -3,7 +3,7 @@
  * Plugin Name: RD Intranet Backend
  * Plugin URI: https://romanydelgado.com
  * Description: Backend personalizado para la Intranet de Román & Delgado. Gestiona la base de datos de bitácoras, API REST segura y automatización de correos a las 6PM.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Tu Agente Antigravity
  * Text Domain: rd-intranet
  */
@@ -386,6 +386,13 @@ add_action('rest_api_init', function () {
         'permission_callback' => $is_authorized_admin
     ));
 
+    // Endpoint: POST /rd-intranet/v1/admin-update-draft (Jefatura edita borrador activo)
+    register_rest_route('rd-intranet/v1', '/admin-update-draft', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_admin_update_draft',
+        'permission_callback' => $is_authorized_admin
+    ));
+
     // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'POST',
@@ -459,14 +466,38 @@ function rd_intranet_get_all_drafts() {
             if (is_array($draft) && !empty($draft['programaciones'])) {
                 $user_display = $user->display_name ?: ($user->user_nicename ?: $user->user_login);
                 $all_drafts[] = array(
+                    'user_id' => $user->ID,
                     'user' => $user_display,
-                    'programaciones' => $draft['programaciones']
+                    'programaciones' => $draft['programaciones'],
+                    'comentario_admin' => $draft['comentario_admin'] ?? ''
                 );
             }
         }
     }
     
     return rest_ensure_response(rd_intranet_fix_unicode_escapes($all_drafts));
+}
+
+function rd_intranet_admin_update_draft($request) {
+    $params = rd_intranet_get_request_data($request);
+    $target_user_id = intval($params['target_user_id'] ?? 0);
+    $programaciones_editadas = $params['programaciones'] ?? null;
+    $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
+
+    if ($target_user_id > 0 && is_array($programaciones_editadas)) {
+        $draft_str = get_user_meta($target_user_id, 'rd_intranet_draft', true);
+        $draft = $draft_str ? json_decode($draft_str, true) : array();
+        
+        $draft['programaciones'] = $programaciones_editadas;
+        if ($nuevo_comentario !== '') {
+            $draft['comentario_admin'] = $nuevo_comentario;
+        }
+
+        update_user_meta($target_user_id, 'rd_intranet_draft', wp_json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        
+        return rest_ensure_response(array('success' => true, 'message' => 'El borrador del empleado ha sido actualizado.'));
+    }
+    return new WP_Error('invalid_data', 'Datos de borrador inválidos', array('status' => 400));
 }
 
 function rd_intranet_get_request_data($request) {

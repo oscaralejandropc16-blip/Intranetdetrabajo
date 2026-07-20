@@ -133,12 +133,21 @@ export default function AdminDashboard() {
         console.warn('No se pudo regenerar base64 PDF al aprobar:', e);
       }
 
-      await api.post('/rd-intranet/v1/admin-update', {
-        post_id: selectedReport.id,
-        comentario_admin: adminComment,
-        programaciones: adminProgramaciones,
-        pdf_base64: newPdfBase64
-      });
+      if (selectedReport.isDraft) {
+        // Enviar a la nueva API de borradores
+        await api.post('/rd-intranet/v1/admin-update-draft', {
+          target_user_id: selectedReport.user_id,
+          comentario_admin: adminComment,
+          programaciones: adminProgramaciones
+        });
+      } else {
+        await api.post('/rd-intranet/v1/admin-update', {
+          post_id: selectedReport.id,
+          comentario_admin: adminComment,
+          programaciones: adminProgramaciones,
+          pdf_base64: newPdfBase64
+        });
+      }
       setSystemAlert({
         isOpen: true,
         type: 'success',
@@ -146,7 +155,11 @@ export default function AdminDashboard() {
         message: 'Las observaciones de Jefatura y modificaciones en la programación han sido registradas en el PDF oficial y se ha notificado al empleado.'
       });
       
-      setReports(reports.map(r => r.id === selectedReport.id ? { ...r, status: 'Revisado', unread: false, programaciones: adminProgramaciones, pdfBase64: newPdfBase64 || r.pdfBase64 } : r));
+      if (selectedReport.isDraft) {
+        setAllDrafts(allDrafts.map(d => d.user_id === selectedReport.user_id ? { ...d, programaciones: adminProgramaciones, comentario_admin: adminComment } : d));
+      } else {
+        setReports(reports.map(r => r.id === selectedReport.id ? { ...r, status: 'Revisado', unread: false, programaciones: adminProgramaciones, pdfBase64: newPdfBase64 || r.pdfBase64 } : r));
+      }
       setSelectedReport(null);
     } catch (error) {
       console.error('Error al guardar comentario', error);
@@ -440,7 +453,13 @@ export default function AdminDashboard() {
   };
 
   // Combinar programaciones de bitácoras enviadas + adelantos (borradores)
-  const draftTasks = allDrafts.flatMap(d => (d.programaciones || []).map((p: any) => ({ ...p, user: d.user, isDraft: true })));
+  const draftTasks = allDrafts.flatMap(d => (d.programaciones || []).map((p: any) => ({
+    ...p,
+    user: d.user,
+    isDraft: true,
+    user_id: d.user_id,
+    sourceReport: { isDraft: true, user_id: d.user_id, user: d.user, programaciones: d.programaciones, comentario_admin: d.comentario_admin }
+  })));
   
   const allScheduledTasks = reports
     .flatMap(r => (r.programaciones || []).map((p: any) => ({ ...p, user: r.user, sourceReport: r, isDraft: false })))
@@ -838,21 +857,12 @@ export default function AdminDashboard() {
                                 {task.observaciones}
                               </div>
                             )}
-                            {task.isDraft ? (
-                              <button 
-                                disabled
-                                className="w-full text-center py-2 bg-slate-100 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-lg border border-slate-200 cursor-not-allowed"
-                              >
-                                Solo Lectura (Aún en Borrador)
-                              </button>
-                            ) : (
-                              <button 
-                                onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
-                                className="w-full text-center py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800"
-                              >
-                                Editar Tarea en Bitácora
-                              </button>
-                            )}
+                            <button 
+                              onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(task.sourceReport.comentario_admin || ''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
+                              className="w-full text-center py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800"
+                            >
+                              {task.isDraft ? 'Editar Avance (Borrador)' : 'Editar Tarea en Bitácora'}
+                            </button>
                           </div>
                         </div>
                       </div>
