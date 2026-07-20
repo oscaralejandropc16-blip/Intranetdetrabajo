@@ -401,6 +401,15 @@ add_action('rest_api_init', function () {
         'permission_callback' => $is_authorized_admin
     ));
 
+    // Endpoint: GET /rd-intranet/v1/reserved-expedientes (Obtener expedientes apartados en borradores)
+    register_rest_route('rd-intranet/v1', '/reserved-expedientes', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_reserved_expedientes',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
+
     // Endpoint: POST /rd-intranet/v1/admin-update-draft (Jefatura edita borrador activo)
     register_rest_route('rd-intranet/v1', '/admin-update-draft', array(
         'methods' => 'POST',
@@ -491,6 +500,34 @@ function rd_intranet_get_all_drafts() {
     }
     
     return rest_ensure_response(rd_intranet_fix_unicode_escapes($all_drafts));
+}
+
+function rd_intranet_get_reserved_expedientes() {
+    $users = get_users();
+    $reserved = array();
+    $current_user_id = get_current_user_id();
+    
+    foreach ($users as $user) {
+        // Excluir al propio usuario para no mostrar sus propios expedientes como "reservados por otro"
+        if ($user->ID == $current_user_id) continue;
+
+        $draft_str = get_user_meta($user->ID, 'rd_intranet_draft', true);
+        if ($draft_str) {
+            $draft = json_decode($draft_str, true);
+            if (is_array($draft) && !empty($draft['ingresos'])) {
+                foreach ($draft['ingresos'] as $ingreso) {
+                    if (!empty($ingreso['numeroExpediente']) && $ingreso['tipo'] === 'Judicial') {
+                        $reserved[] = array(
+                            'numeroExpediente' => sanitize_text_field($ingreso['numeroExpediente']),
+                            'usuario' => $user->display_name ?: ($user->user_nicename ?: $user->user_login)
+                        );
+                    }
+                }
+            }
+        }
+    }
+    
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($reserved));
 }
 
 function rd_intranet_admin_update_draft($request) {

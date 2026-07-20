@@ -266,12 +266,18 @@ export default function EmployeeDashboard() {
     }
 
     try {
-      const expRes = await api.get('/rd-intranet/v1/expedientes');
+      const [expRes, resRes] = await Promise.all([
+        api.get('/rd-intranet/v1/expedientes'),
+        api.get('/rd-intranet/v1/reserved-expedientes').catch(() => ({ data: [] }))
+      ]);
       const globals = expRes.data || [];
+      const reserved = resRes.data || [];
+      const allGlobals = [...globals, ...reserved];
+
       const hasDuplicateIngreso = ingresos.some(ingreso => {
         if (ingreso.tipo !== 'Judicial') return false;
         const isLocalDuplicate = ingresos.filter(i => i.numeroExpediente === ingreso.numeroExpediente && i.id !== ingreso.id).length > 0;
-        const isGlobalDuplicate = globals.some((g: any) => g.numeroExpediente === ingreso.numeroExpediente);
+        const isGlobalDuplicate = allGlobals.some((g: any) => g.numeroExpediente === ingreso.numeroExpediente);
         return isLocalDuplicate || isGlobalDuplicate;
       });
 
