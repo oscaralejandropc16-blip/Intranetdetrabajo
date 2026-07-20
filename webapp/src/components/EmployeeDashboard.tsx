@@ -265,6 +265,24 @@ export default function EmployeeDashboard() {
       return;
     }
 
+    try {
+      const expRes = await api.get('/rd-intranet/v1/expedientes');
+      const globals = expRes.data || [];
+      const hasDuplicateIngreso = ingresos.some(ingreso => {
+        if (ingreso.tipo !== 'Judicial') return false;
+        const isLocalDuplicate = ingresos.filter(i => i.numeroExpediente === ingreso.numeroExpediente && i.id !== ingreso.id).length > 0;
+        const isGlobalDuplicate = globals.some((g: any) => g.numeroExpediente === ingreso.numeroExpediente);
+        return isLocalDuplicate || isGlobalDuplicate;
+      });
+
+      if (hasDuplicateIngreso) {
+        setSystemAlert({ isOpen: true, type: 'error', title: 'Expediente Duplicado', message: 'Hay ingresos judiciales con números de expediente que ya han sido asignados por otro usuario o están repetidos. El sistema te impide usar este número para evitar conflictos. Por favor corrígelo.' });
+        return;
+      }
+    } catch (e) {
+      console.error('Error comprobando duplicados:', e);
+    }
+
     setClosingDay(true);
     
     // Permitir que React renderice el estado de carga antes de bloquear el hilo principal con jsPDF

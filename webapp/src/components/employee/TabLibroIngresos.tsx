@@ -91,7 +91,8 @@ export default function TabLibroIngresos({
         // Check global
         const sameTypeGlobal = globalCorrelatives[nuevoTipo] || [];
         sameTypeGlobal.forEach(numero => {
-          const num = parseInt(numero, 10);
+          const parts = numero.split('-');
+          const num = parseInt(parts[parts.length - 1], 10);
           if (!isNaN(num) && num > max) max = num;
         });
 
