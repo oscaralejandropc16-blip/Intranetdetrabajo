@@ -61,6 +61,52 @@ export default function AdminDashboard() {
     localStorage.setItem('rd_jefe_programacion', JSON.stringify(programacionesJefe));
   }, [programacionesJefe]);
 
+  // Sincronizar y cargar borrador del servidor para el Jefe
+  useEffect(() => {
+    const fetchDraft = async () => {
+      try {
+        const response = await api.get('/rd-intranet/v1/draft');
+        if (response.data && typeof response.data === 'object') {
+          const parseJson = (val: any) => {
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string') {
+              try { return JSON.parse(val); } catch(e) { return []; }
+            }
+            return [];
+          };
+          const parsedActuaciones = parseJson(response.data.actuaciones);
+          const parsedIngresos = parseJson(response.data.ingresos);
+          const parsedProgramaciones = parseJson(response.data.programaciones);
+          
+          if (parsedActuaciones.length > 0) setActuacionesJefe(parsedActuaciones);
+          if (parsedIngresos.length > 0) setIngresosJefe(parsedIngresos);
+          if (parsedProgramaciones.length > 0) setProgramacionesJefe(parsedProgramaciones);
+        }
+      } catch (error) {
+        console.error('Error fetching admin draft:', error);
+      }
+    };
+    fetchDraft();
+  }, []);
+
+  // Guardar automáticamente en el servidor (Auto-Draft) para el Jefe
+  useEffect(() => {
+    const handler = setTimeout(async () => {
+      try {
+        if (actuacionesJefe.length === 0 && ingresosJefe.length === 0 && programacionesJefe.length === 0) return;
+        const apiDraft = {
+          actuaciones: actuacionesJefe,
+          ingresos: ingresosJefe,
+          programaciones: programacionesJefe
+        };
+        await api.post('/rd-intranet/v1/draft', apiDraft);
+      } catch (e) {
+        console.error('Error saving admin draft to cloud', e);
+      }
+    }, 800);
+    return () => clearTimeout(handler);
+  }, [actuacionesJefe, ingresosJefe, programacionesJefe]);
+
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
