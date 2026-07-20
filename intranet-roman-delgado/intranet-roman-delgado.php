@@ -3,7 +3,7 @@
  * Plugin Name: RD Intranet Backend
  * Plugin URI: https://romanydelgado.com
  * Description: Backend personalizado para la Intranet de Román & Delgado. Gestiona la base de datos de bitácoras, API REST segura y automatización de correos a las 6PM.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Tu Agente Antigravity
  * Text Domain: rd-intranet
  */
