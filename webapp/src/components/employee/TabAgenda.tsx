@@ -3,6 +3,7 @@ import { CalendarIcon, Plus, X, Clock, Activity } from 'lucide-react';
 import type { Programacion } from '../../types/libros';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import api from '../../lib/api';
 
 interface TabAgendaProps {
   programaciones: Programacion[];
@@ -29,6 +30,28 @@ export default function TabAgenda({
       .replace(/\\u00fa|u00fa/g, 'ú').replace(/\\u00da|u00da/g, 'Ú')
       .replace(/\\u00f1|u00f1/g, 'ñ').replace(/\\u00d1|u00d1/g, 'Ñ')
       .replace(/\\u00bf|u00bf/g, '¿').replace(/\\u00a1|u00a1/g, '¡');
+  };
+
+  const [syncing, setSyncing] = React.useState(false);
+  const [synced, setSynced] = React.useState(false);
+
+  const handleSyncAdelanto = async () => {
+    setSyncing(true);
+    try {
+      const localDraft = localStorage.getItem('rd_intranet_draft');
+      if (localDraft) {
+        const parsed = JSON.parse(localDraft);
+        await api.post('/rd-intranet/v1/draft', { ...parsed, programaciones });
+      } else {
+        await api.post('/rd-intranet/v1/draft', { programaciones });
+      }
+      setSynced(true);
+      setTimeout(() => setSynced(false), 4000);
+    } catch (error) {
+      console.error('Error al sincronizar adelanto:', error);
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const handleAddRow = () => {
@@ -145,12 +168,25 @@ export default function TabAgenda({
           <Plus className="w-5 h-5 text-amber-500" /> Añadir Nuevas Tareas (Bitácora de Hoy)
         </h4>
         {!reportSubmitted && (
-          <button 
-            onClick={handleAddRow}
-            className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Nueva Programación
-          </button>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              onClick={handleSyncAdelanto}
+              disabled={syncing || programaciones.length === 0}
+              className={`font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm ${
+                synced ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white border border-slate-700'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title="Notificar a jefatura sobre esta programación sin necesidad de cerrar el día"
+            >
+              {syncing ? <Activity className="w-4 h-4 animate-spin" /> : (synced ? <Clock className="w-4 h-4" /> : <Activity className="w-4 h-4" />)}
+              {syncing ? 'Enviando...' : (synced ? '¡Adelanto Enviado a Jefatura!' : 'Enviar Avance a Jefatura')}
+            </button>
+            <button 
+              onClick={handleAddRow}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Nueva Programación
+            </button>
+          </div>
         )}
       </div>
 
