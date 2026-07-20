@@ -1477,20 +1477,45 @@ export default function AdminDashboard() {
                 </button>
               ) : (
                 <button 
-                  onClick={async () => {
-                    if (window.confirm("¿Seguro que deseas descartar este avance? Se borrarán sus tareas de prueba, pero NO se cerrará su sesión.")) {
-                      try {
-                        await api.post('/rd-intranet/v1/admin-update-draft', {
-                          target_user_id: selectedReport.user_id,
-                          comentario_admin: '',
-                          programaciones: []
-                        });
-                        setAllDrafts(allDrafts.filter(d => d.user_id !== selectedReport.user_id));
-                        setSelectedReport(null);
-                      } catch (e) {
-                        console.error("Error al descartar avance", e);
+                  onClick={() => {
+                    setSystemAlert({
+                      isOpen: true,
+                      type: 'warning',
+                      title: '¿Descartar Avance?',
+                      message: `¿Estás seguro de que deseas descartar el avance de ${selectedReport.user}? Se borrarán las tareas que envió como prueba, pero NO se cerrará su sesión ni se afectará su asistencia.`,
+                      showCancel: true,
+                      confirmText: 'Sí, Descartar',
+                      cancelText: 'Cancelar',
+                      onConfirm: async () => {
+                        setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                        try {
+                          await api.post('/rd-intranet/v1/admin-update-draft', {
+                            target_user_id: selectedReport.user_id,
+                            comentario_admin: '',
+                            programaciones: []
+                          });
+                          setSystemAlert({
+                            isOpen: true,
+                            type: 'success',
+                            title: 'Avance Descartado',
+                            message: 'Las tareas de avance han sido borradas correctamente de tu panel.',
+                            showCancel: false,
+                            onConfirm: () => {
+                              setAllDrafts(allDrafts.filter(d => d.user_id !== selectedReport.user_id));
+                              setSelectedReport(null);
+                              setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                            }
+                          });
+                        } catch (e) {
+                          setSystemAlert({
+                            isOpen: true,
+                            type: 'error',
+                            title: 'Error al Descartar',
+                            message: 'No se pudo descartar el avance en este momento. Inténtalo de nuevo.'
+                          });
+                        }
                       }
-                    }
+                    });
                   }}
                   className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
                 >
