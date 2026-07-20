@@ -379,6 +379,13 @@ add_action('rest_api_init', function () {
         }
     ));
 
+    // Endpoint: GET /rd-intranet/v1/all-drafts (Obtener borradores de todos los empleados para Agenda Global)
+    register_rest_route('rd-intranet/v1', '/all-drafts', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_all_drafts',
+        'permission_callback' => $is_authorized_admin
+    ));
+
     // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'POST',
@@ -439,6 +446,27 @@ function rd_intranet_get_draft() {
     }
 
     return rest_ensure_response(empty($draft) ? null : $draft);
+}
+
+function rd_intranet_get_all_drafts() {
+    $users = get_users();
+    $all_drafts = array();
+    
+    foreach ($users as $user) {
+        $draft_str = get_user_meta($user->ID, 'rd_intranet_draft', true);
+        if ($draft_str) {
+            $draft = json_decode($draft_str, true);
+            if (is_array($draft) && !empty($draft['programaciones'])) {
+                $user_display = $user->display_name ?: ($user->user_nicename ?: $user->user_login);
+                $all_drafts[] = array(
+                    'user' => $user_display,
+                    'programaciones' => $draft['programaciones']
+                );
+            }
+        }
+    }
+    
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($all_drafts));
 }
 
 function rd_intranet_get_request_data($request) {

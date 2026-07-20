@@ -14,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
+  const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [adminComment, setAdminComment] = useState('');
   const [adminProgramaciones, setAdminProgramaciones] = useState<any[]>([]);
@@ -99,6 +100,12 @@ export default function AdminDashboard() {
             };
           });
           setReports(parsedData);
+        }
+
+        // También obtener borradores (Adelantos) para la Agenda Global
+        const draftsRes = await api.get('/rd-intranet/v1/all-drafts');
+        if (draftsRes.data && Array.isArray(draftsRes.data)) {
+          setAllDrafts(draftsRes.data);
         }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
@@ -432,8 +439,12 @@ export default function AdminDashboard() {
     }
   };
 
+  // Combinar programaciones de bitácoras enviadas + adelantos (borradores)
+  const draftTasks = allDrafts.flatMap(d => (d.programaciones || []).map((p: any) => ({ ...p, user: d.user, isDraft: true })));
+  
   const allScheduledTasks = reports
-    .flatMap(r => (r.programaciones || []).map((p: any) => ({ ...p, user: r.user, sourceReport: r })))
+    .flatMap(r => (r.programaciones || []).map((p: any) => ({ ...p, user: r.user, sourceReport: r, isDraft: false })))
+    .concat(draftTasks)
     .filter(t => t.fecha >= format(new Date(), 'yyyy-MM-dd'))
     .sort((a, b) => {
       const dateA = new Date(`${a.fecha}T${a.hora || '00:00'}`);
@@ -805,9 +816,14 @@ export default function AdminDashboard() {
                               </div>
                               <span className="font-bold text-slate-800 capitalize">{task.user}</span>
                             </div>
-                            <span className="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-md flex items-center gap-1">
-                              <Clock className="w-3.5 h-3.5"/> {task.hora}
-                            </span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-md flex items-center gap-1">
+                                <Clock className="w-3.5 h-3.5"/> {task.hora}
+                              </span>
+                              <span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full border ${task.isDraft ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                                {task.isDraft ? 'AVANCE / BORRADOR' : 'CONFIRMADA'}
+                              </span>
+                            </div>
                           </div>
                           
                           <p className="font-bold text-slate-800 mb-1">{task.tipoActuacion}</p>
