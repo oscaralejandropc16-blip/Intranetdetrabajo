@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks } from '../lib/api';
@@ -770,7 +770,7 @@ export default function AdminDashboard() {
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
                         title="Haz clic para descargar el PDF completo"
                       >
-                        ⬇️ PDF
+                        <Download className="w-4 h-4" /> PDF
                       </a>
                     ) : (
                       <button
@@ -1440,7 +1440,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="overflow-hidden">
                         <p className="font-bold text-slate-900 truncate">Bitacora_{selectedReport.user}.pdf</p>
-                        <p className="text-xs text-emerald-800 font-extrabold flex items-center gap-1">⬇️ Ver / Descargar PDF Oficial</p>
+                        <p className="text-xs text-emerald-800 font-extrabold flex items-center gap-1"><Download className="w-4 h-4 mr-1" /> Ver / Descargar PDF Oficial</p>
                       </div>
                     </a>
                   ) : (
@@ -1459,12 +1459,12 @@ export default function AdminDashboard() {
                         <div>
                           <p className="font-extrabold text-slate-900">Bitacora_{selectedReport.user}_{selectedReport.date}.pdf</p>
                           <p className="text-xs text-amber-900 font-bold flex items-center gap-1">
-                            ⚡ Generar y Descargar Documento Oficial PDF (Reconstruido desde datos KANT)
+                            <Zap className="w-4 h-4 mr-1" /> Generar y Descargar Documento Oficial PDF (Reconstruido desde datos KANT)
                           </p>
                         </div>
                       </div>
                       <span className="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl font-black text-xs shrink-0 ml-2 shadow-sm">
-                        ⬇️ GENERAR PDF
+                        <Download className="w-4 h-4 inline mr-1" /> GENERAR PDF
                       </span>
                     </button>
                   )}
