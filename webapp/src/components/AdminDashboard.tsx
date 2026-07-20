@@ -823,48 +823,49 @@ export default function AdminDashboard() {
                     <div className="h-px bg-slate-200 flex-1"></div>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pl-4 lg:pl-8 border-l-2 border-amber-200">
+                  <div className="flex flex-col gap-3 pl-2 lg:pl-6 border-l-2 border-amber-200">
                     {groupedTasks[dateStr].map((task: any, i: number) => (
-                      <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 transition-colors p-5 relative overflow-hidden group">
-                        {task.observaciones && <div className="absolute top-0 right-0 w-16 h-16 bg-amber-100 rotate-45 translate-x-8 -translate-y-8 z-0"></div>}
-                        <div className="relative z-10 flex flex-col h-full">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-xs uppercase border border-slate-200">
-                                {task.user.substring(0, 2)}
-                              </div>
-                              <span className="font-bold text-slate-800 capitalize">{task.user}</span>
-                            </div>
-                            <div className="flex flex-col items-end gap-1">
-                              <span className="bg-slate-100 text-slate-600 font-bold text-xs px-2.5 py-1 rounded-md flex items-center gap-1">
-                                <Clock className="w-3.5 h-3.5"/> {task.hora}
-                              </span>
-                              <span className={`text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-full border ${task.isDraft ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
-                                {task.isDraft ? 'AVANCE / BORRADOR' : 'CONFIRMADA'}
-                              </span>
-                            </div>
+                      <div key={i} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:border-amber-400 transition-colors p-3 md:p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group relative overflow-hidden">
+                        
+                        {/* Usuario y Hora */}
+                        <div className="flex items-center gap-3 min-w-[180px] shrink-0">
+                          <div className="w-10 h-10 rounded-full bg-slate-50 text-slate-600 font-bold flex items-center justify-center text-sm uppercase border border-slate-200 shrink-0">
+                            {task.user.substring(0, 2)}
                           </div>
-                          
-                          <p className="font-bold text-slate-800 mb-1">{task.tipoActuacion}</p>
-                          <p className="text-sm text-slate-500 font-medium mb-4 flex items-center gap-1.5 line-clamp-2">
-                            <Activity className="w-4 h-4 text-blue-500 shrink-0" /> {task.organismoTribunal}
-                          </p>
-                          
-                          <div className="mt-auto pt-4 border-t border-slate-100 space-y-3">
-                            {task.observaciones && (
-                              <div className="bg-amber-50 border border-amber-200 text-amber-800 text-xs p-2.5 rounded-lg font-medium">
-                                <span className="font-bold block mb-0.5">Nota del Jefe:</span>
-                                {task.observaciones}
-                              </div>
-                            )}
-                            <button 
-                              onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(task.sourceReport.comentario_admin || ''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
-                              className="w-full text-center py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800"
-                            >
-                              {task.isDraft ? 'Editar Avance (Borrador)' : 'Editar Tarea en Bitácora'}
-                            </button>
+                          <div>
+                            <span className="font-bold text-slate-800 text-sm capitalize block">{task.user}</span>
+                            <span className="text-slate-500 font-bold text-[11px] flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3"/> {task.hora}
+                            </span>
                           </div>
                         </div>
+                        
+                        {/* Detalles de la Tarea */}
+                        <div className="flex-1 min-w-0 flex flex-col justify-center">
+                          <p className="font-bold text-slate-800 text-sm truncate">{task.tipoActuacion}</p>
+                          <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 truncate mt-0.5">
+                            <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {task.organismoTribunal}
+                          </p>
+                          {task.observaciones && (
+                            <div className="text-amber-700 text-xs mt-1.5 font-medium flex items-center gap-1 truncate">
+                              <span className="font-bold bg-amber-100 px-1.5 py-0.5 rounded text-[10px]">Nota del Jefe:</span> {task.observaciones}
+                            </div>
+                          )}
+                        </div>
+                        
+                        {/* Acciones y Estado */}
+                        <div className="flex flex-row md:flex-col lg:flex-row items-center justify-end gap-3 shrink-0 w-full md:w-auto mt-2 md:mt-0 pt-3 md:pt-0 border-t md:border-0 border-slate-100">
+                          <span className={`text-[9px] font-bold tracking-wider px-2 py-1 rounded border ${task.isDraft ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                            {task.isDraft ? 'BORRADOR' : 'CONFIRMADA'}
+                          </span>
+                          <button 
+                            onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(task.sourceReport.comentario_admin || ''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
+                            className="px-4 py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-[10px] uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800 whitespace-nowrap"
+                          >
+                            {task.isDraft ? 'Editar Avance' : 'Editar Tarea'}
+                          </button>
+                        </div>
+
                       </div>
                     ))}
                   </div>
