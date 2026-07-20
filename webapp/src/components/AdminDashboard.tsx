@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import api, { uploadPdfInChunks } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile } from '../lib/api';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
@@ -1198,6 +1198,18 @@ export default function AdminDashboard() {
                         await uploadPdfInChunks(postId, pdfBase64);
                       }
 
+                      // Subir evidencias si existen (bypass WAF por FormData)
+                      if (attachedFilesJefe.length > 0 && postId) {
+                        setSystemAlert({ isOpen: true, type: 'info', title: 'Subiendo Evidencias', message: 'Por favor espera mientras se suben los documentos adjuntos...' });
+                        for (let i = 0; i < attachedFilesJefe.length; i++) {
+                          try {
+                            await uploadEvidenceFile(postId, attachedFilesJefe[i].file, attachedFilesJefe[i].note);
+                          } catch (err) {
+                            console.error('Error subiendo evidencia de jefatura:', err);
+                          }
+                        }
+                      }
+
                       // Limpiar el borrador de jefatura para iniciar un nuevo día
                       localStorage.removeItem('rd_jefe_actuaciones');
                       localStorage.removeItem('rd_jefe_ingresos');
@@ -1205,6 +1217,7 @@ export default function AdminDashboard() {
                       setActuacionesJefe([]);
                       setIngresosJefe([]);
                       setProgramacionesJefe([]);
+                      setAttachedFilesJefe([]);
 
                       setJefeReportSubmitted(true);
                       setSystemAlert({
@@ -1341,16 +1354,16 @@ export default function AdminDashboard() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm text-left">
                       <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
-                        <tr><th className="p-3">Expediente</th><th className="p-3">Fecha/Hora</th><th className="p-3">Órgano/Tribunal</th><th className="p-3">Actuación</th><th className="p-3">Observaciones</th></tr>
+                        <tr><th className="p-3">Hora</th><th className="p-3">Nº Asunto / Exp.</th><th className="p-3">Partes Involucradas</th><th className="p-3">Actuación / Gestión</th><th className="p-3">Observaciones</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {selectedReport.actuaciones.map((act: any, i: number) => (
                           <tr key={i} className="hover:bg-slate-50/50">
-                            <td className="p-3 font-medium text-slate-800">{act.expediente}</td>
-                            <td className="p-3 text-slate-500">{act.fecha} {act.hora}</td>
-                            <td className="p-3 text-slate-600">{act.organismoTribunal}</td>
-                            <td className="p-3 text-slate-600">{act.tipoActuacion}<br/><span className="text-xs text-slate-400">{act.resumen}</span></td>
-                            <td className="p-3 text-slate-500 text-xs">{act.observaciones}</td>
+                            <td className="p-3 text-slate-500 font-medium">{act.hora || 'N/A'}</td>
+                            <td className="p-3 font-bold text-slate-800">{act.numeroAsunto || 'N/A'}</td>
+                            <td className="p-3 text-slate-600">{act.partes || 'N/A'}</td>
+                            <td className="p-3 text-slate-600 whitespace-pre-wrap">{act.actuacion || 'N/A'}</td>
+                            <td className="p-3 text-slate-500 text-xs">{act.observaciones || 'N/A'}</td>
                           </tr>
                         ))}
                       </tbody>
