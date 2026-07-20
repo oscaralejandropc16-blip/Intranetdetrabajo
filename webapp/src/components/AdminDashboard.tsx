@@ -838,12 +838,21 @@ export default function AdminDashboard() {
                                 {task.observaciones}
                               </div>
                             )}
-                            <button 
-                              onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
-                              className="w-full text-center py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800"
-                            >
-                              Editar Tarea en Bitácora
-                            </button>
+                            {task.isDraft ? (
+                              <button 
+                                disabled
+                                className="w-full text-center py-2 bg-slate-100 text-slate-400 font-bold text-xs uppercase tracking-wider rounded-lg border border-slate-200 cursor-not-allowed"
+                              >
+                                Solo Lectura (Aún en Borrador)
+                              </button>
+                            ) : (
+                              <button 
+                                onClick={() => { setSelectedReport(task.sourceReport); setAdminComment(''); setAdminProgramaciones(task.sourceReport.programaciones || []); }}
+                                className="w-full text-center py-2 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-lg transition-colors border border-slate-200 hover:border-slate-800"
+                              >
+                                Editar Tarea en Bitácora
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
