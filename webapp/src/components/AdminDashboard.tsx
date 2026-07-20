@@ -1074,6 +1074,14 @@ export default function AdminDashboard() {
                         await uploadPdfInChunks(postId, pdfBase64);
                       }
 
+                      // Limpiar el borrador de jefatura para iniciar un nuevo día
+                      localStorage.removeItem('rd_jefe_actuaciones');
+                      localStorage.removeItem('rd_jefe_ingresos');
+                      localStorage.removeItem('rd_jefe_programacion');
+                      setActuacionesJefe([]);
+                      setIngresosJefe([]);
+                      setProgramacionesJefe([]);
+
                       setJefeReportSubmitted(true);
                       setSystemAlert({
                         isOpen: true,
