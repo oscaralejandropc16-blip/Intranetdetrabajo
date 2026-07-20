@@ -738,7 +738,7 @@ export default function AdminDashboard() {
                   <td className="p-6">
                     {report.pdfBase64 ? (
                       <a
-                        href={report.pdfBase64}
+                        href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
                         download={`Bitacora_${report.user}_${report.date}.pdf`}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
                         title="Haz clic para descargar el PDF completo"
@@ -1395,7 +1395,7 @@ export default function AdminDashboard() {
                   {/* Botón para descargar el PDF principal generado automáticamente */}
                   {selectedReport.pdfBase64 ? (
                     <a 
-                      href={selectedReport.pdfBase64} 
+                      href={selectedReport.pdfBase64.startsWith('data:') || selectedReport.pdfBase64.startsWith('http') ? selectedReport.pdfBase64 : `data:application/pdf;base64,${selectedReport.pdfBase64}`} 
                       download={`Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`}
                       className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 transition-all cursor-pointer group shadow-sm"
                     >
