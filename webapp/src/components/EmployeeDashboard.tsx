@@ -733,7 +733,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'ingresos' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <FileDigit className="w-5 h-5" />
-            Libro de Ingresos
+            <span>Libro de Ingresos</span>
           </button>
           
           <button 
@@ -741,7 +741,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'registro' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <Activity className="w-5 h-5" />
-            Libro de Actuaciones
+            <span>Libro de Actuaciones</span>
           </button>
 
           <button 
@@ -749,7 +749,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'agenda' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <CalendarIcon className="w-5 h-5" />
-            Libro de Programación
+            <span>Libro de Programación</span>
           </button>
           
           <button 
@@ -760,7 +760,7 @@ export default function EmployeeDashboard() {
               <MessageSquare className="w-5 h-5" />
               {unreadCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-rose-500 rounded-full border-2 border-slate-900"></span>}
             </div>
-            Notificaciones {unreadCount > 0 && `(${unreadCount})`}
+            <span>Notificaciones {unreadCount > 0 && `(${unreadCount})`}</span>
           </button>
 
           <button 
@@ -768,7 +768,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'historial' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <History className="w-5 h-5" />
-            Mi Historial
+            <span>Mi Historial</span>
           </button>
 
           <button 
@@ -776,7 +776,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'investigaciones' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <BookOpen className="w-5 h-5" />
-            Investigaciones & Sentencias
+            <span>Investigaciones & Sentencias</span>
           </button>
         </div>
       </div>
@@ -814,7 +814,7 @@ export default function EmployeeDashboard() {
               >
                 <span className="flex items-center gap-2 mb-1">
                   {loadingDraft ? <Clock className="w-5 h-5 animate-spin text-amber-600" /> : reportSubmitted ? <CheckCircle2 className="w-5 h-5 text-slate-500" /> : clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                  {loadingDraft ? 'Sincronizando...' : reportSubmitted ? 'Jornada de Hoy Concluida' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}
+                  <span>{loadingDraft ? 'Sincronizando...' : reportSubmitted ? 'Jornada de Hoy Concluida' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}</span>
                 </span>
                 {clockIn && (
                   <div className="flex flex-col items-center gap-1 mt-1">
@@ -850,7 +850,7 @@ export default function EmployeeDashboard() {
               >
                 <span className="flex items-center gap-2 mb-1">
                   {(clockOut || reportSubmitted) ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 opacity-50" />}
-                  {(clockOut || reportSubmitted) ? 'Salida Registrada' : 'Salida Pendiente'}
+                  <span>{(clockOut || reportSubmitted) ? 'Salida Registrada' : 'Salida Pendiente'}</span>
                 </span>
                 {clockOut && <span className="text-rose-900 bg-rose-200/50 px-3 py-1 rounded-lg text-xs tracking-wider mt-1">{format(clockOut, 'hh:mm a')}</span>}
               </div>
