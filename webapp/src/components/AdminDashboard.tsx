@@ -812,7 +812,12 @@ export default function AdminDashboard() {
           </div>
           
           <div className="space-y-10">
-            {Object.keys(groupedTasks).length === 0 ? (
+            {loading ? (
+              <div className="text-center p-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-slate-100 animate-pulse flex flex-col items-center justify-center gap-3">
+                <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-amber-500 animate-spin"></div>
+                Sincronizando agenda con la base de datos central...
+              </div>
+            ) : Object.keys(groupedTasks).length === 0 ? (
               <div className="text-center p-12 text-slate-500 italic font-medium bg-slate-50 rounded-2xl border border-slate-100">
                 No hay actividades futuras programadas por los empleados.
               </div>
