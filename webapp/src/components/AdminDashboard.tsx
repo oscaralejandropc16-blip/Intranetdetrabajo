@@ -27,7 +27,6 @@ export default function AdminDashboard() {
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
-  const [investigacionesAdmin, setInvestigacionesAdmin] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>('actuaciones');
   
   // Estado local para Libros de Jefatura (sin horario/GPS)
@@ -101,12 +100,8 @@ export default function AdminDashboard() {
           });
           setReports(parsedData);
         }
-        const invRes = await api.get('/rd-intranet/v1/investigaciones');
-        if (invRes.data && Array.isArray(invRes.data)) {
-          setInvestigacionesAdmin(invRes.data);
-        }
       } catch (error) {
-        console.error('Error fetching bitacoras / investigaciones', error);
+        console.error('Error fetching bitacoras', error);
       } finally {
         setLoading(false);
       }
