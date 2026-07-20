@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb } from 'lucide-react';
+import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb, Trash2 } from 'lucide-react';
 import api from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
@@ -10,7 +10,7 @@ export const TabInvestigaciones: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
+  const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string; showCancel?: boolean; onConfirm?: () => void; confirmText?: string; cancelText?: string; }>({
     isOpen: false,
     type: 'info',
     title: '',
@@ -26,6 +26,8 @@ export const TabInvestigaciones: React.FC = () => {
     articulos_cientificos: '',
     opinion_rd: ''
   });
+  const currentUserName = localStorage.getItem('rd_user_name') || '';
+  const isAdmin = currentUserName.toLowerCase().includes('roman') || localStorage.getItem('rd_user_role') === 'admin';
 
   const fetchInvestigaciones = async () => {
     setLoading(true);
@@ -86,6 +88,29 @@ export const TabInvestigaciones: React.FC = () => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'warning',
+      title: '¿Eliminar Investigación?',
+      message: 'Esta acción es irreversible y eliminará la investigación del repositorio global. ¿Estás seguro?',
+      showCancel: true,
+      onConfirm: async () => {
+        setSystemAlert(prev => ({ ...prev, isOpen: false }));
+        try {
+          await api.post('/rd-intranet/v1/delete-investigacion', { post_id: id });
+          setMessage({ type: 'success', text: 'Investigación eliminada correctamente.' });
+          fetchInvestigaciones();
+          setTimeout(() => setMessage(null), 3000);
+        } catch (err) {
+          console.error('Error eliminando investigación:', err);
+          setMessage({ type: 'error', text: 'No se pudo eliminar la investigación.' });
+          setTimeout(() => setMessage(null), 3000);
+        }
+      }
+    });
+  };
+
   const filteredInvestigaciones = investigaciones.filter(inv => {
     const q = searchTerm.toLowerCase();
     return (
@@ -103,6 +128,10 @@ export const TabInvestigaciones: React.FC = () => {
         type={systemAlert.type}
         title={systemAlert.title}
         message={systemAlert.message}
+        showCancel={systemAlert.showCancel}
+        onConfirm={systemAlert.onConfirm}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
         onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
       />
       {/* Hero Header Glassmorphism */}
@@ -196,7 +225,18 @@ export const TabInvestigaciones: React.FC = () => {
                       <span className="px-3 py-1 bg-amber-100 text-amber-800 border border-amber-200 rounded-lg text-xs font-black uppercase tracking-wider">
                         Investigación R&D
                       </span>
-                      <span className="text-xs font-semibold text-slate-400">{inv.date}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-400">{inv.date}</span>
+                        {(isAdmin || currentUserName === inv.user) && (
+                          <button 
+                            onClick={() => handleDelete(inv.id)}
+                            className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar Investigación"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <h3 className="text-xl font-extrabold text-slate-900 leading-tight mb-2">{inv.tema || 'Sin Título'}</h3>

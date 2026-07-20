@@ -370,6 +370,12 @@ add_action('rest_api_init', function () {
         )
     ));
 
+    // Endpoint: POST /rd-intranet/v1/delete-investigacion
+    register_rest_route('rd-intranet/v1', '/delete-investigacion', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_delete_investigacion',
+        'permission_callback' => function () { return is_user_logged_in(); }
+    ));
     // Endpoint: GET /rd-intranet/v1/expedientes (Obtener todos los expedientes globales)
     register_rest_route('rd-intranet/v1', '/expedientes', array(
         'methods' => 'GET',
@@ -1260,4 +1266,27 @@ function rd_intranet_save_investigacion($request) {
     update_post_meta($post_id, 'inv_opinion', $opinion);
     
     return rest_ensure_response(array('success' => true, 'id' => $post_id, 'message' => 'Investigación jurídica guardada exitosamente.'));
+}
+
+function rd_intranet_delete_investigacion($request) {
+    $user_id = get_current_user_id();
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['post_id'] ?? 0);
+    
+    if ($post_id <= 0) {
+        return new WP_Error('invalid_id', 'ID de investigación inválido', array('status' => 400));
+    }
+    
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'rd_investigacion') {
+        return new WP_Error('not_found', 'Investigación no encontrada', array('status' => 404));
+    }
+    
+    if ($post->post_author != $user_id && !rd_intranet_is_authorized_admin($user_id)) {
+        return new WP_Error('unauthorized', 'No tienes permiso para eliminar esta investigación', array('status' => 403));
+    }
+    
+    wp_delete_post($post_id, true);
+    
+    return rest_ensure_response(array('success' => true, 'message' => 'Investigación eliminada con éxito'));
 }

@@ -15,6 +15,7 @@ import autoTable from 'jspdf-autotable';
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
+  const [allInvestigaciones, setAllInvestigaciones] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [adminComment, setAdminComment] = useState('');
   const [adminProgramaciones, setAdminProgramaciones] = useState<any[]>([]);
@@ -107,6 +108,12 @@ export default function AdminDashboard() {
         const draftsRes = await api.get('/rd-intranet/v1/all-drafts');
         if (draftsRes.data && Array.isArray(draftsRes.data)) {
           setAllDrafts(draftsRes.data);
+        }
+
+        // Obtener investigaciones globales para cruzar con las bitácoras
+        const invesRes = await api.get('/rd-intranet/v1/investigaciones');
+        if (invesRes.data && Array.isArray(invesRes.data)) {
+          setAllInvestigaciones(invesRes.data);
         }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
@@ -1451,6 +1458,23 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               </div>
+
+              {/* Investigaciones del Empleado */}
+              {allInvestigaciones.filter(inv => inv.user === selectedReport.user && inv.date && inv.date.startsWith(selectedReport.date)).length > 0 && (
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
+                    <BookOpen className="w-5 h-5 text-amber-500" /> Investigaciones Aportadas (KANT)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    {allInvestigaciones.filter(inv => inv.user === selectedReport.user && inv.date && inv.date.startsWith(selectedReport.date)).map((inv: any, idx: number) => (
+                      <div key={idx} className="bg-amber-50 p-4 border border-amber-200 rounded-xl">
+                        <p className="font-bold text-slate-800 mb-2">{inv.tema}</p>
+                        <p className="text-sm text-slate-600 line-clamp-2">{inv.resumen}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Archivos Adjuntos y PDF de Jornada */}
               <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
