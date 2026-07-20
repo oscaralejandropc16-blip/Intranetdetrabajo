@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { uploadPdfInChunks } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile } from '../lib/api';
 import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -560,6 +560,17 @@ export default function EmployeeDashboard() {
         if (postId && pdfBase64) {
           console.log(`Cargando archivo PDF por bloques (Chunked Upload) al servidor (post_id: ${postId})...`);
           await uploadPdfInChunks(postId, pdfBase64);
+        }
+
+        if (postId && attachedFiles.length > 0) {
+          console.log(`Subiendo ${attachedFiles.length} documentos de evidencia...`);
+          for (const fileObj of attachedFiles) {
+            try {
+              await uploadEvidenceFile(postId, fileObj.file, fileObj.note);
+            } catch (err) {
+              console.error(`Error al subir evidencia: ${fileObj.file.name}`, err);
+            }
+          }
         }
 
         localStorage.removeItem(getStorageKey()); // Limpiar el borrador al enviar con éxito

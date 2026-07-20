@@ -277,6 +277,15 @@ add_action('rest_api_init', function () {
         }
     ));
 
+    // Endpoint: POST /rd-intranet/v1/upload-evidence (Carga de Documentos y Evidencias)
+    register_rest_route('rd-intranet/v1', '/upload-evidence', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_upload_evidence',
+        'permission_callback' => function () {
+            return is_user_logged_in();
+        }
+    ));
+
     // Endpoint: GET /rd-intranet/v1/correlatives (Obtener correlativos usados globales)
     register_rest_route('rd-intranet/v1', '/correlatives', array(
         'methods' => 'GET',
@@ -745,6 +754,58 @@ function rd_intranet_handle_submit($request) {
     return rest_ensure_response(array('success' => true, 'message' => 'Día cerrado exitosamente.', 'post_id' => $post_id));
 }
 
+function rd_intranet_upload_evidence($request) {
+    $user_id = get_current_user_id();
+    if (!$user_id) {
+        return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
+    }
+
+    $post_id = intval($_POST['post_id'] ?? 0);
+    $note = sanitize_text_field($_POST['note'] ?? '');
+
+    if ($post_id <= 0 || empty($_FILES['evidence_file'])) {
+        return new WP_Error('bad_request', 'Datos de archivo inválidos', array('status' => 400));
+    }
+
+    $post = get_post($post_id);
+    if (!$post || ($post->post_author != $user_id && !rd_intranet_is_authorized_admin($user_id))) {
+        return new WP_Error('forbidden', 'No tienes permiso para modificar esta bitácora', array('status' => 403));
+    }
+
+    if (!function_exists('wp_handle_upload')) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+    }
+
+    $file = $_FILES['evidence_file'];
+    $upload_overrides = array('test_form' => false);
+    $movefile = wp_handle_upload($file, $upload_overrides);
+
+    if ($movefile && !isset($movefile['error'])) {
+        $evidences_json = get_post_meta($post_id, 'evidences_json', true);
+        $evidences = empty($evidences_json) ? array() : json_decode($evidences_json, true);
+        if (!is_array($evidences)) {
+            $evidences = array();
+        }
+
+        $evidences[] = array(
+            'url' => $movefile['url'],
+            'type' => $movefile['type'],
+            'name' => basename($movefile['file']),
+            'note' => $note
+        );
+
+        update_post_meta($post_id, 'evidences_json', wp_json_encode($evidences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+
+        return rest_ensure_response(array(
+            'success' => true,
+            'url' => $movefile['url'],
+            'message' => 'Evidencia subida correctamente.'
+        ));
+    } else {
+        return new WP_Error('upload_error', $movefile['error'], array('status' => 500));
+    }
+}
+
 function rd_intranet_upload_pdf($request) {
     $user_id = get_current_user_id();
     if (!$user_id) {
@@ -856,7 +917,8 @@ function rd_intranet_get_bitacoras() {
                 'cierreRetrasado' => get_post_meta(get_the_ID(), 'cierre_retrasado', true) === '1',
                 'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
                 'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
-                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json')
+                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json'),
+                'evidences' => rd_intranet_decode_meta_json(get_the_ID(), 'evidences_json')
             );
         }
         wp_reset_postdata();

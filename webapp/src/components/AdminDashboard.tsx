@@ -1481,16 +1481,16 @@ export default function AdminDashboard() {
                     </button>
                   )}
 
-                  {selectedReport.files && selectedReport.files.map((file: any, index: number) => (
-                    <div key={index} className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer group">
-                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200 group-hover:border-blue-300 transition-colors">
-                        <FileText className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
+                  {selectedReport.evidences && selectedReport.evidences.map((ev: any, index: number) => (
+                    <a key={index} href={ev.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition-colors cursor-pointer group">
+                      <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center border border-slate-200 group-hover:border-blue-300 transition-colors shrink-0">
+                        <Download className="w-5 h-5 text-slate-400 group-hover:text-blue-500 transition-colors" />
                       </div>
                       <div className="overflow-hidden">
-                        <p className="font-bold text-slate-700 truncate">{file.name}</p>
-                        <p className="text-xs text-slate-500 font-medium">{file.size} • Haz clic para descargar</p>
+                        <p className="font-bold text-slate-700 truncate" title={ev.name}>{ev.name}</p>
+                        <p className="text-xs text-slate-500 font-medium truncate" title={ev.note || 'Documento adjunto'}>{ev.note || 'Documento adjunto'} • Clic para ver/descargar</p>
                       </div>
-                    </div>
+                    </a>
                   ))}
                 </div>
               </div>

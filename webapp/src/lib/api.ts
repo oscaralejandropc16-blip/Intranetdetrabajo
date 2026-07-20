@@ -89,4 +89,27 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
   return await response.json();
 }
 
+export async function uploadEvidenceFile(postId: number, file: File, note: string): Promise<any> {
+  const formData = new FormData();
+  formData.append('post_id', String(postId));
+  formData.append('evidence_file', file);
+  formData.append('note', note);
+  
+  const token = localStorage.getItem('rd_jwt_token');
+  
+  const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/upload-evidence`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+  
+  if (!response.ok) {
+    throw new Error('Error al subir evidencia');
+  }
+  
+  return await response.json();
+}
+
 export default api;
