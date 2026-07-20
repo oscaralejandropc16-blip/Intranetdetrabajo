@@ -39,6 +39,9 @@ export default function TabAgenda({
 
   const handleSyncAdelanto = async () => {
     setSyncing(true);
+    // Permitir que React renderice el estado "Enviando..." antes de bloquear el hilo con jsPDF
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
       const localDraft = localStorage.getItem('rd_intranet_draft');
       if (localDraft) {

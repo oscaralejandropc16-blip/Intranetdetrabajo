@@ -55,6 +55,7 @@ export default function EmployeeDashboard() {
     return null;
   });
   const [clockOut, setClockOut] = useState<Date | null>(null);
+  const [closingDay, setClosingDay] = useState(false);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingDraft, setLoadingDraft] = useState(true);
@@ -251,6 +252,11 @@ export default function EmployeeDashboard() {
 
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
+    setClosingDay(true);
+    
+    // Permitir que React renderice el estado de carga antes de bloquear el hilo principal con jsPDF
+    await new Promise(resolve => setTimeout(resolve, 150));
+
     try {
       // Obtener ubicación de salida antes de generar el PDF
       const locSalida = await getGeolocation();
@@ -536,6 +542,8 @@ export default function EmployeeDashboard() {
         title: 'Error al Cerrar Jornada',
         message: 'Ocurrió un error inesperado al procesar el cierre de tu jornada. Por favor, intenta de nuevo.'
       });
+    } finally {
+      setClosingDay(false);
     }
   };
 
@@ -863,18 +871,28 @@ export default function EmployeeDashboard() {
               </div>
             )}
 
-            {/* BOTÓN GIGANTE DE CERRAR JORNADA AL FONDO DEL PANEL */}
             <div className="mt-auto pt-6 border-t border-slate-100">
               <button 
                 type="button"
                 onClick={handleEndDay}
-                disabled={reportSubmitted || clockIn === null}
-                className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1 disabled:bg-slate-200 disabled:text-slate-500 disabled:cursor-not-allowed disabled:transform-none disabled:shadow-none flex flex-col items-center justify-center gap-1"
+                disabled={reportSubmitted || clockIn === null || closingDay}
+                className={`w-full font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-1 ${
+                  reportSubmitted
+                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none hover:translate-y-0'
+                    : closingDay
+                    ? 'bg-amber-300 text-slate-700 cursor-wait shadow-none hover:translate-y-0'
+                    : 'bg-amber-500 hover:bg-amber-400 hover:shadow-xl text-slate-900'
+                } ${(!reportSubmitted && clockIn === null) ? 'opacity-50 cursor-not-allowed hover:translate-y-0' : ''}`}
               >
                 {reportSubmitted ? (
                   <>
                     <CheckCircle2 className="w-6 h-6" />
                     <span>Bitácora Enviada</span>
+                  </>
+                ) : closingDay ? (
+                  <>
+                    <Activity className="w-6 h-6 animate-spin" />
+                    <span>Generando PDF y Enviando...</span>
                   </>
                 ) : (
                   <>

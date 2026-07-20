@@ -8,6 +8,7 @@ import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabAgenda from './employee/TabAgenda';
 import TabHistorial from './employee/TabHistorial';
+import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -25,9 +26,9 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'investigaciones'>('bitacoras');
+  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
   const [investigacionesAdmin, setInvestigacionesAdmin] = useState<any[]>([]);
-  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>('actuaciones');
+  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>('actuaciones');
   
   // Estado local para Libros de Jefatura (sin horario/GPS)
   const [actuacionesJefe, setActuacionesJefe] = useState<any[]>(() => {
@@ -575,12 +576,6 @@ export default function AdminDashboard() {
         >
           <History className="w-5 h-5" /> Mi Historial de Jefatura
         </button>
-        <button 
-          onClick={() => setActiveView('investigaciones')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'investigaciones' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
-        >
-          <BookOpen className="w-5 h-5" /> Investigaciones & Sentencias
-        </button>
       </div>
 
       {/* Main Content Area */}
@@ -888,6 +883,12 @@ export default function AdminDashboard() {
                 <CalendarIcon className="w-4 h-4" /> Programación
               </button>
               <button 
+                onClick={() => setBossSubTab('investigaciones')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'investigaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                <BookOpen className="w-4 h-4" /> Investigaciones
+              </button>
+              <button 
                 onClick={() => setBossSubTab('cierre')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
               >
@@ -926,6 +927,10 @@ export default function AdminDashboard() {
             />
           )}
 
+          {bossSubTab === 'investigaciones' && (
+            <TabInvestigaciones />
+          )}
+
           {bossSubTab === 'cierre' && (
             <div className="bg-slate-50 p-8 rounded-3xl border border-slate-200 text-center space-y-6 max-w-2xl mx-auto">
               <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
@@ -952,6 +957,10 @@ export default function AdminDashboard() {
                     }
 
                     setSubmittingJefe(true);
+                    
+                    // Permitir que React renderice el estado de carga antes de bloquear el hilo principal con jsPDF
+                    await new Promise(resolve => setTimeout(resolve, 150));
+
                     try {
                       const doc = new jsPDF({ format: 'a4', unit: 'mm' });
                       let finalY = 36;
@@ -1132,84 +1141,6 @@ export default function AdminDashboard() {
             <p className="text-slate-500 font-medium mt-1">Consulta y descarga los reportes PDF de gestión que has generado anteriormente.</p>
           </div>
           <TabHistorial />
-        </div>
-      )}
-
-      {/* VISTA: INVESTIGACIONES & SENTENCIAS (JEFATURA) */}
-      {activeView === 'investigaciones' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
-          <div className="mb-8 border-b border-slate-100 pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h3 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-                <BookOpen className="w-8 h-8 text-amber-500" /> Repositorio Jurídico KANT: Investigaciones & Sentencias
-              </h3>
-              <p className="text-slate-500 font-medium mt-1 text-lg">Supervisión y consulta doctrinal de las investigaciones, resúmenes y sentencias subidas por el equipo legal.</p>
-            </div>
-            <span className="px-4 py-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl font-bold text-sm">
-              Total Registrados: {investigacionesAdmin.length}
-            </span>
-          </div>
-
-          {investigacionesAdmin.length === 0 ? (
-            <div className="p-16 text-center bg-slate-50 rounded-2xl border border-slate-200">
-              <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-lg font-bold text-slate-600">Aún no hay investigaciones subidas en el Repositorio Jurídico KANT.</p>
-              <p className="text-sm text-slate-400 mt-1">Los abogados pueden cargar doctrina y resúmenes de sentencia desde su panel de empleado.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {investigacionesAdmin.map((inv) => (
-                <div key={inv.id} className="bg-slate-50 p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 hover:shadow-md transition-all flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-start gap-4 mb-4">
-                      <span className="px-3 py-1 bg-amber-500/10 text-amber-700 border border-amber-300 rounded-lg text-xs font-bold uppercase tracking-wider">
-                        Doctrina / Sentencia
-                      </span>
-                      <span className="text-xs text-slate-400 font-medium">{inv.date}</span>
-                    </div>
-                    <h4 className="text-xl font-extrabold text-slate-900 mb-2 leading-snug">{inv.tema || 'Investigación sin título'}</h4>
-                    <p className="text-xs font-bold text-blue-600 mb-4 uppercase tracking-wide">👨‍⚖️ Autor: {inv.user}</p>
-                    
-                    <div className="space-y-3 text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-100 mb-4">
-                      {inv.resumen && (
-                        <div>
-                          <p className="font-extrabold text-slate-900 text-xs uppercase mb-0.5">📌 Resumen / Hechos:</p>
-                          <p className="text-slate-600 line-clamp-3">{inv.resumen}</p>
-                        </div>
-                      )}
-                      {inv.sentencia && (
-                        <div>
-                          <p className="font-extrabold text-slate-900 text-xs uppercase mb-0.5 mt-2">⚖️ Sentencia / Tribunal:</p>
-                          <p className="text-slate-600 line-clamp-2">{inv.sentencia}</p>
-                        </div>
-                      )}
-                      {inv.opinion_rd && (
-                        <div>
-                          <p className="font-extrabold text-amber-700 text-xs uppercase mb-0.5 mt-2">💡 Opinión R&D:</p>
-                          <p className="text-slate-600 line-clamp-2 italic">{inv.opinion_rd}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-3 border-t border-slate-200/60 flex justify-between items-center text-xs text-slate-500">
-                    <span>📚 Libros/Artículos adjuntos en expediente</span>
-                    <button 
-                      onClick={() => setSystemAlert({
-                        isOpen: true,
-                        type: 'info',
-                        title: `Expediente: ${inv.tema}`,
-                        message: `AUTOR: ${inv.user}\n\nRESUMEN:\n${inv.resumen}\n\nSENTENCIA:\n${inv.sentencia}\n\nLIBROS:\n${inv.libros}\n\nARTICULOS CIENTIFICOS:\n${inv.articulos_cientificos}\n\nOPINION R&D:\n${inv.opinion_rd}`
-                      })}
-                      className="text-amber-600 hover:text-amber-800 font-extrabold underline cursor-pointer"
-                    >
-                      Ver Expediente Completo →
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
