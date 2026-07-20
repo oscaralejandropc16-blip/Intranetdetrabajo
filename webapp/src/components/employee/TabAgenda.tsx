@@ -4,6 +4,8 @@ import type { Programacion } from '../../types/libros';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api from '../../lib/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface TabAgendaProps {
   programaciones: Programacion[];
@@ -45,6 +47,116 @@ export default function TabAgenda({
       } else {
         await api.post('/rd-intranet/v1/draft', { programaciones });
       }
+
+      // Generar PDF del Adelanto de Programación
+      const doc = new jsPDF({ orientation: 'landscape', compress: true });
+      let logoBase64: string | null = null;
+      try {
+        logoBase64 = await new Promise<string | null>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'Anonymous';
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxDim = 120;
+            let w = img.width || 120;
+            let h = img.height || 120;
+            if (w > maxDim || h > maxDim) {
+              if (w > h) { h = Math.round((h * maxDim) / w); w = maxDim; }
+              else { w = Math.round((w * maxDim) / h); h = maxDim; }
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.drawImage(img, 0, 0, w, h);
+              resolve(canvas.toDataURL('image/png', 0.8));
+            } else { resolve(null); }
+          };
+          img.onerror = () => resolve(null);
+          img.src = '/logo.png';
+        });
+      } catch (e) { }
+
+      let finalY = 32;
+      doc.setFontSize(14);
+      doc.setTextColor(15, 23, 42);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Román & Delgado Abogados — Adelanto de Programación', 14, finalY);
+      
+      finalY += 10;
+      doc.setFontSize(10.5);
+      doc.text('LIBRO DE PROGRAMACIÓN (AGENDA DE ACTUACIONES FUTURAS)', 14, finalY);
+
+      let progData: any[][] = [];
+      if (programaciones && programaciones.length > 0) {
+        progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
+      } else {
+        progData = [['—', '—', '—', 'Sin programación o agenda futura registrada', '—']];
+      }
+
+      autoTable(doc, {
+        startY: finalY + 8,
+        head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+        body: progData,
+        theme: 'grid',
+        headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
+        bodyStyles: { textColor: [30, 41, 59], fontSize: 8, cellPadding: 3 },
+        alternateRowStyles: { fillColor: [252, 253, 254] },
+        styles: { lineColor: [226, 232, 240], lineWidth: 0.15 },
+        margin: { left: 14, right: 14 }
+      });
+
+      const totalPages = (doc as any).internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        
+        doc.setDrawColor(203, 213, 225);
+        doc.setLineWidth(0.4);
+        doc.line(14, 24, 283, 24);
+
+        if (logoBase64) {
+          try {
+            doc.addImage(logoBase64, 'PNG', 14, 4, 24, 17, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 0.03 }));
+            }
+            doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
+            if ((doc as any).GState) {
+              doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
+            }
+          } catch (e) {}
+        }
+        
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(15, 23, 42);
+        doc.text('ROMÁN & DELGADO  |  ABOGADOS', logoBase64 ? 42 : 14, 11);
+
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('SISTEMA INTEGRAL DE BITÁCORAS Y CONTROL DE GESTIÓN OFICIAL (KANT)', logoBase64 ? 42 : 14, 17.5);
+
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text('ADELANTO DE PROGRAMACIÓN', 283, 11, { align: 'right' });
+
+        const currentUserName = localStorage.getItem('rd_user_name') || 'Usuario';
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Fecha: ${format(new Date(), 'dd/MM/yyyy')} — Empleado: ${currentUserName}`, 283, 17.5, { align: 'right' });
+
+        doc.setDrawColor(226, 232, 240);
+        doc.line(14, 196, 283, 196);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);
+        doc.text('Román & Delgado Abogados — Documento Oficial Confidencial de Uso Interno', 14, 201);
+        doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
+      }
+
+      doc.save(`Adelanto_Programacion_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+
       setSynced(true);
       setTimeout(() => setSynced(false), 4000);
     } catch (error) {
