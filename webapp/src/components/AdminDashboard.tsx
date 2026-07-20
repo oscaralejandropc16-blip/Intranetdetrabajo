@@ -1062,7 +1062,7 @@ export default function AdminDashboard() {
                         doc.setFontSize(10.5);
                         doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('▪  1. LIBRO DE ACTUACIONES DIARIAS (GESTIÓN ADMINISTRATIVA)', 14, finalY + 5);
+                        doc.text('1. LIBRO DE ACTUACIONES DIARIAS (GESTIÓN ADMINISTRATIVA)', 14, finalY + 5);
 
                         const actData = actuacionesJefe.map(a => [a.hora, a.numeroAsunto, a.partes, a.actuacion, a.observaciones]);
                         autoTable(doc, {
@@ -1084,7 +1084,7 @@ export default function AdminDashboard() {
                         doc.setFontSize(10.5);
                         doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('▪  2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
+                        doc.text('2. LIBRO DE INGRESOS (CASOS Y EXPEDIENTES RECIBIDOS)', 14, finalY + 5);
 
                         const ingData = ingresosJefe.map(i => [i.numeroExpediente, `${i.fechaIngreso} ${i.horaIngreso}`, i.tipo, i.organismoTribunal || 'N/A', i.partes, i.resumen, i.observaciones]);
                         autoTable(doc, {
@@ -1106,7 +1106,7 @@ export default function AdminDashboard() {
                         doc.setFontSize(10.5);
                         doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('▪  3. LIBRO DE PROGRAMACIÓN (AGENDA Y AUDIENCIAS FUTURAS)', 14, finalY + 5);
+                        doc.text('3. LIBRO DE PROGRAMACIÓN (AGENDA Y AUDIENCIAS FUTURAS)', 14, finalY + 5);
 
                         const progData = programacionesJefe.map(p => [p.fecha, p.hora, p.organismoTribunal, p.tipoActuacion, p.resumen, p.observaciones]);
                         autoTable(doc, {
@@ -1142,7 +1142,7 @@ export default function AdminDashboard() {
                         doc.setFontSize(10.5);
                         doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('▪  4. APORTES A LA BIBLIOTECA VIRTUAL (INVESTIGACIONES Y SENTENCIAS)', 14, finalY + 5);
+                        doc.text('4. APORTES A LA BIBLIOTECA VIRTUAL (INVESTIGACIONES Y SENTENCIAS)', 14, finalY + 5);
                         
                         autoTable(doc, {
                           startY: finalY + 8,
