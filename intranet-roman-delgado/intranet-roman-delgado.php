@@ -690,7 +690,8 @@ function rd_intranet_handle_submit($request) {
                 $global_expedientes[$numero] = array(
                     'numeroExpediente' => $numero,
                     'partes' => $partes,
-                    'tipo' => $tipo
+                    'tipo' => $tipo,
+                    'usuario' => get_userdata($user_id)->display_name
                 );
             }
         }
