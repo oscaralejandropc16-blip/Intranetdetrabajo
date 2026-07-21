@@ -19,12 +19,13 @@ api.interceptors.request.use(
       config.headers['Authorization'] = `Bearer ${token}`;
     }
     
-    // Eludir WAF convirtiendo POST/PUT a x-www-form-urlencoded
     if ((config.method === 'post' || config.method === 'put') && config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
       const formData = new FormData();
       const jsonBlob = new Blob([JSON.stringify(config.data)], { type: 'application/json' });
       formData.append('payload_json_file', jsonBlob, 'payload.json');
       config.data = formData;
+      // ELIMINAR el Content-Type por defecto para que el navegador asigne multipart/form-data y el boundary automáticamente
+      delete config.headers['Content-Type'];
     }
     
     return config;
