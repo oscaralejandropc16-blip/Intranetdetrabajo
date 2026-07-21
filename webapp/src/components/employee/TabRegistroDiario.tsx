@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Clock, XCircle, ChevronDown, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
+import React from 'react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 
@@ -22,7 +22,6 @@ export default function TabRegistroDiario({
   globalExpedientes = [],
   ingresosActivos = []
 }: TabRegistroDiarioProps) {
-  const [activeStatusDropdown, setActiveStatusDropdown] = useState<string | null>(null);
 
 
 
@@ -213,94 +212,39 @@ export default function TabRegistroDiario({
                             placeholder="Describe qué se hizo"
                           />
                         </td>
-                        <td className="px-3 py-3 align-top relative">
+                        <td className="px-3 py-3 align-top">
                           {(() => {
                             const currentStatus = actuacion.estado || 'Completada';
                             return (
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  disabled={reportSubmitted}
-                                  onClick={() => {
-                                    if (reportSubmitted) return;
-                                    const nextStatus = 
-                                      currentStatus === 'Completada' ? 'En trámite' :
-                                      currentStatus === 'En trámite' ? 'Pendiente' : 'Completada';
-                                    updateActuacionField(actuacion.id, 'estado', nextStatus);
-                                  }}
-                                  className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-between gap-1.5 transition-all border shadow-sm cursor-pointer ${
-                                    currentStatus === 'Completada' ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' :
-                                    currentStatus === 'En trámite' ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100' :
-                                    'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
-                                  }`}
-                                  title="Haz clic para cambiar el estado (Completada ➔ En trámite ➔ Pendiente)"
-                                >
-                                  <div className="flex items-center gap-1.5 truncate">
-                                    {currentStatus === 'Completada' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
-                                    {currentStatus === 'En trámite' && <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
-                                    {currentStatus === 'Pendiente' && <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
-                                    <span className="truncate">{currentStatus}</span>
-                                  </div>
-                                  {!reportSubmitted && (
-                                    <span 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setActiveStatusDropdown(activeStatusDropdown === actuacion.id ? null : actuacion.id);
-                                      }}
-                                      className="p-1 hover:bg-black/5 rounded-md transition-colors"
-                                    >
-                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                    </span>
-                                  )}
-                                </button>
-
-                                {activeStatusDropdown === actuacion.id && !reportSubmitted && (
-                                  <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setActiveStatusDropdown(null)} />
-                                    <div className="absolute right-0 bottom-full mb-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          updateActuacionField(actuacion.id, 'estado', 'Completada');
-                                          setActiveStatusDropdown(null);
-                                        }}
-                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
-                                          currentStatus === 'Completada' ? 'bg-emerald-100/70 text-emerald-800' : 'text-slate-700 hover:bg-slate-50'
-                                        }`}
-                                      >
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                                        Completada
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          updateActuacionField(actuacion.id, 'estado', 'En trámite');
-                                          setActiveStatusDropdown(null);
-                                        }}
-                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
-                                          currentStatus === 'En trámite' ? 'bg-amber-100/70 text-amber-800' : 'text-slate-700 hover:bg-slate-50'
-                                        }`}
-                                      >
-                                        <Clock className="w-4 h-4 text-amber-600 shrink-0" />
-                                        En trámite
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          updateActuacionField(actuacion.id, 'estado', 'Pendiente');
-                                          setActiveStatusDropdown(null);
-                                        }}
-                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
-                                          currentStatus === 'Pendiente' ? 'bg-rose-100/70 text-rose-800' : 'text-slate-700 hover:bg-slate-50'
-                                        }`}
-                                      >
-                                        <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                                        Pendiente
-                                      </button>
-                                    </div>
-                                  </>
+                              <button
+                                type="button"
+                                disabled={reportSubmitted}
+                                onClick={() => {
+                                  if (reportSubmitted) return;
+                                  const nextStatus = 
+                                    currentStatus === 'Completada' ? 'En trámite' :
+                                    currentStatus === 'En trámite' ? 'Pendiente' : 'Completada';
+                                  updateActuacionField(actuacion.id, 'estado', nextStatus);
+                                }}
+                                className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-between gap-2 transition-all border shadow-sm ${
+                                  reportSubmitted ? 'cursor-not-allowed opacity-80' : 'cursor-pointer hover:scale-[1.02] active:scale-[0.98]'
+                                } ${
+                                  currentStatus === 'Completada' ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100/80 hover:border-emerald-400' :
+                                  currentStatus === 'En trámite' ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100/80 hover:border-amber-400' :
+                                  'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100/80 hover:border-rose-400'
+                                }`}
+                                title="Haz clic para cambiar el estado (Completada ➔ En trámite ➔ Pendiente)"
+                              >
+                                <div className="flex items-center gap-1.5 truncate">
+                                  {currentStatus === 'Completada' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                                  {currentStatus === 'En trámite' && <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
+                                  {currentStatus === 'Pendiente' && <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                                  <span className="truncate">{currentStatus}</span>
+                                </div>
+                                {!reportSubmitted && (
+                                  <span className="text-[11px] opacity-50 font-mono shrink-0 ml-1">↻</span>
                                 )}
-                              </div>
+                              </button>
                             );
                           })()}
                         </td>
