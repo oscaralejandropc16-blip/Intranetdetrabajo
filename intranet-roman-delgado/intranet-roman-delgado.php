@@ -319,15 +319,7 @@ add_action('rest_api_init', function () {
 
     // Helper para verificar si el usuario es jefe/administrador autorizado en la Intranet
     $is_authorized_admin = function () {
-        if (!(get_current_user_id() > 0)) {
-            return false;
-        }
-        $user = wp_get_current_user();
-        if (!$user || !$user->ID) {
-            return false;
-        }
-        $admin_users = array('victor', 'luis', 'romanydelgado', 'admin');
-        return in_array(strtolower($user->user_login), $admin_users) || in_array('administrator', (array)$user->roles) || current_user_can('administrator');
+        return rd_intranet_is_authorized_admin();
     };
 
     // Endpoint: GET /rd-intranet/v1/bitacoras (Obtener para el Dashboard del Admin)
@@ -1503,6 +1495,15 @@ function rd_intranet_is_authorized_admin($user_id = null) {
     
     $user = get_userdata($user_id);
     if (!$user) return false;
+    
+    $admin_logins = array('victor', 'victor roman', 'victorroman', 'victor-roman', 'victor_roman', 'luis', 'luisdelgado', 'romanydelgado', 'admin');
+    $login = strtolower($user->user_login);
+    $nicename = strtolower($user->user_nicename);
+    $display = strtolower($user->display_name);
+
+    if (in_array($login, $admin_logins) || in_array($nicename, $admin_logins) || in_array($display, $admin_logins)) {
+        return true;
+    }
     
     return in_array('administrator', (array)$user->roles) || in_array('editor', (array)$user->roles) || in_array('jefatura', (array)$user->roles) || user_can($user_id, 'manage_options');
 }

@@ -133,7 +133,8 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    const fetchBitacoras = async () => {
+    let retryTimer: any;
+    const fetchBitacoras = async (isRetry = false) => {
       try {
         const response = await api.get('/rd-intranet/v1/bitacoras');
         if (response.data && Array.isArray(response.data)) {
@@ -153,6 +154,9 @@ export default function AdminDashboard() {
             };
           });
           setReports(parsedData);
+          if (parsedData.length === 0 && !isRetry) {
+            retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
+          }
         }
 
         // También obtener borradores (Adelantos) para la Agenda Global
@@ -174,13 +178,19 @@ export default function AdminDashboard() {
         }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
+        if (!isRetry) {
+          retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchBitacoras();
-    const intervalId = setInterval(fetchBitacoras, 60000); // Auto-refrescar cada 60 segundos para evitar Rate Limit
-    return () => clearInterval(intervalId);
+    const intervalId = setInterval(() => fetchBitacoras(true), 60000); // Auto-refrescar cada 60 segundos
+    return () => {
+      clearInterval(intervalId);
+      if (retryTimer) clearTimeout(retryTimer);
+    };
   }, []);
 
   const handleSaveComment = async () => {
