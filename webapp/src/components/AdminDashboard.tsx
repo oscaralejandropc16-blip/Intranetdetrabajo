@@ -93,9 +93,9 @@ export default function AdminDashboard() {
           const parsedIngresos = parseJson(response.data.ingresos);
           const parsedProgramaciones = parseJson(response.data.programaciones);
 
-          if (parsedActuaciones.length > 0) setActuacionesJefe(parsedActuaciones);
-          if (parsedIngresos.length > 0) setIngresosJefe(parsedIngresos);
-          if (parsedProgramaciones.length > 0) setProgramacionesJefe(parsedProgramaciones);
+          setActuacionesJefe(parsedActuaciones);
+          setIngresosJefe(parsedIngresos);
+          setProgramacionesJefe(parsedProgramaciones);
         }
       } catch (error) {
         console.error('Error fetching admin draft:', error);
@@ -571,6 +571,7 @@ export default function AdminDashboard() {
     setIsResetting(true);
     try {
       await submitToServer('/rd-intranet/v1/reset-test-data', {});
+      localStorage.clear();
       setShowResetModal(false);
       window.location.reload();
     } catch (error) {

@@ -164,9 +164,9 @@ export default function EmployeeDashboard() {
           const parsedIngresos = parseJson(response.data.ingresos);
           const parsedProgramaciones = parseJson(response.data.programaciones);
           
-          if (parsedActuaciones.length > 0) setActuaciones(parsedActuaciones);
-          if (parsedIngresos.length > 0) setIngresos(parsedIngresos);
-          if (parsedProgramaciones.length > 0) setProgramaciones(parsedProgramaciones);
+          setActuaciones(parsedActuaciones);
+          setIngresos(parsedIngresos);
+          setProgramaciones(parsedProgramaciones);
           
           localStorage.setItem(getStorageKey(), JSON.stringify({
             ...response.data,
