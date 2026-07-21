@@ -221,12 +221,19 @@ export default function TabRegistroDiario({
                                 <button
                                   type="button"
                                   disabled={reportSubmitted}
-                                  onClick={() => setActiveStatusDropdown(activeStatusDropdown === actuacion.id ? null : actuacion.id)}
-                                  className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-between gap-1.5 transition-all border shadow-sm ${
+                                  onClick={() => {
+                                    if (reportSubmitted) return;
+                                    const nextStatus = 
+                                      currentStatus === 'Completada' ? 'En trámite' :
+                                      currentStatus === 'En trámite' ? 'Pendiente' : 'Completada';
+                                    updateActuacionField(actuacion.id, 'estado', nextStatus);
+                                  }}
+                                  className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-between gap-1.5 transition-all border shadow-sm cursor-pointer ${
                                     currentStatus === 'Completada' ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' :
                                     currentStatus === 'En trámite' ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100' :
                                     'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
                                   }`}
+                                  title="Haz clic para cambiar el estado (Completada ➔ En trámite ➔ Pendiente)"
                                 >
                                   <div className="flex items-center gap-1.5 truncate">
                                     {currentStatus === 'Completada' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
@@ -234,13 +241,23 @@ export default function TabRegistroDiario({
                                     {currentStatus === 'Pendiente' && <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
                                     <span className="truncate">{currentStatus}</span>
                                   </div>
-                                  {!reportSubmitted && <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                                  {!reportSubmitted && (
+                                    <span 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setActiveStatusDropdown(activeStatusDropdown === actuacion.id ? null : actuacion.id);
+                                      }}
+                                      className="p-1 hover:bg-black/5 rounded-md transition-colors"
+                                    >
+                                      <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    </span>
+                                  )}
                                 </button>
 
                                 {activeStatusDropdown === actuacion.id && !reportSubmitted && (
                                   <>
                                     <div className="fixed inset-0 z-40" onClick={() => setActiveStatusDropdown(null)} />
-                                    <div className="absolute right-0 top-full mt-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                                    <div className="absolute right-0 bottom-full mb-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
                                       <button
                                         type="button"
                                         onClick={() => {
