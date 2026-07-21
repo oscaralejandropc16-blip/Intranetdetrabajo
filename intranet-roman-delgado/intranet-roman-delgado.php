@@ -1372,3 +1372,15 @@ function rd_intranet_delete_investigacion($request) {
     return rest_ensure_response(array('success' => true, 'message' => 'Investigación eliminada con éxito'));
 }
 
+function rd_intranet_is_authorized_admin($user_id = null) {
+    if (!$user_id) {
+        $user_id = get_current_user_id();
+    }
+    if (!$user_id) return false;
+    
+    $user = get_userdata($user_id);
+    if (!$user) return false;
+    
+    return in_array('administrator', (array)$user->roles) || in_array('jefatura', (array)$user->roles) || user_can($user_id, 'manage_options');
+}
+
