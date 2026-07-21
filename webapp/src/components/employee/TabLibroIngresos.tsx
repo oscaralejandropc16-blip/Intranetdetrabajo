@@ -45,8 +45,8 @@ export default function TabLibroIngresos({
     
     fetchCorrelatives();
     
-    // Polling cada 8 segundos para detectar si alguien apartó un número
-    const interval = setInterval(fetchCorrelatives, 8000);
+    // Polling cada 60 segundos para evitar saturación de peticiones (Rate Limit 429)
+    const interval = setInterval(fetchCorrelatives, 60000);
     return () => clearInterval(interval);
   }, []);
 
