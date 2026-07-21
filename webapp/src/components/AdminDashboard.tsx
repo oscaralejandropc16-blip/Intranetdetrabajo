@@ -198,9 +198,12 @@ export default function AdminDashboard() {
         await api.post('/rd-intranet/v1/admin-update', {
           post_id: selectedReport.id,
           comentario_admin: adminComment,
-          programaciones: adminProgramaciones,
-          pdf_base64: newPdfBase64
+          programaciones: adminProgramaciones
         });
+        
+        if (newPdfBase64) {
+          await uploadPdfInChunks(selectedReport.id, newPdfBase64);
+        }
       }
       setSystemAlert({
         isOpen: true,
