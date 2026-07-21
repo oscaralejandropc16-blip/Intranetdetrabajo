@@ -12,6 +12,19 @@ import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const ensureArray = (val: any): any[] => {
+  if (Array.isArray(val)) return val;
+  if (typeof val === 'string' && val.trim()) {
+    try {
+      const parsed = JSON.parse(val);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      return [];
+    }
+  }
+  return [];
+};
+
 export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>([]);
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
@@ -145,7 +158,13 @@ export default function AdminDashboard() {
         // También obtener borradores (Adelantos) para la Agenda Global
         const draftsRes = await api.get('/rd-intranet/v1/all-drafts');
         if (draftsRes.data && Array.isArray(draftsRes.data)) {
-          setAllDrafts(draftsRes.data);
+          const parsedDrafts = draftsRes.data.map((d: any) => ({
+            ...d,
+            actuaciones: ensureArray(d.actuaciones),
+            ingresos: ensureArray(d.ingresos),
+            programaciones: ensureArray(d.programaciones)
+          }));
+          setAllDrafts(parsedDrafts);
         }
 
         // Obtener investigaciones globales para cruzar con las bitácoras
@@ -568,16 +587,22 @@ export default function AdminDashboard() {
   };
 
   // Combinar programaciones de bitácoras enviadas + adelantos (borradores)
-  const draftTasks = allDrafts.flatMap(d => (d.programaciones || []).map((p: any) => ({
-    ...p,
-    user: d.user,
-    isDraft: true,
-    user_id: d.user_id,
-    sourceReport: { isDraft: true, user_id: d.user_id, user: d.user, programaciones: d.programaciones, comentario_admin: d.comentario_admin }
-  })));
+  const draftTasks = allDrafts.flatMap(d => {
+    const progs = ensureArray(d.programaciones);
+    return progs.map((p: any) => ({
+      ...p,
+      user: d.user,
+      isDraft: true,
+      user_id: d.user_id,
+      sourceReport: { isDraft: true, user_id: d.user_id, user: d.user, programaciones: progs, comentario_admin: d.comentario_admin }
+    }));
+  });
 
   const allScheduledTasks = reports
-    .flatMap(r => (r.programaciones || []).map((p: any) => ({ ...p, user: r.user, sourceReport: r, isDraft: false })))
+    .flatMap(r => {
+      const progs = ensureArray(r.programaciones);
+      return progs.map((p: any) => ({ ...p, user: r.user, sourceReport: r, isDraft: false }));
+    })
     .concat(draftTasks)
     .filter(t => t.fecha >= format(new Date(), 'yyyy-MM-dd'))
     .sort((a, b) => {
@@ -686,9 +711,9 @@ export default function AdminDashboard() {
                           setSelectedReport(r);
                           setShowNotifications(false);
                           setAdminComment(r.comentario_admin || '');
-                          setAdminProgramaciones(r.programaciones || []);
-                          setAdminActuaciones(r.actuaciones || []);
-                          setAdminIngresos(r.ingresos || []);
+                          setAdminProgramaciones(ensureArray(r.programaciones));
+                          setAdminActuaciones(ensureArray(r.actuaciones));
+                          setAdminIngresos(ensureArray(r.ingresos));
                         }}>
                           <p className="text-sm font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
                           <p className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Requiere revisión urgente</p>
@@ -914,9 +939,9 @@ export default function AdminDashboard() {
                         onClick={() => {
                           setSelectedReport(report);
                           setAdminComment(report.comentario_admin || '');
-                          setAdminProgramaciones(report.programaciones || []);
-                          setAdminActuaciones(report.actuaciones || []);
-                          setAdminIngresos(report.ingresos || []);
+                          setAdminProgramaciones(ensureArray(report.programaciones));
+                          setAdminActuaciones(ensureArray(report.actuaciones));
+                          setAdminIngresos(ensureArray(report.ingresos));
                         }}
                         className="inline-flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-800 hover:bg-slate-800 hover:text-white text-slate-700 font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm group-hover:shadow-md"
                       >
@@ -989,9 +1014,9 @@ export default function AdminDashboard() {
                             onClick={() => {
                               setSelectedReport(userGroup.sourceReport);
                               setAdminComment(userGroup.sourceReport.comentario_admin || '');
-                              setAdminProgramaciones(userGroup.sourceReport.programaciones || []);
-                              setAdminActuaciones(userGroup.sourceReport.actuaciones || []);
-                              setAdminIngresos(userGroup.sourceReport.ingresos || []);
+                              setAdminProgramaciones(ensureArray(userGroup.sourceReport.programaciones));
+                              setAdminActuaciones(ensureArray(userGroup.sourceReport.actuaciones));
+                              setAdminIngresos(ensureArray(userGroup.sourceReport.ingresos));
                             }}
                             className="w-full sm:w-auto px-5 py-2.5 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-slate-200 hover:border-slate-800 whitespace-nowrap"
                           >

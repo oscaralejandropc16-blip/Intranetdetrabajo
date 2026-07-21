@@ -199,9 +199,17 @@ export default function EmployeeDashboard() {
         const response = await api.get('/rd-intranet/v1/my-tasks');
         if (response.data && response.data.success) {
           const hoy = format(new Date(), 'yyyy-MM-dd');
+          const parseJson = (val: any) => {
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string') {
+              try { return JSON.parse(val); } catch(e) { return []; }
+            }
+            return [];
+          };
+          const rawProgs = parseJson(response.data.programaciones);
           
           // Filtrar tareas planificadas para hoy (o dejar todas si prefieres, pero filtramos hoy por contexto)
-          const tareasHoy = (response.data.programaciones || []).filter((p: any) => p.fecha === hoy);
+          const tareasHoy = rawProgs.filter((p: any) => p.fecha === hoy);
           
           setPendingTasks(tareasHoy.map((t: any, i: number) => ({
             id: i + 1,
@@ -211,7 +219,7 @@ export default function EmployeeDashboard() {
           })));
 
           // Filtrar todas las tareas futuras (hoy en adelante) para la Agenda Personal
-          const futuras = (response.data.programaciones || [])
+          const futuras = rawProgs
             .filter((p: any) => p.fecha >= hoy)
             .sort((a: any, b: any) => {
               const dateA = new Date(`${a.fecha}T${a.hora || '00:00'}`);
