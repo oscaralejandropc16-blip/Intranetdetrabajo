@@ -591,7 +591,7 @@ export default function EmployeeDashboard() {
         programaciones,
         pdf_base64: '',
         fecha_reporte: clockInDateStr,
-        cierre_retrasado: isLateClosure
+        cierre_retrasado: isLateClosure ? '1' : '0'
       };
 
       console.log('Enviando datos de jornada al backend:', payload);

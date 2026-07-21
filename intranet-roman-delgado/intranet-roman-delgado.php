@@ -787,7 +787,8 @@ function rd_intranet_handle_submit($request) {
     $actuaciones = $params['actuaciones'] ?? array();
     $programaciones = $params['programaciones'] ?? array();
     $fecha_reporte = sanitize_text_field($params['fecha_reporte'] ?? date('Y-m-d'));
-    $cierre_retrasado = isset($params['cierre_retrasado']) ? (bool) $params['cierre_retrasado'] : false;
+    $raw_cierre = $params['cierre_retrasado'] ?? false;
+    $cierre_retrasado = ($raw_cierre === true || $raw_cierre === 'true' || $raw_cierre === '1' || $raw_cierre === 1);
     $hora_salida = !empty($params['hora_salida']) ? sanitize_text_field($params['hora_salida']) : current_time('H:i');
 
     // Si los campos llegan como string JSON (desde FormData), decodificarlos a arrays PHP
@@ -877,6 +878,8 @@ function rd_intranet_handle_submit($request) {
     
     if ($cierre_retrasado) {
         update_post_meta($post_id, 'cierre_retrasado', '1');
+    } else {
+        update_post_meta($post_id, 'cierre_retrasado', '0');
     }
 
     // Marcar la jornada específica como CERRADA
