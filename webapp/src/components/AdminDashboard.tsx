@@ -204,11 +204,21 @@ export default function AdminDashboard() {
       formData.append('actuaciones', JSON.stringify(adminActuaciones));
       formData.append('ingresos', JSON.stringify(adminIngresos));
 
-      if (selectedReport.isDraft) {
-        // Enviar a la nueva API de borradores
-        await api.post('/rd-intranet/v1/admin-update-draft', formData);
-      } else {
-        await api.post('/rd-intranet/v1/admin-update', formData);
+      const token = localStorage.getItem('rd_jwt_token');
+      const urlPath = selectedReport.isDraft ? '/rd-intranet/v1/admin-update-draft' : '/rd-intranet/v1/admin-update';
+      const response = await fetch(`${api.defaults.baseURL}${urlPath}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Error del servidor al actualizar bitácora');
+      }
+
+      if (!selectedReport.isDraft) {
         
         if (newPdfBase64) {
           await uploadPdfInChunks(selectedReport.id, newPdfBase64);
@@ -1813,7 +1823,15 @@ export default function AdminDashboard() {
                           formData.append('target_user_id', selectedReport.user_id);
                           formData.append('comentario_admin', '');
                           formData.append('programaciones', '[]');
-                          await api.post('/rd-intranet/v1/admin-update-draft', formData);
+                          const token = localStorage.getItem('rd_jwt_token');
+                          const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/admin-update-draft`, {
+                            method: 'POST',
+                            headers: {
+                              'Authorization': `Bearer ${token}`
+                            },
+                            body: formData
+                          });
+                          if (!response.ok) throw new Error('Failed to discard draft');
                           setSystemAlert({
                             isOpen: true,
                             type: 'success',
