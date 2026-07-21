@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2 } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
@@ -23,6 +23,13 @@ const ensureArray = (val: any): any[] => {
     }
   }
   return [];
+};
+
+const isJefaturaUser = (userName: string) => {
+  if (!userName) return false;
+  const lower = userName.toLowerCase().trim();
+  const adminList = ['victor', 'luis', 'romanydelgado', 'admin', 'luis delgado', 'victor roman', 'jefatura'];
+  return adminList.some(a => lower.includes(a));
 };
 
 export default function AdminDashboard() {
@@ -166,12 +173,29 @@ export default function AdminDashboard() {
               computedProgress = 100;
             }
 
+            const isJefatura = isJefaturaUser(r.user || r.author_name || r.usuario || r.post_title || '');
+            const isLate = !isJefatura && (r.cierreRetrasado === true || r.cierre_retrasado === '1');
+
+            let clockInVal = r.clockIn || r.hora_entrada || 'N/A';
+            let clockOutVal = r.clockOut || r.hora_salida || 'Pendiente';
+
+            if (isJefatura) {
+              clockInVal = 'N/A (Jefatura)';
+              if (!clockOutVal || clockOutVal === '00:00' || clockOutVal === 'Pendiente' || clockOutVal === 'N/A (Jefatura)') {
+                clockOutVal = r.hora_salida && r.hora_salida !== '00:00' && r.hora_salida !== 'N/A (Jefatura)' ? r.hora_salida : 'Registrada';
+              }
+            }
+
             return {
               ...r,
               actuaciones: acts,
               ingresos: parseJson(r.ingresos),
               programaciones: progs,
-              progress: computedProgress
+              progress: computedProgress,
+              cierreRetrasado: isLate,
+              clockIn: clockInVal,
+              clockOut: clockOutVal,
+              isJefatura
             };
           });
           setReports(parsedData);
@@ -896,20 +920,33 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                     <td className="p-6">
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                          <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
+                      {isJefaturaUser(report.user) ? (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-1.5 text-xs font-medium text-slate-400">
+                            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                            Entrada: N/A (Jefatura)
+                          </div>
+                          <div className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
+                            <Clock className="w-4 h-4 text-rose-500" />
+                            Salida: {report.clockOut && report.clockOut !== '00:00' && report.clockOut !== 'N/A (Jefatura)' ? report.clockOut : 'Registrada'}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                          <Clock className="w-4 h-4 text-rose-400" />
-                          Salida: {report.clockOut || 'Pendiente'}
-                          {report.cierreRetrasado && (
-                            <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
-                              Cerrada con Retraso
-                            </span>
-                          )}
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                            <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
+                          </div>
+                          <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                            <Clock className="w-4 h-4 text-rose-400" />
+                            Salida: {report.clockOut || 'Pendiente'}
+                            {report.cierreRetrasado && (
+                              <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
+                                Cerrada con Retraso
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </td>
                     <td className="p-6">
                       {report.progress !== undefined ? (
@@ -1394,7 +1431,7 @@ export default function AdminDashboard() {
                       const payload = {
                         fecha_reporte: format(new Date(), 'yyyy-MM-dd'),
                         hora_entrada: 'N/A (Jefatura)',
-                        hora_salida: 'N/A (Jefatura)',
+                        hora_salida: format(new Date(), 'HH:mm'),
                         actuaciones: actuacionesJefe,
                         ingresos: ingresosJefe,
                         programaciones: programacionesJefe,
