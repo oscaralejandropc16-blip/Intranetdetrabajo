@@ -1391,3 +1391,8 @@ function rd_intranet_is_authorized_admin($user_id = null) {
 
 
 
+
+function rd_intranet_is_authorized($request = null) {
+    return get_current_user_id() > 0;
+}
+
