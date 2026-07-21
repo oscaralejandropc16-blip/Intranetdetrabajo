@@ -1334,37 +1334,24 @@ export default function AdminDashboard() {
 
                       doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
                       const pdfBase64 = doc.output('datauristring');
-                      const formData = new FormData();
-                      formData.append('fecha_reporte', format(new Date(), 'yyyy-MM-dd'));
-                      formData.append('hora_entrada', 'N/A (Jefatura)');
-                      formData.append('hora_salida', 'N/A (Jefatura)');
-                      formData.append('actuaciones', JSON.stringify(actuacionesJefe));
-                      formData.append('ingresos', JSON.stringify(ingresosJefe));
-                      formData.append('programaciones', JSON.stringify(programacionesJefe));
-                      formData.append('reporte_hoy', 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración');
-                      formData.append('bitacora_pdf_base64', '');
-                      formData.append('pdf_base64', '');
-                      formData.append('ubicacion_entrada', 'Régimen de Jefatura (Sin GPS)');
-                      formData.append('ubicacion_salida', 'Régimen de Jefatura (Sin GPS)');
-                      formData.append('cierre_retrasado', 'false');
-                      formData.append('estado_revision', 'Jefatura');
-                      const dummyBlob = new Blob(['1'], { type: 'text/plain' });
-                      formData.append('dummy_file', dummyBlob, 'dummy.txt');
+                      const payload = {
+                        fecha_reporte: format(new Date(), 'yyyy-MM-dd'),
+                        hora_entrada: 'N/A (Jefatura)',
+                        hora_salida: 'N/A (Jefatura)',
+                        actuaciones: actuacionesJefe,
+                        ingresos: ingresosJefe,
+                        programaciones: programacionesJefe,
+                        reporte_hoy: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
+                        bitacora_pdf_base64: '',
+                        pdf_base64: '',
+                        ubicacion_entrada: 'Régimen de Jefatura (Sin GPS)',
+                        ubicacion_salida: 'Régimen de Jefatura (Sin GPS)',
+                        cierre_retrasado: false,
+                        estado_revision: 'Jefatura'
+                      };
 
-                      const token = localStorage.getItem('rd_jwt_token');
-                      const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/submit`, {
-                        method: 'POST',
-                        headers: {
-                          'Authorization': `Bearer ${token}`
-                        },
-                        body: formData
-                      });
-
-                      if (!response.ok) {
-                        throw new Error(`Error en submit: ${response.status}`);
-                      }
-                      
-                      const responseData = await response.json();
+                      const response = await api.post('/rd-intranet/v1/submit', payload);
+                      const responseData = response.data;
                       const postId = responseData?.post_id;
                       if (postId && pdfBase64) {
                         console.log(`Cargando archivo PDF de Jefatura por bloques al servidor (post_id: ${postId})...`);
