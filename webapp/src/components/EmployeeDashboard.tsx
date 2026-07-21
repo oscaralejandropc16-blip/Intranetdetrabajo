@@ -239,13 +239,15 @@ export default function EmployeeDashboard() {
 
           // Si hay comentario del jefe en la última bitácora
           if (response.data.comentario_admin) {
+            const notifTitle = `Feedback Jefatura sobre Bitácora del ${response.data.fecha_bitacora}`;
+            const isRead = localStorage.getItem(`rd_notif_read_1_${notifTitle}`) === 'true';
             setNotifications([{
               id: 1,
               type: 'feedback',
-              title: `Feedback Jefatura sobre Bitácora del ${response.data.fecha_bitacora}`,
+              title: notifTitle,
               message: response.data.comentario_admin,
               sender: 'Revisión Administrativa',
-              read: false
+              read: isRead
             }]);
           }
         }
@@ -312,6 +314,24 @@ export default function EmployeeDashboard() {
         type: 'error',
         title: '⚠️ Fila de Ingreso Incompleta',
         message: `La fila #${invalidIngresoIndex + 1} en el Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con la papelera (🗑️).`
+      });
+      return;
+    }
+
+    // 3. Validar Filas en Libro de Programación
+    const invalidProgIndex = programaciones.findIndex(p => {
+      const noOrg = !p.organismoTribunal || p.organismoTribunal.trim() === '';
+      const noTipo = !p.tipoActuacion || p.tipoActuacion.trim() === '';
+      return noOrg || noTipo;
+    });
+
+    if (invalidProgIndex !== -1) {
+      setActiveTab('agenda');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: '⚠️ Fila de Programación Incompleta',
+        message: `La fila #${invalidProgIndex + 1} en el Libro de Programación está abierta e incompleta. Debes colocar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o borrar la fila usando el botón de la papelera (🗑️).`
       });
       return;
     }
