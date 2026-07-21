@@ -1186,6 +1186,7 @@ export default function AdminDashboard() {
                       });
 
                       if (hasDuplicateIngreso) {
+                        setBossSubTab('ingresos');
                         setSystemAlert({ isOpen: true, type: 'error', title: 'Expediente Duplicado', message: 'Hay ingresos judiciales con números de expediente que ya han sido asignados por otro usuario o están repetidos. El sistema te impide usar este número para evitar conflictos. Por favor corrígelo.' });
                         return;
                       }

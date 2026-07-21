@@ -90,7 +90,12 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
   });
   
   if (!response.ok) {
-    throw new Error('Error al subir PDF');
+    let errorMsg = 'Error al subir PDF';
+    try {
+      const errorJson = await response.json();
+      if (errorJson.message) errorMsg = errorJson.message;
+    } catch(e) {}
+    throw new Error(errorMsg);
   }
   
   return await response.json();

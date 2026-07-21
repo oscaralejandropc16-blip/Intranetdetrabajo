@@ -234,9 +234,7 @@ add_action('rest_api_init', function () {
 
             return rest_ensure_response(array('success' => true, 'message' => 'Tu contraseña ha sido actualizada exitosamente.'));
         },
-        'permission_callback' => function() {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint temporal de diagnóstico: GET /rd-intranet/v1/user-list-diag para verificar nombres de usuario en WordPress
@@ -263,9 +261,7 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/submit', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_handle_submit',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/upload-pdf (Carga de PDF por bloques sin límite de peso)
@@ -291,7 +287,7 @@ add_action('rest_api_init', function () {
 
     // Helper para verificar si el usuario es jefe/administrador autorizado en la Intranet
     $is_authorized_admin = function () {
-        if (!is_user_logged_in()) {
+        if (!(get_current_user_id() > 0)) {
             return false;
         }
         $user = wp_get_current_user();
@@ -320,36 +316,28 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/my-tasks', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_my_tasks',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: GET /rd-intranet/v1/my-history (Obtener bitácoras del usuario logueado)
     register_rest_route('rd-intranet/v1', '/my-history', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_my_history',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/reset-test-data (Exclusivo jefatura para borrar datos falsos)
     register_rest_route('rd-intranet/v1', '/reset-test-data', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_reset_test_data',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/reset-user-day (Exclusivo jefatura para reabrir jornada individual por empleado)
     register_rest_route('rd-intranet/v1', '/reset-user-day', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_reset_user_day',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoints: GET y POST /rd-intranet/v1/investigaciones (Repositorio Jurídico KANT)
@@ -357,12 +345,12 @@ add_action('rest_api_init', function () {
         array(
             'methods' => 'GET',
             'callback' => 'rd_intranet_get_investigaciones',
-            'permission_callback' => function () { return is_user_logged_in(); }
+            'permission_callback' => 'rd_intranet_is_authorized'
         ),
         array(
             'methods' => 'POST',
             'callback' => 'rd_intranet_save_investigacion',
-            'permission_callback' => function () { return is_user_logged_in(); }
+            'permission_callback' => 'rd_intranet_is_authorized'
         )
     ));
 
@@ -370,24 +358,20 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/delete-investigacion', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_delete_investigacion',
-        'permission_callback' => function () { return is_user_logged_in(); }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
     // Endpoint: GET /rd-intranet/v1/expedientes (Obtener todos los expedientes globales)
     register_rest_route('rd-intranet/v1', '/expedientes', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_expedientes',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: GET /rd-intranet/v1/draft (Obtener borrador)
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_draft',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: GET /rd-intranet/v1/all-drafts (Obtener borradores de todos los empleados para Agenda Global)
@@ -401,9 +385,7 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/reserved-expedientes', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_reserved_expedientes',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/admin-update-draft (Jefatura edita borrador activo)
@@ -417,18 +399,14 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_save_draft',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/clock-in (Blindaje de asistencia y sello inmutable del día)
     register_rest_route('rd-intranet/v1', '/clock-in', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_handle_clock_in',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 });
 
@@ -1189,8 +1167,35 @@ function rd_intranet_reset_user_day($request) {
         return new WP_Error('invalid_user', 'No se pudo identificar al empleado de esta bitácora', array('status' => 400));
     }
     
-    wp_delete_post($post_id, true);
+    $ingresos_json = get_post_meta($post_id, 'ingresos_json', true);
+    if (!empty($ingresos_json)) {
+        $ingresos_arr = json_decode($ingresos_json, true);
+        if (is_array($ingresos_arr)) {
+            $global_exp = get_option('rd_global_expedientes', array());
+            $used_corr = get_option('rd_used_correlatives', array());
+            $changed = false;
+            foreach ($ingresos_arr as $ing) {
+                if (($ing['tipo'] ?? '') === 'Judicial' && !empty($ing['numeroExpediente'])) {
+                    $num = $ing['numeroExpediente'];
+                    if (isset($global_exp[$num])) {
+                        unset($global_exp[$num]);
+                        $changed = true;
+                    }
+                    if (($key = array_search($num, (array)$used_corr)) !== false) {
+                        unset($used_corr[$key]);
+                        $changed = true;
+                    }
+                }
+            }
+            if ($changed) {
+                update_option('rd_global_expedientes', $global_exp);
+                update_option('rd_used_correlatives', array_values($used_corr));
+            }
+        }
+    }
     
+    wp_delete_post($post_id, true);
+
     $fechas = array(
         $target_date,
         date('Y-m-d'),
@@ -1381,6 +1386,8 @@ function rd_intranet_is_authorized_admin($user_id = null) {
     $user = get_userdata($user_id);
     if (!$user) return false;
     
-    return in_array('administrator', (array)$user->roles) || in_array('jefatura', (array)$user->roles) || user_can($user_id, 'manage_options');
+    return in_array('administrator', (array)$user->roles) || in_array('editor', (array)$user->roles) || in_array('jefatura', (array)$user->roles) || user_can($user_id, 'manage_options');
 }
+
+
 
