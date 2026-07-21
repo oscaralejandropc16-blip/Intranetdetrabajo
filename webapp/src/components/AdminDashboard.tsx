@@ -149,17 +149,21 @@ export default function AdminDashboard() {
             const acts = parseJson(r.actuaciones);
             const progs = parseJson(r.programaciones);
             
-            // Cálculo dinámico del porcentaje de progreso
-            let computedProgress = r.progress;
-            if (computedProgress === undefined || computedProgress === null) {
-              if (progs.length > 0) {
-                const completedCount = progs.filter((p: any) => p.completado || p.completed || p.status === 'completado').length;
-                computedProgress = Math.round((completedCount / progs.length) * 100);
-              } else if (r.status === 'Enviado' || r.status === 'Revisado') {
-                computedProgress = 100;
-              } else {
-                computedProgress = acts.length > 0 ? 100 : 0;
-              }
+            // Opción 1: Cálculo dinámico del porcentaje de progreso según Estado de Actuaciones + Programaciones
+            const totalActs = acts.length;
+            const completedActs = acts.filter((a: any) => !a.estado || a.estado === 'Completada' || a.completado || a.completed).length;
+
+            const totalProgs = progs.length;
+            const completedProgs = progs.filter((p: any) => p.completado || p.completed || p.status === 'completado').length;
+
+            const totalItems = totalActs + totalProgs;
+            const totalCompleted = completedActs + completedProgs;
+
+            let computedProgress = 0;
+            if (totalItems > 0) {
+              computedProgress = Math.round((totalCompleted / totalItems) * 100);
+            } else if (r.status === 'Enviado' || r.status === 'Revisado') {
+              computedProgress = 100;
             }
 
             return {

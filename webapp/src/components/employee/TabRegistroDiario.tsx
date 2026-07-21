@@ -54,7 +54,8 @@ export default function TabRegistroDiario({
       numeroAsunto: '',
       partes: '',
       actuacion: '',
-      observaciones: ''
+      observaciones: '',
+      estado: 'Completada'
     };
     setActuaciones([...actuaciones, newActuacion]);
   };
@@ -123,9 +124,9 @@ export default function TabRegistroDiario({
 
           {/* Sección: Libro de Actuaciones */}
           <section>
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-1">
                   <FileText className="w-6 h-6 text-blue-600" />
                   <h3 className="text-xl font-bold text-slate-800">Libro de Actuaciones</h3>
                 </div>
@@ -146,18 +147,19 @@ export default function TabRegistroDiario({
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
                   <tr>
-                    <th className="px-3 py-3 w-32">Hora</th>
-                    <th className="px-3 py-3 min-w-[250px]">N° Asunto</th>
-                    <th className="px-3 py-3 min-w-[180px]">Partes</th>
+                    <th className="px-3 py-3 w-28">Hora</th>
+                    <th className="px-3 py-3 min-w-[200px]">N° Asunto</th>
+                    <th className="px-3 py-3 min-w-[160px]">Partes</th>
                     <th className="px-3 py-3 min-w-[200px]">Actuación</th>
-                    <th className="px-3 py-3 min-w-[200px]">Observaciones</th>
+                    <th className="px-3 py-3 w-36">Estado</th>
+                    <th className="px-3 py-3 min-w-[180px]">Observaciones</th>
                     {!reportSubmitted && <th className="px-3 py-3 w-12 text-center"></th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {actuaciones.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-8 text-center text-slate-500 font-medium">
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-500 font-medium">
                         No has registrado ninguna actuación. Haz clic en "Nueva Actuación".
                       </td>
                     </tr>
@@ -209,6 +211,22 @@ export default function TabRegistroDiario({
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 resize-none bg-white"
                             placeholder="Describe qué se hizo"
                           />
+                        </td>
+                        <td className="px-3 py-3 align-top">
+                          <select
+                            value={actuacion.estado || 'Completada'}
+                            disabled={reportSubmitted}
+                            onChange={(e) => updateActuacionField(actuacion.id, 'estado', e.target.value)}
+                            className={`w-full p-2 border rounded-lg font-bold text-xs outline-none bg-white transition-colors cursor-pointer ${
+                              (actuacion.estado || 'Completada') === 'Completada' ? 'border-emerald-300 text-emerald-700 bg-emerald-50/40' :
+                              actuacion.estado === 'En trámite' ? 'border-amber-300 text-amber-700 bg-amber-50/40' :
+                              'border-rose-300 text-rose-700 bg-rose-50/40'
+                            }`}
+                          >
+                            <option value="Completada">✅ Completada</option>
+                            <option value="En trámite">⏳ En trámite</option>
+                            <option value="Pendiente">❌ Pendiente</option>
+                          </select>
                         </td>
                         <td className="px-3 py-3 align-top">
                           <textarea 

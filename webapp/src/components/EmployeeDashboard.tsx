@@ -645,8 +645,19 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const tasksCompleted = pendingTasks.filter(t => t.completed).length;
-  const progress = Math.round((tasksCompleted / pendingTasks.length) * 100) || 0;
+  const totalActuaciones = actuaciones.length;
+  const completedActuaciones = actuaciones.filter(a => !a.estado || a.estado === 'Completada').length;
+
+  const totalPendingTasks = pendingTasks.length;
+  const completedPendingTasks = pendingTasks.filter(t => t.completed).length;
+  const tasksCompleted = completedPendingTasks;
+
+  const totalItems = totalActuaciones + totalPendingTasks;
+  const totalCompleted = completedActuaciones + completedPendingTasks;
+
+  const progress = totalItems > 0 
+    ? Math.round((totalCompleted / totalItems) * 100) 
+    : (reportSubmitted ? 100 : 0);
 
   const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>('ingresos');
   const unreadCount = notifications.filter(n => !n.read).length;

@@ -5,6 +5,7 @@ export interface Actuacion {
   partes: string;
   actuacion: string;
   observaciones: string;
+  estado?: 'Completada' | 'En trámite' | 'Pendiente';
 }
 
 export interface Ingreso {
