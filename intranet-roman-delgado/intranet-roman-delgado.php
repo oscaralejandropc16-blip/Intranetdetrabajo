@@ -12,6 +12,40 @@ if (!defined('ABSPATH')) {
     exit; // Exit if accessed directly.
 }
 
+// CORS universal: Permitir todas las peticiones desde la Intranet (incluyendo preflight OPTIONS)
+add_action('rest_api_init', function() {
+    remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+    add_filter('rest_pre_serve_request', function($value) {
+        $origin = get_http_origin();
+        $allowed = array('https://intranetlegal.vercel.app');
+        if (in_array($origin, $allowed)) {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
+        }
+        return $value;
+    });
+}, 15);
+
+// Manejar preflight OPTIONS antes de que WordPress procese la ruta (evita 401/403 en preflight)
+add_action('init', function() {
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS' && isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'wp-json') !== false) {
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
+        if ($origin === 'https://intranetlegal.vercel.app') {
+            header('Access-Control-Allow-Origin: ' . $origin);
+            header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
+            header('Access-Control-Allow-Credentials: true');
+            header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
+            header('Access-Control-Max-Age: 86400');
+            header('Content-Length: 0');
+            header('Content-Type: text/plain');
+            status_header(200);
+            exit;
+        }
+    }
+});
+
 // Hook universal de autenticación: Si viaja un token JWT en Authorization: Bearer <token>, autenticar al usuario en WordPress sin depender de plugins externos
 add_filter('determine_current_user', 'rd_intranet_decode_jwt_token', 20);
 function rd_intranet_decode_jwt_token($user_id) {
@@ -710,6 +744,11 @@ function rd_intranet_handle_submit($request) {
     $fecha_reporte = sanitize_text_field($params['fecha_reporte'] ?? date('Y-m-d'));
     $cierre_retrasado = isset($params['cierre_retrasado']) ? (bool) $params['cierre_retrasado'] : false;
     $hora_salida = !empty($params['hora_salida']) ? sanitize_text_field($params['hora_salida']) : current_time('H:i');
+
+    // Si los campos llegan como string JSON (desde FormData), decodificarlos a arrays PHP
+    if (is_string($ingresos)) { $ingresos = json_decode($ingresos, true) ?: array(); }
+    if (is_string($actuaciones)) { $actuaciones = json_decode($actuaciones, true) ?: array(); }
+    if (is_string($programaciones)) { $programaciones = json_decode($programaciones, true) ?: array(); }
 
     // Registrar los correlativos usados y expedientes globales
     if (!empty($ingresos) && is_array($ingresos)) {
