@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
@@ -1015,57 +1015,83 @@ export default function EmployeeDashboard() {
 
         {/* ÁREA DINÁMICA DERECHA: Contenido de la pestaña */}
         <div className="xl:col-span-9 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {activeTab === 'registro' && (
-            <TabRegistroDiario 
-              reportSubmitted={reportSubmitted}
-              actuaciones={actuaciones}
-              setActuaciones={setActuaciones}
-              attachedFiles={attachedFiles}
-              setAttachedFiles={setAttachedFiles}
-              pendingTasks={pendingTasks}
-              setPendingTasks={setPendingTasks}
-              globalExpedientes={globalExpedientes}
-              ingresosActivos={ingresos}
-            />
-          )}
-          
-          {activeTab === 'agenda' && (
-            <TabAgenda 
-              programaciones={programaciones}
-              setProgramaciones={setProgramaciones}
-              reportSubmitted={reportSubmitted}
-              allFutureTasks={allFutureTasks}
-            />
-          )}
-
-          {activeTab === 'ingresos' && (
-            <TabLibroIngresos 
-              ingresos={ingresos}
-              setIngresos={setIngresos}
-              reportSubmitted={reportSubmitted}
-            />
-          )}
-
-          {activeTab === 'notificaciones' && (
-            <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[500px]">
-              <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                <MessageSquare className="w-7 h-7 text-blue-500" /> 
-                Buzón de Mensajes
-              </h3>
-              {notifications.length === 0 ? (
-                <p className="text-slate-500 text-center py-10">No tienes notificaciones.</p>
-              ) : (
-                <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
-              )}
+          {clockIn === null && !reportSubmitted && !loadingDraft && ['ingresos', 'registro', 'agenda', 'investigaciones'].includes(activeTab) ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 lg:p-16 border-2 border-dashed border-amber-300 shadow-sm flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in-95 duration-500 min-h-[480px] relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
+              <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30 rotate-3 hover:rotate-0 transition-transform duration-300">
+                <Lock className="w-10 h-10 text-slate-900" />
+              </div>
+              <div className="max-w-md space-y-2">
+                <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-widest rounded-full">Acceso Bloqueado</span>
+                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Marca tu Hora de Entrada</h3>
+                <p className="text-slate-500 text-sm font-medium leading-relaxed">
+                  Para comenzar a registrar expedientes, actuaciones u organizar tu agenda diaria en la Intranet KANT, primero debes registrar tu hora de entrada.
+                </p>
+              </div>
+              <button
+                onClick={handleClockIn}
+                disabled={loadingDraft}
+                className="px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-3 cursor-pointer"
+              >
+                <Clock className="w-5 h-5 text-amber-400" />
+                <span>Marcar Entrada Ahora</span>
+              </button>
             </div>
-          )}
+          ) : (
+            <>
+              {activeTab === 'registro' && (
+                <TabRegistroDiario 
+                  reportSubmitted={reportSubmitted}
+                  actuaciones={actuaciones}
+                  setActuaciones={setActuaciones}
+                  attachedFiles={attachedFiles}
+                  setAttachedFiles={setAttachedFiles}
+                  pendingTasks={pendingTasks}
+                  setPendingTasks={setPendingTasks}
+                  globalExpedientes={globalExpedientes}
+                  ingresosActivos={ingresos}
+                />
+              )}
+              
+              {activeTab === 'agenda' && (
+                <TabAgenda 
+                  programaciones={programaciones}
+                  setProgramaciones={setProgramaciones}
+                  reportSubmitted={reportSubmitted}
+                  allFutureTasks={allFutureTasks}
+                />
+              )}
 
-          {activeTab === 'historial' && (
-            <TabHistorial />
-          )}
+              {activeTab === 'ingresos' && (
+                <TabLibroIngresos 
+                  ingresos={ingresos}
+                  setIngresos={setIngresos}
+                  reportSubmitted={reportSubmitted}
+                />
+              )}
 
-          {activeTab === 'investigaciones' && (
-            <TabInvestigaciones />
+              {activeTab === 'notificaciones' && (
+                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[500px]">
+                  <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
+                    <MessageSquare className="w-7 h-7 text-blue-500" /> 
+                    Buzón de Mensajes
+                  </h3>
+                  {notifications.length === 0 ? (
+                    <p className="text-slate-500 text-center py-10">No tienes notificaciones.</p>
+                  ) : (
+                    <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'historial' && (
+                <TabHistorial />
+              )}
+
+              {activeTab === 'investigaciones' && (
+                <TabInvestigaciones />
+              )}
+            </>
           )}
         </div>
       </div>
