@@ -1904,20 +1904,37 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Feedback */}
-              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-2">
-                  <MessageSquare className="w-5 h-5 text-blue-500" /> Feedback Administrativo
-                </h4>
-                <p className="text-sm text-slate-500 font-medium mb-4">Añade comentarios o instrucciones. El empleado recibirá una notificación.</p>
-                <textarea
-                  value={adminComment}
-                  onChange={(e) => setAdminComment(e.target.value)}
-                  placeholder="Escribe tus observaciones aquí..."
-                  rows={4}
-                  className="w-full p-4 text-lg border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
-                />
-              </div>
+              {/* Feedback Administrativo (Solo para Empleados Regulares) */}
+              {isJefaturaUser(selectedReport.user) ? (
+                <div className="bg-blue-50/60 p-6 sm:p-8 rounded-2xl border border-blue-200 flex items-center gap-4 shadow-sm">
+                  <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-bold shadow-md shrink-0">
+                    <ShieldCheck className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-extrabold uppercase tracking-wider rounded-full">
+                      Régimen Jefatura / Directivo
+                    </span>
+                    <h4 className="font-bold text-slate-800 text-lg mt-1">Bitácora Oficial Emitida por la Dirección</h4>
+                    <p className="text-sm text-slate-600 font-medium leading-relaxed">
+                      Esta bitácora fue generada por la Jefatura. Es un documento oficial ejecutivo sin requerimiento de evaluación ni feedback.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-2">
+                    <MessageSquare className="w-5 h-5 text-blue-500" /> Feedback Administrativo
+                  </h4>
+                  <p className="text-sm text-slate-500 font-medium mb-4">Añade comentarios o instrucciones. El empleado recibirá una notificación.</p>
+                  <textarea
+                    value={adminComment}
+                    onChange={(e) => setAdminComment(e.target.value)}
+                    placeholder="Escribe tus observaciones aquí..."
+                    rows={4}
+                    className="w-full p-4 text-lg border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
+                  />
+                </div>
+              )}
 
             </div>
 
@@ -2023,9 +2040,11 @@ export default function AdminDashboard() {
                 <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
                   Cerrar
                 </button>
-                <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
-                  <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
-                </button>
+                {!isJefaturaUser(selectedReport.user) && (
+                  <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
+                    <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
+                  </button>
+                )}
               </div>
             </div>
           </div>
