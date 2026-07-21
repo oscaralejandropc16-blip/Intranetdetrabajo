@@ -782,7 +782,7 @@ function rd_intranet_handle_submit($request) {
     $fecha_reporte = sanitize_text_field($params['fecha_reporte'] ?? date('Y-m-d'));
     $raw_cierre = $params['cierre_retrasado'] ?? false;
     $cierre_retrasado = ($raw_cierre === true || $raw_cierre === 'true' || $raw_cierre === '1' || $raw_cierre === 1);
-    if (rd_intranet_is_authorized_admin($user_id)) {
+    if (user_can($user_id, 'manage_options')) {
         $cierre_retrasado = false;
     }
     $hora_salida = !empty($params['hora_salida']) ? sanitize_text_field($params['hora_salida']) : current_time('H:i');

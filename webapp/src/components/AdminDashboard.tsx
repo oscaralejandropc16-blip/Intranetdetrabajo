@@ -28,8 +28,13 @@ const ensureArray = (val: any): any[] => {
 const isJefaturaUser = (userName: string) => {
   if (!userName) return false;
   const lower = userName.toLowerCase().trim();
-  const adminList = ['victor', 'luis', 'romanydelgado', 'admin', 'luis delgado', 'victor roman', 'jefatura'];
-  return adminList.some(a => lower.includes(a));
+  const jefaturaExact = [
+    'victor', 'victor roman', 'víctor román', 
+    'luis', 'luis delgado', 
+    'romanydelgado', 'romanydelgado@gmail.com',
+    'admin', 'jefatura'
+  ];
+  return jefaturaExact.some(j => lower === j || lower.startsWith('luis delgado') || lower.startsWith('victor roman') || lower.startsWith('romanydelgado'));
 };
 
 export default function AdminDashboard() {
