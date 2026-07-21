@@ -272,18 +272,14 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/upload-pdf', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_upload_pdf',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: POST /rd-intranet/v1/upload-evidence (Carga de Documentos y Evidencias)
     register_rest_route('rd-intranet/v1', '/upload-evidence', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_upload_evidence',
-        'permission_callback' => function () {
-            return is_user_logged_in();
-        }
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
     // Endpoint: GET /rd-intranet/v1/correlatives (Obtener correlativos usados globales)
