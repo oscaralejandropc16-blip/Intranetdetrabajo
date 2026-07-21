@@ -677,7 +677,14 @@ export default function AdminDashboard() {
                        <div className="p-6 text-center text-slate-400 text-sm font-medium">No tienes notificaciones pendientes para hoy</div>
                     ) : (
                        activeNotifications.map(r => (
-                         <div key={r.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" onClick={() => {setSelectedReport(r); setShowNotifications(false);}}>
+                         <div key={r.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" onClick={() => {
+                          setSelectedReport(r); 
+                          setShowNotifications(false);
+                          setAdminComment(r.comentario_admin || '');
+                          setAdminProgramaciones(r.programaciones || []);
+                          setAdminActuaciones(r.actuaciones || []);
+                          setAdminIngresos(r.ingresos || []);
+                        }}>
                            <p className="text-sm font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
                            <p className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> Requiere revisión urgente</p>
                          </div>
@@ -900,7 +907,13 @@ export default function AdminDashboard() {
                   </td>
                   <td className="p-6 text-right">
                     <button 
-                      onClick={() => { setSelectedReport(report); setAdminComment(''); setAdminProgramaciones(report.programaciones || []); }}
+                      onClick={() => { 
+                        setSelectedReport(report); 
+                        setAdminComment(report.comentario_admin || ''); 
+                        setAdminProgramaciones(report.programaciones || []); 
+                        setAdminActuaciones(report.actuaciones || []);
+                        setAdminIngresos(report.ingresos || []);
+                      }}
                       className="inline-flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-800 hover:bg-slate-800 hover:text-white text-slate-700 font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm group-hover:shadow-md"
                     >
                       <FileText className="w-4 h-4" /> Inspeccionar
