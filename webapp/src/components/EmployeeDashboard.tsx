@@ -270,15 +270,39 @@ export default function EmployeeDashboard() {
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
 
-    const hasInvalidActuaciones = actuaciones.some(a => a.actuacion.trim() !== '' && (!a.numeroAsunto || a.numeroAsunto.trim() === ''));
-    if (hasInvalidActuaciones) {
-      setSystemAlert({ isOpen: true, type: 'error', title: 'Faltan Datos', message: 'Hay actuaciones registradas sin Número de Asunto. Por favor, completa el campo o elimina la fila si está vacía.' });
+    // 1. Validar Filas en Libro de Actuaciones
+    const invalidActuacionIndex = actuaciones.findIndex(a => {
+      const noAsunto = !a.numeroAsunto || a.numeroAsunto.trim() === '' || a.numeroAsunto.endsWith('-');
+      const noDesc = !a.actuacion || a.actuacion.trim() === '';
+      return noAsunto || noDesc;
+    });
+
+    if (invalidActuacionIndex !== -1) {
+      setActiveTab('registro');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: '⚠️ Fila de Actuación Incompleta',
+        message: `La fila #${invalidActuacionIndex + 1} en el Libro de Actuaciones está abierta e incompleta. Debes rellenar obligatoriamente el N° de Asunto y la descripción de la Actuación, o borrar la fila usando el botón de la papelera (🗑️).`
+      });
       return;
     }
 
-    const hasInvalidIngresos = ingresos.some(i => !i.numeroExpediente || i.numeroExpediente.trim() === '' || i.numeroExpediente.endsWith('-'));
-    if (hasInvalidIngresos) {
-      setSystemAlert({ isOpen: true, type: 'error', title: 'Faltan Datos', message: 'Hay ingresos registrados sin Número de Expediente válido. Por favor, completa el número o elimina la fila si está vacía.' });
+    // 2. Validar Filas en Libro de Ingresos
+    const invalidIngresoIndex = ingresos.findIndex(i => {
+      const noExp = !i.numeroExpediente || i.numeroExpediente.trim() === '' || i.numeroExpediente.endsWith('-');
+      const noPartes = !i.partes || i.partes.trim() === '';
+      return noExp || noPartes;
+    });
+
+    if (invalidIngresoIndex !== -1) {
+      setActiveTab('ingresos');
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: '⚠️ Fila de Ingreso Incompleta',
+        message: `La fila #${invalidIngresoIndex + 1} en el Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con la papelera (🗑️).`
+      });
       return;
     }
 

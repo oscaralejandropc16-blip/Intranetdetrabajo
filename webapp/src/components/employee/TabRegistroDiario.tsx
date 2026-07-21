@@ -148,7 +148,7 @@ export default function TabRegistroDiario({
                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
                   <tr>
                     <th className="px-3 py-3 w-28">Hora</th>
-                    <th className="px-3 py-3 min-w-[200px]">N° Asunto</th>
+                    <th className="px-3 py-3 min-w-[200px]">N° Asunto <span className="text-rose-500 font-black">*</span></th>
                     <th className="px-3 py-3 min-w-[160px]">Partes</th>
                     <th className="px-3 py-3 min-w-[200px]">Actuación</th>
                     <th className="px-3 py-3 w-36">Estado</th>
@@ -183,7 +183,11 @@ export default function TabRegistroDiario({
                             disabled={reportSubmitted}
                             required
                             onChange={(e) => updateActuacionField(actuacion.id, 'numeroAsunto', e.target.value)}
-                            className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 bg-white"
+                            className={`w-full p-2 border rounded-lg focus:ring-2 outline-none font-semibold text-slate-800 transition-colors ${
+                              !actuacion.numeroAsunto || actuacion.numeroAsunto.trim() === ''
+                                ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                                : 'border-slate-200 focus:ring-blue-500/50 bg-white'
+                            }`}
                             placeholder="Ej. RD-J-2026..."
                           />
                           <datalist id="expedientes-list">
@@ -208,8 +212,12 @@ export default function TabRegistroDiario({
                             disabled={reportSubmitted}
                             onChange={(e) => updateActuacionField(actuacion.id, 'actuacion', e.target.value)}
                             rows={3}
-                            className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 resize-none bg-white"
-                            placeholder="Describe qué se hizo"
+                            className={`w-full p-2 border rounded-lg focus:ring-2 outline-none text-slate-700 font-medium resize-none transition-colors ${
+                              !actuacion.actuacion || actuacion.actuacion.trim() === ''
+                                ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                                : 'border-slate-200 focus:ring-blue-500/50 bg-white'
+                            }`}
+                            placeholder="Describe qué se hizo *"
                           />
                         </td>
                         <td className="px-3 py-3 align-top">
