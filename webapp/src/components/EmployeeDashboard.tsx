@@ -635,14 +635,9 @@ export default function EmployeeDashboard() {
           title: '¡Jornada Cerrada con Éxito!',
           message: 'La bitácora y el archivo PDF (sea del peso que sea) han sido cargados y asegurados al 100% en el servidor de la Intranet.'
         });
-      } catch (apiError) {
-        console.error('Error enviando a la API real, revisa tu conexión a WP', apiError);
-        setSystemAlert({
-          isOpen: true,
-          type: 'warning',
-          title: 'PDF Generado - Sin Conexión al Servidor',
-          message: 'Se generó y descargó tu PDF en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Revisa tu internet o avisa a Jefatura.'
-        });
+      } catch (e: any) {
+        console.error('Error enviando bitácora final:', e);
+        setSystemAlert({ isOpen: true, type: 'warning', title: 'PDF Generado - Sin Conexión al Servidor', message: `Se generó y descargó tu PDF en este dispositivo, pero hubo un problema de conexión al enviarlo al servidor central. Detalles: ${e?.message || 'Error Desconocido'}. Revisa tu internet o avisa a Jefatura.` });
       }
     } catch (error) {
       console.error('Error al cerrar jornada', error);
