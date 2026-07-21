@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2 } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile } from '../lib/api';
@@ -19,6 +19,8 @@ export default function AdminDashboard() {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [adminComment, setAdminComment] = useState('');
   const [adminProgramaciones, setAdminProgramaciones] = useState<any[]>([]);
+  const [adminActuaciones, setAdminActuaciones] = useState<any[]>([]);
+  const [adminIngresos, setAdminIngresos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -174,6 +176,8 @@ export default function AdminDashboard() {
     try {
       const updatedReport = {
         ...selectedReport,
+        actuaciones: adminActuaciones,
+        ingresos: adminIngresos,
         programaciones: adminProgramaciones,
         comentario_admin: adminComment
       };
@@ -192,13 +196,17 @@ export default function AdminDashboard() {
         await api.post('/rd-intranet/v1/admin-update-draft', {
           target_user_id: selectedReport.user_id,
           comentario_admin: adminComment,
-          programaciones: adminProgramaciones
+          programaciones: adminProgramaciones,
+          actuaciones: adminActuaciones,
+          ingresos: adminIngresos
         });
       } else {
         await api.post('/rd-intranet/v1/admin-update', {
           post_id: selectedReport.id,
           comentario_admin: adminComment,
-          programaciones: adminProgramaciones
+          programaciones: adminProgramaciones,
+          actuaciones: adminActuaciones,
+          ingresos: adminIngresos
         });
         
         if (newPdfBase64) {
@@ -233,6 +241,51 @@ export default function AdminDashboard() {
     const updated = [...adminProgramaciones];
     updated[index] = { ...updated[index], [field]: value };
     setAdminProgramaciones(updated);
+  };
+
+  const updateActuacionField = (index: number, field: string, value: string) => {
+    const updated = [...adminActuaciones];
+    updated[index] = { ...updated[index], [field]: value };
+    setAdminActuaciones(updated);
+  };
+
+  const handleAddActuacion = () => {
+    setAdminActuaciones([...adminActuaciones, {
+      id: Math.random().toString(36).substring(7),
+      hora: format(new Date(), 'HH:mm'),
+      numeroAsunto: '',
+      partes: '',
+      actuacion: '',
+      observaciones: ''
+    }]);
+  };
+
+  const handleRemoveActuacion = (index: number) => {
+    setAdminActuaciones(adminActuaciones.filter((_, i) => i !== index));
+  };
+
+  const updateIngresoField = (index: number, field: string, value: string) => {
+    const updated = [...adminIngresos];
+    updated[index] = { ...updated[index], [field]: value };
+    setAdminIngresos(updated);
+  };
+
+  const handleAddIngreso = () => {
+    setAdminIngresos([...adminIngresos, {
+      id: Math.random().toString(36).substring(7),
+      fechaIngreso: format(new Date(), 'yyyy-MM-dd'),
+      horaIngreso: format(new Date(), 'HH:mm'),
+      tipo: 'Judicial',
+      numeroExpediente: '',
+      organismoTribunal: '',
+      partes: '',
+      resumen: '',
+      observaciones: ''
+    }]);
+  };
+
+  const handleRemoveIngreso = (index: number) => {
+    setAdminIngresos(adminIngresos.filter((_, i) => i !== index));
   };
 
   const handleAddProgramacion = () => {
@@ -916,7 +969,13 @@ export default function AdminDashboard() {
                           </div>
                           
                           <button 
-                            onClick={() => { setSelectedReport(userGroup.sourceReport); setAdminComment(userGroup.sourceReport.comentario_admin || ''); setAdminProgramaciones(userGroup.sourceReport.programaciones || []); }}
+                            onClick={() => { 
+                              setSelectedReport(userGroup.sourceReport); 
+                              setAdminComment(userGroup.sourceReport.comentario_admin || ''); 
+                              setAdminProgramaciones(userGroup.sourceReport.programaciones || []); 
+                              setAdminActuaciones(userGroup.sourceReport.actuaciones || []);
+                              setAdminIngresos(userGroup.sourceReport.ingresos || []);
+                            }}
                             className="w-full sm:w-auto px-5 py-2.5 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-slate-200 hover:border-slate-800 whitespace-nowrap"
                           >
                             {userGroup.isDraft ? 'Editar Avance' : 'Editar Tareas'}
@@ -1429,63 +1488,111 @@ export default function AdminDashboard() {
 
               {/* LIBRO DE ACTUACIONES (REALIZADO) */}
               <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
-                  <CheckCircle className="w-5 h-5 text-emerald-500" /> Libro de Actuaciones (Hoy)
-                </h4>
-                {(!selectedReport.actuaciones || selectedReport.actuaciones.length === 0) ? (
-                  <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-lg">No hay actuaciones registradas.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
-                        <tr><th className="p-3">Hora</th><th className="p-3">Nº Asunto / Exp.</th><th className="p-3">Partes Involucradas</th><th className="p-3">Actuación / Gestión</th><th className="p-3">Observaciones</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedReport.actuaciones.map((act: any, i: number) => (
-                          <tr key={i} className="hover:bg-slate-50/50">
-                            <td className="p-3 text-slate-500 font-medium">{act.hora || 'N/A'}</td>
-                            <td className="p-3 font-bold text-slate-800">{act.numeroAsunto || 'N/A'}</td>
-                            <td className="p-3 text-slate-600">{act.partes || 'N/A'}</td>
-                            <td className="p-3 text-slate-600 whitespace-pre-wrap">{act.actuacion || 'N/A'}</td>
-                            <td className="p-3 text-slate-500 text-xs">{act.observaciones || 'N/A'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                    <CheckCircle className="w-5 h-5 text-emerald-500" /> Libro de Actuaciones (Hoy)
+                  </h4>
+                  <button onClick={handleAddActuacion} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Actuación</button>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
+                      <tr>
+                        <th className="p-2 min-w-[120px]">Hora</th>
+                        <th className="p-2 min-w-[150px]">Nº Asunto / Exp.</th>
+                        <th className="p-2 min-w-[150px]">Partes Involucradas</th>
+                        <th className="p-2 min-w-[200px]">Actuación / Gestión</th>
+                        <th className="p-2 min-w-[200px]">Observaciones</th>
+                        <th className="p-2 w-10 text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {adminActuaciones.length === 0 ? (
+                        <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic font-medium">El empleado no dejó actuaciones. Añade tú las tareas si es necesario.</td></tr>
+                      ) : adminActuaciones.map((act: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-2 align-top">
+                            <input type="time" value={act.hora || ''} onChange={(e) => updateActuacionField(i, 'hora', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 bg-white" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <input type="text" value={act.numeroAsunto || ''} onChange={(e) => updateActuacionField(i, 'numeroAsunto', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 bg-white" placeholder="Nº Asunto" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={act.partes || ''} onChange={(e) => updateActuacionField(i, 'partes', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 bg-white resize-none" rows={3} placeholder="Partes" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={act.actuacion || ''} onChange={(e) => updateActuacionField(i, 'actuacion', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 bg-white resize-none" rows={3} placeholder="Actuación" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={act.observaciones || ''} onChange={(e) => updateActuacionField(i, 'observaciones', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 bg-white resize-none" rows={3} placeholder="Observaciones" />
+                          </td>
+                          <td className="p-2 align-top text-center">
+                            <button onClick={() => handleRemoveActuacion(i)} className="text-slate-400 hover:text-rose-500 p-1 bg-white hover:bg-rose-50 rounded transition-colors"><Trash2 className="w-4 h-4 mx-auto" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* LIBRO DE INGRESOS (REALIZADO) */}
-              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
-                  <FileText className="w-5 h-5 text-blue-500" /> Libro de Ingresos (Nuevos Casos)
-                </h4>
-                {(!selectedReport.ingresos || selectedReport.ingresos.length === 0) ? (
-                  <p className="text-sm text-slate-500 italic p-4 bg-slate-50 rounded-lg">No hay nuevos ingresos registrados.</p>
-                ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
-                        <tr><th className="p-3">Tipo / N°</th><th className="p-3">Tribunal / Organismo</th><th className="p-3">Partes</th><th className="p-3">Resumen</th><th className="p-3">Observaciones</th></tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {selectedReport.ingresos.map((ing: any, i: number) => (
-                          <tr key={i} className="hover:bg-slate-50/50">
-                            <td className="p-3">
-                              <span className="font-bold text-slate-800 block">{ing.tipo}</span>
-                              <span className="font-bold text-blue-600 text-xs">{ing.numeroExpediente}</span>
-                            </td>
-                            <td className="p-3 text-slate-700 font-bold text-xs">{ing.organismoTribunal || 'N/A'}</td>
-                            <td className="p-3 text-slate-600 font-medium">{ing.partes}</td>
-                            <td className="p-3 text-slate-600 text-xs">{ing.resumen}</td>
-                            <td className="p-3 text-slate-500 text-xs">{ing.observaciones}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border-2 border-blue-200 shadow-sm overflow-hidden relative">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                    <FileText className="w-5 h-5 text-blue-500" /> Libro de Ingresos (Nuevos Casos)
+                  </h4>
+                  <button onClick={handleAddIngreso} className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Ingreso</button>
+                </div>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm text-left">
+                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
+                      <tr>
+                        <th className="p-2 min-w-[120px]">Tipo / Exp.</th>
+                        <th className="p-2 min-w-[150px]">Tribunal / Organismo</th>
+                        <th className="p-2 min-w-[150px]">Partes</th>
+                        <th className="p-2 min-w-[200px]">Resumen</th>
+                        <th className="p-2 min-w-[200px]">Observaciones</th>
+                        <th className="p-2 w-10 text-center">Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {adminIngresos.length === 0 ? (
+                        <tr><td colSpan={6} className="p-6 text-center text-slate-500 italic font-medium">El empleado no dejó ingresos. Añade tú los ingresos si es necesario.</td></tr>
+                      ) : adminIngresos.map((ing: any, i: number) => (
+                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="p-2 align-top">
+                            <select value={ing.tipo || 'Judicial'} onChange={(e) => updateIngresoField(i, 'tipo', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white mb-1">
+                              <option value="Judicial">Judicial</option>
+                              <option value="Administrativo">Administrativo</option>
+                              <option value="Notaría/Registro">Notaría/Registro</option>
+                              <option value="Archivo Muerto">Archivo Muerto</option>
+                              <option value="LetsSmart">LetsSmart</option>
+                            </select>
+                            <input type="text" value={ing.numeroExpediente || ''} onChange={(e) => updateIngresoField(i, 'numeroExpediente', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white" placeholder="Nº Exp." />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={ing.organismoTribunal || ''} onChange={(e) => updateIngresoField(i, 'organismoTribunal', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Tribunal" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={ing.partes || ''} onChange={(e) => updateIngresoField(i, 'partes', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Partes" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={ing.resumen || ''} onChange={(e) => updateIngresoField(i, 'resumen', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Resumen" />
+                          </td>
+                          <td className="p-2 align-top">
+                            <textarea value={ing.observaciones || ''} onChange={(e) => updateIngresoField(i, 'observaciones', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Observaciones" />
+                          </td>
+                          <td className="p-2 align-top text-center">
+                            <button onClick={() => handleRemoveIngreso(i)} className="text-slate-400 hover:text-rose-500 p-1 bg-white hover:bg-rose-50 rounded transition-colors"><Trash2 className="w-4 h-4 mx-auto" /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               {/* LIBRO DE PROGRAMACIÓN (EDITABLE) */}

@@ -544,6 +544,17 @@ function rd_intranet_admin_update_draft($request) {
         $draft = $draft_str ? json_decode($draft_str, true) : array();
         
         $draft['programaciones'] = $programaciones_editadas;
+        
+        $actuaciones_editadas = $params['actuaciones'] ?? null;
+        if (is_array($actuaciones_editadas)) {
+            $draft['actuaciones'] = $actuaciones_editadas;
+        }
+        
+        $ingresos_editados = $params['ingresos'] ?? null;
+        if (is_array($ingresos_editados)) {
+            $draft['ingresos'] = $ingresos_editados;
+        }
+
         if ($nuevo_comentario !== '') {
             $draft['comentario_admin'] = $nuevo_comentario;
         }
@@ -984,6 +995,17 @@ function rd_intranet_handle_admin_update($request) {
         if (is_array($programaciones_editadas)) {
             update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         }
+        
+        $actuaciones_editadas = $params['actuaciones'] ?? null;
+        if (is_array($actuaciones_editadas)) {
+            update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
+        $ingresos_editados = $params['ingresos'] ?? null;
+        if (is_array($ingresos_editados)) {
+            update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos_editados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
+
         if (!empty($params['pdf_base64'])) {
             update_post_meta($post_id, 'bitacora_pdf_base64', $params['pdf_base64']);
         }
