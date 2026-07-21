@@ -10,24 +10,13 @@ const api = axios.create({
   },
 });
 
-// Interceptor para agregar el token JWT y eludir WAF convirtiendo POST/PUT a x-www-form-urlencoded
-// Interceptor para agregar el token JWT
+// Interceptor para agregar el token JWT a todas las peticiones de Axios (GET principalmente)
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('rd_jwt_token');
     if (token && config.headers) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
-    
-    if ((config.method === 'post' || config.method === 'put') && config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
-      const formData = new FormData();
-      const jsonBlob = new Blob([JSON.stringify(config.data)], { type: 'application/json' });
-      formData.append('payload_json_file', jsonBlob, 'payload.json');
-      config.data = formData;
-      // ELIMINAR el Content-Type por defecto para que el navegador asigne multipart/form-data y el boundary automáticamente
-      delete config.headers['Content-Type'];
-    }
-    
     return config;
   },
   (error) => {
@@ -61,6 +50,46 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * Función universal para enviar datos al servidor usando fetch nativo.
+ * fetch nativo con FormData NO es bloqueado por el WAF de Namecheap,
+ * mientras que Axios sí lo es por las cabeceras adicionales que inyecta.
+ * Confirmado con prueba directa desde consola del navegador.
+ */
+export async function submitToServer(endpoint: string, data: Record<string, any>): Promise<any> {
+  const token = localStorage.getItem('rd_jwt_token');
+  const formData = new FormData();
+
+  // Convertir cada campo del objeto a FormData
+  Object.entries(data).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+    if (typeof value === 'object') {
+      formData.append(key, JSON.stringify(value));
+    } else {
+      formData.append(key, String(value));
+    }
+  });
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    let errorMsg = `Error del servidor: ${response.status}`;
+    try {
+      const errorJson = await response.json();
+      if (errorJson.message) errorMsg = `${response.status}: ${errorJson.message}`;
+    } catch(e) {}
+    throw new Error(errorMsg);
+  }
+
+  return await response.json();
+}
+
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
   if (!pdfBase64 || postId <= 0) return;
   
@@ -84,7 +113,7 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
   const token = localStorage.getItem('rd_jwt_token');
   
   // Usamos fetch nativo en lugar de Axios para garantizar que el navegador establezca el Content-Type multipart/form-data correcto con su 'boundary'
-  const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/upload-pdf`, {
+  const response = await fetch(`${BASE_URL}/rd-intranet/v1/upload-pdf`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`
@@ -112,7 +141,7 @@ export async function uploadEvidenceFile(postId: number, file: File, note: strin
   
   const token = localStorage.getItem('rd_jwt_token');
   
-  const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/upload-evidence`, {
+  const response = await fetch(`${BASE_URL}/rd-intranet/v1/upload-evidence`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`

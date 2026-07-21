@@ -569,6 +569,16 @@ function rd_intranet_get_request_data($request) {
             $params = array_merge($params, $decoded);
         }
     }
+
+    if (isset($_FILES['payload_json_file']) && $_FILES['payload_json_file']['error'] === UPLOAD_ERR_OK) {
+        $file_content = file_get_contents($_FILES['payload_json_file']['tmp_name']);
+        if ($file_content) {
+            $decoded = json_decode($file_content, true);
+            if (is_array($decoded)) {
+                $params = array_merge($params, $decoded);
+            }
+        }
+    }
     
     return $params;
 }

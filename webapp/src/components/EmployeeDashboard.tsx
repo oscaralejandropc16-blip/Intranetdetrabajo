@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { uploadPdfInChunks, uploadEvidenceFile } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
 import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -122,7 +122,7 @@ export default function EmployeeDashboard() {
           ingresos,
           programaciones
         };
-        await api.post('/rd-intranet/v1/draft', apiDraft);
+        await submitToServer('/rd-intranet/v1/draft', apiDraft);
       } catch (e) {
         console.error('Error saving draft to cloud', e);
       }
@@ -579,11 +579,8 @@ export default function EmployeeDashboard() {
 
       console.log('Enviando datos de jornada al backend:', payload);
       try {
-        // Usamos api.post que ya tiene el interceptor que convierte a application/x-www-form-urlencoded
-        // y bypasses el ModSecurity WAF. El PDF se sube por separado así que el payload es muy liviano.
-        const response = await api.post('/rd-intranet/v1/submit', payload);
-        
-        const responseData = response.data;
+        // Usamos submitToServer (fetch nativo con FormData) que NO es bloqueado por el WAF de Namecheap
+        const responseData = await submitToServer('/rd-intranet/v1/submit', payload);
         const postId = responseData?.post_id;
         
         if (postId && pdfBase64) {
@@ -687,8 +684,7 @@ export default function EmployeeDashboard() {
         fecha: format(now, 'yyyy-MM-dd')
       };
 
-      // 1. Sellar inmutablemente en el servidor primero (la única verdad absoluta de la asistencia)
-      const res = await api.post('/rd-intranet/v1/clock-in', immediatePayload);
+      const res = { data: await submitToServer('/rd-intranet/v1/clock-in', immediatePayload) };
       let finalClockIn = now;
       if (res.data && res.data.already_registered && res.data.clockIn) {
         finalClockIn = new Date(res.data.clockIn);
@@ -707,7 +703,7 @@ export default function EmployeeDashboard() {
       };
       localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
       
-      api.post('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
+      submitToServer('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
         console.warn('Sincronización de borrador demorada:', cloudError);
       });
 
@@ -716,7 +712,7 @@ export default function EmployeeDashboard() {
       setLoadingLocation(false);
 
       // Actualizar la ubicación una vez resuelta por el satélite/mapa
-      api.post('/rd-intranet/v1/clock-in', {
+      submitToServer('/rd-intranet/v1/clock-in', {
         clockIn: finalClockIn.toISOString(),
         ubicacionEntrada: loc,
         fecha: format(now, 'yyyy-MM-dd')

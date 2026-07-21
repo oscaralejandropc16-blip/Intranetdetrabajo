@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2 } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import api, { uploadPdfInChunks, uploadEvidenceFile } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
 
       const token = localStorage.getItem('rd_jwt_token');
       const urlPath = selectedReport.isDraft ? '/rd-intranet/v1/admin-update-draft' : '/rd-intranet/v1/admin-update';
-      const response = await fetch(`${api.defaults.baseURL}${urlPath}`, {
+      const response = await fetch(`https://romanydelgado.com/wp-json${urlPath}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -551,7 +551,7 @@ export default function AdminDashboard() {
   const handleConfirmReset = async () => {
     setIsResetting(true);
     try {
-      await api.post('/rd-intranet/v1/reset-test-data', {});
+      await submitToServer('/rd-intranet/v1/reset-test-data', {});
       setShowResetModal(false);
       window.location.reload();
     } catch (error) {
@@ -1350,8 +1350,7 @@ export default function AdminDashboard() {
                         estado_revision: 'Jefatura'
                       };
 
-                      const response = await api.post('/rd-intranet/v1/submit', payload);
-                      const responseData = response.data;
+                      const responseData = await submitToServer('/rd-intranet/v1/submit', payload);
                       const postId = responseData?.post_id;
                       if (postId && pdfBase64) {
                         console.log(`Cargando archivo PDF de Jefatura por bloques al servidor (post_id: ${postId})...`);
@@ -1776,7 +1775,7 @@ export default function AdminDashboard() {
                       onConfirm: async () => {
                         setSystemAlert(prev => ({ ...prev, isOpen: false }));
                         try {
-                          await api.post('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                          await submitToServer('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
                           setSystemAlert({
                             isOpen: true,
                             type: 'success',
@@ -1821,7 +1820,7 @@ export default function AdminDashboard() {
                           formData.append('comentario_admin', '');
                           formData.append('programaciones', '[]');
                           const token = localStorage.getItem('rd_jwt_token');
-                          const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/admin-update-draft`, {
+                          const response = await fetch(`https://romanydelgado.com/wp-json/rd-intranet/v1/admin-update-draft`, {
                             method: 'POST',
                             headers: {
                               'Authorization': `Bearer ${token}`
