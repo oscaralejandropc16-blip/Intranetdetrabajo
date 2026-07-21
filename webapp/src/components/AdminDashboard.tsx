@@ -1369,10 +1369,19 @@ export default function AdminDashboard() {
                       const reserved = resRes.data || [];
                       const allGlobals = [...globals, ...reserved];
 
+                      const jefeName = localStorage.getItem('rd_user_name') || 'victor';
                       const hasDuplicateIngreso = ingresosJefe.some(ingreso => {
                         if (ingreso.tipo !== 'Judicial') return false;
                         const isLocalDuplicate = ingresosJefe.filter(i => i.numeroExpediente === ingreso.numeroExpediente && i.id !== ingreso.id).length > 0;
-                        const isGlobalDuplicate = allGlobals.some((g: any) => g.numeroExpediente === ingreso.numeroExpediente);
+                        const isGlobalDuplicate = allGlobals.some((g: any) => {
+                          if (g.numeroExpediente !== ingreso.numeroExpediente) return false;
+                          const owner = (g.usuario || g.user || '').toLowerCase().trim();
+                          const me = jefeName.toLowerCase().trim();
+                          if (owner && me && (owner === me || owner.includes(me) || me.includes(owner))) {
+                            return false;
+                          }
+                          return true;
+                        });
                         return isLocalDuplicate || isGlobalDuplicate;
                       });
 
