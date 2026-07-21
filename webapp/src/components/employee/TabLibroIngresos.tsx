@@ -190,7 +190,12 @@ export default function TabLibroIngresos({
                       // Check for duplicates locally and globally
                       const isLocalDuplicate = ingresos.filter(i => i.numeroExpediente === ingreso.numeroExpediente && i.id !== ingreso.id && inputValue.length > 0).length > 0;
                       
-                      const duplicateInfo = globalExpedientesInfo.find(g => g.numeroExpediente === ingreso.numeroExpediente);
+                      const currentUserName = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+                      const duplicateInfo = globalExpedientesInfo.find(g => 
+                        g.numeroExpediente === ingreso.numeroExpediente && 
+                        g.usuario && 
+                        g.usuario.toLowerCase().trim() !== currentUserName
+                      );
                       const isGlobalDuplicate = !!duplicateInfo;
                       
                       const isDuplicate = ingreso.tipo === 'Judicial' && (isLocalDuplicate || isGlobalDuplicate);

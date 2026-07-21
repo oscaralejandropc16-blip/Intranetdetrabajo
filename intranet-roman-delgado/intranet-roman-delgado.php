@@ -562,17 +562,18 @@ function rd_intranet_get_reserved_expedientes() {
     
     foreach ($users as $user) {
         // Excluir al propio usuario para no mostrar sus propios expedientes como "reservados por otro"
-        if ($user->ID == $current_user_id) continue;
+        if ($current_user_id > 0 && intval($user->ID) === intval($current_user_id)) continue;
 
         $draft_str = get_user_meta($user->ID, 'rd_intranet_draft', true);
         if ($draft_str) {
             $draft = json_decode($draft_str, true);
             if (is_array($draft) && !empty($draft['ingresos'])) {
                 foreach ($draft['ingresos'] as $ingreso) {
-                    if (!empty($ingreso['numeroExpediente']) && $ingreso['tipo'] === 'Judicial') {
+                    if (!empty($ingreso['numeroExpediente']) && ($ingreso['tipo'] ?? '') === 'Judicial') {
                         $reserved[] = array(
                             'numeroExpediente' => sanitize_text_field($ingreso['numeroExpediente']),
-                            'usuario' => $user->display_name ?: ($user->user_nicename ?: $user->user_login)
+                            'usuario' => $user->display_name ?: ($user->user_nicename ?: $user->user_login),
+                            'user_id' => $user->ID
                         );
                     }
                 }
