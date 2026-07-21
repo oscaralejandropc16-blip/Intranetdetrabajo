@@ -209,11 +209,21 @@ export default function AdminDashboard() {
           setReports(parsedData);
           
           const todayStr = format(new Date(), 'yyyy-MM-dd');
+          const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
           const isReopenedToday = localStorage.getItem('rd_jefe_reopened_' + todayStr) === 'true';
-          const submittedTodayByJefe = parsedData.some(r => r.date === todayStr && isJefaturaUser(r.user));
-          if (submittedTodayByJefe && !isReopenedToday) {
+          
+          const submittedTodayByThisUser = parsedData.some(r => {
+            if (r.date !== todayStr) return false;
+            const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
+            return reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
+          });
+
+          if (submittedTodayByThisUser && !isReopenedToday) {
             setJefeReportSubmitted(true);
             localStorage.setItem('rd_jefe_submitted_' + todayStr, 'true');
+          } else if (!submittedTodayByThisUser) {
+            setJefeReportSubmitted(false);
+            localStorage.removeItem('rd_jefe_submitted_' + todayStr);
           }
 
           if (parsedData.length === 0 && !isRetry) {
