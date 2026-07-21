@@ -270,6 +270,16 @@ export default function EmployeeDashboard() {
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
 
+    if (actuaciones.length === 0 && ingresos.length === 0 && programaciones.length === 0) {
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: '⚠️ Bitácora Totalmente Vacía',
+        message: 'No has registrado ninguna Actuación, Ingreso o Programación. Debes agregar al menos una gestión completada antes de cerrar tu jornada.'
+      });
+      return;
+    }
+
     // 1. Validar Filas en Libro de Actuaciones
     const invalidActuacionIndex = actuaciones.findIndex(a => {
       const noAsunto = !a.numeroAsunto || a.numeroAsunto.trim() === '' || a.numeroAsunto.endsWith('-');
