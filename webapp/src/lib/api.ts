@@ -21,8 +21,10 @@ api.interceptors.request.use(
     
     // Eludir WAF convirtiendo POST/PUT a x-www-form-urlencoded
     if ((config.method === 'post' || config.method === 'put') && config.data && typeof config.data === 'object' && !(config.data instanceof FormData)) {
-      config.headers['Content-Type'] = 'application/x-www-form-urlencoded';
-      config.data = `payload_json=${encodeURIComponent(JSON.stringify(config.data))}`;
+      const formData = new FormData();
+      const jsonBlob = new Blob([JSON.stringify(config.data)], { type: 'application/json' });
+      formData.append('payload_json_file', jsonBlob, 'payload.json');
+      config.data = formData;
     }
     
     return config;
