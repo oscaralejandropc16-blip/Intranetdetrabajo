@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
@@ -73,7 +73,10 @@ export default function AdminDashboard() {
   });
   const [attachedFilesJefe, setAttachedFilesJefe] = useState<{ file: any, note: string }[]>([]);
   const [pendingTasksJefe, setPendingTasksJefe] = useState<any[]>([]);
-  const [jefeReportSubmitted, setJefeReportSubmitted] = useState(false);
+  const [jefeReportSubmitted, setJefeReportSubmitted] = useState<boolean>(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return localStorage.getItem('rd_jefe_submitted_' + todayStr) === 'true';
+  });
   const [submittingJefe, setSubmittingJefe] = useState(false);
 
   useEffect(() => {
@@ -204,6 +207,15 @@ export default function AdminDashboard() {
             };
           });
           setReports(parsedData);
+          
+          const todayStr = format(new Date(), 'yyyy-MM-dd');
+          const isReopenedToday = localStorage.getItem('rd_jefe_reopened_' + todayStr) === 'true';
+          const submittedTodayByJefe = parsedData.some(r => r.date === todayStr && isJefaturaUser(r.user));
+          if (submittedTodayByJefe && !isReopenedToday) {
+            setJefeReportSubmitted(true);
+            localStorage.setItem('rd_jefe_submitted_' + todayStr, 'true');
+          }
+
           if (parsedData.length === 0 && !isRetry) {
             retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
           }
@@ -1196,6 +1208,44 @@ export default function AdminDashboard() {
             </div>
           </div>
 
+          {jefeReportSubmitted && (
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-3xl p-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 animate-in fade-in duration-500">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                  <CheckCircle2 className="w-7 h-7" />
+                </div>
+                <div>
+                  <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-extrabold uppercase tracking-wider rounded-full">
+                    Bitácora de Hoy Concluida
+                  </span>
+                  <h4 className="text-xl font-bold text-slate-800 mt-1">Tu jornada de hoy ya fue enviada oficialmente</h4>
+                  <p className="text-slate-500 text-sm font-medium">
+                    Los registros están bloqueados para evitar duplicados o sobrescrituras. Si necesitas agregar o modificar gestiones de hoy, pulsa Reabrir Jornada.
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setJefeReportSubmitted(false);
+                  const todayStr = format(new Date(), 'yyyy-MM-dd');
+                  localStorage.removeItem('rd_jefe_submitted_' + todayStr);
+                  localStorage.setItem('rd_jefe_reopened_' + todayStr, 'true');
+                  setSystemAlert({
+                    isOpen: true,
+                    type: 'success',
+                    title: 'Jornada Reabierta',
+                    message: 'Tu jornada de hoy ha sido reabierta. Ahora puedes modificar tus registros o agregar nuevas actuaciones antes de volver a generar tu bitácora.'
+                  });
+                }}
+                className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm rounded-xl border border-slate-300 shadow-sm hover:shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
+              >
+                <Lock className="w-4 h-4 text-amber-500" />
+                <span>Reabrir Jornada de Hoy</span>
+              </button>
+            </div>
+          )}
+
           {bossSubTab === 'actuaciones' && (
             <TabRegistroDiario
               reportSubmitted={jefeReportSubmitted}
@@ -1478,6 +1528,9 @@ export default function AdminDashboard() {
                       setAttachedFilesJefe([]);
 
                       setJefeReportSubmitted(true);
+                      const todayStr = format(new Date(), 'yyyy-MM-dd');
+                      localStorage.setItem('rd_jefe_submitted_' + todayStr, 'true');
+                      localStorage.removeItem('rd_jefe_reopened_' + todayStr);
                       setSystemAlert({
                         isOpen: true,
                         type: 'success',
