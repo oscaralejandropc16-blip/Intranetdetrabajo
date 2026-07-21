@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle2, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Clock, XCircle, ChevronDown, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 
@@ -22,6 +22,7 @@ export default function TabRegistroDiario({
   globalExpedientes = [],
   ingresosActivos = []
 }: TabRegistroDiarioProps) {
+  const [activeStatusDropdown, setActiveStatusDropdown] = useState<string | null>(null);
 
 
 
@@ -212,21 +213,79 @@ export default function TabRegistroDiario({
                             placeholder="Describe qué se hizo"
                           />
                         </td>
-                        <td className="px-3 py-3 align-top">
-                          <select
-                            value={actuacion.estado || 'Completada'}
-                            disabled={reportSubmitted}
-                            onChange={(e) => updateActuacionField(actuacion.id, 'estado', e.target.value)}
-                            className={`w-full p-2 border rounded-lg font-bold text-xs outline-none bg-white transition-colors cursor-pointer ${
-                              (actuacion.estado || 'Completada') === 'Completada' ? 'border-emerald-300 text-emerald-700 bg-emerald-50/40' :
-                              actuacion.estado === 'En trámite' ? 'border-amber-300 text-amber-700 bg-amber-50/40' :
-                              'border-rose-300 text-rose-700 bg-rose-50/40'
-                            }`}
-                          >
-                            <option value="Completada">✅ Completada</option>
-                            <option value="En trámite">⏳ En trámite</option>
-                            <option value="Pendiente">❌ Pendiente</option>
-                          </select>
+                        <td className="px-3 py-3 align-top relative">
+                          {(() => {
+                            const currentStatus = actuacion.estado || 'Completada';
+                            return (
+                              <div className="relative">
+                                <button
+                                  type="button"
+                                  disabled={reportSubmitted}
+                                  onClick={() => setActiveStatusDropdown(activeStatusDropdown === actuacion.id ? null : actuacion.id)}
+                                  className={`w-full py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-between gap-1.5 transition-all border shadow-sm ${
+                                    currentStatus === 'Completada' ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100' :
+                                    currentStatus === 'En trámite' ? 'bg-amber-50 text-amber-700 border-amber-300 hover:bg-amber-100' :
+                                    'bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    {currentStatus === 'Completada' && <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />}
+                                    {currentStatus === 'En trámite' && <Clock className="w-4 h-4 text-amber-600 shrink-0" />}
+                                    {currentStatus === 'Pendiente' && <XCircle className="w-4 h-4 text-rose-600 shrink-0" />}
+                                    <span className="truncate">{currentStatus}</span>
+                                  </div>
+                                  {!reportSubmitted && <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                                </button>
+
+                                {activeStatusDropdown === actuacion.id && !reportSubmitted && (
+                                  <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setActiveStatusDropdown(null)} />
+                                    <div className="absolute right-0 top-full mt-1.5 w-40 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-50 animate-in fade-in zoom-in-95 duration-150 space-y-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updateActuacionField(actuacion.id, 'estado', 'Completada');
+                                          setActiveStatusDropdown(null);
+                                        }}
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
+                                          currentStatus === 'Completada' ? 'bg-emerald-100/70 text-emerald-800' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                        Completada
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updateActuacionField(actuacion.id, 'estado', 'En trámite');
+                                          setActiveStatusDropdown(null);
+                                        }}
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
+                                          currentStatus === 'En trámite' ? 'bg-amber-100/70 text-amber-800' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <Clock className="w-4 h-4 text-amber-600 shrink-0" />
+                                        En trámite
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          updateActuacionField(actuacion.id, 'estado', 'Pendiente');
+                                          setActiveStatusDropdown(null);
+                                        }}
+                                        className={`w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-colors text-left ${
+                                          currentStatus === 'Pendiente' ? 'bg-rose-100/70 text-rose-800' : 'text-slate-700 hover:bg-slate-50'
+                                        }`}
+                                      >
+                                        <XCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                        Pendiente
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="px-3 py-3 align-top">
                           <textarea 
