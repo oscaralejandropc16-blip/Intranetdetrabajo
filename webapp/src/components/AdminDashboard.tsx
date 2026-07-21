@@ -170,6 +170,8 @@ export default function AdminDashboard() {
       }
     };
     fetchBitacoras();
+    const intervalId = setInterval(fetchBitacoras, 15000); // Auto-refrescar cada 15 segundos
+    return () => clearInterval(intervalId);
   }, []);
 
   const handleSaveComment = async () => {
@@ -191,23 +193,22 @@ export default function AdminDashboard() {
         console.warn('No se pudo regenerar base64 PDF al aprobar:', e);
       }
 
+      const formData = new FormData();
+      if (selectedReport.isDraft) {
+        formData.append('target_user_id', selectedReport.user_id);
+      } else {
+        formData.append('post_id', selectedReport.id);
+      }
+      formData.append('comentario_admin', adminComment);
+      formData.append('programaciones', JSON.stringify(adminProgramaciones));
+      formData.append('actuaciones', JSON.stringify(adminActuaciones));
+      formData.append('ingresos', JSON.stringify(adminIngresos));
+
       if (selectedReport.isDraft) {
         // Enviar a la nueva API de borradores
-        await api.post('/rd-intranet/v1/admin-update-draft', {
-          target_user_id: selectedReport.user_id,
-          comentario_admin: adminComment,
-          programaciones: adminProgramaciones,
-          actuaciones: adminActuaciones,
-          ingresos: adminIngresos
-        });
+        await api.post('/rd-intranet/v1/admin-update-draft', formData);
       } else {
-        await api.post('/rd-intranet/v1/admin-update', {
-          post_id: selectedReport.id,
-          comentario_admin: adminComment,
-          programaciones: adminProgramaciones,
-          actuaciones: adminActuaciones,
-          ingresos: adminIngresos
-        });
+        await api.post('/rd-intranet/v1/admin-update', formData);
         
         if (newPdfBase64) {
           await uploadPdfInChunks(selectedReport.id, newPdfBase64);
@@ -1808,11 +1809,11 @@ export default function AdminDashboard() {
                       onConfirm: async () => {
                         setSystemAlert(prev => ({ ...prev, isOpen: false }));
                         try {
-                          await api.post('/rd-intranet/v1/admin-update-draft', {
-                            target_user_id: selectedReport.user_id,
-                            comentario_admin: '',
-                            programaciones: []
-                          });
+                          const formData = new FormData();
+                          formData.append('target_user_id', selectedReport.user_id);
+                          formData.append('comentario_admin', '');
+                          formData.append('programaciones', '[]');
+                          await api.post('/rd-intranet/v1/admin-update-draft', formData);
                           setSystemAlert({
                             isOpen: true,
                             type: 'success',

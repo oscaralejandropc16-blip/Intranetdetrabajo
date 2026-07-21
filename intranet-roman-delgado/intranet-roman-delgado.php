@@ -534,9 +534,23 @@ function rd_intranet_admin_update_draft($request) {
     $params = rd_intranet_get_request_data($request);
     $target_user_id = intval($params['target_user_id'] ?? 0);
     $programaciones_editadas = $params['programaciones'] ?? array();
+    if (is_string($programaciones_editadas)) {
+        $programaciones_editadas = json_decode(stripslashes($programaciones_editadas), true) ?: array();
+    }
     if (!is_array($programaciones_editadas)) {
         $programaciones_editadas = array();
     }
+    
+    $actuaciones_editadas = $params['actuaciones'] ?? null;
+    if (is_string($actuaciones_editadas)) {
+        $actuaciones_editadas = json_decode(stripslashes($actuaciones_editadas), true);
+    }
+    
+    $ingresos_editados = $params['ingresos'] ?? null;
+    if (is_string($ingresos_editados)) {
+        $ingresos_editados = json_decode(stripslashes($ingresos_editados), true);
+    }
+    
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
 
     if ($target_user_id > 0) {
@@ -545,12 +559,10 @@ function rd_intranet_admin_update_draft($request) {
         
         $draft['programaciones'] = $programaciones_editadas;
         
-        $actuaciones_editadas = $params['actuaciones'] ?? null;
         if (is_array($actuaciones_editadas)) {
             $draft['actuaciones'] = $actuaciones_editadas;
         }
         
-        $ingresos_editados = $params['ingresos'] ?? null;
         if (is_array($ingresos_editados)) {
             $draft['ingresos'] = $ingresos_editados;
         }
@@ -578,7 +590,7 @@ function rd_intranet_get_request_data($request) {
     
     // Si viaja serializado por x-www-form-urlencoded para eludir WAF de Namecheap/EasyWP
     if (!empty($params['payload_json']) && is_string($params['payload_json'])) {
-        $decoded = json_decode(wp_unslash($params['payload_json']), true);
+        $decoded = json_decode($params['payload_json'], true);
         if (is_array($decoded)) {
             $params = array_merge($params, $decoded);
         }
@@ -791,9 +803,9 @@ function rd_intranet_handle_submit($request) {
     if (!empty($pdf_base64)) {
         update_post_meta($post_id, 'bitacora_pdf_base64', $pdf_base64);
     }
-    update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-    update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    update_post_meta($post_id, 'ingresos_json', wp_slash(wp_json_encode($ingresos, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+    update_post_meta($post_id, 'actuaciones_json', wp_slash(wp_json_encode($actuaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+    update_post_meta($post_id, 'programaciones_json', wp_slash(wp_json_encode($programaciones, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
     
     if ($cierre_retrasado) {
         update_post_meta($post_id, 'cierre_retrasado', '1');
@@ -849,7 +861,7 @@ function rd_intranet_upload_evidence($request) {
             'note' => $note
         );
 
-        update_post_meta($post_id, 'evidences_json', wp_json_encode($evidences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        update_post_meta($post_id, 'evidences_json', wp_slash(wp_json_encode($evidences, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
 
         return rest_ensure_response(array(
             'success' => true,
@@ -987,23 +999,36 @@ function rd_intranet_handle_admin_update($request) {
     $post_id = intval($params['post_id'] ?? 0);
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
     $programaciones_editadas = $params['programaciones'] ?? null;
+    if (is_string($programaciones_editadas)) {
+        $programaciones_editadas = json_decode(stripslashes($programaciones_editadas), true);
+    }
+    
+    $actuaciones_editadas = $params['actuaciones'] ?? null;
+    if (is_string($actuaciones_editadas)) {
+        $actuaciones_editadas = json_decode(stripslashes($actuaciones_editadas), true);
+    }
+    
+    $ingresos_editados = $params['ingresos'] ?? null;
+    if (is_string($ingresos_editados)) {
+        $ingresos_editados = json_decode(stripslashes($ingresos_editados), true);
+    }
     
     if ($post_id > 0) {
         if ($nuevo_comentario) {
             update_post_meta($post_id, 'comentario_admin', $nuevo_comentario);
         }
         if (is_array($programaciones_editadas)) {
-            update_post_meta($post_id, 'programaciones_json', wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            update_post_meta($post_id, 'programaciones_json', wp_slash(wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
         }
         
         $actuaciones_editadas = $params['actuaciones'] ?? null;
         if (is_array($actuaciones_editadas)) {
-            update_post_meta($post_id, 'actuaciones_json', wp_json_encode($actuaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            update_post_meta($post_id, 'actuaciones_json', wp_slash(wp_json_encode($actuaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
         }
 
         $ingresos_editados = $params['ingresos'] ?? null;
         if (is_array($ingresos_editados)) {
-            update_post_meta($post_id, 'ingresos_json', wp_json_encode($ingresos_editados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            update_post_meta($post_id, 'ingresos_json', wp_slash(wp_json_encode($ingresos_editados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
         }
 
         if (!empty($params['pdf_base64'])) {

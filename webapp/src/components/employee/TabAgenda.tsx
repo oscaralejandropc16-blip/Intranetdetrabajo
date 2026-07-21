@@ -52,6 +52,11 @@ export default function TabAgenda({
       } else {
         await api.post('/rd-intranet/v1/draft', { programaciones });
       }
+    } catch (e) {
+      console.warn('No se pudo enviar el avance al servidor (Modo offline), pero se generará el PDF localmente.', e);
+    }
+
+    try {
 
       // Generar PDF del Adelanto de Programación
       const doc = new jsPDF({ orientation: 'landscape', compress: true });
