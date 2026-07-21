@@ -579,8 +579,33 @@ export default function EmployeeDashboard() {
 
       console.log('Enviando datos de jornada al backend:', payload);
       try {
-        const response = await api.post('/rd-intranet/v1/submit', payload);
-        const postId = response.data?.post_id;
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (typeof value === 'object') {
+            formData.append(key, JSON.stringify(value));
+          } else {
+            formData.append(key, String(value));
+          }
+        });
+        
+        const dummyBlob = new Blob(['1'], { type: 'text/plain' });
+        formData.append('dummy_file', dummyBlob, 'dummy.txt');
+
+        const token = localStorage.getItem('rd_jwt_token');
+        const response = await fetch(`${api.defaults.baseURL}/rd-intranet/v1/submit`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error en submit: ${response.status}`);
+        }
+        
+        const responseData = await response.json();
+        const postId = responseData?.post_id;
         
         if (postId && pdfBase64) {
           console.log(`Cargando archivo PDF por bloques (Chunked Upload) al servidor (post_id: ${postId})...`);
