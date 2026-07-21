@@ -212,18 +212,30 @@ export default function AdminDashboard() {
           const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
           const isReopenedToday = localStorage.getItem('rd_jefe_reopened_' + todayStr) === 'true';
           
-          const submittedTodayByThisUser = parsedData.some(r => {
+          const todayReport = parsedData.find(r => {
             if (r.date !== todayStr) return false;
             const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
             return reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
           });
 
-          if (submittedTodayByThisUser && !isReopenedToday) {
+          if (todayReport && !isReopenedToday) {
             setJefeReportSubmitted(true);
             localStorage.setItem('rd_jefe_submitted_' + todayStr, 'true');
-          } else if (!submittedTodayByThisUser) {
+          } else if (!todayReport) {
             setJefeReportSubmitted(false);
             localStorage.removeItem('rd_jefe_submitted_' + todayStr);
+          }
+
+          if (todayReport) {
+            if (todayReport.actuaciones && Array.isArray(todayReport.actuaciones) && todayReport.actuaciones.length > 0) {
+              setActuacionesJefe(prev => (prev.length === 0 ? todayReport.actuaciones : prev));
+            }
+            if (todayReport.ingresos && Array.isArray(todayReport.ingresos) && todayReport.ingresos.length > 0) {
+              setIngresosJefe(prev => (prev.length === 0 ? todayReport.ingresos : prev));
+            }
+            if (todayReport.programaciones && Array.isArray(todayReport.programaciones) && todayReport.programaciones.length > 0) {
+              setProgramacionesJefe(prev => (prev.length === 0 ? todayReport.programaciones : prev));
+            }
           }
 
           if (parsedData.length === 0 && !isRetry) {
@@ -1237,15 +1249,35 @@ export default function AdminDashboard() {
               
               <button
                 onClick={() => {
-                  setJefeReportSubmitted(false);
                   const todayStr = format(new Date(), 'yyyy-MM-dd');
+                  const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+                  
+                  const todayReport = reports.find(r => {
+                    if (r.date !== todayStr) return false;
+                    const rUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
+                    return rUser === currentLoggedUser || (currentLoggedUser && rUser.includes(currentLoggedUser)) || (rUser && currentLoggedUser.includes(rUser));
+                  });
+
+                  if (todayReport) {
+                    if (todayReport.actuaciones && Array.isArray(todayReport.actuaciones) && todayReport.actuaciones.length > 0) {
+                      setActuacionesJefe(todayReport.actuaciones);
+                    }
+                    if (todayReport.ingresos && Array.isArray(todayReport.ingresos) && todayReport.ingresos.length > 0) {
+                      setIngresosJefe(todayReport.ingresos);
+                    }
+                    if (todayReport.programaciones && Array.isArray(todayReport.programaciones) && todayReport.programaciones.length > 0) {
+                      setProgramacionesJefe(todayReport.programaciones);
+                    }
+                  }
+
+                  setJefeReportSubmitted(false);
                   localStorage.removeItem('rd_jefe_submitted_' + todayStr);
                   localStorage.setItem('rd_jefe_reopened_' + todayStr, 'true');
                   setSystemAlert({
                     isOpen: true,
                     type: 'success',
                     title: 'Jornada Reabierta',
-                    message: 'Tu jornada de hoy ha sido reabierta. Ahora puedes modificar tus registros o agregar nuevas actuaciones antes de volver a generar tu bitácora.'
+                    message: 'Tu jornada de hoy ha sido reabierta. Se han restaurado tus registros anteriores para que puedas continuar modificándolos.'
                   });
                 }}
                 className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm rounded-xl border border-slate-300 shadow-sm hover:shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
