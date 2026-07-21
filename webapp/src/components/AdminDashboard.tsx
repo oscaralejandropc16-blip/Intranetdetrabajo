@@ -23,7 +23,7 @@ export default function AdminDashboard() {
   const [adminIngresos, setAdminIngresos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Estados para interactividad de la UI
   const [showNotifications, setShowNotifications] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>('actuaciones');
-  
+
   // Estado local para Libros de Jefatura (sin horario/GPS)
   const [actuacionesJefe, setActuacionesJefe] = useState<any[]>(() => {
     const saved = localStorage.getItem('rd_jefe_actuaciones');
@@ -46,7 +46,7 @@ export default function AdminDashboard() {
     const saved = localStorage.getItem('rd_jefe_programacion');
     return saved ? JSON.parse(saved) : [];
   });
-  const [attachedFilesJefe, setAttachedFilesJefe] = useState<{file: any, note: string}[]>([]);
+  const [attachedFilesJefe, setAttachedFilesJefe] = useState<{ file: any, note: string }[]>([]);
   const [pendingTasksJefe, setPendingTasksJefe] = useState<any[]>([]);
   const [jefeReportSubmitted, setJefeReportSubmitted] = useState(false);
   const [submittingJefe, setSubmittingJefe] = useState(false);
@@ -72,14 +72,14 @@ export default function AdminDashboard() {
           const parseJson = (val: any) => {
             if (Array.isArray(val)) return val;
             if (typeof val === 'string') {
-              try { return JSON.parse(val); } catch(e) { return []; }
+              try { return JSON.parse(val); } catch (e) { return []; }
             }
             return [];
           };
           const parsedActuaciones = parseJson(response.data.actuaciones);
           const parsedIngresos = parseJson(response.data.ingresos);
           const parsedProgramaciones = parseJson(response.data.programaciones);
-          
+
           if (parsedActuaciones.length > 0) setActuacionesJefe(parsedActuaciones);
           if (parsedIngresos.length > 0) setIngresosJefe(parsedIngresos);
           if (parsedProgramaciones.length > 0) setProgramacionesJefe(parsedProgramaciones);
@@ -113,10 +113,10 @@ export default function AdminDashboard() {
   const [isResetting, setIsResetting] = useState(false);
   const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
-  const [systemAlert, setSystemAlert] = useState<{ 
-    isOpen: boolean; 
-    type: AlertType; 
-    title: string; 
+  const [systemAlert, setSystemAlert] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
     message: string;
     showCancel?: boolean;
     onConfirm?: () => void;
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
             const parseJson = (val: any) => {
               if (Array.isArray(val)) return val;
               if (typeof val === 'string') {
-                try { return JSON.parse(val); } catch(e) { return []; }
+                try { return JSON.parse(val); } catch (e) { return []; }
               }
               return [];
             };
@@ -215,13 +215,17 @@ export default function AdminDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error('Error del servidor al actualizar bitácora');
+        throw new Error('Error al enviar datos (admin-update failed)');
       }
 
       if (!selectedReport.isDraft) {
-        
+
         if (newPdfBase64) {
-          await uploadPdfInChunks(selectedReport.id, newPdfBase64);
+          try {
+            await uploadPdfInChunks(selectedReport.id, newPdfBase64);
+          } catch (e) {
+            throw new Error('Error al subir el PDF (uploadPdfInChunks failed)');
+          }
         }
       }
       setSystemAlert({
@@ -230,7 +234,7 @@ export default function AdminDashboard() {
         title: '¡Comentario y Cambios Guardados!',
         message: 'Las observaciones de Jefatura y modificaciones en la programación han sido registradas en el PDF oficial y se ha notificado al empleado.'
       });
-      
+
       if (selectedReport.isDraft) {
         setAllDrafts(allDrafts.map(d => d.user_id === selectedReport.user_id ? { ...d, programaciones: adminProgramaciones, comentario_admin: adminComment } : d));
       } else {
@@ -243,7 +247,7 @@ export default function AdminDashboard() {
         isOpen: true,
         type: 'error',
         title: 'Error de Red o Conexión',
-        message: 'No se pudieron guardar las modificaciones en el servidor. Por favor verifica tu conexión y vuelve a intentarlo.'
+        message: 'Fallo: ' + (error instanceof Error ? error.message : 'Error desconocido')
       });
     }
   };
@@ -302,11 +306,11 @@ export default function AdminDashboard() {
   const handleAddProgramacion = () => {
     setAdminProgramaciones([...adminProgramaciones, {
       id: Math.random().toString(36).substring(7),
-      fecha: format(new Date(), 'yyyy-MM-dd'), 
-      hora: '08:00', 
-      organismoTribunal: '', 
-      tipoActuacion: '', 
-      resumen: '', 
+      fecha: format(new Date(), 'yyyy-MM-dd'),
+      hora: '08:00',
+      organismoTribunal: '',
+      tipoActuacion: '',
+      resumen: '',
       observaciones: ''
     }]);
   };
@@ -353,7 +357,7 @@ export default function AdminDashboard() {
           doc.setGState(new (doc as any).GState({ opacity: 0.07 }));
           doc.addImage(logoBase64, 'PNG', 98, 55, 100, 100, 'logo', 'FAST');
           doc.setGState(new (doc as any).GState({ opacity: 1.0 }));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       let finalY = 32;
@@ -362,7 +366,7 @@ export default function AdminDashboard() {
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
       doc.text('Román & Delgado Abogados — Bitácora e Informe de Gestión Diario', 14, finalY);
-      
+
       finalY += 10;
       autoTable(doc, {
         startY: finalY,
@@ -413,7 +417,7 @@ export default function AdminDashboard() {
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
       doc.text('1. LIBRO DE ACTUACIONES DIARIAS (REGISTRO DE TRÁMITES Y DILIGENCIAS)', 14, finalY + 5);
-      
+
       let actData: any[][] = [];
       if (parsedActuaciones.length > 0) {
         actData = parsedActuaciones.map((a: any) => [a.hora || 'N/A', a.numeroAsunto || 'N/A', a.partes || 'N/A', a.actuacion || 'N/A', a.observaciones || '']);
@@ -534,11 +538,11 @@ export default function AdminDashboard() {
   };
 
   let filteredReports = reports.filter(r => r.user.toLowerCase().includes(searchTerm.toLowerCase()));
-  
+
   if (statusFilter !== 'Todos') {
     filteredReports = filteredReports.filter(r => r.status === statusFilter);
   }
-  
+
   if (datePreset !== 'Todos') {
     const today = new Date();
     if (datePreset === 'Hoy') {
@@ -581,7 +585,7 @@ export default function AdminDashboard() {
     user_id: d.user_id,
     sourceReport: { isDraft: true, user_id: d.user_id, user: d.user, programaciones: d.programaciones, comentario_admin: d.comentario_admin }
   })));
-  
+
   const allScheduledTasks = reports
     .flatMap(r => (r.programaciones || []).map((p: any) => ({ ...p, user: r.user, sourceReport: r, isDraft: false })))
     .concat(draftTasks)
@@ -605,9 +609,9 @@ export default function AdminDashboard() {
   }, {} as Record<string, Record<string, any>>);
 
   const todayStr = format(new Date(), 'yyyy-MM-dd');
-  const activeNotifications = reports.filter(r => 
-    r.status === 'Enviado' && 
-    r.date === todayStr && 
+  const activeNotifications = reports.filter(r =>
+    r.status === 'Enviado' &&
+    r.date === todayStr &&
     !dismissedNotifs.includes(r.id)
   );
 
@@ -624,7 +628,7 @@ export default function AdminDashboard() {
         cancelText={systemAlert.cancelText}
         onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
       />
-      
+
       {/* Header Premium Glassmorphism */}
       <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 text-white shadow-2xl border border-slate-800 relative">
         <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
@@ -641,7 +645,7 @@ export default function AdminDashboard() {
             <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Centro de Mando KANT</h2>
             <p className="text-slate-400 text-lg font-medium">Supervisión en tiempo real de bitácoras y asistencia del equipo.</p>
           </div>
-          
+
           {/* Stats & Notifications Row */}
           <div className="flex items-center gap-4 w-full lg:w-auto">
             {/* Stat Cards */}
@@ -657,7 +661,7 @@ export default function AdminDashboard() {
 
             {/* Notification Bell */}
             <div className="relative ml-2">
-              <button 
+              <button
                 onClick={() => setShowNotifications(!showNotifications)}
                 className="p-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl hover:bg-white/10 transition-colors"
               >
@@ -669,12 +673,12 @@ export default function AdminDashboard() {
                 <div className="absolute right-0 mt-3 w-80 bg-slate-900/90 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                   <div className="bg-slate-950 p-4 flex justify-between items-center text-white border-b border-white/5">
                     <span className="font-bold text-sm tracking-widest uppercase text-amber-500 flex items-center gap-2">
-                      <Bell className="w-4 h-4"/> Notificaciones
+                      <Bell className="w-4 h-4" /> Notificaciones
                     </span>
                     <div className="flex items-center gap-3">
                       {activeNotifications.length > 0 && (
-                        <button 
-                          onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])} 
+                        <button
+                          onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])}
                           className="text-xs font-bold text-slate-400 hover:text-amber-500 transition-colors uppercase tracking-wider"
                         >
                           Vaciar
@@ -685,21 +689,21 @@ export default function AdminDashboard() {
                   </div>
                   <div className="max-h-80 overflow-y-auto p-2 space-y-2">
                     {activeNotifications.length === 0 ? (
-                       <div className="p-6 text-center text-slate-400 text-sm font-medium">No tienes notificaciones pendientes para hoy</div>
+                      <div className="p-6 text-center text-slate-400 text-sm font-medium">No tienes notificaciones pendientes para hoy</div>
                     ) : (
-                       activeNotifications.map(r => (
-                         <div key={r.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" onClick={() => {
-                          setSelectedReport(r); 
+                      activeNotifications.map(r => (
+                        <div key={r.id} className="p-4 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" onClick={() => {
+                          setSelectedReport(r);
                           setShowNotifications(false);
                           setAdminComment(r.comentario_admin || '');
                           setAdminProgramaciones(r.programaciones || []);
                           setAdminActuaciones(r.actuaciones || []);
                           setAdminIngresos(r.ingresos || []);
                         }}>
-                           <p className="text-sm font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
-                           <p className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5"/> Requiere revisión urgente</p>
-                         </div>
-                       ))
+                          <p className="text-sm font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
+                          <p className="text-xs text-amber-500 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Requiere revisión urgente</p>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
@@ -711,25 +715,25 @@ export default function AdminDashboard() {
 
       {/* Tabs Vistas */}
       <div className="flex flex-wrap gap-4">
-        <button 
+        <button
           onClick={() => setActiveView('bitacoras')}
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <FileText className="w-5 h-5" /> Revisión de Bitácoras
         </button>
-        <button 
+        <button
           onClick={() => setActiveView('agenda')}
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <CalendarIcon className="w-5 h-5" /> Agenda Global (Línea de Tiempo)
         </button>
-        <button 
+        <button
           onClick={() => setActiveView('mis_libros')}
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <BookOpen className="w-5 h-5" /> Mis Libros (Jefatura)
         </button>
-        <button 
+        <button
           onClick={() => setActiveView('historial')}
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'historial' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
@@ -739,206 +743,205 @@ export default function AdminDashboard() {
 
       {/* Main Content Area */}
       {activeView === 'bitacoras' && (
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-200">
-        
-        {/* Controles y Búsqueda */}
-        <div className="p-6 lg:p-8 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-50/50">
-          <div className="relative w-full md:w-96">
-            <Search className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
-            <input 
-              type="text" 
-              placeholder="Buscar bitácora por empleado..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700" 
-            />
-          </div>
-          <div className="flex gap-3 w-full md:w-auto">
-            <div className="relative flex-1 md:flex-none">
-              <button 
-                onClick={() => setShowDateFilter(!showDateFilter)}
-                className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <CalendarIcon className="w-5 h-5 text-amber-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
-              </button>
-              
-              {showDateFilter && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
-                  <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas Rápidas</div>
-                  {['Todos', 'Hoy', 'Ayer', 'Últimos 7 días'].map(preset => (
-                    <button 
-                      key={preset}
-                      onClick={() => { setDatePreset(preset); setShowDateFilter(false); }}
-                      className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {preset}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="relative flex-1 md:flex-none">
-              <button 
-                onClick={() => setShowFilters(!showFilters)}
-                className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <Filter className="w-5 h-5 text-blue-500" /> {statusFilter === 'Todos' ? 'Filtrar por Estado' : statusFilter}
-              </button>
-              
-              {showFilters && (
-                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
-                  <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Estado</div>
-                  {['Todos', 'En Curso', 'Enviado', 'Revisado'].map(status => (
-                    <button 
-                      key={status}
-                      onClick={() => { setStatusFilter(status); setShowFilters(false); }}
-                      className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200">
 
-        {/* Tabla de Registros */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
-                <th className="p-6">Empleado / Fecha</th>
-                <th className="p-6">Jornada</th>
-                <th className="p-6 w-48">Progreso</th>
-                <th className="p-6">Estado</th>
-                <th className="p-6">PDF Oficial</th>
-                <th className="p-6 text-right">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center p-16">
-                    <div className="flex flex-col items-center justify-center space-y-4">
-                      <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
-                      <p className="text-slate-500 font-medium animate-pulse">Conectando con la base de datos central...</p>
-                    </div>
-                  </td>
+          {/* Controles y Búsqueda */}
+          <div className="p-6 lg:p-8 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-50/50">
+            <div className="relative w-full md:w-96">
+              <Search className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar bitácora por empleado..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700"
+              />
+            </div>
+            <div className="flex gap-3 w-full md:w-auto">
+              <div className="relative flex-1 md:flex-none">
+                <button
+                  onClick={() => setShowDateFilter(!showDateFilter)}
+                  className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  <CalendarIcon className="w-5 h-5 text-amber-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
+                </button>
+
+                {showDateFilter && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas Rápidas</div>
+                    {['Todos', 'Hoy', 'Ayer', 'Últimos 7 días'].map(preset => (
+                      <button
+                        key={preset}
+                        onClick={() => { setDatePreset(preset); setShowDateFilter(false); }}
+                        className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="relative flex-1 md:flex-none">
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  <Filter className="w-5 h-5 text-blue-500" /> {statusFilter === 'Todos' ? 'Filtrar por Estado' : statusFilter}
+                </button>
+
+                {showFilters && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Estado</div>
+                    {['Todos', 'En Curso', 'Enviado', 'Revisado'].map(status => (
+                      <button
+                        key={status}
+                        onClick={() => { setStatusFilter(status); setShowFilters(false); }}
+                        className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Registros */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                  <th className="p-6">Empleado / Fecha</th>
+                  <th className="p-6">Jornada</th>
+                  <th className="p-6 w-48">Progreso</th>
+                  <th className="p-6">Estado</th>
+                  <th className="p-6">PDF Oficial</th>
+                  <th className="p-6 text-right">Acciones</th>
                 </tr>
-              ) : filteredReports.map((report) => (
-                <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-amber-50/10' : ''}`}>
-                  <td className="p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold uppercase tracking-wider text-sm border-2 border-white shadow-sm">
-                          {report.user.substring(0, 2)}
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-16">
+                      <div className="flex flex-col items-center justify-center space-y-4">
+                        <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+                        <p className="text-slate-500 font-medium animate-pulse">Conectando con la base de datos central...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : filteredReports.map((report) => (
+                  <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-amber-50/10' : ''}`}>
+                    <td className="p-6">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold uppercase tracking-wider text-sm border-2 border-white shadow-sm">
+                            {report.user.substring(0, 2)}
+                          </div>
+                          {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>}
                         </div>
-                        {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>}
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800 capitalize text-lg">{report.user}</p>
-                        <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
-                          <CalendarIcon className="w-3.5 h-3.5" /> {report.date}
-                        </p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                        <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
-                        <Clock className="w-4 h-4 text-rose-400" /> 
-                        Salida: {report.clockOut || 'Pendiente'}
-                        {report.cierreRetrasado && (
-                           <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
-                             Cerrada con Retraso
-                           </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-6">
-                    {report.progress !== undefined ? (
-                      <div className="w-full">
-                        <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tareas Hoy</span>
-                          <span className="text-[11px] font-bold text-slate-700">{report.progress}%</span>
+                        <div>
+                          <p className="font-bold text-slate-800 capitalize text-lg">{report.user}</p>
+                          <p className="text-sm text-slate-500 font-medium flex items-center gap-1">
+                            <CalendarIcon className="w-3.5 h-3.5" /> {report.date}
+                          </p>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
-                          <div 
-                            className={`h-2 rounded-full transition-all duration-1000 ${
-                              report.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500 relative overflow-hidden'
-                            }`} 
-                            style={{ width: `${report.progress}%` }}
-                          >
-                            {report.progress < 100 && (
-                               <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite] -translate-x-full" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}></div>
-                            )}
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                          <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
+                          <Clock className="w-4 h-4 text-rose-400" />
+                          Salida: {report.clockOut || 'Pendiente'}
+                          {report.cierreRetrasado && (
+                            <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
+                              Cerrada con Retraso
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      {report.progress !== undefined ? (
+                        <div className="w-full">
+                          <div className="flex justify-between items-center mb-1.5">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tareas Hoy</span>
+                            <span className="text-[11px] font-bold text-slate-700">{report.progress}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
+                            <div
+                              className={`h-2 rounded-full transition-all duration-1000 ${report.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500 relative overflow-hidden'
+                                }`}
+                              style={{ width: `${report.progress}%` }}
+                            >
+                              {report.progress < 100 && (
+                                <div className="absolute inset-0 bg-white/20 w-full h-full animate-[shimmer_2s_infinite] -translate-x-full" style={{ backgroundImage: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)' }}></div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-slate-400 font-medium">No medido</span>
-                    )}
-                  </td>
-                  <td className="p-6">
-                    <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide
+                      ) : (
+                        <span className="text-sm text-slate-400 font-medium">No medido</span>
+                      )}
+                    </td>
+                    <td className="p-6">
+                      <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide
                       ${report.status === 'En Curso' ? 'bg-blue-100 text-blue-700' : ''}
                       ${report.status === 'Enviado' ? 'bg-amber-100 text-amber-700' : ''}
                       ${report.status === 'Revisado' ? 'bg-emerald-100 text-emerald-700' : ''}
                     `}>
-                      {report.status === 'En Curso' && <Activity className="w-3.5 h-3.5" />}
-                      {report.status === 'Enviado' && <AlertCircle className="w-3.5 h-3.5" />}
-                      {report.status === 'Revisado' && <CheckCircle2 className="w-3.5 h-3.5" />}
-                      {report.status}
-                    </span>
-                  </td>
-                  <td className="p-6">
-                    {report.pdfBase64 ? (
-                      <a
-                        href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
-                        download={`Bitacora_${report.user}_${report.date}.pdf`}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
-                        title="Haz clic para descargar el PDF completo"
-                      >
-                        <Download className="w-4 h-4" /> PDF
-                      </a>
-                    ) : (
+                        {report.status === 'En Curso' && <Activity className="w-3.5 h-3.5" />}
+                        {report.status === 'Enviado' && <AlertCircle className="w-3.5 h-3.5" />}
+                        {report.status === 'Revisado' && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        {report.status}
+                      </span>
+                    </td>
+                    <td className="p-6">
+                      {report.pdfBase64 ? (
+                        <a
+                          href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
+                          download={`Bitacora_${report.user}_${report.date}.pdf`}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
+                          title="Haz clic para descargar el PDF completo"
+                        >
+                          <Download className="w-4 h-4" /> PDF
+                        </a>
+                      ) : (
+                        <button
+                          onClick={() => generateFallbackReportPdf(report)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-extrabold transition-colors border border-amber-300 shadow-sm"
+                          title="Generar y descargar documento oficial PDF al instante con los datos registrados del empleado"
+                        >
+                          <FileText className="w-3.5 h-3.5" /> Generar PDF
+                        </button>
+                      )}
+                    </td>
+                    <td className="p-6 text-right">
                       <button
-                        onClick={() => generateFallbackReportPdf(report)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-extrabold transition-colors border border-amber-300 shadow-sm"
-                        title="Generar y descargar documento oficial PDF al instante con los datos registrados del empleado"
+                        onClick={() => {
+                          setSelectedReport(report);
+                          setAdminComment(report.comentario_admin || '');
+                          setAdminProgramaciones(report.programaciones || []);
+                          setAdminActuaciones(report.actuaciones || []);
+                          setAdminIngresos(report.ingresos || []);
+                        }}
+                        className="inline-flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-800 hover:bg-slate-800 hover:text-white text-slate-700 font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm group-hover:shadow-md"
                       >
-                        <FileText className="w-3.5 h-3.5" /> Generar PDF
+                        <FileText className="w-4 h-4" /> Inspeccionar
                       </button>
-                    )}
-                  </td>
-                  <td className="p-6 text-right">
-                    <button 
-                      onClick={() => { 
-                        setSelectedReport(report); 
-                        setAdminComment(report.comentario_admin || ''); 
-                        setAdminProgramaciones(report.programaciones || []); 
-                        setAdminActuaciones(report.actuaciones || []);
-                        setAdminIngresos(report.ingresos || []);
-                      }}
-                      className="inline-flex items-center gap-2 bg-white border-2 border-slate-200 hover:border-slate-800 hover:bg-slate-800 hover:text-white text-slate-700 font-bold px-5 py-2.5 rounded-xl transition-all shadow-sm group-hover:shadow-md"
-                    >
-                      <FileText className="w-4 h-4" /> Inspeccionar
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-3xl text-xs text-slate-400 font-medium px-6">
+            <span>Mostrando registros oficiales de bitácora en la base de datos central KANT</span>
+          </div>
         </div>
-        <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-3xl text-xs text-slate-400 font-medium px-6">
-           <span>Mostrando registros oficiales de bitácora en la base de datos central KANT</span>
-        </div>
-      </div>
       )}
 
       {/* VISTA: AGENDA GLOBAL */}
@@ -946,11 +949,11 @@ export default function AdminDashboard() {
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
           <div className="mb-8 flex justify-between items-end">
             <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3"><CalendarIcon className="w-7 h-7 text-amber-500"/> Planificación del Equipo</h3>
+              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3"><CalendarIcon className="w-7 h-7 text-amber-500" /> Planificación del Equipo</h3>
               <p className="text-slate-500 font-medium">Línea de tiempo de todas las tareas futuras programadas.</p>
             </div>
           </div>
-          
+
           <div className="space-y-10">
             {loading ? (
               <div className="text-center p-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-slate-100 animate-pulse flex flex-col items-center justify-center gap-3">
@@ -965,7 +968,7 @@ export default function AdminDashboard() {
               const dateObj = new Date(`${dateStr}T12:00:00`);
               let dateLabel = format(dateObj, 'EEEE, d \'de\' MMMM', { locale: es });
               if (dateStr === format(new Date(), 'yyyy-MM-dd')) dateLabel = 'HOY - ' + dateLabel;
-              
+
               return (
                 <div key={dateStr} className="relative">
                   <div className="flex items-center gap-4 mb-6">
@@ -974,11 +977,11 @@ export default function AdminDashboard() {
                     </div>
                     <div className="h-px bg-slate-200 flex-1"></div>
                   </div>
-                  
+
                   <div className="flex flex-col gap-4 pl-2 lg:pl-6 border-l-2 border-amber-200">
                     {Object.values(groupedTasks[dateStr]).map((userGroup: any, i: number) => (
                       <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 transition-colors p-4 md:p-5 relative overflow-hidden group">
-                        
+
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 pb-4 border-b border-slate-100">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm uppercase border border-slate-200 shrink-0">
@@ -991,12 +994,12 @@ export default function AdminDashboard() {
                               </span>
                             </div>
                           </div>
-                          
-                          <button 
-                            onClick={() => { 
-                              setSelectedReport(userGroup.sourceReport); 
-                              setAdminComment(userGroup.sourceReport.comentario_admin || ''); 
-                              setAdminProgramaciones(userGroup.sourceReport.programaciones || []); 
+
+                          <button
+                            onClick={() => {
+                              setSelectedReport(userGroup.sourceReport);
+                              setAdminComment(userGroup.sourceReport.comentario_admin || '');
+                              setAdminProgramaciones(userGroup.sourceReport.programaciones || []);
                               setAdminActuaciones(userGroup.sourceReport.actuaciones || []);
                               setAdminIngresos(userGroup.sourceReport.ingresos || []);
                             }}
@@ -1005,7 +1008,7 @@ export default function AdminDashboard() {
                             {userGroup.isDraft ? 'Editar Avance' : 'Editar Tareas'}
                           </button>
                         </div>
-                        
+
                         <div className="flex flex-col">
                           {(expandedUsers[`${dateStr}-${userGroup.user}`] ? userGroup.tasks : userGroup.tasks.slice(0, 3)).map((task: any, tIdx: number) => (
                             <div key={tIdx} className="flex gap-4 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 transition-colors px-2 group/task">
@@ -1027,7 +1030,7 @@ export default function AdminDashboard() {
                               </div>
                             </div>
                           ))}
-                          
+
                           {userGroup.tasks.length > 3 && (
                             <button
                               onClick={() => setExpandedUsers(prev => ({ ...prev, [`${dateStr}-${userGroup.user}`]: !prev[`${dateStr}-${userGroup.user}`] }))}
@@ -1041,7 +1044,7 @@ export default function AdminDashboard() {
                             </button>
                           )}
                         </div>
-                        
+
                       </div>
                     ))}
                   </div>
@@ -1071,31 +1074,31 @@ export default function AdminDashboard() {
 
             {/* Sub-Tabs de Libros de Jefe */}
             <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-              <button 
+              <button
                 onClick={() => setBossSubTab('actuaciones')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'actuaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <Activity className="w-4 h-4" /> Actuaciones Diarias
               </button>
-              <button 
+              <button
                 onClick={() => setBossSubTab('ingresos')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'ingresos' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <FileText className="w-4 h-4" /> Libro de Ingresos
               </button>
-              <button 
+              <button
                 onClick={() => setBossSubTab('programacion')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'programacion' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <CalendarIcon className="w-4 h-4" /> Programación
               </button>
-              <button 
+              <button
                 onClick={() => setBossSubTab('investigaciones')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'investigaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
               >
                 <BookOpen className="w-4 h-4" /> Investigaciones
               </button>
-              <button 
+              <button
                 onClick={() => setBossSubTab('cierre')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
               >
@@ -1105,7 +1108,7 @@ export default function AdminDashboard() {
           </div>
 
           {bossSubTab === 'actuaciones' && (
-            <TabRegistroDiario 
+            <TabRegistroDiario
               reportSubmitted={jefeReportSubmitted}
               actuaciones={actuacionesJefe}
               setActuaciones={setActuacionesJefe}
@@ -1119,7 +1122,7 @@ export default function AdminDashboard() {
           )}
 
           {bossSubTab === 'ingresos' && (
-            <TabLibroIngresos 
+            <TabLibroIngresos
               ingresos={ingresosJefe}
               setIngresos={setIngresosJefe}
               reportSubmitted={jefeReportSubmitted}
@@ -1127,7 +1130,7 @@ export default function AdminDashboard() {
           )}
 
           {bossSubTab === 'programacion' && (
-            <TabAgenda 
+            <TabAgenda
               programaciones={programacionesJefe}
               setProgramaciones={setProgramacionesJefe}
               reportSubmitted={jefeReportSubmitted}
@@ -1201,7 +1204,7 @@ export default function AdminDashboard() {
                     }
 
                     setSubmittingJefe(true);
-                    
+
                     // Permitir que React renderice el estado de carga antes de bloquear el hilo principal con jsPDF
                     await new Promise(resolve => setTimeout(resolve, 150));
 
@@ -1308,11 +1311,11 @@ export default function AdminDashboard() {
                       try {
                         const invesResponse = await api.get('/rd-intranet/v1/investigaciones');
                         if (invesResponse.data && Array.isArray(invesResponse.data)) {
-                           const today = format(new Date(), 'yyyy-MM-dd');
-                           const myInves = invesResponse.data.filter(inv => inv.user === jefeName && inv.date && inv.date.startsWith(today));
-                           if (myInves.length > 0) {
-                             invesData = myInves.map(inv => [inv.tema || 'N/A', inv.resumen || 'N/A', inv.sentencia || 'N/A', inv.opinion_rd || 'N/A']);
-                           }
+                          const today = format(new Date(), 'yyyy-MM-dd');
+                          const myInves = invesResponse.data.filter(inv => inv.user === jefeName && inv.date && inv.date.startsWith(today));
+                          if (myInves.length > 0) {
+                            invesData = myInves.map(inv => [inv.tema || 'N/A', inv.resumen || 'N/A', inv.sentencia || 'N/A', inv.opinion_rd || 'N/A']);
+                          }
                         }
                       } catch (e) {
                         console.warn('No se pudieron obtener las investigaciones', e);
@@ -1324,7 +1327,7 @@ export default function AdminDashboard() {
                         doc.setTextColor(15, 23, 42);
                         doc.setFont('helvetica', 'bold');
                         doc.text('4. APORTES A LA BIBLIOTECA VIRTUAL (INVESTIGACIONES Y SENTENCIAS)', 14, finalY + 5);
-                        
+
                         autoTable(doc, {
                           startY: finalY + 8,
                           head: [['TEMA / TÍTULO', 'RESUMEN / HECHOS', 'SENTENCIA / JURISPRUDENCIA', 'OPINIÓN Y ANÁLISIS R&D']],
@@ -1443,7 +1446,7 @@ export default function AdminDashboard() {
       {selectedReport && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
-            
+
             {/* Modal Header */}
             <div className="bg-slate-900 p-6 sm:p-8 flex justify-between items-start text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
@@ -1468,16 +1471,16 @@ export default function AdminDashboard() {
 
             {/* Modal Body */}
             <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-8 bg-slate-50/50">
-              
+
               {/* Info General (Cards) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-emerald-500"/> Entrada</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-emerald-500" /> Entrada</p>
                   <p className="text-xl font-bold text-slate-800">{selectedReport.clockIn}</p>
                 </div>
-                
+
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500"/> GPS Entrada</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500" /> GPS Entrada</p>
                   {selectedReport.ubicacionEntrada && selectedReport.ubicacionEntrada !== 'N/A' ? (
                     <div className="flex flex-col items-start gap-1">
                       {selectedReport.ubicacionEntrada.includes('|||') && (
@@ -1491,12 +1494,12 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-rose-500"/> Salida</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-rose-500" /> Salida</p>
                   <p className="text-xl font-bold text-slate-800">{selectedReport.clockOut || 'Activa'}</p>
                 </div>
-                
+
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500"/> GPS Salida</p>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" /> GPS Salida</p>
                   {selectedReport.ubicacionSalida && selectedReport.ubicacionSalida !== 'N/A' ? (
                     <div className="flex flex-col items-start gap-1">
                       {selectedReport.ubicacionSalida.includes('|||') && (
@@ -1518,7 +1521,7 @@ export default function AdminDashboard() {
                   </h4>
                   <button onClick={handleAddActuacion} className="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Actuación</button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
@@ -1569,7 +1572,7 @@ export default function AdminDashboard() {
                   </h4>
                   <button onClick={handleAddIngreso} className="text-xs bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Ingreso</button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
@@ -1627,7 +1630,7 @@ export default function AdminDashboard() {
                   </h4>
                   <button onClick={handleAddProgramacion} className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Tarea</button>
                 </div>
-                
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
                     <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
@@ -1690,11 +1693,11 @@ export default function AdminDashboard() {
                   <FileText className="w-5 h-5 text-blue-500" /> Documentos de la Jornada
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
+
                   {/* Botón para descargar el PDF principal generado automáticamente */}
                   {selectedReport.pdfBase64 ? (
-                    <a 
-                      href={selectedReport.pdfBase64.startsWith('data:') || selectedReport.pdfBase64.startsWith('http') ? selectedReport.pdfBase64 : `data:application/pdf;base64,${selectedReport.pdfBase64}`} 
+                    <a
+                      href={selectedReport.pdfBase64.startsWith('data:') || selectedReport.pdfBase64.startsWith('http') ? selectedReport.pdfBase64 : `data:application/pdf;base64,${selectedReport.pdfBase64}`}
                       download={`Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`}
                       className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 transition-all cursor-pointer group shadow-sm"
                     >
@@ -1752,7 +1755,7 @@ export default function AdminDashboard() {
                   <MessageSquare className="w-5 h-5 text-blue-500" /> Feedback Administrativo
                 </h4>
                 <p className="text-sm text-slate-500 font-medium mb-4">Añade comentarios o instrucciones. El empleado recibirá una notificación.</p>
-                <textarea 
+                <textarea
                   value={adminComment}
                   onChange={(e) => setAdminComment(e.target.value)}
                   placeholder="Escribe tus observaciones aquí..."
@@ -1766,7 +1769,7 @@ export default function AdminDashboard() {
             {/* Modal Footer */}
             <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
               {!selectedReport.isDraft ? (
-                <button 
+                <button
                   onClick={() => {
                     setSystemAlert({
                       isOpen: true,
@@ -1806,7 +1809,7 @@ export default function AdminDashboard() {
                   ⚙️ Eliminar Bitácora / Reiniciar Día
                 </button>
               ) : (
-                <button 
+                <button
                   onClick={() => {
                     setSystemAlert({
                       isOpen: true,
@@ -1884,16 +1887,16 @@ export default function AdminDashboard() {
               </div>
               <h3 className="text-2xl font-bold text-slate-800 mb-2">¿Borrar todos los datos?</h3>
               <p className="text-slate-500 font-medium mb-8">Esta acción eliminará de WordPress todas las bitácoras y correlativos de prueba. No se puede deshacer.</p>
-              
+
               <div className="flex gap-4">
-                <button 
+                <button
                   onClick={() => setShowResetModal(false)}
                   disabled={isResetting}
                   className="flex-1 py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors disabled:opacity-50"
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   onClick={handleConfirmReset}
                   disabled={isResetting}
                   className="flex-1 py-3 px-4 bg-rose-500 hover:bg-rose-600 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
