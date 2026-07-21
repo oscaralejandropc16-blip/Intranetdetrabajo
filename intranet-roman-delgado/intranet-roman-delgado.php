@@ -17,13 +17,13 @@ add_action('rest_api_init', function() {
     remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
     add_filter('rest_pre_serve_request', function($value) {
         $origin = get_http_origin();
-        $allowed = array('https://intranetlegal.vercel.app');
-        if (in_array($origin, $allowed)) {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
-            header('Access-Control-Allow-Credentials: true');
-            header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
+        if (empty($origin)) {
+            $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
         }
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
         return $value;
     });
 }, 15);
@@ -31,18 +31,16 @@ add_action('rest_api_init', function() {
 // Manejar preflight OPTIONS antes de que WordPress procese la ruta (evita 401/403 en preflight)
 add_action('init', function() {
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS' && isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'wp-json') !== false) {
-        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '';
-        if ($origin === 'https://intranetlegal.vercel.app') {
-            header('Access-Control-Allow-Origin: ' . $origin);
-            header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
-            header('Access-Control-Allow-Credentials: true');
-            header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
-            header('Access-Control-Max-Age: 86400');
-            header('Content-Length: 0');
-            header('Content-Type: text/plain');
-            status_header(200);
-            exit;
-        }
+        $origin = isset($_SERVER['HTTP_ORIGIN']) ? $_SERVER['HTTP_ORIGIN'] : '*';
+        header('Access-Control-Allow-Origin: ' . $origin);
+        header('Access-Control-Allow-Methods: OPTIONS, GET, POST, PUT, PATCH, DELETE');
+        header('Access-Control-Allow-Credentials: true');
+        header('Access-Control-Allow-Headers: Authorization, X-WP-Nonce, Content-Disposition, Content-MD5, Content-Type');
+        header('Access-Control-Max-Age: 86400');
+        header('Content-Length: 0');
+        header('Content-Type: text/plain');
+        status_header(200);
+        exit;
     }
 });
 
@@ -902,9 +900,10 @@ function rd_intranet_upload_pdf($request) {
         return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
     }
 
-    $post_id = intval($_POST['post_id'] ?? 0);
-    if ($post_id <= 0 || empty($_FILES['pdf_file'])) {
-        return new WP_Error('bad_request', 'Datos de archivo inválidos', array('status' => 400));
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($_POST['post_id'] ?? ($params['post_id'] ?? 0));
+    if ($post_id <= 0) {
+        return new WP_Error('bad_request', 'ID de bitácora inválido', array('status' => 400));
     }
 
     // Verificar que el post pertenezca al usuario o que sea admin
@@ -913,25 +912,44 @@ function rd_intranet_upload_pdf($request) {
         return new WP_Error('forbidden', 'No tienes permiso para modificar esta bitácora', array('status' => 403));
     }
 
-    $file = $_FILES['pdf_file'];
-    if ($file['error'] !== UPLOAD_ERR_OK) {
-        return new WP_Error('upload_error', 'Error en la transmisión del archivo', array('status' => 500));
+    // Si viene como chunk en base64
+    $chunk_base64 = $params['chunk_base64'] ?? '';
+    $chunk_index = isset($params['chunk_index']) ? intval($params['chunk_index']) : -1;
+    $total_chunks = isset($params['total_chunks']) ? intval($params['total_chunks']) : -1;
+
+    if ($chunk_base64 !== '' && $chunk_index >= 0 && $total_chunks > 0) {
+        $transient_key = 'rd_pdf_chunks_' . $post_id;
+        $chunks = get_transient($transient_key);
+        if (!is_array($chunks)) $chunks = array();
+        
+        $chunks[$chunk_index] = $chunk_base64;
+        set_transient($transient_key, $chunks, 3600);
+
+        if (count($chunks) >= $total_chunks) {
+            ksort($chunks);
+            $full_base64 = implode('', $chunks);
+            update_post_meta($post_id, 'bitacora_pdf_base64', $full_base64);
+            delete_transient($transient_key);
+            return rest_ensure_response(array('success' => true, 'completed' => true, 'message' => 'PDF ensamblado correctamente.'));
+        }
+
+        return rest_ensure_response(array('success' => true, 'completed' => false, 'chunk' => $chunk_index));
     }
 
-    $raw_data = file_get_contents($file['tmp_name']);
-    if (empty($raw_data)) {
-        return new WP_Error('empty_file', 'El archivo subido está vacío', array('status' => 400));
+    // Si viene como archivo normal por $_FILES
+    if (!empty($_FILES['pdf_file'])) {
+        $file = $_FILES['pdf_file'];
+        if ($file['error'] === UPLOAD_ERR_OK) {
+            $raw_data = file_get_contents($file['tmp_name']);
+            if (!empty($raw_data)) {
+                $final_base64 = base64_encode($raw_data);
+                update_post_meta($post_id, 'bitacora_pdf_base64', $final_base64);
+                return rest_ensure_response(array('success' => true, 'completed' => true, 'message' => 'PDF almacenado exitosamente.'));
+            }
+        }
     }
 
-    // Codificar el archivo recibido en Base64 para almacenarlo en la base de datos
-    $final_base64 = base64_encode($raw_data);
-    update_post_meta($post_id, 'bitacora_pdf_base64', $final_base64);
-
-    return rest_ensure_response(array(
-        'success' => true,
-        'message' => 'PDF completado y almacenado exitosamente en el servidor.',
-        'post_id' => $post_id
-    ));
+    return new WP_Error('upload_error', 'Error en la transmisión del PDF', array('status' => 400));
 }
 
 function rd_intranet_decode_meta_json($post_id, $meta_key) {

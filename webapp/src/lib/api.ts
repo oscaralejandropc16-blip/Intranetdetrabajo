@@ -56,7 +56,7 @@ api.interceptors.response.use(
  * mientras que Axios sí lo es por las cabeceras adicionales que inyecta.
  * Confirmado con prueba directa desde consola del navegador.
  */
-export async function submitToServer(endpoint: string, data: Record<string, any>): Promise<any> {
+export async function submitToServer(endpoint: string, data: Record<string, any>, retries = 3): Promise<any> {
   const token = localStorage.getItem('rd_jwt_token');
   const formData = new FormData();
 
@@ -70,24 +70,35 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
     }
   });
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
-
-  if (!response.ok) {
-    let errorMsg = `Error del servidor: ${response.status}`;
+  let lastErr: any;
+  for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const errorJson = await response.json();
-      if (errorJson.message) errorMsg = `${response.status}: ${errorJson.message}`;
-    } catch(e) {}
-    throw new Error(errorMsg);
-  }
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
 
-  return await response.json();
+      if (!response.ok) {
+        let errorMsg = `Error del servidor: ${response.status}`;
+        try {
+          const errorJson = await response.json();
+          if (errorJson.message) errorMsg = `${response.status}: ${errorJson.message}`;
+        } catch(e) {}
+        throw new Error(errorMsg);
+      }
+
+      return await response.json();
+    } catch (e: any) {
+      lastErr = e;
+      if (attempt < retries) {
+        await new Promise(r => setTimeout(r, 800 * attempt));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 export async function uploadPdfInChunks(postId: number, pdfBase64: string): Promise<any> {
@@ -96,41 +107,30 @@ export async function uploadPdfInChunks(postId: number, pdfBase64: string): Prom
   // Limpiar el encabezado data: si existe (para evitar DOMException en atob)
   const base64Data = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
   
-  // Decodificar Base64 a Blob
-  const byteCharacters = atob(base64Data);
-  const byteNumbers = new Array(byteCharacters.length);
-  for (let i = 0; i < byteCharacters.length; i++) {
-    byteNumbers[i] = byteCharacters.charCodeAt(i);
+  // Dividir en fragmentos seguros de 256 KB para evitar bloqueos del WAF o timeouts
+  const chunkSize = 256 * 1024;
+  const totalChunks = Math.ceil(base64Data.length / chunkSize);
+
+  if (totalChunks > 1) {
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = base64Data.substring(i * chunkSize, (i + 1) * chunkSize);
+      await submitToServer('/rd-intranet/v1/upload-pdf', {
+        post_id: postId,
+        chunk_base64: chunk,
+        chunk_index: i,
+        total_chunks: totalChunks
+      });
+    }
+    return { success: true, message: 'PDF subido por partes exitosamente.' };
+  } else {
+    // Si es un archivo pequeño, enviarlo directo con reintentos
+    return await submitToServer('/rd-intranet/v1/upload-pdf', {
+      post_id: postId,
+      chunk_base64: base64Data,
+      chunk_index: 0,
+      total_chunks: 1
+    });
   }
-  const byteArray = new Uint8Array(byteNumbers);
-  const blob = new Blob([byteArray], { type: 'application/pdf' });
-  
-  // Usar FormData puro
-  const formData = new FormData();
-  formData.append('post_id', String(postId));
-  formData.append('pdf_file', blob, `bitacora_${postId}.pdf`);
-  
-  const token = localStorage.getItem('rd_jwt_token');
-  
-  // Usamos fetch nativo en lugar de Axios para garantizar que el navegador establezca el Content-Type multipart/form-data correcto con su 'boundary'
-  const response = await fetch(`${BASE_URL}/rd-intranet/v1/upload-pdf`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`
-    },
-    body: formData
-  });
-  
-  if (!response.ok) {
-    let errorMsg = 'Error al subir PDF';
-    try {
-      const errorJson = await response.json();
-      if (errorJson.message) errorMsg = errorJson.message;
-    } catch(e) {}
-    throw new Error(errorMsg);
-  }
-  
-  return await response.json();
 }
 
 export async function uploadEvidenceFile(postId: number, file: File, note: string): Promise<any> {
