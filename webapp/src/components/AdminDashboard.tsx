@@ -91,22 +91,12 @@ export default function AdminDashboard() {
     fetchDraft();
   }, []);
 
-  // Guardar automáticamente en el servidor (Auto-Draft) para el Jefe
+  // Guardar automáticamente en el local storage (Auto-Draft) para el Jefe
   useEffect(() => {
-    const handler = setTimeout(async () => {
-      try {
-        if (actuacionesJefe.length === 0 && ingresosJefe.length === 0 && programacionesJefe.length === 0) return;
-        const apiDraft = {
-          actuaciones: actuacionesJefe,
-          ingresos: ingresosJefe,
-          programaciones: programacionesJefe
-        };
-        await api.post('/rd-intranet/v1/draft', apiDraft);
-      } catch (e) {
-        console.error('Error saving admin draft to cloud', e);
-      }
-    }, 800);
-    return () => clearTimeout(handler);
+    // Solo guardamos en LocalStorage para no saturar el servidor con peticiones (evitar Error 429)
+    localStorage.setItem('rd_admin_draft_actuaciones', JSON.stringify(actuacionesJefe));
+    localStorage.setItem('rd_admin_draft_ingresos', JSON.stringify(ingresosJefe));
+    localStorage.setItem('rd_admin_draft_programaciones', JSON.stringify(programacionesJefe));
   }, [actuacionesJefe, ingresosJefe, programacionesJefe]);
 
   const [showResetModal, setShowResetModal] = useState(false);
@@ -170,7 +160,7 @@ export default function AdminDashboard() {
       }
     };
     fetchBitacoras();
-    const intervalId = setInterval(fetchBitacoras, 15000); // Auto-refrescar cada 15 segundos
+    const intervalId = setInterval(fetchBitacoras, 60000); // Auto-refrescar cada 60 segundos para evitar Rate Limit
     return () => clearInterval(intervalId);
   }, []);
 
