@@ -146,11 +146,28 @@ export default function AdminDashboard() {
               }
               return [];
             };
+            const acts = parseJson(r.actuaciones);
+            const progs = parseJson(r.programaciones);
+            
+            // Cálculo dinámico del porcentaje de progreso
+            let computedProgress = r.progress;
+            if (computedProgress === undefined || computedProgress === null) {
+              if (progs.length > 0) {
+                const completedCount = progs.filter((p: any) => p.completado || p.completed || p.status === 'completado').length;
+                computedProgress = Math.round((completedCount / progs.length) * 100);
+              } else if (r.status === 'Enviado' || r.status === 'Revisado') {
+                computedProgress = 100;
+              } else {
+                computedProgress = acts.length > 0 ? 100 : 0;
+              }
+            }
+
             return {
               ...r,
-              actuaciones: parseJson(r.actuaciones),
+              actuaciones: acts,
               ingresos: parseJson(r.ingresos),
-              programaciones: parseJson(r.programaciones)
+              programaciones: progs,
+              progress: computedProgress
             };
           });
           setReports(parsedData);
