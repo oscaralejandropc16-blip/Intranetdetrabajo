@@ -141,8 +141,14 @@ export default function EmployeeDashboard() {
             setReportSubmitted(true);
             if (response.data.clockOut) {
               setClockOut(new Date(response.data.clockOut));
+            } else {
+              setClockOut(null);
             }
+          } else {
+            setReportSubmitted(false);
+            setClockOut(null);
           }
+
           if (response.data.clockIn) {
             if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
               setClockIn(null);
@@ -151,8 +157,11 @@ export default function EmployeeDashboard() {
               return;
             }
             setClockIn(new Date(response.data.clockIn));
+            setUbicacionEntrada(response.data.ubicacionEntrada || null);
+          } else {
+            setClockIn(null);
+            setUbicacionEntrada(null);
           }
-          if (response.data.ubicacionEntrada) setUbicacionEntrada(response.data.ubicacionEntrada);
           const parseJson = (val: any) => {
             if (Array.isArray(val)) return val;
             if (typeof val === 'string') {
