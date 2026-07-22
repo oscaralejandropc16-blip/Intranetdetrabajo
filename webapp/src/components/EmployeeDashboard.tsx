@@ -14,43 +14,43 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 
-const getStorageKey = () => `rd_intranet_draft_${localStorage.getItem('rd_user_name') || 'unknown'}`;
+const getStorageKey = () => {
+  const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
+  return `rd_intranet_draft_${userName}`;
+};
+
+const isSameLocalDate = (dateInput: string | Date | null | undefined, targetDateStr = format(new Date(), 'yyyy-MM-dd')): boolean => {
+  if (!dateInput) return false;
+  try {
+    const d = new Date(dateInput);
+    if (isNaN(d.getTime())) return false;
+    return format(d, 'yyyy-MM-dd') === targetDateStr;
+  } catch (e) {
+    return false;
+  }
+};
+
+const getInitialDraft = () => {
+  try {
+    const raw = localStorage.getItem(getStorageKey());
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+};
 
 export default function EmployeeDashboard() {
   const [clockIn, setClockIn] = useState<Date | null>(() => {
-    const draft = localStorage.getItem(getStorageKey());
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.clockIn && typeof parsed.clockIn === 'string') {
-          const todayStr = format(new Date(), 'yyyy-MM-dd');
-          if (parsed.clockIn.slice(0, 10) !== todayStr) {
-            localStorage.removeItem(getStorageKey());
-            return null;
-          }
-          return new Date(parsed.clockIn);
-        }
-      } catch (e) {
-        return null;
-      }
+    const draft = getInitialDraft();
+    if (draft && draft.clockIn && isSameLocalDate(draft.clockIn)) {
+      return new Date(draft.clockIn);
     }
     return null;
   });
   const [ubicacionEntrada, setUbicacionEntrada] = useState<string | null>(() => {
-    const draft = localStorage.getItem(getStorageKey());
-    if (draft) {
-      try {
-        const parsed = JSON.parse(draft);
-        if (parsed.clockIn && typeof parsed.clockIn === 'string') {
-          const todayStr = format(new Date(), 'yyyy-MM-dd');
-          if (parsed.clockIn.slice(0, 10) !== todayStr) {
-            return null;
-          }
-        }
-        return parsed.ubicacionEntrada || null;
-      } catch (e) {
-        return null;
-      }
+    const draft = getInitialDraft();
+    if (draft && draft.clockIn && isSameLocalDate(draft.clockIn)) {
+      return draft.ubicacionEntrada || null;
     }
     return null;
   });
@@ -77,16 +77,16 @@ export default function EmployeeDashboard() {
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
-    const draft = localStorage.getItem(getStorageKey());
-    return draft ? JSON.parse(draft).actuaciones || [] : [];
+    const draft = getInitialDraft();
+    return draft && Array.isArray(draft.actuaciones) ? draft.actuaciones : [];
   });
   const [ingresos, setIngresos] = useState<Ingreso[]>(() => {
-    const draft = localStorage.getItem(getStorageKey());
-    return draft ? JSON.parse(draft).ingresos || [] : [];
+    const draft = getInitialDraft();
+    return draft && Array.isArray(draft.ingresos) ? draft.ingresos : [];
   });
   const [programaciones, setProgramaciones] = useState<Programacion[]>(() => {
-    const draft = localStorage.getItem(getStorageKey());
-    return draft ? JSON.parse(draft).programaciones || [] : [];
+    const draft = getInitialDraft();
+    return draft && Array.isArray(draft.programaciones) ? draft.programaciones : [];
   });
   const [attachedFiles, setAttachedFiles] = useState<{file: any, note: string}[]>([]);
   
@@ -135,33 +135,31 @@ export default function EmployeeDashboard() {
     const fetchDraft = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/draft');
+        const localDraft = getInitialDraft();
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
+
         if (response.data && typeof response.data === 'object') {
-          const todayStr = format(new Date(), 'yyyy-MM-dd');
           if (response.data.dayClosed) {
             setReportSubmitted(true);
-            if (response.data.clockOut) {
-              setClockOut(new Date(response.data.clockOut));
-            } else {
-              setClockOut(null);
-            }
+            setClockOut(response.data.clockOut ? new Date(response.data.clockOut) : null);
+            setActuaciones([]);
+            setIngresos([]);
+            setProgramaciones([]);
+            localStorage.removeItem(getStorageKey());
+            return;
           } else {
             setReportSubmitted(false);
             setClockOut(null);
           }
 
-          if (response.data.clockIn) {
-            if (String(response.data.clockIn).slice(0, 10) !== todayStr) {
-              setClockIn(null);
-              setUbicacionEntrada(null);
-              localStorage.removeItem(getStorageKey());
-              return;
-            }
+          if (response.data.clockIn && isSameLocalDate(response.data.clockIn, todayStr)) {
             setClockIn(new Date(response.data.clockIn));
             setUbicacionEntrada(response.data.ubicacionEntrada || null);
-          } else {
-            setClockIn(null);
-            setUbicacionEntrada(null);
+          } else if (localDraft?.clockIn && isSameLocalDate(localDraft.clockIn, todayStr)) {
+            setClockIn(new Date(localDraft.clockIn));
+            if (localDraft.ubicacionEntrada) setUbicacionEntrada(localDraft.ubicacionEntrada);
           }
+
           const parseJson = (val: any) => {
             if (Array.isArray(val)) return val;
             if (typeof val === 'string') {
@@ -169,31 +167,56 @@ export default function EmployeeDashboard() {
             }
             return [];
           };
-          const parsedActuaciones = parseJson(response.data.actuaciones);
-          const parsedIngresos = parseJson(response.data.ingresos);
-          const parsedProgramaciones = parseJson(response.data.programaciones);
-          
-          setActuaciones(parsedActuaciones);
-          setIngresos(parsedIngresos);
-          setProgramaciones(parsedProgramaciones);
-          
-          localStorage.setItem(getStorageKey(), JSON.stringify({
-            ...response.data,
-            actuaciones: parsedActuaciones,
-            ingresos: parsedIngresos,
-            programaciones: parsedProgramaciones
-          }));
+
+          const serverActuaciones: Actuacion[] = parseJson(response.data.actuaciones);
+          const serverIngresos: Ingreso[] = parseJson(response.data.ingresos);
+          const serverProgramaciones: Programacion[] = parseJson(response.data.programaciones);
+
+          const localActuaciones: Actuacion[] = Array.isArray(localDraft?.actuaciones) ? localDraft.actuaciones : [];
+          const localIngresos: Ingreso[] = Array.isArray(localDraft?.ingresos) ? localDraft.ingresos : [];
+          const localProgramaciones: Programacion[] = Array.isArray(localDraft?.programaciones) ? localDraft.programaciones : [];
+
+          const mergeLists = <T extends { id?: string | number }>(localList: T[], serverList: T[]): T[] => {
+            if (!localList || localList.length === 0) return serverList || [];
+            if (!serverList || serverList.length === 0) return localList || [];
+            const map = new Map<string | number, T>();
+            serverList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
+            localList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
+            return Array.from(map.values());
+          };
+
+          const mergedActuaciones = mergeLists<Actuacion>(localActuaciones, serverActuaciones);
+          const mergedIngresos = mergeLists<Ingreso>(localIngresos, serverIngresos);
+          const mergedProgramaciones = mergeLists<Programacion>(localProgramaciones, serverProgramaciones);
+
+          setActuaciones(mergedActuaciones);
+          setIngresos(mergedIngresos);
+          setProgramaciones(mergedProgramaciones);
+
+          const updatedLocalDraft = {
+            clockIn: response.data.clockIn || localDraft?.clockIn || null,
+            ubicacionEntrada: response.data.ubicacionEntrada || localDraft?.ubicacionEntrada || null,
+            actuaciones: mergedActuaciones,
+            ingresos: mergedIngresos,
+            programaciones: mergedProgramaciones
+          };
+          localStorage.setItem(getStorageKey(), JSON.stringify(updatedLocalDraft));
+
+          if (localActuaciones.length > serverActuaciones.length || localIngresos.length > serverIngresos.length || localProgramaciones.length > serverProgramaciones.length) {
+            submitToServer('/rd-intranet/v1/draft', updatedLocalDraft).catch(() => {});
+          }
         } else {
-          // Si el servidor responde exitosamente pero sin data (null/vacío), significa
-          // que Jefatura reseteó o eliminó el borrador del día. Debemos purgar la memoria local.
-          setClockIn(null);
-          setUbicacionEntrada(null);
-          setActuaciones([]);
-          setIngresos([]);
-          setProgramaciones([]);
-          setReportSubmitted(false);
-          setClockOut(null);
-          localStorage.removeItem(getStorageKey());
+          if (localDraft && (localDraft.actuaciones?.length > 0 || localDraft.ingresos?.length > 0 || localDraft.programaciones?.length > 0 || localDraft.clockIn)) {
+            if (localDraft.clockIn && isSameLocalDate(localDraft.clockIn, todayStr)) {
+              setClockIn(new Date(localDraft.clockIn));
+              if (localDraft.ubicacionEntrada) setUbicacionEntrada(localDraft.ubicacionEntrada);
+            }
+            if (Array.isArray(localDraft.actuaciones)) setActuaciones(localDraft.actuaciones);
+            if (Array.isArray(localDraft.ingresos)) setIngresos(localDraft.ingresos);
+            if (Array.isArray(localDraft.programaciones)) setProgramaciones(localDraft.programaciones);
+
+            submitToServer('/rd-intranet/v1/draft', localDraft).catch(() => {});
+          }
         }
       } catch (error) {
         console.error('Error fetching draft:', error);

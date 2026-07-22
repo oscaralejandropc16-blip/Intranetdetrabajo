@@ -1384,6 +1384,24 @@ export default function AdminDashboard() {
                       return;
                     }
 
+                    // 3. Validar Filas en Libro de Programación (Jefatura)
+                    const invalidProgIndex = programacionesJefe.findIndex(p => {
+                      const noOrg = !p.organismoTribunal || p.organismoTribunal.trim() === '';
+                      const noTipo = !p.tipoActuacion || p.tipoActuacion.trim() === '';
+                      return noOrg || noTipo;
+                    });
+
+                    if (invalidProgIndex !== -1) {
+                      setBossSubTab('programacion');
+                      setSystemAlert({
+                        isOpen: true,
+                        type: 'error',
+                        title: '⚠️ Fila de Programación Incompleta',
+                        message: `La fila #${invalidProgIndex + 1} en tu Libro de Programación está abierta e incompleta. Debes indicar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o eliminar la fila con la papelera (🗑️).`
+                      });
+                      return;
+                    }
+
                     try {
                       const [expRes, resRes] = await Promise.all([
                         api.get('/rd-intranet/v1/expedientes'),

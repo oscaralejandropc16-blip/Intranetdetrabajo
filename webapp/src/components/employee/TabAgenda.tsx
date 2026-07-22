@@ -45,7 +45,8 @@ export default function TabAgenda({
     await new Promise(resolve => setTimeout(resolve, 150));
 
     try {
-      const localDraft = localStorage.getItem('rd_intranet_draft');
+      const user = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
+      const localDraft = localStorage.getItem(`rd_intranet_draft_${user}`) || localStorage.getItem('rd_intranet_draft');
       if (localDraft) {
         const parsed = JSON.parse(localDraft);
         await api.post('/rd-intranet/v1/draft', { ...parsed, programaciones });
@@ -321,8 +322,8 @@ export default function TabAgenda({
             <tr>
               <th className="px-4 py-4 min-w-[150px]">Fecha</th>
               <th className="px-4 py-4 w-32">Hora</th>
-              <th className="px-4 py-4 min-w-[200px]">Organismo / Tribunal</th>
-              <th className="px-4 py-4 min-w-[200px]">Tipo de Actuación</th>
+              <th className="px-4 py-4 min-w-[200px]">Organismo / Tribunal <span className="text-rose-500 font-black">*</span></th>
+              <th className="px-4 py-4 min-w-[200px]">Tipo de Actuación <span className="text-rose-500 font-black">*</span></th>
               <th className="px-4 py-4 min-w-[250px]">Resumen</th>
               <th className="px-4 py-4 min-w-[200px]">Observaciones</th>
               {!reportSubmitted && <th className="px-4 py-4 text-center">Acción</th>}
@@ -362,8 +363,12 @@ export default function TabAgenda({
                       value={prog.organismoTribunal}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'organismoTribunal', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 bg-white"
-                      placeholder="Ej: Registro Principal"
+                      className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-medium transition-colors ${
+                        !prog.organismoTribunal || prog.organismoTribunal.trim() === ''
+                          ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                      }`}
+                      placeholder="Ej: Registro Principal *"
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
@@ -372,8 +377,12 @@ export default function TabAgenda({
                       value={prog.tipoActuacion}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'tipoActuacion', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 bg-white"
-                      placeholder="Ej: Introducir documento"
+                      className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-medium transition-colors ${
+                        !prog.tipoActuacion || prog.tipoActuacion.trim() === ''
+                          ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                      }`}
+                      placeholder="Ej: Introducir documento *"
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
