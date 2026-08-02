@@ -288,23 +288,25 @@ export default function TabRegistroDiario({
 
           <hr className="border-slate-100" />
 
-          {/* Sección: Evidencias y Documentos con Notas */}
+          {/* Sección: Evidencias y Documentos con Notas (Opcional) */}
           <section>
-            <div className="flex items-center gap-3 mb-6">
-              <UploadCloud className="w-6 h-6 text-slate-400" />
-              <h3 className="text-xl font-bold text-slate-800">Documentos y Evidencias</h3>
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <div className="flex items-center gap-3">
+                <UploadCloud className="w-6 h-6 text-blue-600" />
+                <h3 className="text-xl font-bold text-slate-800">Archivos Adjuntos a las Actuaciones <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200 ml-2">Opcional</span></h3>
+              </div>
             </div>
-            <p className="text-sm text-slate-500 font-medium mb-4">Sube los documentos en los que trabajaste hoy y agrégales una nota para que tu jefe sepa de qué tratan.</p>
+            <p className="text-sm text-slate-500 font-medium mb-4">Anexa documentos o imágenes de soporte para tus actuaciones de hoy. Quedarán archivados y podrás consultarlos (tú y la jefatura) en cualquier momento desde el historial.</p>
 
             <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl p-8 text-center hover:bg-slate-100 hover:border-slate-400 transition-all group mb-6 relative">
               <input type="file" id="evidencia" disabled={reportSubmitted} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileUpload} />
               <div className="flex flex-col items-center gap-4 pointer-events-none">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-all">
-                  <UploadCloud className="w-8 h-8 text-slate-600" />
+                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-sm border border-slate-200 transition-all group-hover:scale-105">
+                  <UploadCloud className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
-                  <span className="font-bold text-lg block text-slate-700">Selecciona o arrastra varios archivos a la vez</span>
-                  <span className="text-sm text-slate-500 font-bold mt-1 block">PDF, JPG, PNG, DOCX (Sin límite de peso)</span>
+                  <span className="font-bold text-lg block text-slate-700">Haz clic o arrastra archivos aquí para anexar a la bitácora</span>
+                  <span className="text-sm text-slate-500 font-bold mt-1 block">Admite PDF, Word (.doc, .docx), Imágenes (JPG, PNG), Excel (.xlsx), TXT</span>
                 </div>
               </div>
             </div>

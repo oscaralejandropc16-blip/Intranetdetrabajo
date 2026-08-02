@@ -29,3 +29,11 @@ export interface Programacion {
   resumen: string;
   observaciones: string;
 }
+
+export interface EvidenceItem {
+  name: string;
+  url: string;
+  type?: string;
+  note?: string;
+}
+

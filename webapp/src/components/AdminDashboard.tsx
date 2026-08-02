@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
@@ -199,6 +199,7 @@ export default function AdminDashboard() {
               actuaciones: acts,
               ingresos: parseJson(r.ingresos),
               programaciones: progs,
+              evidences: parseJson(r.evidences),
               progress: computedProgress,
               cierreRetrasado: isLate,
               clockIn: clockInVal,
@@ -1800,6 +1801,43 @@ export default function AdminDashboard() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* ARCHIVOS Y EVIDENCIAS ADJUNTAS */}
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
+                  <Paperclip className="w-5 h-5 text-blue-600" /> Archivos Adjuntos a las Actuaciones
+                </h4>
+                {Array.isArray(selectedReport.evidences) && selectedReport.evidences.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {selectedReport.evidences.map((ev: any, idx: number) => (
+                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 transition-colors">
+                        <div className="flex items-center gap-3 overflow-hidden pr-2">
+                          <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600 shrink-0">
+                            <File className="w-5 h-5" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <p className="font-bold text-xs text-slate-800 truncate" title={ev.name}>{ev.name}</p>
+                            {ev.note && <p className="text-[11px] text-slate-500 truncate mt-0.5">Nota: "{ev.note}"</p>}
+                          </div>
+                        </div>
+                        <a
+                          href={ev.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-sm"
+                        >
+                          Ver / Descargar
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-slate-500 text-sm font-medium italic">
+                    Sin archivos adjuntos registrados por el empleado en esta jornada.
+                  </div>
+                )}
               </div>
 
               {/* LIBRO DE INGRESOS (REALIZADO) */}

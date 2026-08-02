@@ -1377,7 +1377,8 @@ function rd_intranet_get_my_history() {
                 'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
                 'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
                 'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
-                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json')
+                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json'),
+                'evidences' => rd_intranet_decode_meta_json(get_the_ID(), 'evidences_json')
             );
         }
         wp_reset_postdata();
