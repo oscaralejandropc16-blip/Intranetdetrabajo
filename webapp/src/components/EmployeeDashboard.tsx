@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -88,7 +88,16 @@ export default function EmployeeDashboard() {
     const draft = getInitialDraft();
     return draft && Array.isArray(draft.programaciones) ? draft.programaciones : [];
   });
-  const [attachedFiles, setAttachedFiles] = useState<{file: any, note: string}[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<any[]>(() => {
+    const draft = getInitialDraft();
+    if (draft && Array.isArray(draft.attachedFiles)) {
+      return draft.attachedFiles.map((item: any) => ({
+        ...item,
+        file: item.file || (item.dataUrl ? dataUrlToFile(item.dataUrl, item.name || 'documento.pdf', item.type) : null)
+      }));
+    }
+    return [];
+  });
   
   // Tareas programadas reales desde la última bitácora
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
@@ -106,7 +115,14 @@ export default function EmployeeDashboard() {
       ubicacionEntrada,
       actuaciones,
       ingresos,
-      programaciones
+      programaciones,
+      attachedFiles: attachedFiles.map(f => ({
+        name: f.name || f.file?.name,
+        type: f.type || f.file?.type,
+        size: f.size || f.file?.size,
+        dataUrl: f.dataUrl,
+        note: f.note
+      }))
     };
     localStorage.setItem(getStorageKey(), JSON.stringify(localDraft));
 
@@ -114,7 +130,7 @@ export default function EmployeeDashboard() {
     const handler = setTimeout(async () => {
       try {
         // No sincronizamos si todo está vacío (estado inicial sin modificaciones)
-        if (!localDraft.clockIn && localDraft.actuaciones.length === 0 && localDraft.ingresos.length === 0 && localDraft.programaciones.length === 0) return;
+        if (!localDraft.clockIn && localDraft.actuaciones.length === 0 && localDraft.ingresos.length === 0 && localDraft.programaciones.length === 0 && localDraft.attachedFiles.length === 0) return;
         
         const apiDraft = {
           ...localDraft,
@@ -129,7 +145,7 @@ export default function EmployeeDashboard() {
     }, 800);
 
     return () => clearTimeout(handler);
-  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, loadingDraft]);
+  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, attachedFiles, loadingDraft]);
 
   useEffect(() => {
     const fetchDraft = async () => {
@@ -686,9 +702,15 @@ export default function EmployeeDashboard() {
           console.log(`Subiendo ${attachedFiles.length} documentos de evidencia...`);
           for (const fileObj of attachedFiles) {
             try {
-              await uploadEvidenceFile(postId, fileObj.file, fileObj.note);
+              let fileToUpload: File | null = fileObj.file instanceof File ? fileObj.file : null;
+              if (!fileToUpload && fileObj.dataUrl) {
+                fileToUpload = dataUrlToFile(fileObj.dataUrl, fileObj.name || 'evidencia.pdf', fileObj.type);
+              }
+              if (fileToUpload) {
+                await uploadEvidenceFile(postId, fileToUpload, fileObj.note || '');
+              }
             } catch (err) {
-              console.error(`Error al subir evidencia: ${fileObj.file.name}`, err);
+              console.error(`Error al subir evidencia: ${fileObj.name || fileObj.file?.name}`, err);
             }
           }
         }

@@ -2,13 +2,14 @@ import React from 'react';
 import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
+import { fileToDataUrl } from '../../lib/api';
 
 interface TabRegistroDiarioProps {
   reportSubmitted: boolean;
   actuaciones: Actuacion[];
   setActuaciones: React.Dispatch<React.SetStateAction<Actuacion[]>>;
-  attachedFiles: {file: any, note: string}[];
-  setAttachedFiles: (f: {file: any, note: string}[]) => void;
+  attachedFiles: any[];
+  setAttachedFiles: (f: any[]) => void;
   pendingTasks: any[];
   setPendingTasks: (t: any) => void;
   globalExpedientes?: any[];
@@ -23,16 +24,32 @@ export default function TabRegistroDiario({
   ingresosActivos = []
 }: TabRegistroDiarioProps) {
 
-
-
   const handleToggleTask = (id: number) => {
     if (reportSubmitted) return;
     setPendingTasks((tasks: any) => tasks.map((t: any) => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files).map(file => ({ file, note: '' }));
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selected = Array.from(e.target.files);
+      const newFiles = await Promise.all(
+        selected.map(async (file) => {
+          let dataUrl = '';
+          try {
+            dataUrl = await fileToDataUrl(file);
+          } catch (err) {
+            console.warn('Error convirtiendo archivo a dataUrl:', err);
+          }
+          return {
+            file,
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            dataUrl,
+            note: ''
+          };
+        })
+      );
       setAttachedFiles([...attachedFiles, ...newFiles]);
     }
   };
@@ -319,8 +336,10 @@ export default function TabRegistroDiario({
                     <div className="flex items-center gap-3 w-full xl:w-1/3">
                       <div className="bg-slate-100 p-3 rounded-lg"><File className="w-6 h-6 text-slate-500"/></div>
                       <div className="overflow-hidden">
-                        <p className="font-bold text-slate-700 truncate">{fileObj.file.name}</p>
-                        <p className="text-xs text-slate-500 font-medium">{(fileObj.file.size / 1024 / 1024).toFixed(2)} MB</p>
+                        <p className="font-bold text-slate-700 truncate">{fileObj.name || fileObj.file?.name || 'Archivo adjunto'}</p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          {fileObj.size ? (fileObj.size / 1024 / 1024).toFixed(2) + ' MB' : (fileObj.file?.size ? (fileObj.file.size / 1024 / 1024).toFixed(2) + ' MB' : 'Documento en borrador')}
+                        </p>
                       </div>
                     </div>
                     <div className="flex-1 w-full relative">

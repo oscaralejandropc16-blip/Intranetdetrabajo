@@ -156,4 +156,26 @@ export async function uploadEvidenceFile(postId: number, file: File, note: strin
   return await response.json();
 }
 
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
+export function dataUrlToFile(dataUrl: string, fileName: string, fileType?: string): File {
+  const arr = dataUrl.split(',');
+  const mime = fileType || (arr[0].match(/:(.*?);/)?.[1] ?? 'application/octet-stream');
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], fileName, { type: mime });
+}
+
 export default api;
+

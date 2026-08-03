@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer } from '../lib/api';
+import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
@@ -71,7 +71,21 @@ export default function AdminDashboard() {
     const saved = localStorage.getItem('rd_jefe_programacion');
     return saved ? JSON.parse(saved) : [];
   });
-  const [attachedFilesJefe, setAttachedFilesJefe] = useState<{ file: any, note: string }[]>([]);
+  const [attachedFilesJefe, setAttachedFilesJefe] = useState<any[]>(() => {
+    const saved = localStorage.getItem('rd_jefe_attachedFiles');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => ({
+            ...item,
+            file: item.file || (item.dataUrl ? dataUrlToFile(item.dataUrl, item.name || 'documento.pdf', item.type) : null)
+          }));
+        }
+      } catch (e) {}
+    }
+    return [];
+  });
   const [pendingTasksJefe, setPendingTasksJefe] = useState<any[]>([]);
   const [jefeReportSubmitted, setJefeReportSubmitted] = useState<boolean>(() => {
     const todayStr = format(new Date(), 'yyyy-MM-dd');
@@ -90,6 +104,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     localStorage.setItem('rd_jefe_programacion', JSON.stringify(programacionesJefe));
   }, [programacionesJefe]);
+
+  useEffect(() => {
+    const serialized = attachedFilesJefe.map(f => ({
+      name: f.name || f.file?.name,
+      type: f.type || f.file?.type,
+      size: f.size || f.file?.size,
+      dataUrl: f.dataUrl,
+      note: f.note
+    }));
+    localStorage.setItem('rd_jefe_attachedFiles', JSON.stringify(serialized));
+  }, [attachedFilesJefe]);
 
   // Sincronizar y cargar borrador del servidor para el Jefe
   useEffect(() => {
@@ -1605,7 +1630,14 @@ export default function AdminDashboard() {
                         setSystemAlert({ isOpen: true, type: 'info', title: 'Subiendo Evidencias', message: 'Por favor espera mientras se suben los documentos adjuntos...' });
                         for (let i = 0; i < attachedFilesJefe.length; i++) {
                           try {
-                            await uploadEvidenceFile(postId, attachedFilesJefe[i].file, attachedFilesJefe[i].note);
+                            const item = attachedFilesJefe[i];
+                            let fileToUpload: File | null = item.file instanceof File ? item.file : null;
+                            if (!fileToUpload && item.dataUrl) {
+                              fileToUpload = dataUrlToFile(item.dataUrl, item.name || 'evidencia.pdf', item.type);
+                            }
+                            if (fileToUpload) {
+                              await uploadEvidenceFile(postId, fileToUpload, item.note || '');
+                            }
                           } catch (err) {
                             console.error('Error subiendo evidencia de jefatura:', err);
                           }
@@ -1616,6 +1648,7 @@ export default function AdminDashboard() {
                       localStorage.removeItem('rd_jefe_actuaciones');
                       localStorage.removeItem('rd_jefe_ingresos');
                       localStorage.removeItem('rd_jefe_programacion');
+                      localStorage.removeItem('rd_jefe_attachedFiles');
                       setActuacionesJefe([]);
                       setIngresosJefe([]);
                       setProgramacionesJefe([]);
@@ -2025,37 +2058,33 @@ export default function AdminDashboard() {
                 </div>
               </div>
 
-              {/* Feedback Administrativo (Solo para Empleados Regulares) */}
-              {isJefaturaUser(selectedReport.user) ? (
-                <div className="bg-blue-50/60 p-6 sm:p-8 rounded-2xl border border-blue-200 flex items-center gap-4 shadow-sm">
-                  <div className="w-12 h-12 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-bold shadow-md shrink-0">
-                    <ShieldCheck className="w-7 h-7" />
+              {/* Feedback Administrativo y Aprobación */}
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
+                {isJefaturaUser(selectedReport.user) && (
+                  <div className="bg-blue-50/70 p-4 rounded-xl border border-blue-200 mb-4 flex items-center gap-3">
+                    <ShieldCheck className="w-6 h-6 text-blue-600 shrink-0" />
+                    <div>
+                      <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-[10px] font-extrabold uppercase tracking-wider rounded-full">
+                        Régimen Jefatura / Directivo
+                      </span>
+                      <p className="text-xs text-slate-700 font-medium mt-1">
+                        Bitácora emitida por Jefatura. Habilitada para revisión, edición de actuaciones/ingresos/programación y aprobación por cualquier miembro de la Dirección.
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <span className="px-2.5 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-extrabold uppercase tracking-wider rounded-full">
-                      Régimen Jefatura / Directivo
-                    </span>
-                    <h4 className="font-bold text-slate-800 text-lg mt-1">Bitácora Oficial Emitida por la Dirección</h4>
-                    <p className="text-sm text-slate-600 font-medium leading-relaxed">
-                      Esta bitácora fue generada por la Jefatura. Es un documento oficial ejecutivo sin requerimiento de evaluación ni feedback.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
-                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-2">
-                    <MessageSquare className="w-5 h-5 text-blue-500" /> Feedback Administrativo
-                  </h4>
-                  <p className="text-sm text-slate-500 font-medium mb-4">Añade comentarios o instrucciones. El empleado recibirá una notificación.</p>
-                  <textarea
-                    value={adminComment}
-                    onChange={(e) => setAdminComment(e.target.value)}
-                    placeholder="Escribe tus observaciones aquí..."
-                    rows={4}
-                    className="w-full p-4 text-lg border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
-                  />
-                </div>
-              )}
+                )}
+                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-2">
+                  <MessageSquare className="w-5 h-5 text-blue-500" /> Feedback Administrativo / Observaciones
+                </h4>
+                <p className="text-sm text-slate-500 font-medium mb-4">Añade comentarios o observaciones oficiales. Se registrarán en el reporte PDF y se notificará.</p>
+                <textarea
+                  value={adminComment}
+                  onChange={(e) => setAdminComment(e.target.value)}
+                  placeholder="Escribe tus observaciones aquí..."
+                  rows={4}
+                  className="w-full p-4 text-lg border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
+                />
+              </div>
 
             </div>
 
@@ -2161,11 +2190,9 @@ export default function AdminDashboard() {
                 <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
                   Cerrar
                 </button>
-                {!isJefaturaUser(selectedReport.user) && (
-                  <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
-                    <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
-                  </button>
-                )}
+                <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
+                  <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
+                </button>
               </div>
             </div>
           </div>
