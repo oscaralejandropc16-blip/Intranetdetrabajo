@@ -4,6 +4,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-1',
     numeroExpediente: '57.380',
+    codigoCorrelativo: 'RD-J-2026-57380',
     juzgado: 'Tribunal 2do',
     partes: 'José Sindonio De Sousa Texeira contra Francisco Texeira',
     procedimiento: 'Reconocimiento de contenido y firma',
@@ -36,6 +37,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-2',
     numeroExpediente: '57.371',
+    codigoCorrelativo: 'RD-J-2026-57371',
     juzgado: 'Tribunal 2do',
     partes: 'Sousa y Gomes',
     procedimiento: 'Cobro de Bolívares por vía ejecutiva',
@@ -59,6 +61,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-3',
     numeroExpediente: '56.748',
+    codigoCorrelativo: 'RD-J-2026-56748',
     juzgado: 'Tribunal 2do',
     partes: 'Pedro Linares',
     procedimiento: 'Acción Reivindicatoria',
@@ -82,6 +85,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-4',
     numeroExpediente: '12.779',
+    codigoCorrelativo: 'RD-J-2026-12779',
     juzgado: 'Tribunal 4to',
     partes: 'Montero-Contreras',
     procedimiento: 'Divorcio Mutuo Acuerdo',
@@ -104,6 +108,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-5',
     numeroExpediente: 'Prov-V-2023-001113',
+    codigoCorrelativo: 'RD-J-2026-001113',
     juzgado: '1 Juicio TP',
     partes: 'Karyl Zapata contra Orlando Cordero',
     procedimiento: 'Partición Judicial',
@@ -127,6 +132,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-6',
     numeroExpediente: 'Prov-J-2025-002403',
+    codigoCorrelativo: 'RD-J-2026-002403',
     juzgado: 'Tribunal 7mo MSE',
     partes: 'Nataly Feres',
     procedimiento: 'Divorcio',
@@ -150,6 +156,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-7',
     numeroExpediente: 'Prov-J-2026-001974',
+    codigoCorrelativo: 'RD-J-2026-001974',
     juzgado: 'Tribunal 1ro MSE',
     partes: 'Tulio Zambrano contra Gabriela González',
     procedimiento: 'Divorcio',
@@ -173,6 +180,7 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   {
     id: 'exp-8',
     numeroExpediente: 'CI-2023-71923',
+    codigoCorrelativo: 'RD-J-2026-71923',
     juzgado: 'Juicio 6',
     partes: 'Laura Pompa',
     procedimiento: 'Invasión',

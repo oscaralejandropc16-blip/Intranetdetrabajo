@@ -12,6 +12,7 @@ export interface ActuacionHistorial {
 export interface ExpedienteJudicial {
   id: string;
   numeroExpediente: string; // ej. 57.380
+  codigoCorrelativo?: string; // ej. RD-J-2026-12779
   juzgado: string; // ej. Tribunal 2do
   partes: string; // ej. José Sindonio De Sousa Texeira contra Francisco Texeira
   procedimiento: string; // ej. Reconocimiento de contenido y firma

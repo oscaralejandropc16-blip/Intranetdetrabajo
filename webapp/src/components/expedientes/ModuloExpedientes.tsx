@@ -68,9 +68,13 @@ export default function ModuloExpedientes() {
     if (!numExp || !partes) return;
 
     const todayStr = new Date().toISOString().split('T')[0];
+    const cleanNum = numExp.replace(/[^0-9]/g, '') || String(Math.floor(Math.random() * 90000 + 10000));
+    const generatedCorrelativo = `RD-J-${new Date().getFullYear()}-${cleanNum}`;
+
     const newExp: ExpedienteJudicial = {
       id: 'exp-' + Date.now(),
       numeroExpediente: numExp.trim(),
+      codigoCorrelativo: generatedCorrelativo,
       juzgado: juzgado.trim(),
       partes: partes.trim(),
       procedimiento: procedimiento.trim() || 'General',
@@ -97,15 +101,41 @@ export default function ModuloExpedientes() {
     setProcedimiento('');
   };
 
-  // Filtrado dinámico
+  // Filtrado dinámico con búsqueda flexible inteligente
   const filteredExpedientes = expedientes.filter((item) => {
-    const matchSearch =
-      item.numeroExpediente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.partes.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.juzgado.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.procedimiento.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.estatusActual.toLowerCase().includes(searchTerm.toLowerCase());
+    const rawSearch = searchTerm.trim().toLowerCase();
+    if (!rawSearch) {
+      const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
+      const matchEstatus = estatusFilter === 'Todos' || item.estatusActual === estatusFilter;
+      return matchJuzgado && matchEstatus;
+    }
 
+    const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanSearch = normalize(rawSearch);
+    const cleanNumExp = normalize(item.numeroExpediente);
+    const cleanCorrelativo = normalize(item.codigoCorrelativo || '');
+
+    // 1. Coincidencia directa de texto en cualquier campo
+    const directMatch =
+      item.numeroExpediente.toLowerCase().includes(rawSearch) ||
+      (item.codigoCorrelativo || '').toLowerCase().includes(rawSearch) ||
+      item.partes.toLowerCase().includes(rawSearch) ||
+      item.juzgado.toLowerCase().includes(rawSearch) ||
+      item.procedimiento.toLowerCase().includes(rawSearch) ||
+      item.estatusActual.toLowerCase().includes(rawSearch) ||
+      (item.responsableAsignado || '').toLowerCase().includes(rawSearch) ||
+      (item.actuaciones[0]?.registradoPor || '').toLowerCase().includes(rawSearch);
+
+    // 2. Coincidencia numérica flexible (ej. "RD-J-2026-12779" o "12779" o "12.779")
+    const searchDigits = (rawSearch.match(/\d+/g) || []).join('');
+    const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
+    const correlativeDigits = ((item.codigoCorrelativo || '').match(/\d+/g) || []).join('');
+
+    const numericMatch =
+      (searchDigits.length >= 3 && (expDigits.includes(searchDigits) || correlativeDigits.includes(searchDigits))) ||
+      (cleanSearch.length >= 3 && (cleanNumExp.includes(cleanSearch) || cleanCorrelativo.includes(cleanSearch) || cleanSearch.includes(cleanNumExp) || cleanSearch.includes(cleanCorrelativo)));
+
+    const matchSearch = directMatch || numericMatch;
     const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
     const matchEstatus = estatusFilter === 'Todos' || item.estatusActual === estatusFilter;
 
@@ -354,6 +384,11 @@ export default function ModuloExpedientes() {
                         <span className="bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-lg tracking-wider">
                           EXP #{exp.numeroExpediente}
                         </span>
+                        {exp.codigoCorrelativo && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400">
+                            Ref: {exp.codigoCorrelativo}
+                          </span>
+                        )}
                         <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
                           {exp.juzgado}
                         </span>
@@ -380,14 +415,20 @@ export default function ModuloExpedientes() {
                       </div>
 
                       {/* Última Actuación Destacada */}
-                      <div className="md:col-span-5 space-y-1 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
-                        <p className="text-[11px] text-slate-400 font-bold uppercase tracking-wider flex items-center justify-between">
-                          <span>Última Actuación</span>
+                      <div className="md:col-span-5 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400 font-bold uppercase tracking-wider">Última Actuación</span>
                           <span className="text-slate-500 font-normal">{exp.ultimaActualizacion}</span>
-                        </p>
+                        </div>
                         <p className="text-xs text-slate-200 font-medium line-clamp-2">
                           {ultimaAct ? ultimaAct.actuacion : 'Sin actuaciones registradas'}
                         </p>
+                        {ultimaAct?.registradoPor && (
+                          <div className="text-[11px] text-amber-400/90 font-semibold pt-1 border-t border-slate-800/50 flex items-center justify-between">
+                            <span className="text-slate-400 font-medium">Registrado por:</span>
+                            <span className="text-white font-bold">{ultimaAct.registradoPor}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Botón Ver Ficha */}
