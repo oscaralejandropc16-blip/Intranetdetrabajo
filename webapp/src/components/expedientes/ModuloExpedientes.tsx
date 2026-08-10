@@ -4,8 +4,6 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ExpedienteJudicial, AudienciaSemanal, AsuntoNuevo, SeguimientoPendiente } from '../../types/expedientes';
 import {
-  getStoredExpedientes,
-  saveStoredExpedientes,
   getStoredAudiencias,
   saveStoredAudiencias,
   getStoredAsuntosNuevos,
@@ -13,14 +11,16 @@ import {
   getStoredSeguimientos,
   saveStoredSeguimientos
 } from './mockExpedientesData';
+import api from '../../lib/api';
 import DetalleExpedienteModal from './DetalleExpedienteModal';
 import PlanificacionSemanal from './PlanificacionSemanal';
 
 export default function ModuloExpedientes() {
-  const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>(() => getStoredExpedientes());
+  const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>([]);
   const [audiencias, setAudiencias] = useState<AudienciaSemanal[]>(() => getStoredAudiencias());
   const [asuntosNuevos, setAsuntosNuevos] = useState<AsuntoNuevo[]>(() => getStoredAsuntosNuevos());
   const [seguimientos, setSeguimientos] = useState<SeguimientoPendiente[]>(() => getStoredSeguimientos());
+  const [isLoading, setIsLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'expedientes' | 'planificacion'>('expedientes');
   const [searchTerm, setSearchTerm] = useState('');
@@ -38,10 +38,62 @@ export default function ModuloExpedientes() {
   const [estatus, setEstatus] = useState('EN TRÁMITE');
   const [sede, setSede] = useState('Valencia');
 
-  // Persistir cambios
+  // Cargar desde API y Sincronizar datos locales
   useEffect(() => {
-    saveStoredExpedientes(expedientes);
-  }, [expedientes]);
+    const fetchAndSync = async () => {
+      try {
+        const response = await api.get('/rd-intranet/v1/expedientes');
+        let serverExpedientes: ExpedienteJudicial[] = [];
+        if (Array.isArray(response)) {
+          serverExpedientes = response;
+        }
+
+        // Sincronización silenciosa de datos locales al servidor
+        const localData = localStorage.getItem('rd_expedientes');
+        if (localData) {
+          const localExpedientes: ExpedienteJudicial[] = JSON.parse(localData);
+          // Verificar si hay expedientes locales que no están en el servidor
+          const missingOnServer = localExpedientes.filter(
+            local => !serverExpedientes.some(server => server.numeroExpediente === local.numeroExpediente)
+          );
+
+          if (missingOnServer.length > 0) {
+            console.log(`Sincronizando ${missingOnServer.length} expedientes locales al servidor...`);
+            await api.post('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
+            
+            // Refetch after sync
+            const newRes = await api.get('/rd-intranet/v1/expedientes');
+            if (Array.isArray(newRes)) serverExpedientes = newRes;
+          }
+          // Limpiar local storage de expedientes ya que ahora usamos el servidor
+          localStorage.removeItem('rd_expedientes');
+        }
+
+        // Merge: if any server expedientes are simple bitacora ones, map them properly.
+        // We do this by ensuring the shape matches ExpedienteJudicial
+        const formatted = serverExpedientes.map(exp => ({
+          ...exp,
+          id: exp.id || 'exp-' + Math.random(),
+          juzgado: exp.juzgado || 'Desconocido',
+          procedimiento: exp.procedimiento || 'General',
+          estatusActual: exp.estatusActual || 'EN TRÁMITE',
+          sede: exp.sede || 'Desconocida',
+          fechaRegistro: exp.fechaRegistro || new Date().toISOString().split('T')[0],
+          ultimaActualizacion: exp.ultimaActualizacion || new Date().toISOString().split('T')[0],
+          actuaciones: exp.actuaciones || []
+        })) as ExpedienteJudicial[];
+
+        setExpedientes(formatted);
+      } catch (err) {
+        console.error('Error fetching expedientes:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAndSync();
+  }, []);
+
+  // Persistir audiencias y seguimientos locales (fase futura para conectarlos al servidor)
 
   useEffect(() => {
     saveStoredAudiencias(audiencias);
@@ -56,10 +108,17 @@ export default function ModuloExpedientes() {
   }, [seguimientos]);
 
   // Manejar actualización de expediente desde el modal
-  const handleUpdateExpediente = (updated: ExpedienteJudicial) => {
+  const handleUpdateExpediente = async (updated: ExpedienteJudicial) => {
     const newArr = expedientes.map(e => e.id === updated.id ? updated : e);
     setExpedientes(newArr);
     setSelectedExpediente(updated);
+    
+    // Guardar en el servidor
+    try {
+      await api.post('/rd-intranet/v1/expedientes', { expedientes: [updated] });
+    } catch (e) {
+      console.error('Error al actualizar expediente:', e);
+    }
   };
 
   // Agregar nuevo expediente
@@ -97,6 +156,11 @@ export default function ModuloExpedientes() {
     setExpedientes([newExp, ...expedientes]);
     setShowNuevoExpedienteModal(false);
     setNumExp('');
+    
+    // Guardar en servidor
+    api.post('/rd-intranet/v1/expedientes', { expedientes: [newExp] })
+      .catch(e => console.error('Error creando expediente:', e));
+    
     setPartes('');
     setProcedimiento('');
   };
@@ -154,7 +218,10 @@ export default function ModuloExpedientes() {
     return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
   };
 
-  const handleDownloadPdf = () => {
+  const handleDownloadPdf = async (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
     try {
       const doc = new jsPDF({ orientation: 'landscape' });
       const pageWidth = doc.internal.pageSize.getWidth();
@@ -364,7 +431,12 @@ export default function ModuloExpedientes() {
             </p>
           </div>
 
-          {filteredExpedientes.length === 0 ? (
+          {isLoading ? (
+            <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
+              <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="text-sm font-semibold text-white">Sincronizando con el servidor...</p>
+            </div>
+          ) : filteredExpedientes.length === 0 ? (
             <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
               <AlertCircle className="w-10 h-10 text-amber-500/50 mx-auto" />
               <h4 className="text-base font-bold text-white">No se encontraron expedientes</h4>
@@ -603,7 +675,6 @@ export default function ModuloExpedientes() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

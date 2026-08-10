@@ -109,6 +109,15 @@ function rd_intranet_register_cpt() {
         'show_in_rest' => true,
     );
     register_post_type('rd_investigacion', $args_inv);
+
+    $args_exp = array(
+        'public'       => false,
+        'show_ui'      => true,
+        'label'        => 'Expedientes',
+        'supports'     => array('title', 'editor', 'author', 'custom-fields'),
+        'show_in_rest' => true,
+    );
+    register_post_type('rd_expediente', $args_exp);
 }
 add_action('init', 'rd_intranet_register_cpt');
 
@@ -386,9 +395,16 @@ add_action('rest_api_init', function () {
     ));
     // Endpoint: GET /rd-intranet/v1/expedientes (Obtener todos los expedientes globales)
     register_rest_route('rd-intranet/v1', '/expedientes', array(
-        'methods' => 'GET',
-        'callback' => 'rd_intranet_get_expedientes',
-        'permission_callback' => 'rd_intranet_is_authorized'
+        array(
+            'methods' => 'GET',
+            'callback' => 'rd_intranet_get_expedientes',
+            'permission_callback' => 'rd_intranet_is_authorized'
+        ),
+        array(
+            'methods' => 'POST',
+            'callback' => 'rd_intranet_save_expedientes',
+            'permission_callback' => 'rd_intranet_is_authorized'
+        )
     ));
 
     // Endpoint: GET /rd-intranet/v1/draft (Obtener borrador)
@@ -756,9 +772,101 @@ function rd_intranet_handle_clock_in($request) {
 }
 
 function rd_intranet_get_expedientes() {
-    $expedientes = get_option('rd_global_expedientes', array());
-    // Convert associative array to indexed array for frontend convenience
-    return rest_ensure_response(array_values($expedientes));
+    // Legacy global expedientes
+    $legacy_expedientes = get_option('rd_global_expedientes', array());
+    $merged = array_values($legacy_expedientes);
+
+    // New Custom Post Type expedientes
+    $args = array(
+        'post_type'      => 'rd_expediente',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+    );
+    $query = new WP_Query($args);
+    $cpt_expedientes = array();
+
+    if ($query->have_posts()) {
+        foreach ($query->posts as $post) {
+            $data_json = get_post_meta($post->ID, 'expediente_data', true);
+            if (!empty($data_json)) {
+                $data = json_decode($data_json, true);
+                if (is_array($data)) {
+                    $cpt_expedientes[] = $data;
+                }
+            }
+        }
+    }
+
+    // Merge logic: prefer CPT over legacy if same numeroExpediente
+    $final_map = array();
+    foreach ($merged as $legacy) {
+        if (!empty($legacy['numeroExpediente'])) {
+            $final_map[$legacy['numeroExpediente']] = $legacy;
+        }
+    }
+    foreach ($cpt_expedientes as $cpt) {
+        if (!empty($cpt['numeroExpediente'])) {
+            $final_map[$cpt['numeroExpediente']] = $cpt;
+        }
+    }
+
+    return rest_ensure_response(array_values($final_map));
+}
+
+function rd_intranet_save_expedientes($request) {
+    $user_id = get_current_user_id();
+    $params = rd_intranet_get_request_data($request);
+    
+    $expedientes = $params['expedientes'] ?? array();
+    if (is_string($expedientes)) {
+        $expedientes = json_decode($expedientes, true) ?: array();
+    }
+
+    if (empty($expedientes) || !is_array($expedientes)) {
+        return rest_ensure_response(array('success' => true, 'message' => 'No hay expedientes para guardar.'));
+    }
+
+    $saved_count = 0;
+    foreach ($expedientes as $exp) {
+        $numero = sanitize_text_field($exp['numeroExpediente'] ?? '');
+        if (empty($numero)) continue;
+
+        // Try to find if this expediente already exists
+        $args = array(
+            'post_type'      => 'rd_expediente',
+            'title'          => $numero,
+            'posts_per_page' => 1,
+            'post_status'    => 'publish',
+        );
+        $existing = get_posts($args);
+
+        $post_data = array(
+            'post_title'    => $numero,
+            'post_status'   => 'publish',
+            'post_type'     => 'rd_expediente',
+            'post_author'   => $user_id,
+        );
+
+        if (!empty($existing)) {
+            // Update existing
+            $post_id = $existing[0]->ID;
+            $post_data['ID'] = $post_id;
+            wp_update_post($post_data);
+        } else {
+            // Insert new
+            $post_id = wp_insert_post($post_data);
+        }
+
+        if (!is_wp_error($post_id)) {
+            update_post_meta($post_id, 'expediente_data', wp_json_encode($exp, JSON_UNESCAPED_UNICODE));
+            $saved_count++;
+        }
+    }
+
+    return rest_ensure_response(array(
+        'success' => true, 
+        'message' => "Se guardaron/sincronizaron $saved_count expedientes."
+    ));
 }
 
 function rd_intranet_get_correlatives() {
