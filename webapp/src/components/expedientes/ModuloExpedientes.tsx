@@ -101,7 +101,7 @@ export default function ModuloExpedientes() {
     setProcedimiento('');
   };
 
-  // Filtrado dinámico con búsqueda flexible inteligente
+  // Filtrado dinámico con búsqueda flexible inteligente (bidireccional)
   const filteredExpedientes = expedientes.filter((item) => {
     const rawSearch = searchTerm.trim().toLowerCase();
     if (!rawSearch) {
@@ -112,13 +112,19 @@ export default function ModuloExpedientes() {
 
     const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanSearch = normalize(rawSearch);
+    
+    const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
     const cleanNumExp = normalize(item.numeroExpediente);
-    const cleanCorrelativo = normalize(item.codigoCorrelativo || '');
+    const itemCorrelativo = item.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
+    const cleanCorrelativo = normalize(itemCorrelativo);
+    const correlativeDigits = (itemCorrelativo.match(/\d+/g) || []).join('');
+
+    const searchDigits = (rawSearch.match(/\d+/g) || []).join('');
 
     // 1. Coincidencia directa de texto en cualquier campo
     const directMatch =
       item.numeroExpediente.toLowerCase().includes(rawSearch) ||
-      (item.codigoCorrelativo || '').toLowerCase().includes(rawSearch) ||
+      itemCorrelativo.toLowerCase().includes(rawSearch) ||
       item.partes.toLowerCase().includes(rawSearch) ||
       item.juzgado.toLowerCase().includes(rawSearch) ||
       item.procedimiento.toLowerCase().includes(rawSearch) ||
@@ -126,14 +132,11 @@ export default function ModuloExpedientes() {
       (item.responsableAsignado || '').toLowerCase().includes(rawSearch) ||
       (item.actuaciones[0]?.registradoPor || '').toLowerCase().includes(rawSearch);
 
-    // 2. Coincidencia numérica flexible (ej. "RD-J-2026-12779" o "12779" o "12.779")
-    const searchDigits = (rawSearch.match(/\d+/g) || []).join('');
-    const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
-    const correlativeDigits = ((item.codigoCorrelativo || '').match(/\d+/g) || []).join('');
-
+    // 2. Coincidencia numérica bidireccional despojando caracteres especiales
     const numericMatch =
-      (searchDigits.length >= 3 && (expDigits.includes(searchDigits) || correlativeDigits.includes(searchDigits))) ||
-      (cleanSearch.length >= 3 && (cleanNumExp.includes(cleanSearch) || cleanCorrelativo.includes(cleanSearch) || cleanSearch.includes(cleanNumExp) || cleanSearch.includes(cleanCorrelativo)));
+      (searchDigits.length >= 2 && expDigits.length >= 2 && (searchDigits.includes(expDigits) || expDigits.includes(searchDigits))) ||
+      (searchDigits.length >= 2 && correlativeDigits.length >= 2 && (searchDigits.includes(correlativeDigits) || correlativeDigits.includes(searchDigits))) ||
+      (cleanSearch.length >= 2 && (cleanNumExp.includes(cleanSearch) || cleanCorrelativo.includes(cleanSearch) || cleanSearch.includes(cleanNumExp) || cleanSearch.includes(cleanCorrelativo)));
 
     const matchSearch = directMatch || numericMatch;
     const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
@@ -373,6 +376,10 @@ export default function ModuloExpedientes() {
             <div className="grid grid-cols-1 gap-4">
               {filteredExpedientes.map((exp) => {
                 const ultimaAct = exp.actuaciones[0];
+                const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
+                const correlativoBadge = exp.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
+                const autorName = ultimaAct?.registradoPor || exp.responsableAsignado || 'Sistema';
+
                 return (
                   <div
                     key={exp.id}
@@ -384,11 +391,9 @@ export default function ModuloExpedientes() {
                         <span className="bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-lg tracking-wider">
                           EXP #{exp.numeroExpediente}
                         </span>
-                        {exp.codigoCorrelativo && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400">
-                            Ref: {exp.codigoCorrelativo}
-                          </span>
-                        )}
+                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400">
+                          Ref: {correlativoBadge}
+                        </span>
                         <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
                           {exp.juzgado}
                         </span>
@@ -423,12 +428,10 @@ export default function ModuloExpedientes() {
                         <p className="text-xs text-slate-200 font-medium line-clamp-2">
                           {ultimaAct ? ultimaAct.actuacion : 'Sin actuaciones registradas'}
                         </p>
-                        {ultimaAct?.registradoPor && (
-                          <div className="text-[11px] text-amber-400/90 font-semibold pt-1 border-t border-slate-800/50 flex items-center justify-between">
-                            <span className="text-slate-400 font-medium">Registrado por:</span>
-                            <span className="text-white font-bold">{ultimaAct.registradoPor}</span>
-                          </div>
-                        )}
+                        <div className="text-[11px] text-amber-400/90 font-semibold pt-1 border-t border-slate-800/50 flex items-center justify-between">
+                          <span className="text-slate-400 font-medium">Registrado por:</span>
+                          <span className="text-white font-bold">{autorName}</span>
+                        </div>
                       </div>
 
                       {/* Botón Ver Ficha */}

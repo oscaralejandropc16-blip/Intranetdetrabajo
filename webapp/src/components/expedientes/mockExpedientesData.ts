@@ -294,7 +294,29 @@ const LOCAL_STORAGE_KEY_SEG = 'rd_seguimientos_v1';
 export function getStoredExpedientes(): ExpedienteJudicial[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_EXP);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed: ExpedienteJudicial[] = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        let needsSave = false;
+        const migrated = parsed.map(item => {
+          const baseMatch = INITIAL_EXPEDIENTES.find(init => init.numeroExpediente === item.numeroExpediente || init.id === item.id);
+          const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
+          const defaultCorrelativo = baseMatch?.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
+
+          if (!item.codigoCorrelativo) {
+            needsSave = true;
+            return { ...item, codigoCorrelativo: defaultCorrelativo };
+          }
+          return item;
+        });
+
+        if (needsSave) {
+          localStorage.setItem(LOCAL_STORAGE_KEY_EXP, JSON.stringify(migrated));
+        }
+
+        return migrated;
+      }
+    }
   } catch (e) {
     console.error('Error cargando expedientes guardados', e);
   }
