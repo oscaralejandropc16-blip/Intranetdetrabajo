@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, Scale } from 'lucide-react';
+import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, Scale, Download } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import type { ExpedienteJudicial, AudienciaSemanal, AsuntoNuevo, SeguimientoPendiente } from '../../types/expedientes';
 import {
   getStoredExpedientes,
@@ -119,6 +121,82 @@ export default function ModuloExpedientes() {
     return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
   };
 
+  const handleDownloadPdf = () => {
+    try {
+      const doc = new jsPDF({ orientation: 'landscape' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Encabezado calcado del formato físico original de Word
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(13);
+      doc.setTextColor(30, 41, 59);
+      doc.text('Dr. Víctor Román & Dr. Luis Delgado', pageWidth / 2, 14, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text('Despacho de Abogados - Román & Delgado', pageWidth / 2, 19, { align: 'center' });
+      
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(217, 119, 6); // Ámbar / Oro
+      doc.text('RELACIÓN DE EXPEDIENTES JUDICIALES', pageWidth / 2, 25, { align: 'center' });
+
+      const monthName = new Date().toLocaleDateString('es-ES', { month: 'long' }).toUpperCase();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(30, 41, 59);
+      doc.text(`SEDE VALENCIA  -  MES: ${monthName} ${new Date().getFullYear()}`, pageWidth - 14, 25, { align: 'right' });
+
+      // Filas formateadas
+      const tableRows = filteredExpedientes.map(exp => {
+        const ultimaAct = exp.actuaciones[0]?.actuacion || 'Sin actuaciones registradas';
+        return [
+          exp.numeroExpediente,
+          exp.juzgado,
+          exp.partes,
+          exp.procedimiento,
+          ultimaAct,
+          exp.estatusActual
+        ];
+      });
+
+      autoTable(doc, {
+        startY: 29,
+        head: [['Expediente', 'Juzgado', 'Partes', 'Procedimiento', 'Actuación', 'Estatus']],
+        body: tableRows,
+        theme: 'grid',
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+          halign: 'center'
+        },
+        bodyStyles: {
+          fontSize: 8,
+          textColor: [30, 41, 59],
+          valign: 'middle'
+        },
+        columnStyles: {
+          0: { cellWidth: 28, fontStyle: 'bold', halign: 'center' },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 62, fontStyle: 'bold' },
+          3: { cellWidth: 45 },
+          4: { cellWidth: 68 },
+          5: { cellWidth: 35, fontStyle: 'bold', halign: 'center' }
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        }
+      });
+
+      doc.save(`RELACION_EXPEDIENTES_VALENCIA_${monthName}_${new Date().getFullYear()}.pdf`);
+    } catch (e) {
+      console.error('Error al generar PDF impreso de expedientes', e);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -221,10 +299,19 @@ export default function ModuloExpedientes() {
               </select>
             </div>
 
-            <div className="lg:col-span-2 sm:col-span-2">
+            <div className="lg:col-span-2 sm:col-span-2 flex gap-2">
+              <button
+                onClick={handleDownloadPdf}
+                title="Generar PDF Imprimible idéntico al reporte de Word"
+                className="flex-1 bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-400 font-bold py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Imprimir / PDF</span>
+              </button>
+
               <button
                 onClick={() => setShowNuevoExpedienteModal(true)}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-2.5 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+                className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-2.5 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Nuevo
