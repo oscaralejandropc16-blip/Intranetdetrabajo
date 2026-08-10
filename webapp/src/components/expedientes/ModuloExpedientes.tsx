@@ -44,8 +44,10 @@ export default function ModuloExpedientes() {
       try {
         const response = await api.get('/rd-intranet/v1/expedientes');
         let serverExpedientes: ExpedienteJudicial[] = [];
-        if (Array.isArray(response)) {
-          serverExpedientes = response;
+        if (Array.isArray(response.data)) {
+          serverExpedientes = response.data;
+        } else if (Array.isArray(response)) {
+          serverExpedientes = response as any;
         }
 
         // Sincronización silenciosa de datos locales al servidor
@@ -63,7 +65,8 @@ export default function ModuloExpedientes() {
             
             // Refetch after sync
             const newRes = await api.get('/rd-intranet/v1/expedientes');
-            if (Array.isArray(newRes)) serverExpedientes = newRes;
+            if (Array.isArray(newRes.data)) serverExpedientes = newRes.data;
+            else if (Array.isArray(newRes)) serverExpedientes = newRes as any;
           }
           // Limpiar local storage de expedientes ya que ahora usamos el servidor
           localStorage.removeItem('rd_expedientes');
