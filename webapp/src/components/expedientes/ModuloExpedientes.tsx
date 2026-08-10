@@ -123,27 +123,27 @@ export default function ModuloExpedientes() {
     <div className="space-y-6">
       
       {/* Cabecera Principal del Módulo */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 p-5 sm:p-7 rounded-3xl shadow-xl space-y-4">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md">
-              <Scale className="w-6 h-6" />
+      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl space-y-4 overflow-hidden">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md flex-shrink-0">
+              <Scale className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                Control de Expedientes y Planificación Semanal
+            <div className="min-w-0">
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+                Control de Expedientes y Planificación
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400">
-                Consulta por N° de Expediente, historial de actuaciones y control de audiencias
+              <p className="text-xs text-slate-400 truncate">
+                Consulta por N° de Expediente, historial de actuaciones y audiencias
               </p>
             </div>
           </div>
 
           {/* Navegación por pestañas de alto nivel */}
-          <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full md:w-auto">
+          <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full lg:w-auto flex-shrink-0">
             <button
               onClick={() => setActiveTab('expedientes')}
-              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'expedientes'
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'text-slate-400 hover:text-white'
@@ -155,7 +155,7 @@ export default function ModuloExpedientes() {
 
             <button
               onClick={() => setActiveTab('planificacion')}
-              className={`flex-1 md:flex-none px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+              className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'planificacion'
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'text-slate-400 hover:text-white'
@@ -169,15 +169,15 @@ export default function ModuloExpedientes() {
 
         {/* Buscador inteligente si estamos en vista de Expedientes */}
         {activeTab === 'expedientes' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2">
-            <div className="md:col-span-4 relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-2">
+            <div className="lg:col-span-4 sm:col-span-2 relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Ingresa el N° de Expediente (ej: 57.380, Prov-V...), Partes o Tribunal..."
+                placeholder="Ingresa el N° de Expediente (ej: 57.380, Prov-V...)"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder:text-slate-500 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
               />
               {searchTerm && (
                 <button
@@ -189,11 +189,11 @@ export default function ModuloExpedientes() {
               )}
             </div>
 
-            <div className="md:col-span-3">
+            <div className="lg:col-span-3 sm:col-span-1">
               <select
                 value={juzgadoFilter}
                 onChange={(e) => setJuzgadoFilter(e.target.value)}
-                className="w-full px-3.5 py-3 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
               >
                 <option value="Todos">Todos los Juzgados</option>
                 <option value="Tribunal 2do">Tribunal 2do</option>
@@ -205,11 +205,11 @@ export default function ModuloExpedientes() {
               </select>
             </div>
 
-            <div className="md:col-span-3">
+            <div className="lg:col-span-3 sm:col-span-1">
               <select
                 value={estatusFilter}
                 onChange={(e) => setEstatusFilter(e.target.value)}
-                className="w-full px-3.5 py-3 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
               >
                 <option value="Todos">Todos los Estatus</option>
                 <option value="SENTENCIADO">SENTENCIADO</option>
@@ -221,10 +221,10 @@ export default function ModuloExpedientes() {
               </select>
             </div>
 
-            <div className="md:col-span-2">
+            <div className="lg:col-span-2 sm:col-span-2">
               <button
                 onClick={() => setShowNuevoExpedienteModal(true)}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-2.5 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Nuevo
