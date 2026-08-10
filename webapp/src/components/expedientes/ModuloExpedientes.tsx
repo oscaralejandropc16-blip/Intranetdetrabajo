@@ -97,8 +97,8 @@ export default function ModuloExpedientes() {
             procedimiento: exp.procedimiento || (exp as any).tipo || 'General',
             estatusActual: exp.estatusActual || 'EN TRÁMITE',
             sede: exp.sede || 'Desconocida',
-            fechaRegistro: exp.fechaRegistro || new Date().toISOString().split('T')[0],
-            ultimaActualizacion: exp.ultimaActualizacion || new Date().toISOString().split('T')[0],
+            fechaRegistro: exp.fechaRegistro || (acts[0] ? acts[0].fecha : new Date().toISOString().split('T')[0]),
+            ultimaActualizacion: acts[0] ? acts[0].fecha : (exp.ultimaActualizacion || new Date().toISOString().split('T')[0]),
             responsableAsignado: userStr || exp.responsableAsignado || 'Sistema',
             actuaciones: acts
           };
@@ -516,7 +516,7 @@ export default function ModuloExpedientes() {
                       <div className="md:col-span-5 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-400 font-bold uppercase tracking-wider">Última Actuación</span>
-                          <span className="text-slate-500 font-normal">{exp.ultimaActualizacion}</span>
+                          <span className="text-slate-500 font-normal">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>
                         </div>
                         <p className="text-xs text-slate-200 font-medium line-clamp-2">
                           {ultimaAct ? ultimaAct.actuacion : 'Sin actuaciones registradas'}
