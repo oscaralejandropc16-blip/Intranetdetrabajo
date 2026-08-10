@@ -80,7 +80,7 @@ export default function ModuloExpedientes() {
           
           // Si no tiene actuaciones estructuradas, generamos una inicial usando el resumen o la bitácora
           if (acts.length === 0) {
-            const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Expediente registrado en bitácora por ' + (userStr || 'el usuario');
+            const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Ingreso inicial de expediente';
             acts = [{
               id: 'act-init-' + Math.random(),
               fecha: exp.ultimaActualizacion || exp.fechaRegistro || new Date().toISOString().split('T')[0],

@@ -772,6 +772,45 @@ function rd_intranet_handle_clock_in($request) {
 }
 
 function rd_intranet_get_expedientes() {
+    // 1. Obtener todas las bitácoras publicadas para asociar sus actuaciones reales
+    $bitacoras = get_posts(array(
+        'post_type'      => 'rd_bitacora',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+    ));
+
+    $actuaciones_by_num = array();
+    if (!empty($bitacoras)) {
+        foreach ($bitacoras as $b_post) {
+            $author_id = $b_post->post_author;
+            $author_name = get_userdata($author_id) ? get_userdata($author_id)->display_name : 'Abogado';
+            $post_date = get_the_date('Y-m-d', $b_post->ID);
+
+            $act_json = get_post_meta($b_post->ID, 'actuaciones_json', true);
+            if (!empty($act_json)) {
+                $acts = json_decode($act_json, true);
+                if (is_array($acts)) {
+                    foreach ($acts as $act) {
+                        $num = trim($act['numeroAsunto'] ?? $act['numeroExpediente'] ?? '');
+                        $txt = trim($act['actuacion'] ?? $act['observaciones'] ?? '');
+                        if ($num && $txt) {
+                            if (!isset($actuaciones_by_num[$num])) {
+                                $actuaciones_by_num[$num] = array();
+                            }
+                            $actuaciones_by_num[$num][] = array(
+                                'id' => 'act-' . $b_post->ID . '-' . count($actuaciones_by_num[$num]),
+                                'fecha' => $post_date,
+                                'actuacion' => $txt,
+                                'estatusResultante' => $act['estado'] ?? 'EN TRÁMITE',
+                                'registradoPor' => $author_name
+                            );
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Legacy global expedientes
     $legacy_expedientes = get_option('rd_global_expedientes', array());
     $merged = array_values($legacy_expedientes);
@@ -797,16 +836,29 @@ function rd_intranet_get_expedientes() {
         }
     }
 
-    // Merge logic: prefer CPT over legacy if same numeroExpediente
+    // Merge logic: prefer CPT over legacy if same numeroExpediente, y adjuntar actuaciones reales
     $final_map = array();
     foreach ($merged as $legacy) {
         if (!empty($legacy['numeroExpediente'])) {
-            $final_map[$legacy['numeroExpediente']] = $legacy;
+            $num = $legacy['numeroExpediente'];
+            if (isset($actuaciones_by_num[$num]) && !empty($actuaciones_by_num[$num])) {
+                $legacy['actuaciones'] = $actuaciones_by_num[$num];
+            }
+            $final_map[$num] = $legacy;
         }
     }
     foreach ($cpt_expedientes as $cpt) {
         if (!empty($cpt['numeroExpediente'])) {
-            $final_map[$cpt['numeroExpediente']] = $cpt;
+            $num = $cpt['numeroExpediente'];
+            if (isset($actuaciones_by_num[$num]) && !empty($actuaciones_by_num[$num])) {
+                if (empty($cpt['actuaciones'])) {
+                    $cpt['actuaciones'] = $actuaciones_by_num[$num];
+                } else {
+                    // Combinar respetando únicas
+                    $cpt['actuaciones'] = array_merge($cpt['actuaciones'], $actuaciones_by_num[$num]);
+                }
+            }
+            $final_map[$num] = $cpt;
         }
     }
 
