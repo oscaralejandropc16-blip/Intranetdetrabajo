@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -9,6 +9,7 @@ import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabAgenda from './employee/TabAgenda';
 import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
+import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -55,7 +56,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial'>('bitacoras');
+  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>('bitacoras');
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>('actuaciones');
 
   // Estado local para Libros de Jefatura (sin horario/GPS)
@@ -868,6 +869,12 @@ export default function AdminDashboard() {
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
           <BookOpen className="w-5 h-5" /> Mis Libros (Jefatura)
+        </button>
+        <button
+          onClick={() => setActiveView('expedientes')}
+          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+        >
+          <Scale className="w-5 h-5" /> Expedientes & Planificación
         </button>
         <button
           onClick={() => setActiveView('historial')}
@@ -1699,6 +1706,11 @@ export default function AdminDashboard() {
             </div>
           )}
         </div>
+      )}
+
+      {/* VISTA: EXPEDIENTES Y PLANIFICACIÓN SEMANAL */}
+      {activeView === 'expedientes' && (
+        <ModuloExpedientes />
       )}
 
       {/* VISTA: MI HISTORIAL DE JEFATURA */}

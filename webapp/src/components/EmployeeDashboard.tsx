@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
@@ -9,6 +9,7 @@ import TabAgenda from './employee/TabAgenda';
 import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
+import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -758,7 +759,7 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>('ingresos');
+  const [activeTab, setActiveTab] = useState<'expedientes' | 'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>('expedientes');
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {
@@ -942,6 +943,14 @@ export default function EmployeeDashboard() {
 
         {/* Navegación por Pestañas */}
         <div className="relative z-10 flex flex-wrap gap-2 bg-white/5 p-2 rounded-2xl backdrop-blur-md border border-white/10">
+          
+          <button 
+            onClick={() => setActiveTab('expedientes')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
+          >
+            <Scale className="w-5 h-5" />
+            <span>Expedientes & Planificación</span>
+          </button>
           
           <button 
             onClick={() => setActiveTab('ingresos')}
@@ -1185,6 +1194,10 @@ export default function EmployeeDashboard() {
 
               {activeTab === 'historial' && (
                 <TabHistorial />
+              )}
+
+              {activeTab === 'expedientes' && (
+                <ModuloExpedientes />
               )}
 
               {activeTab === 'investigaciones' && (
