@@ -82,8 +82,10 @@ export default function ModuloExpedientes() {
           if (acts.length === 0) {
             const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Expediente registrado en bitácora por ' + (userStr || 'el usuario');
             acts = [{
+              id: 'act-init-' + Math.random(),
               fecha: exp.ultimaActualizacion || exp.fechaRegistro || new Date().toISOString().split('T')[0],
               actuacion: txt,
+              estatusResultante: exp.estatusActual || 'EN TRÁMITE',
               registradoPor: userStr || 'Sistema'
             }];
           }
