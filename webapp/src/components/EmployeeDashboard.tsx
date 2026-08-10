@@ -781,7 +781,13 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'expedientes' | 'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>('expedientes');
+  const [activeTab, setActiveTab] = useState<'expedientes' | 'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
+    return (sessionStorage.getItem('rd_emp_active_tab') as any) || 'expedientes';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('rd_emp_active_tab', activeTab);
+  }, [activeTab]);
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {

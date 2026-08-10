@@ -56,8 +56,20 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>('bitacoras');
-  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>('actuaciones');
+  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>(() => {
+    return (sessionStorage.getItem('rd_admin_active_view') as any) || 'bitacoras';
+  });
+  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
+    return (sessionStorage.getItem('rd_admin_boss_sub_tab') as any) || 'actuaciones';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('rd_admin_active_view', activeView);
+  }, [activeView]);
+
+  useEffect(() => {
+    sessionStorage.setItem('rd_admin_boss_sub_tab', bossSubTab);
+  }, [bossSubTab]);
 
   // Estado local para Libros de Jefatura (sin horario/GPS)
   const [actuacionesJefe, setActuacionesJefe] = useState<any[]>(() => {
