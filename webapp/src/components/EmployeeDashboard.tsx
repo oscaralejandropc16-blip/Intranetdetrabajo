@@ -949,7 +949,7 @@ export default function EmployeeDashboard() {
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
           >
             <Scale className="w-5 h-5" />
-            <span>Expedientes & Planificación</span>
+            <span>Expedientes & Agenda</span>
           </button>
           
           <button 

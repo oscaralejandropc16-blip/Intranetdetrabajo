@@ -131,10 +131,10 @@ export default function ModuloExpedientes() {
             </div>
             <div className="min-w-0">
               <h2 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
-                Control de Expedientes y Planificación
+                Gestión de Expedientes Judiciales
               </h2>
               <p className="text-xs text-slate-400 truncate">
-                Consulta por N° de Expediente, historial de actuaciones y audiencias
+                Consulta por N° de Expediente, historial de actuaciones y agenda de audiencias
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ export default function ModuloExpedientes() {
               }`}
             >
               <Calendar className="w-4 h-4" />
-              Planificación Semanal
+              Agenda & Audiencias
             </button>
           </div>
         </div>

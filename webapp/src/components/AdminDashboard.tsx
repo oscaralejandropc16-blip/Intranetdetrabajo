@@ -874,7 +874,7 @@ export default function AdminDashboard() {
           onClick={() => setActiveView('expedientes')}
           className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <Scale className="w-5 h-5" /> Expedientes & Planificación
+          <Scale className="w-5 h-5" /> Expedientes & Agenda
         </button>
         <button
           onClick={() => setActiveView('historial')}
