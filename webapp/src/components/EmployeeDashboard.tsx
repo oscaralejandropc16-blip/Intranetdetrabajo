@@ -79,7 +79,20 @@ export default function EmployeeDashboard() {
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
     const draft = getInitialDraft();
-    return draft && Array.isArray(draft.actuaciones) ? draft.actuaciones : [];
+    if (draft && Array.isArray(draft.actuaciones) && draft.actuaciones.length > 0) {
+      return draft.actuaciones;
+    }
+    try {
+      const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
+      const backupRaw = localStorage.getItem(`rd_actuaciones_backup_${userName}`);
+      if (backupRaw) {
+        const parsed = JSON.parse(backupRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {
+      // ignore
+    }
+    return [];
   });
   const [ingresos, setIngresos] = useState<Ingreso[]>(() => {
     const draft = getInitialDraft();
@@ -110,6 +123,15 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     // Protección multi-dispositivo: No autoguardar ni sobrescribir en la nube mientras descargamos el borrador del servidor
     if (loadingDraft) return;
+
+    const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
+    if (actuaciones.length > 0) {
+      try {
+        localStorage.setItem(`rd_actuaciones_backup_${userName}`, JSON.stringify(actuaciones));
+      } catch (e) {
+        // ignore
+      }
+    }
 
     const localDraft = {
       clockIn: clockIn ? clockIn.toISOString() : null,

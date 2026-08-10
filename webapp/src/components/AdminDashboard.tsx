@@ -117,7 +117,7 @@ export default function AdminDashboard() {
     localStorage.setItem('rd_jefe_attachedFiles', JSON.stringify(serialized));
   }, [attachedFilesJefe]);
 
-  // Sincronizar y cargar borrador del servidor para el Jefe
+  // Sincronizar y cargar borrador del servidor para el Jefe (sin pisar datos locales guardados)
   useEffect(() => {
     const fetchDraft = async () => {
       try {
@@ -134,9 +134,18 @@ export default function AdminDashboard() {
           const parsedIngresos = parseJson(response.data.ingresos);
           const parsedProgramaciones = parseJson(response.data.programaciones);
 
-          setActuacionesJefe(parsedActuaciones);
-          setIngresosJefe(parsedIngresos);
-          setProgramacionesJefe(parsedProgramaciones);
+          const mergeLists = <T extends { id?: string | number }>(localList: T[], serverList: T[]): T[] => {
+            if (!localList || localList.length === 0) return serverList || [];
+            if (!serverList || serverList.length === 0) return localList || [];
+            const map = new Map<string | number, T>();
+            serverList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
+            localList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
+            return Array.from(map.values());
+          };
+
+          setActuacionesJefe(prev => mergeLists(prev, parsedActuaciones));
+          setIngresosJefe(prev => mergeLists(prev, parsedIngresos));
+          setProgramacionesJefe(prev => mergeLists(prev, parsedProgramaciones));
         }
       } catch (error) {
         console.error('Error fetching admin draft:', error);

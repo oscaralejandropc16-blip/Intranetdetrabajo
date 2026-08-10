@@ -291,9 +291,132 @@ const LOCAL_STORAGE_KEY_AUD = 'rd_audiencias_list_v1';
 const LOCAL_STORAGE_KEY_ASN = 'rd_asuntos_nuevos_v1';
 const LOCAL_STORAGE_KEY_SEG = 'rd_seguimientos_v1';
 
+export function syncBitacorasToExpedientes(expedientes: ExpedienteJudicial[]): ExpedienteJudicial[] {
+  try {
+    const draftItems: { userName: string; actuaciones: any[]; date?: string }[] = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith('rd_intranet_draft_')) {
+        const rawName = key.replace('rd_intranet_draft_', '');
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed.actuaciones) && parsed.actuaciones.length > 0) {
+              draftItems.push({
+                userName: rawName,
+                actuaciones: parsed.actuaciones,
+                date: parsed.clockIn ? new Date(parsed.clockIn).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+              });
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      } else if (key === 'rd_jefe_actuaciones' || key === 'rd_admin_draft_actuaciones') {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              const jefeName = (localStorage.getItem('rd_user_name') || 'JEFATURA');
+              draftItems.push({
+                userName: jefeName,
+                actuaciones: parsed,
+                date: new Date().toISOString().split('T')[0]
+              });
+            }
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    if (draftItems.length === 0) return expedientes;
+
+    let totalSaved = false;
+
+    const syncedExpedientes = expedientes.map(exp => {
+      const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
+      const correlativeDigits = ((exp.codigoCorrelativo || '').match(/\d+/g) || []).join('');
+      const expClean = exp.numeroExpediente.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const correlativeClean = (exp.codigoCorrelativo || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      let currentActuaciones = [...exp.actuaciones];
+      let expUpdated = false;
+
+      draftItems.forEach(draft => {
+        draft.actuaciones.forEach(act => {
+          if (!act) return;
+          const asuntoRaw = String(act.numeroAsunto || act.numeroExpediente || '').trim();
+          const actText = String(act.actuacion || '').trim();
+          if (!asuntoRaw || !actText) return;
+
+          const asuntoDigits = (asuntoRaw.match(/\d+/g) || []).join('');
+          const asuntoClean = asuntoRaw.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+          const isMatch =
+            (asuntoClean.length >= 3 && (asuntoClean === expClean || asuntoClean === correlativeClean || correlativeClean.includes(asuntoClean) || asuntoClean.includes(correlativeClean))) ||
+            (asuntoDigits.length >= 3 && (asuntoDigits === expDigits || asuntoDigits === correlativeDigits || asuntoDigits.endsWith(expDigits) || expDigits.endsWith(asuntoDigits)));
+
+          if (isMatch) {
+            const userName = draft.userName;
+            const actDate = draft.date || new Date().toISOString().split('T')[0];
+
+            const alreadyExists = currentActuaciones.some(existing =>
+              existing.actuacion.trim().toLowerCase() === actText.toLowerCase()
+            );
+
+            if (!alreadyExists) {
+              const newAct: any = {
+                id: `act-sync-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+                fecha: actDate,
+                hora: act.hora || '12:00',
+                actuacion: actText,
+                estatusResultante: exp.estatusActual,
+                registradoPor: userName,
+                observaciones: act.observaciones || ''
+              };
+
+              currentActuaciones = [newAct, ...currentActuaciones];
+              expUpdated = true;
+              totalSaved = true;
+            }
+          }
+        });
+      });
+
+      if (expUpdated) {
+        return {
+          ...exp,
+          ultimaActualizacion: currentActuaciones[0]?.fecha || exp.ultimaActualizacion,
+          actuaciones: currentActuaciones
+        };
+      }
+
+      return exp;
+    });
+
+    if (totalSaved) {
+      localStorage.setItem(LOCAL_STORAGE_KEY_EXP, JSON.stringify(syncedExpedientes));
+    }
+
+    return syncedExpedientes;
+  } catch (e) {
+    console.error('Error al sincronizar bitacoras con expedientes', e);
+    return expedientes;
+  }
+}
+
 export function getStoredExpedientes(): ExpedienteJudicial[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_EXP);
+    let baseExpedientes: ExpedienteJudicial[] = INITIAL_EXPEDIENTES;
+
     if (raw) {
       const parsed: ExpedienteJudicial[] = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -314,13 +437,15 @@ export function getStoredExpedientes(): ExpedienteJudicial[] {
           localStorage.setItem(LOCAL_STORAGE_KEY_EXP, JSON.stringify(migrated));
         }
 
-        return migrated;
+        baseExpedientes = migrated;
       }
     }
+
+    return syncBitacorasToExpedientes(baseExpedientes);
   } catch (e) {
     console.error('Error cargando expedientes guardados', e);
   }
-  return INITIAL_EXPEDIENTES;
+  return syncBitacorasToExpedientes(INITIAL_EXPEDIENTES);
 }
 
 export function saveStoredExpedientes(data: ExpedienteJudicial[]): void {

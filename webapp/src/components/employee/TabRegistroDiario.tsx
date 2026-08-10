@@ -1,5 +1,5 @@
-import React from 'react';
-import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
@@ -23,6 +23,37 @@ export default function TabRegistroDiario({
   globalExpedientes = [],
   ingresosActivos = []
 }: TabRegistroDiarioProps) {
+
+  const [saveStatus, setSaveStatus] = useState<string | null>(null);
+
+  const handlePreguardarBorrador = () => {
+    try {
+      const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
+      const storageKey = `rd_intranet_draft_${userName}`;
+      const backupKey = `rd_actuaciones_backup_${userName}`;
+
+      const draftObj = {
+        actuaciones,
+        attachedFiles: attachedFiles.map(f => ({
+          name: f.name || f.file?.name,
+          type: f.type || f.file?.type,
+          size: f.size || f.file?.size,
+          dataUrl: f.dataUrl,
+          note: f.note
+        })),
+        savedAt: new Date().toISOString()
+      };
+
+      localStorage.setItem(storageKey, JSON.stringify(draftObj));
+      localStorage.setItem(backupKey, JSON.stringify(actuaciones));
+
+      const timeStr = format(new Date(), 'hh:mm:ss a');
+      setSaveStatus(`Borrador guardado a las ${timeStr}`);
+      setTimeout(() => setSaveStatus(null), 6000);
+    } catch (e) {
+      console.error('Error guardando borrador', e);
+    }
+  };
 
   const handleToggleTask = (id: number) => {
     if (reportSubmitted) return;
@@ -147,16 +178,34 @@ export default function TabRegistroDiario({
                   <FileText className="w-6 h-6 text-blue-600" />
                   <h3 className="text-xl font-bold text-slate-800">Libro de Actuaciones</h3>
                 </div>
-                <p className="text-sm text-slate-500 font-medium">Registra detalladamente tus gestiones y actuaciones de hoy.</p>
+                <div className="flex items-center gap-2">
+                  <p className="text-sm text-slate-500 font-medium">Registra detalladamente tus gestiones y actuaciones de hoy.</p>
+                  {saveStatus && (
+                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-md border border-emerald-300 animate-in fade-in duration-200">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {saveStatus}
+                    </span>
+                  )}
+                </div>
               </div>
               {!reportSubmitted && (
-                <button 
-                  type="button"
-                  onClick={handleAddActuacion}
-                  className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 px-4 rounded-xl transition-all shadow-sm flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4" /> Nueva Actuación
-                </button>
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                  <button 
+                    type="button"
+                    onClick={handlePreguardarBorrador}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    title="Guarda de inmediato tus actuaciones localmente para que no se borren si refrescas la página"
+                  >
+                    <Save className="w-4 h-4" /> Preguardar Borrador
+                  </button>
+
+                  <button 
+                    type="button"
+                    onClick={handleAddActuacion}
+                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 px-4 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Nueva Actuación
+                  </button>
+                </div>
               )}
             </div>
             
