@@ -74,17 +74,33 @@ export default function ModuloExpedientes() {
 
         // Merge: if any server expedientes are simple bitacora ones, map them properly.
         // We do this by ensuring the shape matches ExpedienteJudicial
-        const formatted = serverExpedientes.map(exp => ({
-          ...exp,
-          id: exp.id || 'exp-' + Math.random(),
-          juzgado: exp.juzgado || 'Desconocido',
-          procedimiento: exp.procedimiento || 'General',
-          estatusActual: exp.estatusActual || 'EN TRÁMITE',
-          sede: exp.sede || 'Desconocida',
-          fechaRegistro: exp.fechaRegistro || new Date().toISOString().split('T')[0],
-          ultimaActualizacion: exp.ultimaActualizacion || new Date().toISOString().split('T')[0],
-          actuaciones: exp.actuaciones || []
-        })) as ExpedienteJudicial[];
+        const formatted = serverExpedientes.map(exp => {
+          const userStr = (exp as any).usuario || (exp as any).registradoPor || exp.responsableAsignado;
+          let acts = exp.actuaciones || [];
+          
+          // Si no tiene actuaciones estructuradas, generamos una inicial usando el resumen o la bitácora
+          if (acts.length === 0) {
+            const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Expediente registrado en bitácora por ' + (userStr || 'el usuario');
+            acts = [{
+              fecha: exp.ultimaActualizacion || exp.fechaRegistro || new Date().toISOString().split('T')[0],
+              actuacion: txt,
+              registradoPor: userStr || 'Sistema'
+            }];
+          }
+
+          return {
+            ...exp,
+            id: exp.id || 'exp-' + Math.random(),
+            juzgado: exp.juzgado || 'Desconocido',
+            procedimiento: exp.procedimiento || (exp as any).tipo || 'General',
+            estatusActual: exp.estatusActual || 'EN TRÁMITE',
+            sede: exp.sede || 'Desconocida',
+            fechaRegistro: exp.fechaRegistro || new Date().toISOString().split('T')[0],
+            ultimaActualizacion: exp.ultimaActualizacion || new Date().toISOString().split('T')[0],
+            responsableAsignado: userStr || exp.responsableAsignado || 'Sistema',
+            actuaciones: acts
+          };
+        }) as ExpedienteJudicial[];
 
         setExpedientes(formatted);
       } catch (err) {
@@ -453,7 +469,7 @@ export default function ModuloExpedientes() {
                 const ultimaAct = exp.actuaciones[0];
                 const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
                 const correlativoBadge = exp.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
-                const autorName = ultimaAct?.registradoPor || exp.responsableAsignado || 'Sistema';
+                const autorName = ultimaAct?.registradoPor || exp.responsableAsignado || (exp as any).usuario || 'Sistema';
 
                 return (
                   <div
