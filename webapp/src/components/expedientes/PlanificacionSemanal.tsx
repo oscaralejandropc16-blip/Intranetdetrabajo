@@ -46,7 +46,7 @@ export default function PlanificacionSemanal({
   // Form campos Seguimiento
   const [segExpediente, setSegExpediente] = useState('');
   const [segDesc, setSegDesc] = useState('');
-  const [segPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Alta');
+  const [segPrioridad, setSegPrioridad] = useState<'Alta' | 'Media' | 'Baja'>('Alta');
   const [segAsignado] = useState('');
 
   const handleSubmitForm = (e: React.FormEvent) => {
@@ -393,15 +393,29 @@ export default function PlanificacionSemanal({
                       className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
                     />
                   </div>
-                  <div>
-                    <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">N° Expediente Asociado</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. 57.380"
-                      value={segExpediente}
-                      onChange={(e) => setSegExpediente(e.target.value)}
-                      className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
-                    />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">N° Expediente Asociado</label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 57.380"
+                        value={segExpediente}
+                        onChange={(e) => setSegExpediente(e.target.value)}
+                        className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">Prioridad</label>
+                      <select
+                        value={segPrioridad}
+                        onChange={(e) => setSegPrioridad(e.target.value as 'Alta' | 'Media' | 'Baja')}
+                        className="w-full p-3 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none cursor-pointer"
+                      >
+                        <option value="Alta">Alta</option>
+                        <option value="Media">Media</option>
+                        <option value="Baja">Baja</option>
+                      </select>
+                    </div>
                   </div>
                 </>
               )}

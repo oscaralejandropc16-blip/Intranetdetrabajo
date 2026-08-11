@@ -203,87 +203,11 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
   }
 ];
 
-export const INITIAL_AUDIENCIAS: AudienciaSemanal[] = [
-  {
-    id: 'aud-1',
-    expedienteId: 'exp-7',
-    numeroExpediente: 'Prov-J-2026-001974',
-    juzgado: 'Tribunal 1ro MSE',
-    partes: 'Tulio Zambrano vs. Gabriela González',
-    fechaAudiencia: '2026-08-12',
-    horaAudiencia: '09:30',
-    tipoAudiencia: 'Audiencia de Pruebas',
-    estatus: 'Programada',
-    abogadoAsignado: 'Dra. Patricia Silva',
-    notas: 'Llevar los originales de la prueba documental.'
-  },
-  {
-    id: 'aud-2',
-    expedienteId: 'exp-2',
-    numeroExpediente: '57.371',
-    juzgado: 'Tribunal 2do',
-    partes: 'Sousa y Gomes',
-    fechaAudiencia: '2026-08-14',
-    horaAudiencia: '10:30',
-    tipoAudiencia: 'Ejecución de Embargo',
-    estatus: 'Programada',
-    abogadoAsignado: 'Abog. Luis Delgado',
-    notas: 'Coordinar traslado del tribunal y depositario judicial.'
-  }
-];
+export const INITIAL_AUDIENCIAS: AudienciaSemanal[] = [];
 
-export const INITIAL_ASUNTOS_NUEVOS: AsuntoNuevo[] = [
-  {
-    id: 'asn-1',
-    cliente: 'Corporación Inmobiliaria del Centro C.A.',
-    materia: 'Desalojo de Inmueble Comercial',
-    tribunalDestino: 'Tribunal de Municipio Valencia',
-    fechaEstimadaIntroduccion: '2026-08-13',
-    estatus: 'Listo para introducir',
-    responsable: 'Abog. Luis Delgado',
-    detalles: 'Libel de demanda revisado y aranceles pagados.'
-  },
-  {
-    id: 'asn-2',
-    cliente: 'Roberto Mendonça',
-    materia: 'Cumplimiento de Contrato de Compraventa',
-    tribunalDestino: 'Tribunal 3ro de Primera Instancia Civil',
-    fechaEstimadaIntroduccion: '2026-08-15',
-    estatus: 'En revisión',
-    responsable: 'Dr. Víctor Román',
-    detalles: 'Falta anexo de poder notariado legalizado.'
-  }
-];
+export const INITIAL_ASUNTOS_NUEVOS: AsuntoNuevo[] = [];
 
-export const INITIAL_SEGUIMIENTOS: SeguimientoPendiente[] = [
-  {
-    id: 'seg-1',
-    numeroExpediente: 'Prov-V-2023-001113',
-    descripcion: 'Consignar oficio de retención en sede principal de SUDEBAN',
-    fechaLimite: '2026-08-11',
-    prioridad: 'Alta',
-    estatus: 'En proceso',
-    asignadoA: 'Abog. Luis Delgado'
-  },
-  {
-    id: 'seg-2',
-    numeroExpediente: 'Prov-J-2026-001974',
-    descripcion: 'Retirar copias simples certificadas en el Tribunal 1ro MSE',
-    fechaLimite: '2026-08-12',
-    prioridad: 'Media',
-    estatus: 'Pendiente',
-    asignadoA: 'Dra. Patricia Silva'
-  },
-  {
-    id: 'seg-3',
-    numeroExpediente: 'Prov-J-2025-002403',
-    descripcion: 'Verificar si se nombró nuevo Juez accidental en Tribunal 7mo MSE',
-    fechaLimite: '2026-08-13',
-    prioridad: 'Baja',
-    estatus: 'Pendiente',
-    asignadoA: 'Asistente Legal'
-  }
-];
+export const INITIAL_SEGUIMIENTOS: SeguimientoPendiente[] = [];
 
 // Helper functions for Local Storage persistence
 const LOCAL_STORAGE_KEY_EXP = 'rd_expedientes_list_v1';
