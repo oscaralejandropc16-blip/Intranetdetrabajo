@@ -383,7 +383,14 @@ export function saveStoredExpedientes(data: ExpedienteJudicial[]): void {
 export function getStoredAudiencias(): AudienciaSemanal[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_AUD);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(a => !['aud-1', 'aud-2'].includes(a.id));
+        if (filtered.length !== parsed.length) saveStoredAudiencias(filtered);
+        return filtered;
+      }
+    }
   } catch (e) {
     console.error('Error cargando audiencias guardadas', e);
   }
@@ -401,7 +408,14 @@ export function saveStoredAudiencias(data: AudienciaSemanal[]): void {
 export function getStoredAsuntosNuevos(): AsuntoNuevo[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_ASN);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(a => !['asn-1', 'asn-2'].includes(a.id));
+        if (filtered.length !== parsed.length) saveStoredAsuntosNuevos(filtered);
+        return filtered;
+      }
+    }
   } catch (e) {
     console.error('Error cargando asuntos nuevos', e);
   }
@@ -419,7 +433,14 @@ export function saveStoredAsuntosNuevos(data: AsuntoNuevo[]): void {
 export function getStoredSeguimientos(): SeguimientoPendiente[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY_SEG);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const filtered = parsed.filter(s => !['seg-1', 'seg-2', 'seg-3'].includes(s.id));
+        if (filtered.length !== parsed.length) saveStoredSeguimientos(filtered);
+        return filtered;
+      }
+    }
   } catch (e) {
     console.error('Error cargando seguimientos', e);
   }
