@@ -54,6 +54,7 @@ export default function AdminDashboard() {
   // Estados para interactividad de la UI
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationTab, setNotificationTab] = useState<'supervision' | 'equipo'>('supervision');
+  const [myDirectFeedbacks, setMyDirectFeedbacks] = useState<any[]>([]);
   const [dismissedFeedbackNotifs, setDismissedFeedbackNotifs] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('rd_jefe_read_feedbacks') || '[]');
@@ -322,6 +323,43 @@ export default function AdminDashboard() {
         const invesRes = await api.get('/rd-intranet/v1/investigaciones');
         if (invesRes.data && Array.isArray(invesRes.data)) {
           setAllInvestigaciones(invesRes.data);
+        }
+
+        // Obtener feedback directo asignado a mis tareas
+        try {
+          const myTasksRes = await api.get('/rd-intranet/v1/my-tasks');
+          if (myTasksRes.data && myTasksRes.data.comentario_admin && myTasksRes.data.comentario_admin.trim() !== '') {
+            setMyDirectFeedbacks(prev => {
+              const exists = prev.some(f => f.comentario_admin === myTasksRes.data.comentario_admin);
+              if (!exists) {
+                return [{
+                  id: `task-feedback-${myTasksRes.data.fecha_bitacora || 'reciente'}`,
+                  date: myTasksRes.data.fecha_bitacora || 'Reciente',
+                  comentario_admin: myTasksRes.data.comentario_admin,
+                  supervisado_por: myTasksRes.data.supervisado_por || 'Jefatura / Dirección'
+                }, ...prev];
+              }
+              return prev;
+            });
+          }
+        } catch (e) {
+          // Ignorar error secundario
+        }
+
+        // Obtener bitácoras con feedback en mi historial propio
+        try {
+          const myHistRes = await api.get('/rd-intranet/v1/my-history');
+          if (myHistRes.data && Array.isArray(myHistRes.data)) {
+            const histFeedbacks = myHistRes.data.filter((h: any) => h.comentario_admin && h.comentario_admin.trim() !== '');
+            if (histFeedbacks.length > 0) {
+              setMyDirectFeedbacks(prev => {
+                const combined = [...prev, ...histFeedbacks];
+                return combined.filter((item, idx, self) => idx === self.findIndex(t => (t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
+              });
+            }
+          }
+        } catch (e) {
+          // Ignorar error secundario
         }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
@@ -786,11 +824,14 @@ export default function AdminDashboard() {
   const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
 
   // 1. Notificaciones de Supervisión Recibida (Feedback dejado por otro jefe al jefe actual)
-  const mySupervisorFeedbacks = reports.filter(r => {
-    const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
-    const isMine = reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
-    return isMine && r.comentario_admin && r.comentario_admin.trim() !== '';
-  });
+  const mySupervisorFeedbacks = [
+    ...reports.filter(r => {
+      const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
+      const isMine = reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
+      return isMine && r.comentario_admin && r.comentario_admin.trim() !== '';
+    }),
+    ...myDirectFeedbacks
+  ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
 
