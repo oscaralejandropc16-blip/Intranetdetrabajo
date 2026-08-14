@@ -4,7 +4,7 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
 import api from './lib/api';
-import { Lock, CheckCircle2, X, AlertCircle, KeyRound } from 'lucide-react';
+import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
 
 function App() {
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('rd_jwt_token'));
@@ -92,7 +92,25 @@ function App() {
           </div>
           <div className="flex gap-3 sm:gap-4 items-center">
             {isAdmin && (
-              <Link to="/admin" className="text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold transition-colors border border-amber-500/30 px-2 sm:px-3 py-1 rounded-md bg-amber-500/10">Jefatura</Link>
+              <div className="flex items-center gap-2">
+                <Link 
+                  to="/admin" 
+                  className="text-amber-400 hover:text-amber-300 text-xs sm:text-sm font-bold transition-all border border-amber-500/40 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 flex items-center gap-1.5 shadow-sm"
+                  title="Ir al Centro de Mando de Jefatura"
+                >
+                  <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                  <span>Jefatura</span>
+                </Link>
+                <Link 
+                  to="/" 
+                  className="text-slate-300 hover:text-white text-xs sm:text-sm font-semibold transition-all border border-slate-700 hover:border-slate-600 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 flex items-center gap-1.5 shadow-sm"
+                  title="Ir a mi panel personal (Buzón, Registro Diario, Tareas)"
+                >
+                  <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-400" />
+                  <span className="hidden sm:inline">Mi Panel</span>
+                  <span className="sm:hidden">Panel</span>
+                </Link>
+              </div>
             )}
             <div className="hidden sm:block w-px h-6 bg-slate-700 mx-1 sm:mx-2"></div>
             <span className="hidden md:block text-slate-300 font-medium text-sm">Bienvenido, {userName}</span>
@@ -121,7 +139,7 @@ function App() {
         {/* Contenido principal */}
         <main className="flex-1 p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <Routes>
-            <Route path="/" element={!isAdmin ? <EmployeeDashboard /> : <Navigate to="/admin" />} />
+            <Route path="/" element={<EmployeeDashboard />} />
             <Route path="/admin" element={isAdmin ? <AdminDashboard /> : <Navigate to="/" />} />
           </Routes>
         </main>

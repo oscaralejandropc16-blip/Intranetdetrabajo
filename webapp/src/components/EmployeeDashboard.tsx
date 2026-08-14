@@ -10,6 +10,7 @@ import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
+import LiveStatusBar from './common/LiveStatusBar';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -917,6 +918,9 @@ export default function EmployeeDashboard() {
         cancelText={systemAlert.cancelText}
         onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
       />
+
+      {/* BARRA DE DIVISAS, CLIMA Y RELOJ EN VIVO */}
+      <LiveStatusBar />
 
       {/* BANNER DE RETRASO */}
       {isLateClosure && !reportSubmitted && (

@@ -1224,6 +1224,8 @@ function rd_intranet_get_bitacoras() {
                 'clockIn' => substr($clock_in, 0, 5),
                 'clockOut' => substr($clock_out, 0, 5),
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
+                'comentario_admin' => get_post_meta(get_the_ID(), 'comentario_admin', true) ?: '',
+                'supervisado_por' => get_post_meta(get_the_ID(), 'supervisado_por', true) ?: '',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
                 'content' => $query->post->post_content ?: get_the_content(),
@@ -1245,6 +1247,13 @@ function rd_intranet_handle_admin_update($request) {
     $params = rd_intranet_get_request_data($request);
     $post_id = intval($params['post_id'] ?? 0);
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
+    $supervisado_por = sanitize_text_field($params['supervisado_por'] ?? '');
+    if (!$supervisado_por) {
+        $current_user = wp_get_current_user();
+        if ($current_user && $current_user->ID) {
+            $supervisado_por = $current_user->display_name ?: ($current_user->user_nicename ?: $current_user->user_login);
+        }
+    }
     $programaciones_editadas = $params['programaciones'] ?? null;
     if (is_string($programaciones_editadas)) {
         $programaciones_editadas = json_decode(stripslashes($programaciones_editadas), true);
@@ -1261,8 +1270,11 @@ function rd_intranet_handle_admin_update($request) {
     }
     
     if ($post_id > 0) {
-        if ($nuevo_comentario) {
+        if ($nuevo_comentario !== '') {
             update_post_meta($post_id, 'comentario_admin', $nuevo_comentario);
+        }
+        if ($supervisado_por !== '') {
+            update_post_meta($post_id, 'supervisado_por', $supervisado_por);
         }
         if (is_array($programaciones_editadas)) {
             update_post_meta($post_id, 'programaciones_json', wp_slash(wp_json_encode($programaciones_editadas, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
@@ -1284,7 +1296,7 @@ function rd_intranet_handle_admin_update($request) {
         update_post_meta($post_id, 'estado_revision', 'Revisado');
         
         // Aquí se dispararía una notificación al empleado de que su jefe le dejó un comentario
-        return rest_ensure_response(array('success' => true, 'message' => 'Bitácora actualizada y empleado notificado.'));
+        return rest_ensure_response(array('success' => true, 'message' => 'Bitácora actualizada y supervisión registrada.'));
     }
     return new WP_Error('invalid_id', 'ID inválido', array('status' => 400));
 }
@@ -1531,6 +1543,8 @@ function rd_intranet_get_my_history() {
                 'clockIn' => substr($clock_in, 0, 5),
                 'clockOut' => substr($clock_out, 0, 5),
                 'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
+                'comentario_admin' => get_post_meta(get_the_ID(), 'comentario_admin', true) ?: '',
+                'supervisado_por' => get_post_meta(get_the_ID(), 'supervisado_por', true) ?: '',
                 'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
                 'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
                 'content' => $query->post->post_content ?: get_the_content(),

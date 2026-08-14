@@ -12,6 +12,8 @@ interface BitacoraHistorial {
   clockIn: string;
   clockOut: string;
   status: string;
+  comentario_admin?: string;
+  supervisado_por?: string;
   ubicacionEntrada?: string;
   ubicacionSalida?: string;
   pdfBase64: string;
@@ -437,12 +439,22 @@ export default function TabHistorial() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
-                          ${bitacora.status === 'Enviado' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}
-                        `}>
-                          {bitacora.status === 'Enviado' ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                          {bitacora.status}
-                        </span>
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                            ${bitacora.status === 'Enviado' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}
+                          `}>
+                            {bitacora.status === 'Enviado' ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                            {bitacora.status}
+                          </span>
+                          {bitacora.comentario_admin && (
+                            <div className="p-2 bg-blue-50/90 border border-blue-200 rounded-xl text-[11px] text-blue-900 max-w-[240px] shadow-sm">
+                              <span className="font-bold text-blue-950 block text-[10px] uppercase tracking-wider">
+                                {bitacora.supervisado_por ? `Supervisado por: ${bitacora.supervisado_por}` : 'Observaciones de Jefatura'}:
+                              </span>
+                              <span className="italic text-blue-800 line-clamp-3">"{bitacora.comentario_admin}"</span>
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-center">
                         {bitacora.pdfBase64 ? (
