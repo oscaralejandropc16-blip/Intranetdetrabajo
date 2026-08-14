@@ -192,52 +192,64 @@ export default function LiveStatusBar() {
   });
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-800/80 rounded-2xl p-2.5 sm:p-3 shadow-sm mb-6 relative z-30 transition-all">
-      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 sm:gap-3">
+    <div className="w-full bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl sm:rounded-3xl p-3 sm:p-4 text-white shadow-2xl mb-6 relative z-30 transition-all">
+      {/* Luz ambiental de fondo */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl sm:rounded-3xl pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-72 h-20 bg-amber-500/10 blur-3xl"></div>
+        <div className="absolute bottom-0 left-1/4 w-72 h-20 bg-blue-500/10 blur-3xl"></div>
+      </div>
+
+      <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
         
         {/* SECCIÓN 1: RELOJ DIGITAL & FECHA EN VIVO */}
-        <div className="flex items-center gap-3 bg-slate-50 dark:bg-slate-950/60 border border-slate-200/60 dark:border-white/5 px-3.5 py-2 rounded-xl flex-1 min-w-[220px]">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-500 shrink-0">
-            <Clock className="w-4 h-4" />
+        <div className="flex items-center gap-3.5 bg-slate-950/80 border border-white/5 px-4 py-2.5 rounded-2xl shadow-inner flex-1 min-w-[220px]">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5" />
           </div>
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-base sm:text-lg font-black text-slate-800 dark:text-white font-mono tracking-tight leading-none">
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg sm:text-2xl font-black text-white font-mono tracking-tight leading-none truncate">
                 {formattedTime}
               </span>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 shrink-0">
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/30 shrink-0">
                 VET
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 capitalize font-medium truncate mt-0.5">
+            <p className="text-[11px] sm:text-xs text-slate-400 capitalize font-medium truncate mt-0.5">
               {formattedDate}
             </p>
           </div>
         </div>
 
         {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) */}
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap justify-between md:justify-center">
           {/* Tarjeta USD */}
-          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-500/30 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-xs">
-            <div className="w-6 h-6 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-              <DollarSign className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2.5 sm:gap-3 bg-emerald-950/40 border border-emerald-500/30 px-3.5 py-2 rounded-2xl flex-1 sm:flex-none shadow-sm hover:border-emerald-500/50 transition-all min-w-[130px]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs sm:text-sm">
+              <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400 block leading-none">USD BCV</span>
-              <p className="text-xs sm:text-sm font-black text-slate-800 dark:text-white font-mono leading-tight mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-400">USD BCV</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              </div>
+              <p className="text-sm sm:text-base font-black text-white font-mono leading-tight mt-0.5">
                 {dolarRate ? `Bs. ${dolarRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
           </div>
 
           {/* Tarjeta EUR */}
-          <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-500/30 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-xs">
-            <div className="w-6 h-6 rounded-md bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold text-xs shrink-0">
-              <Euro className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-2.5 sm:gap-3 bg-blue-950/40 border border-blue-500/30 px-3.5 py-2 rounded-2xl flex-1 sm:flex-none shadow-sm hover:border-blue-500/50 transition-all min-w-[130px]">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 font-bold text-xs sm:text-sm">
+              <Euro className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
             <div>
-              <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 block leading-none">EUR BCV</span>
-              <p className="text-xs sm:text-sm font-black text-slate-800 dark:text-white font-mono leading-tight mt-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-blue-400">EUR BCV</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+              </div>
+              <p className="text-sm sm:text-base font-black text-white font-mono leading-tight mt-0.5">
                 {euroRate ? `Bs. ${euroRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
@@ -248,9 +260,9 @@ export default function LiveStatusBar() {
             onClick={fetchRates}
             disabled={loadingRates}
             title="Actualizar Cotizaciones BCV"
-            className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all cursor-pointer shrink-0 border border-slate-200 dark:border-slate-700"
+            className="p-2 sm:p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingRates ? 'animate-spin text-amber-500' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${loadingRates ? 'animate-spin text-amber-400' : ''}`} />
           </button>
         </div>
 
@@ -258,30 +270,30 @@ export default function LiveStatusBar() {
         <div className="relative city-dropdown-container">
           <button
             onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-            className="flex items-center gap-2.5 bg-slate-50 dark:bg-slate-950/60 hover:bg-slate-100 dark:hover:bg-slate-950/90 border border-slate-200/60 dark:border-white/5 hover:border-amber-500/40 px-3.5 py-1.5 rounded-xl transition-all cursor-pointer text-left w-full shadow-xs"
+            className="flex items-center gap-3 bg-slate-950/80 hover:bg-slate-950 border border-white/5 hover:border-amber-500/40 px-3.5 sm:px-4 py-2 rounded-2xl transition-all cursor-pointer text-left w-full shadow-sm"
             title="Haz clic para cambiar de ciudad"
           >
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
               {weatherIconInfo.icon}
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-black text-amber-600 dark:text-amber-400 flex items-center gap-1 uppercase tracking-wider truncate">
-                  <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+                <span className="text-xs font-black text-amber-400 flex items-center gap-1 uppercase tracking-wider truncate">
+                  <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>{activeCity.name}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform text-amber-500 shrink-0 ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform text-amber-400 shrink-0 ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium hidden xl:inline">({activeCity.state})</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-sm sm:text-base font-black text-slate-800 dark:text-white font-mono leading-none">
+              <div className="flex items-baseline gap-2 mt-0.5">
+                <span className="text-base sm:text-lg font-black text-white font-mono leading-none">
                   {activeWeatherData.temp !== undefined ? `${activeWeatherData.temp}°C` : '--°C'}
                 </span>
-                <span className="text-[10px] text-slate-500 dark:text-slate-300 font-medium truncate max-w-[110px] sm:max-w-none">
+                <span className="text-[11px] text-slate-300 font-medium truncate max-w-[120px] sm:max-w-none">
                   {activeWeatherData.conditionText || 'Cargando...'}
                 </span>
                 {activeWeatherData.humidity !== undefined && (
-                  <span className="text-[10px] text-blue-500 dark:text-blue-300 font-bold hidden sm:inline">
+                  <span className="text-[10px] text-blue-300 font-bold hidden sm:inline">
                     💧 {activeWeatherData.humidity}%
                   </span>
                 )}
@@ -291,8 +303,8 @@ export default function LiveStatusBar() {
 
           {/* Menú Desplegable de Selección de Ciudades */}
           {isCityDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl">
-              <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+            <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl">
+              <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex justify-between items-center">
                 <span>Seleccionar Ciudad</span>
                 <span className="text-amber-500 text-[9px] font-bold">5 Disponibles</span>
               </div>
@@ -306,14 +318,14 @@ export default function LiveStatusBar() {
                       setSelectedCityIndex(index);
                       setIsCityDropdownOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left transition-all cursor-pointer ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
                       isSelected 
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-sm' 
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md' 
+                        : 'hover:bg-slate-800 text-slate-200'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-slate-950' : 'text-amber-500'}`} />
+                      <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-slate-950' : 'text-amber-400'}`} />
                       <div className="truncate">
                         <p className="text-xs font-bold leading-tight truncate">{c.name}</p>
                         <p className={`text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'}`}>{c.state}</p>
