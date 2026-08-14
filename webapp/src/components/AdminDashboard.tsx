@@ -943,35 +943,36 @@ export default function AdminDashboard() {
           </div>
 
           {/* Stats & Notifications Row */}
-          <div className="flex items-center gap-4 w-full lg:w-auto">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full lg:w-auto lg:flex lg:items-center">
             {/* Stat Cards */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-center flex-1 lg:w-32">
-              <p className="text-3xl font-bold text-white">{inProgress}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Activos Hoy</p>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-3.5 sm:p-5 text-center flex-1 lg:w-32 hover:bg-white/10 transition-colors">
+              <p className="text-2xl sm:text-3xl font-black text-white">{inProgress}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Activos Hoy</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 text-center flex-1 lg:w-32 relative">
-              {pendingReview > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold shadow-lg animate-bounce">{pendingReview}</span>}
-              <p className="text-3xl font-bold text-amber-400">{pendingReview}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Por Revisar</p>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-3.5 sm:p-5 text-center flex-1 lg:w-32 relative hover:bg-white/10 transition-colors">
+              {pendingReview > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-[10px] sm:text-xs font-bold shadow-lg animate-bounce">{pendingReview}</span>}
+              <p className="text-2xl sm:text-3xl font-black text-amber-400">{pendingReview}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Por Revisar</p>
             </div>
 
             {/* Notification Bell */}
-            <div className="relative ml-2">
+            <div className="relative flex">
               <button
                 onClick={() => setShowNotifications(!showNotifications)}
-                className="p-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl hover:bg-white/10 transition-colors relative cursor-pointer"
+                className="w-full p-3.5 sm:p-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl hover:bg-white/10 transition-all flex flex-col items-center justify-center relative cursor-pointer group"
                 title="Centro de Notificaciones y Supervisión"
               >
-                <Bell className="w-7 h-7 text-amber-400" />
+                <Bell className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 lg:hidden">Buzón</span>
                 {totalNotifsCount > 0 && (
-                  <span className="absolute top-3 right-3 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full border-2 border-slate-900 text-[10px] font-black flex items-center justify-center animate-pulse">
+                  <span className="absolute top-2 right-2 sm:top-3 sm:right-3 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full border-2 border-slate-900 text-[10px] font-black flex items-center justify-center animate-pulse">
                     {totalNotifsCount}
                   </span>
                 )}
               </button>
 
               {showNotifications && (
-                <div className="absolute right-0 mt-3 w-84 sm:w-96 bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                   <div className="bg-slate-950 p-4 border-b border-white/5">
                     <div className="flex justify-between items-center text-white mb-3">
                       <span className="font-bold text-xs tracking-widest uppercase text-amber-500 flex items-center gap-2">
@@ -1007,35 +1008,35 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto p-3 space-y-2.5">
-                    {/* CONTENIDO PESTAÑA: SUPERVISIÓN ENTRE JEFES */}
+                  <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                    {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
                     {notificationTab === 'supervision' && (
                       mySupervisorFeedbacks.length === 0 ? (
                         <div className="p-6 text-center text-slate-400 text-xs font-medium">
                           No tienes observaciones de supervisión registradas.
                         </div>
                       ) : (
-                        mySupervisorFeedbacks.map(f => {
+                        mySupervisorFeedbacks.map((f, idx) => {
                           const isUnread = !dismissedFeedbackNotifs.includes(String(f.id));
                           return (
                             <div 
-                              key={f.id} 
+                              key={f.id || idx} 
                               className={`p-3.5 rounded-2xl border transition-all ${
                                 isUnread 
-                                  ? 'bg-blue-950/60 border-blue-500/40 shadow-sm' 
-                                  : 'bg-white/5 border-white/5 opacity-80'
+                                  ? 'bg-blue-950/60 border-blue-500/40' 
+                                  : 'bg-white/5 border-white/5'
                               }`}
                             >
-                              <div className="flex items-center justify-between gap-2 mb-1.5">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded">
-                                  {f.supervisado_por ? `De: ${f.supervisado_por}` : 'Jefatura'}
+                              <div className="flex justify-between items-start gap-2 mb-1.5">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${f.supervisado_por}` : 'Observaciones de Jefatura'}
                                 </span>
-                                <span className="text-[11px] text-slate-400 font-bold">{f.date}</span>
+                                <span className="text-[10px] text-slate-400">{f.date}</span>
                               </div>
-                              <p className="text-xs text-white font-medium leading-relaxed mb-3">
+                              <p className="text-xs text-white italic mb-2.5 line-clamp-2">
                                 "{f.comentario_admin}"
                               </p>
-                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/5">
+                              <div className="flex justify-between items-center pt-2 border-t border-white/5">
                                 <button
                                   onClick={() => {
                                     setSelectedReport(f);
@@ -1108,37 +1109,37 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs Vistas */}
-      <div className="flex flex-wrap gap-4">
+      {/* Tabs Vistas con Scroll Horizontal Suave en Móviles */}
+      <div className="flex overflow-x-auto gap-2 sm:gap-3 p-1 pb-2 scrollbar-thin scrollbar-thumb-slate-200">
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <FileText className="w-5 h-5" /> Revisión de Bitácoras
+          <FileText className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Revisión de Bitácoras
         </button>
         <button
           onClick={() => setActiveView('agenda')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <CalendarIcon className="w-5 h-5" /> Agenda Global (Línea de Tiempo)
+          <CalendarIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Agenda Global
         </button>
         <button
           onClick={() => setActiveView('mis_libros')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <BookOpen className="w-5 h-5" /> Mis Libros (Jefatura)
+          <BookOpen className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Mis Libros (Jefatura)
         </button>
         <button
           onClick={() => setActiveView('expedientes')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <Scale className="w-5 h-5" /> Expedientes & Agenda
+          <Scale className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Expedientes & Agenda
         </button>
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-1 min-w-[200px] p-4 rounded-2xl font-bold flex items-center justify-center gap-2 transition-all ${activeView === 'historial' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'historial' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
         >
-          <History className="w-5 h-5" /> Mi Historial de Jefatura
+          <History className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Mi Historial de Jefatura
         </button>
       </div>
 
