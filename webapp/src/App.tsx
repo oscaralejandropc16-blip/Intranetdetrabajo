@@ -113,8 +113,8 @@ function App() {
               </div>
             )}
             <div className="hidden sm:block w-px h-6 bg-slate-700 mx-1 sm:mx-2"></div>
-            <span className="hidden md:block text-slate-300 font-medium text-sm">Bienvenido, {userName}</span>
-            <div className="w-8 h-8 rounded-full bg-slate-700 border border-amber-500/50 flex items-center justify-center text-xs font-bold text-white uppercase flex-shrink-0">{userName.substring(0, 2)}</div>
+            <span className="hidden md:block text-slate-300 font-medium text-sm">Bienvenido, {userName || 'Usuario'}</span>
+            <div className="w-8 h-8 rounded-full bg-slate-700 border border-amber-500/50 flex items-center justify-center text-xs font-bold text-white uppercase flex-shrink-0">{String(userName || 'US').substring(0, 2)}</div>
             
             <button
               onClick={() => {

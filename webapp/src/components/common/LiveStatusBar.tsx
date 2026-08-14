@@ -176,10 +176,12 @@ export default function LiveStatusBar() {
   });
 
   return (
-    <div className="w-full bg-slate-900/90 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-3 sm:p-4 text-white shadow-xl mb-6 relative overflow-hidden">
-      {/* Luz ambiental de fondo */}
-      <div className="absolute top-0 right-1/4 w-72 h-20 bg-amber-500/10 blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 left-1/4 w-72 h-20 bg-blue-500/10 blur-3xl pointer-events-none"></div>
+    <div className="w-full bg-slate-900/90 backdrop-blur-xl border border-amber-500/20 rounded-2xl p-3 sm:p-4 text-white shadow-xl mb-6 relative z-30">
+      {/* Luz ambiental de fondo aislada */}
+      <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
+        <div className="absolute top-0 right-1/4 w-72 h-20 bg-amber-500/10 blur-3xl"></div>
+        <div className="absolute bottom-0 left-1/4 w-72 h-20 bg-blue-500/10 blur-3xl"></div>
+      </div>
 
       <div className="relative z-10 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
         
@@ -249,21 +251,22 @@ export default function LiveStatusBar() {
         </div>
 
         {/* SECCIÓN 3: MONITOR DE CLIMA MULTICIUDAD (Caracas, Boca de Aroa, Valencia, La Guaira, Maracaibo) */}
-        <div className="relative flex items-center gap-3 bg-slate-950/60 border border-white/5 px-4 py-2 rounded-xl">
-          <div className="flex items-center gap-3">
+        <div className="relative">
+          <button
+            onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
+            className="flex items-center gap-3 bg-slate-950/60 hover:bg-slate-950/90 border border-white/10 hover:border-amber-500/40 px-4 py-2 rounded-xl transition-all cursor-pointer text-left w-full sm:w-auto shadow-sm"
+            title="Haz clic para cambiar de ciudad"
+          >
             <div className="w-9 h-9 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center flex-shrink-0">
               {weatherIconInfo.icon}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-                  className="text-xs font-black text-amber-400 hover:text-amber-300 flex items-center gap-1 transition-colors uppercase tracking-wider cursor-pointer"
-                >
+                <span className="text-xs font-black text-amber-400 flex items-center gap-1 uppercase tracking-wider">
                   <MapPin className="w-3.5 h-3.5 text-amber-400" />
                   <span>{activeCity.name}</span>
-                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
-                </button>
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform text-amber-400 ${isCityDropdownOpen ? 'rotate-180' : ''}`} />
+                </span>
                 <span className="text-[10px] text-slate-400 font-medium hidden sm:inline">({activeCity.state})</span>
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
@@ -280,7 +283,7 @@ export default function LiveStatusBar() {
                 )}
               </div>
             </div>
-          </div>
+          </button>
 
           {/* Menú Desplegable de Selección de Ciudades */}
           {isCityDropdownOpen && (

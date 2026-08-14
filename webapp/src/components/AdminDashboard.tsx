@@ -329,14 +329,23 @@ export default function AdminDashboard() {
         try {
           const myTasksRes = await api.get('/rd-intranet/v1/my-tasks');
           if (myTasksRes.data && myTasksRes.data.comentario_admin && myTasksRes.data.comentario_admin.trim() !== '') {
+            const loggedName = localStorage.getItem('rd_user_name') || 'Jefatura';
             setMyDirectFeedbacks(prev => {
               const exists = prev.some(f => f.comentario_admin === myTasksRes.data.comentario_admin);
               if (!exists) {
                 return [{
                   id: `task-feedback-${myTasksRes.data.fecha_bitacora || 'reciente'}`,
+                  user: loggedName,
                   date: myTasksRes.data.fecha_bitacora || 'Reciente',
                   comentario_admin: myTasksRes.data.comentario_admin,
-                  supervisado_por: myTasksRes.data.supervisado_por || 'Jefatura / Dirección'
+                  supervisado_por: myTasksRes.data.supervisado_por || 'Jefatura / Dirección',
+                  clockIn: 'N/A (Jefatura)',
+                  clockOut: 'Registrada',
+                  status: 'Revisado',
+                  actuaciones: [],
+                  ingresos: [],
+                  programaciones: ensureArray(myTasksRes.data.programaciones),
+                  evidences: []
                 }, ...prev];
               }
               return prev;
@@ -350,7 +359,17 @@ export default function AdminDashboard() {
         try {
           const myHistRes = await api.get('/rd-intranet/v1/my-history');
           if (myHistRes.data && Array.isArray(myHistRes.data)) {
-            const histFeedbacks = myHistRes.data.filter((h: any) => h.comentario_admin && h.comentario_admin.trim() !== '');
+            const loggedName = localStorage.getItem('rd_user_name') || 'Jefatura';
+            const histFeedbacks = myHistRes.data
+              .filter((h: any) => h.comentario_admin && h.comentario_admin.trim() !== '')
+              .map((h: any) => ({
+                ...h,
+                user: h.user || loggedName,
+                actuaciones: ensureArray(h.actuaciones),
+                ingresos: ensureArray(h.ingresos),
+                programaciones: ensureArray(h.programaciones),
+                evidences: ensureArray(h.evidences)
+              }));
             if (histFeedbacks.length > 0) {
               setMyDirectFeedbacks(prev => {
                 const combined = [...prev, ...histFeedbacks];
@@ -1218,7 +1237,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center gap-4">
                         <div className="relative">
                           <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold uppercase tracking-wider text-sm border-2 border-white shadow-sm">
-                            {report.user.substring(0, 2)}
+                            {String(report?.user || 'Usuario').substring(0, 2)}
                           </div>
                           {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>}
                         </div>
@@ -1380,7 +1399,7 @@ export default function AdminDashboard() {
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 pb-4 border-b border-slate-100">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 font-bold flex items-center justify-center text-sm uppercase border border-slate-200 shrink-0">
-                              {userGroup.user.substring(0, 2)}
+                              {String(userGroup?.user || 'Usuario').substring(0, 2)}
                             </div>
                             <div>
                               <span className="font-bold text-slate-800 capitalize block">{userGroup.user}</span>
@@ -1976,7 +1995,7 @@ export default function AdminDashboard() {
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold border border-white/20 uppercase tracking-widest">
-                    {selectedReport.user.substring(0, 2)}
+                    {String(selectedReport?.user || 'Usuario').substring(0, 2)}
                   </div>
                   <div>
                     <h3 className="text-2xl font-bold flex items-center gap-3">
