@@ -942,99 +942,98 @@ export default function EmployeeDashboard() {
       )}
 
       {/* Header Premium con Stats */}
-      <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 text-white shadow-2xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-8">
+        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-3">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-semibold tracking-wider text-slate-200 uppercase">Jornada Activa</span>
+              <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">Jornada Activa</span>
             </div>
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Mi Jornada <span className="text-amber-400">KANT</span></h2>
-            <p className="text-slate-400 text-lg font-medium capitalize flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-amber-400" />
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-2">Mi Jornada <span className="text-amber-400">KANT</span></h2>
+            <p className="text-slate-400 text-sm sm:text-base font-medium capitalize flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-amber-400" />
               {format(new Date(), "EEEE, d 'de' MMMM, yyyy", { locale: es })}
             </p>
           </div>
           
-          <div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto items-stretch">
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 flex-1 lg:w-40 text-center">
-              <Activity className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-white">{progress}%</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Progreso Hoy</p>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto items-stretch">
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-5 flex-1 lg:w-36 text-center hover:bg-white/10 transition-colors">
+              <Activity className="w-5 h-5 text-amber-400 mx-auto mb-1.5" />
+              <p className="text-2xl sm:text-3xl font-black text-white">{progress}%</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Progreso</p>
             </div>
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-5 flex-1 lg:w-40 text-center">
-              <Briefcase className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-              <p className="text-3xl font-bold text-white">{pendingTasks.length - tasksCompleted}</p>
-              <p className="text-xs text-slate-400 font-medium uppercase tracking-wider mt-1">Pendientes</p>
+            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-5 flex-1 lg:w-36 text-center hover:bg-white/10 transition-colors">
+              <Briefcase className="w-5 h-5 text-blue-400 mx-auto mb-1.5" />
+              <p className="text-2xl sm:text-3xl font-black text-white">{pendingTasks.length - tasksCompleted}</p>
+              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Pendientes</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Navegación por Pestañas */}
-        <div className="relative z-10 flex flex-wrap gap-2 bg-white/5 p-2 rounded-2xl backdrop-blur-md border border-white/10">
-          
-          <button 
-            onClick={() => setActiveTab('expedientes')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <Scale className="w-5 h-5" />
-            <span>Expedientes & Agenda</span>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('ingresos')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'ingresos' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <FileDigit className="w-5 h-5" />
-            <span>Libro de Ingresos</span>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('registro')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'registro' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <Activity className="w-5 h-5" />
-            <span>Libro de Actuaciones</span>
-          </button>
+      {/* Navegación por Pestañas Segmentada y Moderna */}
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 scrollbar-thin scrollbar-thumb-slate-300">
+        <button 
+          onClick={() => setActiveTab('expedientes')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <Scale className="w-4 h-4" />
+          <span>Expedientes & Agenda</span>
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('ingresos')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'ingresos' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <FileDigit className="w-4 h-4" />
+          <span>Libro de Ingresos</span>
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('registro')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'registro' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Libro de Actuaciones</span>
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('agenda')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'agenda' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <CalendarIcon className="w-5 h-5" />
-            <span>Libro de Programación</span>
-          </button>
-          
-          <button 
-            onClick={() => setActiveTab('notificaciones')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'notificaciones' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <div className="relative">
-              <MessageSquare className="w-5 h-5" />
-              {unreadCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-rose-500 rounded-full border-2 border-slate-900"></span>}
-            </div>
-            <span>Notificaciones {unreadCount > 0 && `(${unreadCount})`}</span>
-          </button>
+        <button 
+          onClick={() => setActiveTab('agenda')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <CalendarIcon className="w-4 h-4" />
+          <span>Libro de Programación</span>
+        </button>
+        
+        <button 
+          onClick={() => setActiveTab('notificaciones')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'notificaciones' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <div className="relative">
+            <MessageSquare className="w-4 h-4" />
+            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-slate-900"></span>}
+          </div>
+          <span>Buzón {unreadCount > 0 && `(${unreadCount})`}</span>
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('historial')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'historial' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <History className="w-5 h-5" />
-            <span>Mi Historial</span>
-          </button>
+        <button 
+          onClick={() => setActiveTab('historial')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'historial' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <History className="w-4 h-4" />
+          <span>Mi Historial</span>
+        </button>
 
-          <button 
-            onClick={() => setActiveTab('investigaciones')}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all flex-1 sm:flex-none justify-center cursor-pointer ${activeTab === 'investigaciones' ? 'bg-amber-500 text-slate-900 shadow-lg' : 'text-slate-300 hover:text-white hover:bg-white/10'}`}
-          >
-            <BookOpen className="w-5 h-5" />
-            <span>Investigaciones & Sentencias</span>
-          </button>
-        </div>
+        <button 
+          onClick={() => setActiveTab('investigaciones')}
+          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'investigaciones' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+        >
+          <BookOpen className="w-4 h-4" />
+          <span>Investigaciones & Sentencias</span>
+        </button>
       </div>
 
       {/* Estructura Principal con Panel Fijo (Sidebar) */}

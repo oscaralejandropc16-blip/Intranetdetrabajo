@@ -1109,37 +1109,37 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs Vistas con Scroll Horizontal Suave en Móviles */}
-      <div className="flex overflow-x-auto gap-2 sm:gap-3 p-1 pb-2 scrollbar-thin scrollbar-thumb-slate-200">
+      {/* Tabs Vistas con Segmented Control Moderno */}
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 scrollbar-thin scrollbar-thumb-slate-300">
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
         >
-          <FileText className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Revisión de Bitácoras
+          <FileText className="w-4 h-4" /> Revisión de Bitácoras
         </button>
         <button
           onClick={() => setActiveView('agenda')}
-          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
         >
-          <CalendarIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Agenda Global
+          <CalendarIcon className="w-4 h-4" /> Agenda Global
         </button>
         <button
           onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
         >
-          <BookOpen className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Mis Libros (Jefatura)
+          <BookOpen className="w-4 h-4" /> Mis Libros (Jefatura)
         </button>
         <button
           onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-900 shadow-lg shadow-amber-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
         >
-          <Scale className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Expedientes & Agenda
+          <Scale className="w-4 h-4" /> Expedientes & Agenda
         </button>
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-4 py-3 sm:px-5 sm:py-3.5 rounded-2xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'historial' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'}`}
+          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
         >
-          <History className="w-4 h-4 sm:w-4.5 sm:h-4.5" /> Mi Historial de Jefatura
+          <History className="w-4 h-4" /> Mi Historial de Jefatura
         </button>
       </div>
 
