@@ -75,6 +75,28 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   }, [isOpen, messages]);
 
+  // Si quien abre el chat es Jefatura (Luis), marcar los mensajes del empleado como leídos por el jefe
+  useEffect(() => {
+    if (isJefatura && isOpen && messages.length > 0) {
+      let hasUnread = false;
+      const updated = messages.map(m => {
+        if (!m.leido_por_jefe && m.author_role !== 'jefatura') {
+          hasUnread = true;
+          return { ...m, leido_por_jefe: true };
+        }
+        return m;
+      });
+      if (hasUnread) {
+        setMessages(updated);
+        try {
+          const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
+          const updatedQ = q.map((item: any) => ({ ...item, leido_por_jefe: true }));
+          localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
+        } catch (e) {}
+      }
+    }
+  }, [isJefatura, isOpen]);
+
   if (!isOpen) return null;
 
   const quickPresets = isJefatura ? [
@@ -335,11 +357,19 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                       {msg.mensaje}
                     </p>
 
-                    {/* Footer con hora y doble check */}
-                    <div className="flex items-center justify-end gap-1.5 mt-1 text-[9px] text-slate-300/70">
+                    {/* Footer con hora y checks realistas estilo WhatsApp */}
+                    <div className="flex items-center justify-end gap-1 mt-1 text-[9.5px] text-white/60 font-medium">
                       <span>{msg.fecha}</span>
                       {isMe && (
-                        <CheckCheck className="w-3.5 h-3.5 text-sky-400" />
+                        (msg.atendido || msg.leido_por_jefe) ? (
+                          <span title="Leído por el supervisor (Doble check azul)">
+                            <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+                          </span>
+                        ) : (
+                          <span title="Entregado pero no leído (Doble check gris)">
+                            <CheckCheck className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                          </span>
+                        )
                       )}
                     </div>
                   </div>
