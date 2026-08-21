@@ -13,7 +13,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import LiveStatusBar from './common/LiveStatusBar';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { WhatsAppStyleChat } from './chat/WhatsAppStyleChat';
+import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -1150,10 +1150,9 @@ export default function AdminDashboard() {
     }
 
     let employeeOwner = 'Carmen Luisa';
-    const cleanAuth = (msg.author || '').toLowerCase().trim();
-    const isBoss = cleanAuth.includes('luis') || cleanAuth.includes('victor') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('delgado') || cleanAuth.includes('roman');
+    const isBoss = checkIsFromBoss(msg.author, msg.author_role);
 
-    if (!isBoss && cleanAuth !== '') {
+    if (!isBoss && (msg.author || '').trim() !== '') {
       employeeOwner = msg.author;
     } else if (msg.post_id) {
       const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));

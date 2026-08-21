@@ -8,7 +8,6 @@ import {
   ShieldCheck, 
   User, 
   CheckCircle2, 
-  RotateCcw,
   Search,
   Trash2
 } from 'lucide-react';
@@ -44,6 +43,22 @@ interface WhatsAppStyleChatProps {
   onMessageDeleted?: (id: string, text?: string) => void;
 }
 
+// Función infalible para determinar si un mensaje fue emitido por Jefatura
+export const checkIsFromBoss = (author?: string, role?: string): boolean => {
+  const clean = (author || '').toLowerCase().trim();
+  if (clean.includes('carmen') || role === 'empleado') return false;
+  if (role === 'jefatura' || role === 'admin') return true;
+  return clean.includes('delgado') || 
+         clean.includes('roman') || 
+         clean.includes('jefe') || 
+         clean.includes('jefatura') || 
+         clean.includes('admin') || 
+         clean === 'luis' || 
+         clean.startsWith('luis ') || 
+         clean === 'victor' || 
+         clean.startsWith('victor ');
+};
+
 export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   isOpen,
   onClose,
@@ -57,20 +72,20 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   onMarkAtendido,
   onMessageDeleted
 }) => {
+  const getCleanDeletedList = (): string[] => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+      return Array.isArray(raw) ? raw.filter((id: any) => typeof id === 'string') : [];
+    } catch (e) {
+      return [];
+    }
+  };
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const deletedList: string[] = (() => {
-      try { 
-        const raw = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
-        // Limpiar cualquier palabra que se haya colado y dejar solo IDs válidos
-        const cleanIds = raw.filter((item: string) => typeof item === 'string' && (item.startsWith('chat_') || item.startsWith('rep_') || item.startsWith('orig_') || item.startsWith('reply_')));
-        if (cleanIds.length !== raw.length) {
-          localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(cleanIds));
-        }
-        return cleanIds;
-      } catch(e) { return []; }
-    })();
+    const deletedList = getCleanDeletedList();
     return initialMessages.filter(m => !deletedList.includes(m.id));
   });
+
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [viewFilter, setViewFilter] = useState<'todos' | 'pendientes' | 'atendidos'>('todos');
@@ -80,22 +95,18 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     msgId: string;
     msgText?: string;
   }>({ isOpen: false, msgId: '', msgText: '' });
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Cargar mensajes iniciales si cambian
+  // Sincronizar mensajes iniciales
   useEffect(() => {
-    if (initialMessages && initialMessages.length > 0) {
-      const deletedList: string[] = (() => {
-        try { 
-          const raw = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
-          return raw.filter((item: string) => typeof item === 'string' && (item.startsWith('chat_') || item.startsWith('rep_') || item.startsWith('orig_') || item.startsWith('reply_')));
-        } catch(e) { return []; }
-      })();
+    if (initialMessages) {
+      const deletedList = getCleanDeletedList();
       setMessages(initialMessages.filter(m => !deletedList.includes(m.id)));
     }
   }, [initialMessages]);
 
-  // Scroll automático al final cuando llegan mensajes o abre el chat
+  // Scroll al final al abrir el chat o recibir mensajes
   useEffect(() => {
     if (isOpen) {
       const t1 = setTimeout(() => {
@@ -111,23 +122,22 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   }, [isOpen, messages.length, viewFilter]);
 
-  // Auto-marcar mensajes del interlocutor como leídos al abrir el chat
+  // Auto-marcar como leídos al abrir la conversación
   useEffect(() => {
     if (isOpen && messages.length > 0) {
       let hasChanges = false;
       const updated = messages.map(m => {
-        const cleanAuth = (m.author || '').toLowerCase().trim();
-        const isFromBoss = m.author_role === 'jefatura' || m.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+        const fromBoss = checkIsFromBoss(m.author, m.author_role);
         
         if (isJefatura) {
-          // El jefe lee los mensajes del empleado
-          if (!isFromBoss && !m.leido_por_jefe) {
+          // Si el jefe abre el chat, lee los mensajes del empleado
+          if (!fromBoss && !m.leido_por_jefe) {
             hasChanges = true;
             return { ...m, leido_por_jefe: true };
           }
         } else {
-          // El empleado lee los mensajes del jefe
-          if (isFromBoss && !m.leido_por_empleado) {
+          // Si el empleado abre el chat, lee los mensajes del jefe
+          if (fromBoss && !m.leido_por_empleado) {
             hasChanges = true;
             return { ...m, leido_por_empleado: true };
           }
@@ -140,11 +150,10 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         try {
           const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
           const updatedQ = q.map((item: any) => {
-            const cleanAuth = (item.author || '').toLowerCase().trim();
-            const isFromBoss = item.author_role === 'jefatura' || item.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
-            if (isJefatura && !isFromBoss) {
+            const fromBoss = checkIsFromBoss(item.author, item.author_role);
+            if (isJefatura && !fromBoss) {
               return { ...item, leido_por_jefe: true };
-            } else if (!isJefatura && isFromBoss) {
+            } else if (!isJefatura && fromBoss) {
               return { ...item, leido_por_empleado: true };
             }
             return item;
@@ -188,10 +197,10 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     const fullDate = `${dateStr}, ${nowStr}`;
 
     const newMsg: ChatMessage = {
-      id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+      id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       notif_id: activeThreadId || (reportContext ? `thread_${reportContext.id || reportContext.date}` : undefined),
       post_id: reportContext?.id || 0,
-      author: currentUser || (isJefatura ? 'Luis Delgado' : 'Carmen Luisa'),
+      author: isJefatura ? (currentUser || 'Luis Delgado') : (currentUser || 'Carmen Luisa'),
       author_role: isJefatura ? 'jefatura' : 'empleado',
       mensaje: textToSend,
       fecha: fullDate,
@@ -213,7 +222,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify([newMsg, ...q].slice(0, 150)));
     } catch (e) {}
 
-    // Notificar al componente padre
+    // Notificar componente padre
     if (onMessageSent) {
       onMessageSent(newMsg);
     }
@@ -286,7 +295,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     } catch (e) {}
   };
 
-  // Filtrado de mensajes
+  // Filtrado y ordenamiento cronológico ascendente (más antiguos arriba, más nuevos abajo)
   const filteredMessages = messages.filter(m => {
     if (viewFilter === 'pendientes' && m.atendido) return false;
     if (viewFilter === 'atendidos' && !m.atendido) return false;
@@ -296,7 +305,6 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
     return true;
   }).sort((a, b) => {
-    // 1. Extraer timestamp numérico del ID si existe (ej: chat_172426... o rep_172426...)
     const parseIdTime = (id: string) => {
       if (!id) return 0;
       const parts = id.split('_');
@@ -309,21 +317,19 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     const tA = parseIdTime(a.id);
     const tB = parseIdTime(b.id);
     if (tA && tB && tA !== tB) return tA - tB;
-
-    // 2. Extraer fecha/hora si está disponible
     return (a.fecha || '').localeCompare(b.fecha || '');
   });
 
   const pendingCount = messages.filter(m => {
     if (m.atendido) return false;
-    const cleanAuth = (m.author || '').toLowerCase().trim();
-    const isFromBoss = m.author_role === 'jefatura' || m.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+    const fromBoss = checkIsFromBoss(m.author, m.author_role);
     if (isJefatura) {
-      return !isFromBoss && !m.leido_por_jefe;
+      return !fromBoss && !m.leido_por_jefe;
     } else {
-      return isFromBoss && !m.leido_por_empleado;
+      return fromBoss && !m.leido_por_empleado;
     }
   }).length;
+
   const attendedCount = messages.filter(m => m.atendido).length;
 
   return (
@@ -343,62 +349,84 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                   <ShieldCheck className="w-5 h-5" />
                 )}
               </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-400 border-2 border-[#1f2c34]" title="En línea"></span>
+              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#1f2c34] rounded-full"></span>
             </div>
+
             <div className="min-w-0">
-              <h3 className="font-bold text-sm sm:text-base text-white truncate flex items-center gap-2">
-                {targetUser}
-                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm sm:text-base font-bold text-white truncate">
+                  {isJefatura ? (targetUser || 'Carmen Luisa') : (targetUser || 'Luis Delgado / Jefatura')}
+                </h3>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                  isJefatura ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
                   {isJefatura ? 'Empleado' : 'Jefatura'}
                 </span>
-              </h3>
-              <p className="text-[11px] text-emerald-400/90 font-medium truncate flex items-center gap-1">
+              </div>
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                {reportContext ? `Bitácora: ${reportContext.date}` : 'Canal Directo de Supervisión'}
-              </p>
+                <span>Bitácora: <span className="text-emerald-300 font-semibold">{reportContext?.date || 'General'}</span></span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5">
-            {/* Sub-filtro de Atendidos / Pendientes */}
-            <div className="flex items-center bg-[#111b21] p-1 rounded-xl border border-white/5">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Segmented Filter Pills */}
+            <div className="hidden sm:flex items-center bg-[#111b21] p-0.5 rounded-xl border border-white/5 text-[11px]">
               <button
+                type="button"
                 onClick={() => setViewFilter('todos')}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${viewFilter === 'todos' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  viewFilter === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
                 Todos ({messages.length})
               </button>
               <button
+                type="button"
                 onClick={() => setViewFilter('pendientes')}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${viewFilter === 'pendientes' ? 'bg-amber-600 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                  viewFilter === 'pendientes' ? 'bg-[#2a3942] text-amber-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
                 Pendientes ({pendingCount})
               </button>
               <button
+                type="button"
                 onClick={() => setViewFilter('atendidos')}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${viewFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-xs' : 'text-slate-400 hover:text-white'}`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                  viewFilter === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                }`}
               >
                 Atendidos ({attendedCount})
               </button>
             </div>
 
             <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white flex items-center justify-center transition-colors cursor-pointer ml-1"
-              title="Cerrar Chat"
+              onClick={() => setFilterSearch(filterSearch ? '' : ' ')}
+              title="Buscar en mensajes"
+              className={`p-2 rounded-full transition-colors cursor-pointer ${filterSearch ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
             >
-              <X className="w-4 h-4" />
+              <Search className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-full transition-colors cursor-pointer"
+              title="Cerrar chat"
+            >
+              <X className="w-5 h-5" />
             </button>
           </div>
         </div>
 
-        {/* SEARCH BAR SUB-HEADER (SI HAY MUCHOS MENSAJES) */}
-        {messages.length > 5 && (
-          <div className="px-4 py-2 bg-[#111b21] border-b border-white/5 flex items-center gap-2">
-            <Search className="w-3.5 h-3.5 text-slate-500" />
+        {/* SEARCH BAR SI ESTÁ ACTIVO */}
+        {filterSearch !== '' && (
+          <div className="bg-[#111b21] px-4 py-2 border-b border-white/5 flex items-center gap-2 animate-in slide-in-from-top-1">
+            <Search className="w-3.5 h-3.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Buscar en la conversación..."
+              placeholder="Buscar en esta conversación..."
               value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               className="w-full bg-transparent text-xs text-white placeholder-slate-500 outline-none"
@@ -411,7 +439,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           </div>
         )}
 
-        {/* CHAT MESSAGES BODY (WHATSAPP WALLPAPER PATTERN STYLE) */}
+        {/* CHAT MESSAGES BODY */}
         <div 
           className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 relative"
           style={{
@@ -440,42 +468,20 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
             </div>
           ) : (
             filteredMessages.map((msg) => {
-              const cleanAuthor = (msg.author || '').toLowerCase().trim();
-              const cleanCurrent = (currentUser || '').toLowerCase().trim();
+              const fromBoss = checkIsFromBoss(msg.author, msg.author_role);
+              
+              // REGLA FUNDAMENTAL DE ALINEACIÓN:
+              // Si Luis Delgado (Jefe) está viendo la pantalla: los mensajes del jefe son "Tú" (isMe = true, derecha en verde).
+              // Si Carmen Luisa (Empleado) está viendo la pantalla: los mensajes de Carmen son "Tú" (isMe = true, derecha en verde).
+              const isMe = isJefatura ? fromBoss : !fromBoss;
 
-              let isMe = false;
+              const headerLabel = isMe
+                ? 'Tú'
+                : (isJefatura 
+                    ? (msg.author || targetUser || 'Carmen Luisa') 
+                    : (msg.author || targetUser || 'Luis Delgado / Jefatura'));
 
-              if (isJefatura) {
-                // Pantalla vista por Jefatura (Luis Delgado):
-                const isFromBoss = msg.author_role === 'jefatura' || 
-                                   msg.author_role === 'admin' ||
-                                   cleanAuthor.includes('luis') || 
-                                   cleanAuthor.includes('delgado') || 
-                                   cleanAuthor.includes('jefe') || 
-                                   cleanAuthor.includes('admin') || 
-                                   cleanAuthor.includes('roman') ||
-                                   (cleanCurrent !== '' && cleanAuthor.includes(cleanCurrent));
-                isMe = isFromBoss;
-              } else {
-                // Pantalla vista por Empleado (Carmen Luisa):
-                const isFromBoss = msg.author_role === 'jefatura' || 
-                                   msg.author_role === 'admin' ||
-                                   cleanAuthor.includes('luis') || 
-                                   cleanAuthor.includes('delgado') || 
-                                   cleanAuthor.includes('jefe') || 
-                                   cleanAuthor.includes('admin') || 
-                                   cleanAuthor.includes('roman');
-                
-                if (isFromBoss) {
-                  isMe = false;
-                } else {
-                  isMe = msg.author_role === 'empleado' || 
-                         cleanAuthor.includes('carmen') || 
-                         (cleanCurrent !== '' && cleanAuthor.includes(cleanCurrent)) ||
-                         cleanAuthor === 'tú' ||
-                         cleanAuthor === '';
-                }
-              }
+              const canDelete = isMe || isJefatura;
 
               return (
                 <div
@@ -492,7 +498,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                     {/* Header del mensaje */}
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
-                        {isMe ? 'Tú' : (msg.author || (isJefatura ? targetUser : 'Luis Delgado / Jefatura'))}
+                        {headerLabel}
                       </span>
                       {msg.atendido && (
                         <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
@@ -506,9 +512,9 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                       {msg.mensaje}
                     </p>
 
-                    {/* Footer con hora, checks y botón de eliminar (solo mensajes propios o Jefatura) */}
+                    {/* Footer con hora, checks y botón de eliminar */}
                     <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
-                      {(isMe || isJefatura) && (
+                      {canDelete && (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -538,27 +544,24 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                         )
                       )}
                     </div>
-                  </div>
 
-                  {/* Acciones contextuales para Jefatura (Marcar Atendido / Reabrir) */}
-                  {isJefatura && (
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity mt-1 flex items-center gap-1 px-1">
-                      <button
-                        onClick={() => handleToggleAtendido(msg.id)}
-                        className="text-[10px] text-slate-400 hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer bg-[#182229] px-2 py-0.5 rounded-md border border-white/5"
-                      >
-                        {msg.atendido ? (
-                          <>
-                            <RotateCcw className="w-2.5 h-2.5 text-amber-400" /> Reabrir
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" /> Marcar como Atendido
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  )}
+                    {/* Acciones de Jefatura (Marcar como Atendido en burbuja) */}
+                    {isJefatura && !isMe && (
+                      <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
+                        <button
+                          onClick={() => handleToggleAtendido(msg.id)}
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                            msg.atendido 
+                              ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
+                              : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                          }`}
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })
@@ -566,8 +569,8 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           <div ref={messagesEndRef} />
         </div>
 
-        {/* QUICK REACTION CHIPS (WHATSAPP PRESETS) */}
-        <div className="px-3 py-2 bg-[#182229] border-t border-white/5 flex gap-1.5 overflow-x-auto scrollbar-none">
+        {/* QUICK REPLY PRESETS */}
+        <div className="bg-[#111b21] px-3 py-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           {quickPresets.map((preset, pIdx) => (
             <button
               key={pIdx}
@@ -628,3 +631,5 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     </div>
   );
 };
+
+export default WhatsAppStyleChat;

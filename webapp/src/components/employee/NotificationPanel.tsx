@@ -14,7 +14,7 @@ import {
   CornerDownRight,
   ShieldCheck
 } from 'lucide-react';
-import { WhatsAppStyleChat } from '../chat/WhatsAppStyleChat';
+import { WhatsAppStyleChat, checkIsFromBoss } from '../chat/WhatsAppStyleChat';
 
 export interface Notification {
   id: string | number;
@@ -483,8 +483,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                     </p>
                     <div className="space-y-1.5">
                       {replies.slice(-2).map((rep, rIdx) => {
-                        const cleanAuth = (rep.author || '').toLowerCase().trim();
-                        const isFromBoss = rep.author_role === 'jefatura' || rep.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+                        const isFromBoss = checkIsFromBoss(rep.author, rep.author_role);
                         return (
                           <div 
                             key={rIdx} 
@@ -630,11 +629,11 @@ export default function NotificationPanel({ notifications, setNotifications }: N
               return [
                 ...(localRepliesMap[notifKey] || []),
                 ...globalReplies
-              ].filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje)));
+              ].filter(m => !deletedList.includes(m.id));
             })()).map(r => ({
               id: r.id || `rep_${Date.now()}`,
               author: r.author || 'Carmen Luisa',
-              author_role: r.author_role || (r.author?.toLowerCase().includes('luis') ? 'jefatura' as const : 'empleado' as const),
+              author_role: r.author_role || (checkIsFromBoss(r.author, r.author_role) ? ('jefatura' as const) : ('empleado' as const)),
               mensaje: r.mensaje,
               fecha: r.fecha,
               atendido: r.atendido
