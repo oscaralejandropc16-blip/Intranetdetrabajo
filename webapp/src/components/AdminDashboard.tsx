@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -967,6 +967,9 @@ export default function AdminDashboard() {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
   let filteredReports = reports.filter(r => r.user.toLowerCase().includes(searchTerm.toLowerCase()));
 
   if (statusFilter !== 'Todos') {
@@ -984,6 +987,10 @@ export default function AdminDashboard() {
       filteredReports = filteredReports.filter(r => r.date >= sevenDaysAgo);
     }
   }
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / itemsPerPage));
+  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+  const paginatedReports = filteredReports.slice((validCurrentPage - 1) * itemsPerPage, validCurrentPage * itemsPerPage);
 
   const pendingReview = reports.filter(r => r.status === 'Enviado').length;
   const inProgress = reports.filter(r => r.status === 'En Curso').length;
@@ -1606,7 +1613,7 @@ export default function AdminDashboard() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredReports.map((report) => (
+                ) : paginatedReports.map((report) => (
                   <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-amber-50/10' : ''}`}>
                     <td className="p-6">
                       <div className="flex items-center gap-4">
@@ -1727,8 +1734,67 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center rounded-b-3xl text-xs text-slate-400 font-medium px-6">
-            <span>Mostrando registros oficiales de bitácora en la base de datos central KANT</span>
+          {/* Footer de Paginación Inteligente */}
+          <div className="p-4 bg-slate-50/80 border-t border-slate-200/80 flex flex-col sm:flex-row justify-between items-center gap-3 rounded-b-3xl text-xs text-slate-500 font-medium px-6">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span>
+                Mostrando <strong className="text-slate-800">{filteredReports.length === 0 ? 0 : (validCurrentPage - 1) * itemsPerPage + 1}</strong> - <strong className="text-slate-800">{Math.min(validCurrentPage * itemsPerPage, filteredReports.length)}</strong> de <strong className="text-slate-800">{filteredReports.length}</strong> bitácoras
+              </span>
+
+              <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+                <span className="text-[11px] text-slate-400 font-bold">Por página:</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 text-slate-700 rounded-lg px-2 py-1 text-xs font-bold outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+              </div>
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={validCurrentPage === 1}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronLeft className="w-4 h-4" /> Anterior
+                </button>
+
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`w-7 h-7 rounded-lg font-bold text-xs transition-all cursor-pointer ${
+                      validCurrentPage === page
+                        ? 'bg-amber-500 text-slate-950 shadow-2xs font-black'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={validCurrentPage === totalPages}
+                  className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+                >
+                  Siguiente <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
