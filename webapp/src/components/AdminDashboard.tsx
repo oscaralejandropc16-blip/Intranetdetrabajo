@@ -1030,7 +1030,7 @@ export default function AdminDashboard() {
   const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + unreadEmployeeReplies.length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-700">
+    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
       <SystemAlertModal
         isOpen={systemAlert.isOpen}
         type={systemAlert.type}
@@ -1046,68 +1046,64 @@ export default function AdminDashboard() {
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
 
-      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO */}
+      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO (COMPACTO) */}
       {unreadEmployeeReplies.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-900 border-2 border-emerald-400/40 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in slide-in-from-top-3">
-          <div className="flex items-start md:items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-inner">
-              <MessageSquare className="w-6 h-6 animate-pulse" />
+        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-xs animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <MessageSquare className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 shadow-sm">
-                  RESPUESTA DE EMPLEADO
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white">
+                  Respuesta de Empleado
                 </span>
-                <span className="text-xs text-emerald-300 font-bold">{unreadEmployeeReplies[0].author} ({unreadEmployeeReplies[0].fecha})</span>
+                <span className="text-xs font-black text-emerald-950 capitalize">{unreadEmployeeReplies[0].author}</span>
+                <span className="text-[11px] text-slate-500 font-medium">({unreadEmployeeReplies[0].fecha})</span>
               </div>
-              <h4 className="text-base sm:text-lg font-black text-white mt-1">
-                Respuesta a: "{unreadEmployeeReplies[0].titulo || 'Instrucción de Jefatura'}"
-              </h4>
-              <p className="text-sm text-slate-200 mt-0.5 max-w-3xl line-clamp-2 font-medium">
+              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
                 "{unreadEmployeeReplies[0].mensaje}"
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
               onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0])}
-              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <FileText className="w-4 h-4" /> Ver Bitácora
+              <FileText className="w-3.5 h-3.5" /> Ver Bitácora
             </button>
             <button
               onClick={() => markEmployeeReplyRead(unreadEmployeeReplies[0].id)}
-              className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Atendido
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Atendido
             </button>
           </div>
         </div>
       )}
 
-      {/* BANNER DESTACADO DE SUPERVISIÓN RECIBIDA ENTRE JEFES */}
+      {/* BANNER DESTACADO DE SUPERVISIÓN RECIBIDA ENTRE JEFES (COMPACTO) */}
       {unreadFeedbacks.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-950 via-slate-900 to-blue-900 border-2 border-blue-400/40 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in slide-in-from-top-3">
-          <div className="flex items-start md:items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-400 flex-shrink-0 shadow-inner">
-              <MessageSquare className="w-6 h-6" />
+        <div className="bg-blue-50 border border-blue-300 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-xs animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+              <ShieldCheck className="w-4 h-4" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-500 text-white shadow-sm">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-blue-600 text-white">
                   Supervisión de Jefatura
                 </span>
-                <span className="text-xs text-blue-300 font-bold">Bitácora del {unreadFeedbacks[0].date}</span>
+                <span className="text-xs font-black text-blue-950">{unreadFeedbacks[0].supervisado_por || 'Jefatura'}</span>
+                <span className="text-[11px] text-slate-500 font-medium">({unreadFeedbacks[0].date})</span>
               </div>
-              <h4 className="text-base sm:text-lg font-black text-white mt-1">
-                {unreadFeedbacks[0].supervisado_por ? `Observaciones de ${unreadFeedbacks[0].supervisado_por}` : 'Observaciones y Correcciones de Jefatura'}
-              </h4>
-              <p className="text-sm text-slate-200 mt-0.5 max-w-3xl line-clamp-2 italic">
+              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
                 "{unreadFeedbacks[0].comentario_admin}"
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
               onClick={() => {
                 setSelectedReport(unreadFeedbacks[0]);
@@ -1116,298 +1112,297 @@ export default function AdminDashboard() {
                 setAdminActuaciones(ensureArray(unreadFeedbacks[0].actuaciones));
                 setAdminIngresos(ensureArray(unreadFeedbacks[0].ingresos));
               }}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
-              <FileText className="w-4 h-4" /> Ver Detalles
+              <FileText className="w-3.5 h-3.5" /> Ver Detalles
             </button>
             <button
               onClick={() => markFeedbackAsRead(unreadFeedbacks[0].id)}
-              className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Marcar como leído"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
             >
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Leído
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Leído
             </button>
           </div>
         </div>
       )}
 
-      {/* Header Premium Glassmorphism */}
-      <div className="bg-slate-900 rounded-3xl p-8 lg:p-10 text-white shadow-2xl border border-slate-800 relative">
-        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
-          <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4"></div>
+      {/* Header Ejecutivo Compacto y Moderno */}
+      <div className="bg-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">Centro de Mando KANT</h2>
+              <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                Jefatura
+              </span>
+            </div>
+            <p className="text-xs text-slate-400 font-medium mt-0.5">Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.</p>
+          </div>
         </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-500/10 backdrop-blur-md rounded-md border border-amber-500/20 mb-4">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-              <span className="text-xs font-bold tracking-widest text-amber-500 uppercase">Jefatura</span>
-            </div>
-            <h2 className="text-4xl lg:text-5xl font-bold tracking-tight mb-2">Centro de Mando KANT</h2>
-            <p className="text-slate-400 text-lg font-medium">Supervisión en tiempo real de bitácoras y asistencia del equipo.</p>
+        {/* Badges de Estado y Notificaciones Compactas */}
+        <div className="flex items-center gap-2.5 self-end md:self-center shrink-0 flex-wrap">
+          <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 text-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span className="text-slate-400 font-bold text-[11px]">Activos:</span>
+            <span className="font-black text-white">{inProgress}</span>
           </div>
 
-          {/* Stats & Notifications Row */}
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full lg:w-auto lg:flex lg:items-center">
-            {/* Stat Cards */}
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-3.5 sm:p-5 text-center flex-1 lg:w-32 hover:bg-white/10 transition-colors">
-              <p className="text-2xl sm:text-3xl font-black text-white">{inProgress}</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Activos Hoy</p>
-            </div>
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-3.5 sm:p-5 text-center flex-1 lg:w-32 relative hover:bg-white/10 transition-colors">
-              {pendingReview > 0 && <span className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center rounded-full text-[10px] sm:text-xs font-bold shadow-lg animate-bounce">{pendingReview}</span>}
-              <p className="text-2xl sm:text-3xl font-black text-amber-400">{pendingReview}</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Por Revisar</p>
-            </div>
+          <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span className="text-amber-300 font-bold text-[11px]">Por Revisar:</span>
+            <span className="font-black text-amber-400">{pendingReview}</span>
+          </div>
 
-            {/* Notification Bell */}
-            <div className="relative flex">
-              <button
-                onClick={() => setShowNotifications(!showNotifications)}
-                className="w-full p-3.5 sm:p-5 bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl hover:bg-white/10 transition-all flex flex-col items-center justify-center relative cursor-pointer group"
-                title="Centro de Notificaciones y Supervisión"
-              >
-                <Bell className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400 group-hover:scale-110 transition-transform" />
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 lg:hidden">Buzón</span>
-                {totalNotifsCount > 0 && (
-                  <span className="absolute top-2 right-2 sm:top-3 sm:right-3 min-w-[20px] h-5 px-1 bg-red-500 text-white rounded-full border-2 border-slate-900 text-[10px] font-black flex items-center justify-center animate-pulse">
-                    {totalNotifsCount}
-                  </span>
-                )}
-              </button>
+          {/* Campana Compacta */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-2 px-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 relative cursor-pointer"
+              title="Centro de Notificaciones y Supervisión"
+            >
+              <Bell className="w-4 h-4" />
+              <span className="text-xs font-bold text-slate-300">Buzón</span>
+              {totalNotifsCount > 0 && (
+                <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                  {totalNotifsCount}
+                </span>
+              )}
+            </button>
 
-              {showNotifications && (
-                <div className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="bg-slate-950 p-4 border-b border-white/5">
-                    <div className="flex justify-between items-center text-white mb-3">
-                      <span className="font-bold text-xs tracking-widest uppercase text-amber-500 flex items-center gap-2">
-                        <Bell className="w-4 h-4" /> Buzón & Notificaciones
-                      </span>
-                      <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
-                    </div>
-
-                    {/* Selector de Pestañas en la Campana */}
-                    <div className="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/5">
-                      <button
-                        onClick={() => setNotificationTab('respuestas')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                          notificationTab === 'respuestas' 
-                            ? 'bg-emerald-600 text-white shadow-sm' 
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <MessageSquare className="w-3.5 h-3.5" />
-                        <span>Respuestas ({unreadEmployeeReplies.length})</span>
-                      </button>
-                      <button
-                        onClick={() => setNotificationTab('supervision')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                          notificationTab === 'supervision' 
-                            ? 'bg-blue-600 text-white shadow-sm' 
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Supervisión ({unreadFeedbacks.length})</span>
-                      </button>
-                      <button
-                        onClick={() => setNotificationTab('equipo')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                          notificationTab === 'equipo' 
-                            ? 'bg-amber-500 text-slate-950 shadow-sm' 
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Por Revisar ({activeNotifications.length})</span>
-                      </button>
-                    </div>
+            {showNotifications && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+                <div className="bg-slate-950 p-3.5 border-b border-white/5">
+                  <div className="flex justify-between items-center text-white mb-2.5">
+                    <span className="font-bold text-xs tracking-widest uppercase text-amber-500 flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5" /> Buzón & Notificaciones
+                    </span>
+                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                   </div>
 
-                  <div className="max-h-80 overflow-y-auto p-3 space-y-2">
-                    {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
-                    {notificationTab === 'respuestas' && (
-                      employeeMessages.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                          No hay respuestas recientes de empleados.
-                        </div>
-                      ) : (
-                        employeeMessages.map((m, idx) => {
-                          const isUnread = !m.leido_por_jefe;
-                          return (
-                            <div 
-                              key={m.id || idx} 
-                              className={`p-3.5 rounded-2xl border transition-all ${
-                                isUnread 
-                                  ? 'bg-emerald-950/60 border-emerald-500/40' 
-                                  : 'bg-white/5 border-white/5'
-                              }`}
-                            >
-                              <div className="flex justify-between items-start gap-2 mb-1">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                                  <MessageSquare className="w-3 h-3" /> {m.author}
-                                </span>
-                                <span className="text-[10px] text-slate-400">{m.fecha}</span>
-                              </div>
-                              <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
-                                Sobre: {m.titulo}
-                              </p>
-                              <p className="text-xs text-white italic mb-2.5 line-clamp-2 bg-black/20 p-2 rounded-lg">
-                                "{m.mensaje}"
-                              </p>
-                              <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                                <button
-                                  onClick={() => handleOpenReportForReply(m)}
-                                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                                >
-                                  <FileText className="w-3 h-3" /> Ver Bitácora
-                                </button>
-                                {isUnread && (
-                                  <button
-                                    onClick={() => markEmployeeReplyRead(m.id)}
-                                    className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" /> Marcar Atendido
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    )}
-                    {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
-                    {notificationTab === 'supervision' && (
-                      mySupervisorFeedbacks.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                          No tienes observaciones de supervisión registradas.
-                        </div>
-                      ) : (
-                        mySupervisorFeedbacks.map((f, idx) => {
-                          const isUnread = !dismissedFeedbackNotifs.includes(String(f.id));
-                          return (
-                            <div 
-                              key={f.id || idx} 
-                              className={`p-3.5 rounded-2xl border transition-all ${
-                                isUnread 
-                                  ? 'bg-blue-950/60 border-blue-500/40' 
-                                  : 'bg-white/5 border-white/5'
-                              }`}
-                            >
-                              <div className="flex justify-between items-start gap-2 mb-1.5">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                                  <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${f.supervisado_por}` : 'Observaciones de Jefatura'}
-                                </span>
-                                <span className="text-[10px] text-slate-400">{f.date}</span>
-                              </div>
-                              <p className="text-xs text-white italic mb-2.5 line-clamp-2">
-                                "{f.comentario_admin}"
-                              </p>
-                              <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                                <button
-                                  onClick={() => {
-                                    setSelectedReport(f);
-                                    setShowNotifications(false);
-                                    setAdminComment(f.comentario_admin || '');
-                                    setAdminProgramaciones(ensureArray(f.programaciones));
-                                    setAdminActuaciones(ensureArray(f.actuaciones));
-                                    setAdminIngresos(ensureArray(f.ingresos));
-                                  }}
-                                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                                >
-                                  <FileText className="w-3 h-3" /> Ver Bitácora / PDF
-                                </button>
-                                {isUnread && (
-                                  <button
-                                    onClick={() => markFeedbackAsRead(f.id)}
-                                    className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <CheckCircle2 className="w-3 h-3" /> Marcar Leído
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })
-                      )
-                    )}
-
-                    {/* CONTENIDO PESTAÑA: BITÁCORAS DEL EQUIPO POR REVISAR */}
-                    {notificationTab === 'equipo' && (
-                      activeNotifications.length === 0 ? (
-                        <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                          No hay bitácoras pendientes por revisar.
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex justify-end">
-                            <button
-                              onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])}
-                              className="text-[10px] font-bold text-slate-400 hover:text-amber-400 uppercase tracking-wider transition-colors cursor-pointer"
-                            >
-                              Limpiar Alertas
-                            </button>
-                          </div>
-                          {activeNotifications.map(r => (
-                            <div 
-                              key={r.id} 
-                              className="p-3.5 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" 
-                              onClick={() => {
-                                setSelectedReport(r);
-                                setShowNotifications(false);
-                                setAdminComment(r.comentario_admin || '');
-                                setAdminProgramaciones(ensureArray(r.programaciones));
-                                setAdminActuaciones(ensureArray(r.actuaciones));
-                                setAdminIngresos(ensureArray(r.ingresos));
-                              }}
-                            >
-                              <p className="text-xs font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
-                              <p className="text-[11px] text-amber-400 font-bold mt-2 flex items-center gap-1.5"><Clock className="w-3 h-3" /> Requiere revisión de Jefatura</p>
-                            </div>
-                          ))}
-                        </div>
-                      )
-                    )}
+                  {/* Selector de Pestañas en la Campana */}
+                  <div className="flex gap-1 p-1 bg-slate-900 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => setNotificationTab('respuestas')}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        notificationTab === 'respuestas' 
+                          ? 'bg-emerald-600 text-white shadow-xs' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <MessageSquare className="w-3 h-3" />
+                      <span>Respuestas ({unreadEmployeeReplies.length})</span>
+                    </button>
+                    <button
+                      onClick={() => setNotificationTab('supervision')}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        notificationTab === 'supervision' 
+                          ? 'bg-blue-600 text-white shadow-xs' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Supervisión ({unreadFeedbacks.length})</span>
+                    </button>
+                    <button
+                      onClick={() => setNotificationTab('equipo')}
+                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        notificationTab === 'equipo' 
+                          ? 'bg-amber-500 text-slate-950 shadow-xs' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <FileText className="w-3 h-3" />
+                      <span>Por Revisar ({activeNotifications.length})</span>
+                    </button>
                   </div>
                 </div>
-              )}
-            </div>
+
+                <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                  {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
+                  {notificationTab === 'respuestas' && (
+                    employeeMessages.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                        No hay respuestas recientes de empleados.
+                      </div>
+                    ) : (
+                      employeeMessages.map((m, idx) => {
+                        const isUnread = !m.leido_por_jefe;
+                        return (
+                          <div 
+                            key={m.id || idx} 
+                            className={`p-3 rounded-xl border transition-all ${
+                              isUnread 
+                                ? 'bg-emerald-950/60 border-emerald-500/40' 
+                                : 'bg-white/5 border-white/5'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" /> {m.author}
+                              </span>
+                              <span className="text-[10px] text-slate-400">{m.fecha}</span>
+                            </div>
+                            <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
+                              Sobre: {m.titulo}
+                            </p>
+                            <p className="text-xs text-white italic mb-2 line-clamp-2 bg-black/20 p-2 rounded-lg">
+                              "{m.mensaje}"
+                            </p>
+                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                              <button
+                                onClick={() => handleOpenReportForReply(m)}
+                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                              >
+                                <FileText className="w-3 h-3" /> Ver Bitácora
+                              </button>
+                              {isUnread && (
+                                <button
+                                  onClick={() => markEmployeeReplyRead(m.id)}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" /> Marcar Atendido
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
+                  {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
+                  {notificationTab === 'supervision' && (
+                    mySupervisorFeedbacks.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                        No tienes observaciones de supervisión registradas.
+                      </div>
+                    ) : (
+                      mySupervisorFeedbacks.map((f, idx) => {
+                        const isUnread = !dismissedFeedbackNotifs.includes(String(f.id));
+                        return (
+                          <div 
+                            key={f.id || idx} 
+                            className={`p-3 rounded-xl border transition-all ${
+                              isUnread 
+                                ? 'bg-blue-950/60 border-blue-500/40' 
+                                : 'bg-white/5 border-white/5'
+                            }`}
+                          >
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
+                                <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${f.supervisado_por}` : 'Observaciones de Jefatura'}
+                              </span>
+                              <span className="text-[10px] text-slate-400">{f.date}</span>
+                            </div>
+                            <p className="text-xs text-white italic mb-2 line-clamp-2">
+                              "{f.comentario_admin}"
+                            </p>
+                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                              <button
+                                onClick={() => {
+                                  setSelectedReport(f);
+                                  setShowNotifications(false);
+                                  setAdminComment(f.comentario_admin || '');
+                                  setAdminProgramaciones(ensureArray(f.programaciones));
+                                  setAdminActuaciones(ensureArray(f.actuaciones));
+                                  setAdminIngresos(ensureArray(f.ingresos));
+                                }}
+                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                              >
+                                <FileText className="w-3 h-3" /> Ver Bitácora / PDF
+                              </button>
+                              {isUnread && (
+                                <button
+                                  onClick={() => markFeedbackAsRead(f.id)}
+                                  className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <CheckCircle2 className="w-3 h-3" /> Marcar Leído
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )
+                  )}
+
+                  {/* CONTENIDO PESTAÑA: BITÁCORAS DEL EQUIPO POR REVISAR */}
+                  {notificationTab === 'equipo' && (
+                    activeNotifications.length === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                        No hay bitácoras pendientes por revisar.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-end">
+                          <button
+                            onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])}
+                            className="text-[10px] font-bold text-slate-400 hover:text-amber-400 uppercase tracking-wider transition-colors cursor-pointer"
+                          >
+                            Limpiar Alertas
+                          </button>
+                        </div>
+                        {activeNotifications.map(r => (
+                          <div 
+                            key={r.id} 
+                            className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" 
+                            onClick={() => {
+                              setSelectedReport(r);
+                              setShowNotifications(false);
+                              setAdminComment(r.comentario_admin || '');
+                              setAdminProgramaciones(ensureArray(r.programaciones));
+                              setAdminActuaciones(ensureArray(r.actuaciones));
+                              setAdminIngresos(ensureArray(r.ingresos));
+                            }}
+                          >
+                            <p className="text-xs font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
+                            <p className="text-[11px] text-amber-400 font-bold mt-1.5 flex items-center gap-1.5"><Clock className="w-3 h-3" /> Requiere revisión de Jefatura</p>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Tabs Vistas con Segmented Control Moderno */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 scrollbar-thin scrollbar-thumb-slate-300">
+      {/* Tabs Vistas con Segmented Control Moderno y Compacto */}
+      <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 scrollbar-none">
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <FileText className="w-4 h-4" /> Revisión de Bitácoras
+          <FileText className="w-3.5 h-3.5" /> Revisión de Bitácoras
         </button>
         <button
           onClick={() => setActiveView('agenda')}
-          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <CalendarIcon className="w-4 h-4" /> Agenda Global
+          <CalendarIcon className="w-3.5 h-3.5" /> Agenda Global
         </button>
         <button
           onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <BookOpen className="w-4 h-4" /> Mis Libros (Jefatura)
+          <BookOpen className="w-3.5 h-3.5" /> Mis Libros (Jefatura)
         </button>
         <button
           onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <Scale className="w-4 h-4" /> Expedientes & Agenda
+          <Scale className="w-3.5 h-3.5" /> Expedientes & Agenda
         </button>
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-xs sm:text-sm transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <History className="w-4 h-4" /> Mi Historial de Jefatura
+          <History className="w-3.5 h-3.5" /> Mi Historial de Jefatura
         </button>
       </div>
 
@@ -1415,35 +1410,35 @@ export default function AdminDashboard() {
       {activeView === 'bitacoras' && (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200">
 
-          {/* Controles y Búsqueda */}
-          <div className="p-6 lg:p-8 border-b border-slate-100 flex flex-col md:flex-row gap-4 items-center justify-between bg-slate-50/50">
-            <div className="relative w-full md:w-96">
-              <Search className="absolute left-4 top-3.5 text-slate-400 w-5 h-5" />
+          {/* Controles y Búsqueda Compactos */}
+          <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-50/70">
+            <div className="relative w-full md:w-80">
+              <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
               <input
                 type="text"
                 placeholder="Buscar bitácora por empleado..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 rounded-xl border-2 border-slate-200 focus:ring-4 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700"
+                className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700 bg-white"
               />
             </div>
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:flex-none">
                 <button
                   onClick={() => setShowDateFilter(!showDateFilter)}
-                  className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+                  className="w-full bg-white border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-xs cursor-pointer"
                 >
-                  <CalendarIcon className="w-5 h-5 text-amber-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
+                  <CalendarIcon className="w-4 h-4 text-amber-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
                 </button>
 
                 {showDateFilter && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
-                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Fechas Rápidas</div>
+                  <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fechas Rápidas</div>
                     {['Todos', 'Hoy', 'Ayer', 'Últimos 7 días'].map(preset => (
                       <button
                         key={preset}
                         onClick={() => { setDatePreset(preset); setShowDateFilter(false); }}
-                        className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
                       >
                         {preset}
                       </button>
@@ -1454,19 +1449,19 @@ export default function AdminDashboard() {
               <div className="relative flex-1 md:flex-none">
                 <button
                   onClick={() => setShowFilters(!showFilters)}
-                  className="w-full bg-white border-2 border-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-sm"
+                  className="w-full bg-white border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-xs cursor-pointer"
                 >
-                  <Filter className="w-5 h-5 text-blue-500" /> {statusFilter === 'Todos' ? 'Filtrar por Estado' : statusFilter}
+                  <Filter className="w-4 h-4 text-blue-500" /> {statusFilter === 'Todos' ? 'Filtrar por Estado' : statusFilter}
                 </button>
 
                 {showFilters && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
-                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-xs font-bold text-slate-400 uppercase tracking-wider">Estado</div>
+                  <div className="absolute right-0 mt-1.5 w-44 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-40 animate-in fade-in slide-in-from-top-1">
+                    <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estado</div>
                     {['Todos', 'En Curso', 'Enviado', 'Revisado'].map(status => (
                       <button
                         key={status}
                         onClick={() => { setStatusFilter(status); setShowFilters(false); }}
-                        className={`w-full text-left px-4 py-3 text-sm font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
                       >
                         {status}
                       </button>
