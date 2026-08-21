@@ -11,7 +11,8 @@ import {
   Sparkles, 
   RotateCcw, 
   Calendar, 
-  CornerDownRight 
+  CornerDownRight,
+  ShieldCheck
 } from 'lucide-react';
 import { WhatsAppStyleChat } from '../chat/WhatsAppStyleChat';
 
@@ -282,6 +283,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
           {paginatedList.map((notif) => {
             const isUnread = !notif.read;
             const notifKey = String(notif.id);
+            const notifDate = notif.date || '';
 
             // Obtener todas las respuestas combinando mapa local y cola global
             let globalQueueReplies: any[] = [];
@@ -291,9 +293,10 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                 const qList = JSON.parse(qRaw);
                 if (Array.isArray(qList)) {
                   globalQueueReplies = qList.filter((item: any) => {
-                    const sameNotif = item.notif_id && String(item.notif_id) === notifKey;
+                    const sameNotif = item.notif_id && (String(item.notif_id) === notifKey || String(item.notif_id).includes(notifDate));
                     const samePost = item.post_id && notif.post_id && String(item.post_id) === String(notif.post_id);
-                    return sameNotif || samePost;
+                    const sameDate = item.fecha_bitacora && notifDate && item.fecha_bitacora === notifDate;
+                    return sameNotif || samePost || sameDate;
                   });
                 }
               }
@@ -303,7 +306,18 @@ export default function NotificationPanel({ notifications, setNotifications }: N
               ...(notif.respuestas || []),
               ...(localRepliesMap[notifKey] || []),
               ...globalQueueReplies
-            ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)));
+            ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))
+            .sort((a, b) => {
+              const parseIdTime = (id: string) => {
+                if (!id) return 0;
+                const parts = id.split('_');
+                return parts.length >= 2 ? parseInt(parts[1], 10) || 0 : 0;
+              };
+              const tA = parseIdTime(a.id);
+              const tB = parseIdTime(b.id);
+              if (tA && tB && tA !== tB) return tA - tB;
+              return (a.fecha || '').localeCompare(b.fecha || '');
+            });
 
             return (
               <div 
@@ -424,21 +438,41 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                 {replies.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                      <CornerDownRight className="w-3 h-3 text-emerald-600" /> Última actividad en esta Bitácora:
+                      <CornerDownRight className="w-3.5 h-3.5 text-emerald-600" /> Última actividad en esta Bitácora:
                     </p>
                     <div className="space-y-1.5">
-                      {replies.slice(-2).map((rep, rIdx) => (
-                        <div key={rIdx} className="bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-xl flex items-start justify-between gap-3 text-xs">
-                          <div className="space-y-0.5 min-w-0">
-                            <span className="font-bold text-emerald-900 flex items-center gap-1 text-[11px]">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> 
-                              {rep.author || 'Tú'}:
-                            </span>
-                            <p className="text-slate-800 font-medium pl-4 truncate">{rep.mensaje}</p>
+                      {replies.slice(-2).map((rep, rIdx) => {
+                        const cleanAuth = (rep.author || '').toLowerCase().trim();
+                        const isFromBoss = rep.author_role === 'jefatura' || rep.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+                        return (
+                          <div 
+                            key={rIdx} 
+                            className={`p-2.5 rounded-xl border flex items-start justify-between gap-3 text-xs transition-all ${
+                              isFromBoss 
+                                ? 'bg-amber-50/90 border-amber-300/80 shadow-2xs' 
+                                : 'bg-emerald-50/80 border-emerald-200 shadow-2xs'
+                            }`}
+                          >
+                            <div className="space-y-0.5 min-w-0">
+                              <span className={`font-black flex items-center gap-1.5 text-[11px] ${isFromBoss ? 'text-amber-950' : 'text-emerald-950'}`}>
+                                {isFromBoss ? (
+                                  <>
+                                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <span>{rep.author || 'Luis Delgado (Jefatura)'}:</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    <span>Tú ({rep.author || 'Carmen Luisa'}):</span>
+                                  </>
+                                )}
+                              </span>
+                              <p className="text-slate-800 font-medium pl-5 truncate">{rep.mensaje}</p>
+                            </div>
+                            <span className={`text-[10px] font-bold shrink-0 ${isFromBoss ? 'text-amber-800' : 'text-emerald-700'}`}>{rep.fecha}</span>
                           </div>
-                          <span className="text-[10px] text-emerald-700 font-bold shrink-0">{rep.fecha}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 )}
