@@ -59,14 +59,21 @@ export default function NotificationPanel({ notifications, setNotifications }: N
   // Limpieza de mensajes de prueba previos
   useEffect(() => {
     try {
+      const isTestMsg = (txt: string) => {
+        const clean = (txt || '').toLowerCase().trim();
+        return clean.includes('tengo una duda con respecto a este punto') ||
+               clean === 'probando' ||
+               clean === 'ey' ||
+               clean === 'hola' ||
+               clean === 'hoal' ||
+               clean === 'que';
+      };
+
       const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
       if (qRaw) {
         const qList = JSON.parse(qRaw);
         if (Array.isArray(qList)) {
-          const cleaned = qList.filter((m: any) => {
-            const txt = (m.mensaje || '').trim();
-            return !txt.includes('Tengo una duda con respecto a este punto') && txt !== 'probando';
-          });
+          const cleaned = qList.filter((m: any) => !isTestMsg(m.mensaje));
           localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(cleaned));
         }
       }
@@ -78,10 +85,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
         Object.keys(map).forEach(k => {
           if (Array.isArray(map[k])) {
             const initialLen = map[k].length;
-            map[k] = map[k].filter((m: any) => {
-              const txt = (m.mensaje || '').trim();
-              return !txt.includes('Tengo una duda con respecto a este punto') && txt !== 'probando';
-            });
+            map[k] = map[k].filter((m: any) => !isTestMsg(m.mensaje));
             if (map[k].length !== initialLen) changed = true;
           }
         });
@@ -339,11 +343,16 @@ export default function NotificationPanel({ notifications, setNotifications }: N
               }
             } catch (e) {}
 
+            const deletedList = (() => {
+              try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+            })();
+
             const replies = [
               ...(notif.respuestas || []),
               ...(localRepliesMap[notifKey] || []),
               ...globalQueueReplies
-            ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))
+            ].filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje.trim())))
+            .filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))
             .sort((a, b) => {
               const parseIdTime = (id: string) => {
                 if (!id) return 0;

@@ -429,43 +429,39 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           ) : (
             filteredMessages.map((msg) => {
               const cleanAuthor = (msg.author || '').toLowerCase().trim();
-              const cleanTarget = (targetUser || '').toLowerCase().trim();
-
-              const isEmployeeAuthor = (
-                msg.author_role === 'empleado' ||
-                cleanAuthor.includes('carmen') ||
-                cleanAuthor.includes('empleado') ||
-                (cleanTarget && cleanAuthor === cleanTarget)
-              );
-
-              const isJefeAuthor = (
-                msg.author_role === 'jefatura' ||
-                msg.author_role === 'admin' ||
-                cleanAuthor.includes('luis') ||
-                cleanAuthor.includes('jefe') ||
-                cleanAuthor.includes('admin') ||
-                cleanAuthor.includes('roman') ||
-                cleanAuthor.includes('delgado')
-              );
+              const cleanCurrent = (currentUser || '').toLowerCase().trim();
 
               let isMe = false;
+
               if (isJefatura) {
-                // Si quien está viendo el chat es Jefatura (Luis Delgado):
-                if (isEmployeeAuthor) {
-                  isMe = false;
-                } else if (isJefeAuthor) {
-                  isMe = true;
-                } else {
-                  isMe = cleanAuthor !== cleanTarget;
-                }
+                // Pantalla vista por Jefatura (Luis Delgado):
+                const isFromBoss = msg.author_role === 'jefatura' || 
+                                   msg.author_role === 'admin' ||
+                                   cleanAuthor.includes('luis') || 
+                                   cleanAuthor.includes('delgado') || 
+                                   cleanAuthor.includes('jefe') || 
+                                   cleanAuthor.includes('admin') || 
+                                   cleanAuthor.includes('roman') ||
+                                   (cleanCurrent !== '' && cleanAuthor.includes(cleanCurrent));
+                isMe = isFromBoss;
               } else {
-                // Si quien está viendo el chat es el Empleado (Carmen Luisa):
-                if (isEmployeeAuthor) {
-                  isMe = true;
-                } else if (isJefeAuthor) {
+                // Pantalla vista por Empleado (Carmen Luisa):
+                const isFromBoss = msg.author_role === 'jefatura' || 
+                                   msg.author_role === 'admin' ||
+                                   cleanAuthor.includes('luis') || 
+                                   cleanAuthor.includes('delgado') || 
+                                   cleanAuthor.includes('jefe') || 
+                                   cleanAuthor.includes('admin') || 
+                                   cleanAuthor.includes('roman');
+                
+                if (isFromBoss) {
                   isMe = false;
                 } else {
-                  isMe = cleanAuthor.includes('carmen') || cleanAuthor === (currentUser || '').toLowerCase().trim();
+                  isMe = msg.author_role === 'empleado' || 
+                         cleanAuthor.includes('carmen') || 
+                         (cleanCurrent !== '' && cleanAuthor.includes(cleanCurrent)) ||
+                         cleanAuthor === 'tú' ||
+                         cleanAuthor === '';
                 }
               }
 
@@ -484,7 +480,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                     {/* Header del mensaje */}
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
-                        {isMe ? 'Tú' : (msg.author || (isJefatura ? targetUser : 'Jefatura'))}
+                        {isMe ? 'Tú' : (msg.author || (isJefatura ? targetUser : 'Luis Delgado / Jefatura'))}
                       </span>
                       {msg.atendido && (
                         <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
