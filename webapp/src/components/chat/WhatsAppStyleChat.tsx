@@ -13,6 +13,7 @@ import {
   Trash2
 } from 'lucide-react';
 import api from '../../lib/api';
+import SystemAlertModal from '../common/SystemAlertModal';
 
 export interface ChatMessage {
   id: string;
@@ -40,6 +41,7 @@ interface WhatsAppStyleChatProps {
   initialMessages?: ChatMessage[];
   onMessageSent?: (msg: ChatMessage) => void;
   onMarkAtendido?: (id: string) => void;
+  onMessageDeleted?: (id: string, text?: string) => void;
 }
 
 export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
@@ -47,24 +49,38 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   onClose,
   currentUser,
   isJefatura,
-  targetUser = 'Empleado',
+  targetUser = 'Jefatura',
   reportContext,
   activeThreadId,
   initialMessages = [],
   onMessageSent,
-  onMarkAtendido
+  onMarkAtendido,
+  onMessageDeleted
 }) => {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    const deletedList = (() => {
+      try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+    })();
+    return initialMessages.filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje)));
+  });
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [viewFilter, setViewFilter] = useState<'todos' | 'pendientes' | 'atendidos'>('todos');
   const [filterSearch, setFilterSearch] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    isOpen: boolean;
+    msgId: string;
+    msgText?: string;
+  }>({ isOpen: false, msgId: '', msgText: '' });
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Sincronizar mensajes iniciales
+  // Cargar mensajes iniciales si cambian
   useEffect(() => {
     if (initialMessages && initialMessages.length > 0) {
-      setMessages(initialMessages);
+      const deletedList = (() => {
+        try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+      })();
+      setMessages(initialMessages.filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje))));
     }
   }, [initialMessages]);
 
@@ -221,17 +237,37 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   };
 
   const handleDeleteMessage = async (msgId: string, msgText?: string) => {
-    setMessages(prev => prev.filter(m => m.id !== msgId));
+    setMessages(prev => prev.filter(m => m.id !== msgId && m.mensaje !== msgText));
+    
     try {
+      // 1. Quitar de cola global
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const filtered = q.filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
-      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(filtered));
+      const filteredQ = q.filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
+      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(filteredQ));
 
+      // 2. Quitar de mapa local
+      const mapRaw = localStorage.getItem('rd_local_employee_replies');
+      if (mapRaw) {
+        const map = JSON.parse(mapRaw);
+        Object.keys(map).forEach(k => {
+          if (Array.isArray(map[k])) {
+            map[k] = map[k].filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
+          }
+        });
+        localStorage.setItem('rd_local_employee_replies', JSON.stringify(map));
+      }
+
+      // 3. Agregar a lista negra de eliminados
       const delList = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
-      delList.push(msgId);
-      if (msgText) delList.push(msgText);
+      if (!delList.includes(msgId)) delList.push(msgId);
+      if (msgText && !delList.includes(msgText)) delList.push(msgText);
       localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
     } catch (e) {}
+
+    // Notificar componente padre
+    if (onMessageDeleted) {
+      onMessageDeleted(msgId, msgText);
+    }
 
     try {
       await api.post('/rd-intranet/v1/eliminar-mensaje-chat', { id: msgId, mensaje: msgText });
@@ -462,21 +498,25 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                       {msg.mensaje}
                     </p>
 
-                    {/* Footer con hora, checks y botón de eliminar */}
+                    {/* Footer con hora, checks y botón de eliminar (solo mensajes propios o Jefatura) */}
                     <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (window.confirm('¿Deseas eliminar este mensaje?')) {
-                            handleDeleteMessage(msg.id, msg.mensaje);
-                          }
-                        }}
-                        title="Eliminar este mensaje"
-                        className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {(isMe || isJefatura) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirm({
+                              isOpen: true,
+                              msgId: msg.id,
+                              msgText: msg.mensaje
+                            });
+                          }}
+                          title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
+                          className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                       <span>{msg.fecha}</span>
                       {isMe && (
                         (msg.atendido || (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)) ? (
@@ -561,6 +601,22 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           </button>
         </div>
       </div>
+
+      {/* MODAL DE CONFIRMACIÓN MODERNO Y ELEGANTE */}
+      <SystemAlertModal
+        isOpen={deleteConfirm.isOpen}
+        type="warning"
+        title="¿Eliminar Mensaje?"
+        message="¿Estás seguro de que deseas eliminar este mensaje? Se removerá permanentemente de la conversación."
+        confirmText="Sí, Eliminar"
+        cancelText="Cancelar"
+        showCancel={true}
+        onClose={() => setDeleteConfirm({ isOpen: false, msgId: '', msgText: '' })}
+        onConfirm={() => {
+          handleDeleteMessage(deleteConfirm.msgId, deleteConfirm.msgText);
+          setDeleteConfirm({ isOpen: false, msgId: '', msgText: '' });
+        }}
+      />
     </div>
   );
 };

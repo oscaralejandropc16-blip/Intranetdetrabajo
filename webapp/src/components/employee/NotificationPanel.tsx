@@ -619,10 +619,14 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                   }
                 }
               } catch (e) {}
+              const deletedList = (() => {
+                try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+              })();
+
               return [
                 ...(localRepliesMap[notifKey] || []),
                 ...globalReplies
-              ];
+              ].filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje)));
             })()).map(r => ({
               id: r.id || `rep_${Date.now()}`,
               author: r.author || 'Carmen Luisa',
@@ -637,6 +641,17 @@ export default function NotificationPanel({ notifications, setNotifications }: N
             const updated = {
               ...localRepliesMap,
               [notifKey]: [...(localRepliesMap[notifKey] || []), newMsg]
+            };
+            setLocalRepliesMap(updated);
+            localStorage.setItem('rd_local_employee_replies', JSON.stringify(updated));
+          }}
+          onMessageDeleted={(delId, delText) => {
+            const notifKey = String(activeChatNotif.id);
+            const currentList = localRepliesMap[notifKey] || [];
+            const filtered = currentList.filter((m: any) => m.id !== delId && m.mensaje !== delText);
+            const updated = {
+              ...localRepliesMap,
+              [notifKey]: filtered
             };
             setLocalRepliesMap(updated);
             localStorage.setItem('rd_local_employee_replies', JSON.stringify(updated));
