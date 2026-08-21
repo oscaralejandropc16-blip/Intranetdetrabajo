@@ -56,24 +56,19 @@ export default function NotificationPanel({ notifications, setNotifications }: N
     }
   });
 
-  // Limpieza de mensajes de prueba previos
+  // Limpieza de mensajes de prueba previos (solo frases de prueba iniciales)
   useEffect(() => {
     try {
-      const isTestMsg = (txt: string) => {
+      const isInitialDummy = (txt: string) => {
         const clean = (txt || '').toLowerCase().trim();
-        return clean.includes('tengo una duda con respecto a este punto') ||
-               clean === 'probando' ||
-               clean === 'ey' ||
-               clean === 'hola' ||
-               clean === 'hoal' ||
-               clean === 'que';
+        return clean.includes('tengo una duda con respecto a este punto') || clean === 'probando';
       };
 
       const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
       if (qRaw) {
         const qList = JSON.parse(qRaw);
         if (Array.isArray(qList)) {
-          const cleaned = qList.filter((m: any) => !isTestMsg(m.mensaje));
+          const cleaned = qList.filter((m: any) => !isInitialDummy(m.mensaje));
           localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(cleaned));
         }
       }
@@ -85,7 +80,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
         Object.keys(map).forEach(k => {
           if (Array.isArray(map[k])) {
             const initialLen = map[k].length;
-            map[k] = map[k].filter((m: any) => !isTestMsg(m.mensaje));
+            map[k] = map[k].filter((m: any) => !isInitialDummy(m.mensaje));
             if (map[k].length !== initialLen) changed = true;
           }
         });

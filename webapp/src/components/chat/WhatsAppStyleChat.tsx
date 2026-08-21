@@ -58,10 +58,18 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   onMessageDeleted
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    const deletedList = (() => {
-      try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+    const deletedList: string[] = (() => {
+      try { 
+        const raw = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+        // Limpiar cualquier palabra que se haya colado y dejar solo IDs válidos
+        const cleanIds = raw.filter((item: string) => typeof item === 'string' && (item.startsWith('chat_') || item.startsWith('rep_') || item.startsWith('orig_') || item.startsWith('reply_')));
+        if (cleanIds.length !== raw.length) {
+          localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(cleanIds));
+        }
+        return cleanIds;
+      } catch(e) { return []; }
     })();
-    return initialMessages.filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje)));
+    return initialMessages.filter(m => !deletedList.includes(m.id));
   });
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
@@ -77,10 +85,13 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   // Cargar mensajes iniciales si cambian
   useEffect(() => {
     if (initialMessages && initialMessages.length > 0) {
-      const deletedList = (() => {
-        try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+      const deletedList: string[] = (() => {
+        try { 
+          const raw = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+          return raw.filter((item: string) => typeof item === 'string' && (item.startsWith('chat_') || item.startsWith('rep_') || item.startsWith('orig_') || item.startsWith('reply_')));
+        } catch(e) { return []; }
       })();
-      setMessages(initialMessages.filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje))));
+      setMessages(initialMessages.filter(m => !deletedList.includes(m.id)));
     }
   }, [initialMessages]);
 
@@ -237,12 +248,12 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   };
 
   const handleDeleteMessage = async (msgId: string, msgText?: string) => {
-    setMessages(prev => prev.filter(m => m.id !== msgId && m.mensaje !== msgText));
+    setMessages(prev => prev.filter(m => m.id !== msgId));
     
     try {
       // 1. Quitar de cola global
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const filteredQ = q.filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
+      const filteredQ = q.filter((m: any) => m.id !== msgId);
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(filteredQ));
 
       // 2. Quitar de mapa local
@@ -251,17 +262,18 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         const map = JSON.parse(mapRaw);
         Object.keys(map).forEach(k => {
           if (Array.isArray(map[k])) {
-            map[k] = map[k].filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
+            map[k] = map[k].filter((m: any) => m.id !== msgId);
           }
         });
         localStorage.setItem('rd_local_employee_replies', JSON.stringify(map));
       }
 
-      // 3. Agregar a lista negra de eliminados
-      const delList = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
-      if (!delList.includes(msgId)) delList.push(msgId);
-      if (msgText && !delList.includes(msgText)) delList.push(msgText);
-      localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
+      // 3. Agregar a lista negra de eliminados solo el ID único
+      const delList: string[] = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+      if (msgId && !delList.includes(msgId)) {
+        delList.push(msgId);
+        localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
+      }
     } catch (e) {}
 
     // Notificar componente padre
