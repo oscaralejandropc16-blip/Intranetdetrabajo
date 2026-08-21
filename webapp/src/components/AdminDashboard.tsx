@@ -259,7 +259,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'buzon' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>(() => {
     return (sessionStorage.getItem('rd_admin_active_view') as any) || 'bitacoras';
   });
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
@@ -1535,31 +1535,47 @@ export default function AdminDashboard() {
       <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 scrollbar-none">
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
           <FileText className="w-3.5 h-3.5" /> Revisión de Bitácoras
+          {pendingReview > 0 && (
+            <span className="px-1.5 py-0.2 bg-slate-950 text-amber-400 font-black rounded-full text-[9px]">
+              {pendingReview}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveView('buzon')}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'buzon' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+        >
+          <MessageSquare className="w-3.5 h-3.5" /> Buzón & Conversaciones
+          {unreadEmployeeReplies.length > 0 && (
+            <span className="px-1.5 py-0.2 bg-red-600 text-white font-black rounded-full text-[9px] animate-pulse">
+              {unreadEmployeeReplies.length}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveView('agenda')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
           <CalendarIcon className="w-3.5 h-3.5" /> Agenda Global
         </button>
         <button
-          onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          onClick={() => setActiveView('expedientes')}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <BookOpen className="w-3.5 h-3.5" /> Mis Libros (Jefatura)
+          <Scale className="w-3.5 h-3.5" /> Expedientes & Casos
         </button>
         <button
-          onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          onClick={() => setActiveView('mis_libros')}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
-          <Scale className="w-3.5 h-3.5" /> Expedientes & Agenda
+          <BookOpen className="w-3.5 h-3.5" /> Biblioteca & Libros
         </button>
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
         >
           <History className="w-3.5 h-3.5" /> Mi Historial de Jefatura
         </button>
@@ -1837,6 +1853,176 @@ export default function AdminDashboard() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* VISTA: BUZÓN & CONVERSACIONES DE JEFATURA */}
+      {activeView === 'buzon' && (
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2.5">
+                <MessageSquare className="w-6 h-6 text-emerald-600" />
+                Buzón & Conversaciones del Equipo
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                Canal oficial en vivo para resolver dudas, revisar aclaratorias y responder a los empleados por Bitácora.
+              </p>
+            </div>
+
+            {/* Subfiltros de estado */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => setRepliesFilter('pendientes')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  repliesFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🔴 Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRepliesFilter('atendidos')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  repliesFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                ✅ Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRepliesFilter('todos')}
+                className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  repliesFilter === 'todos' ? 'bg-slate-900 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Todos ({employeeMessages.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de Conversaciones */}
+          {(() => {
+            const filtered = employeeMessages.filter(m => {
+              if (repliesFilter === 'pendientes') return !m.atendido && !m.leido_por_jefe;
+              if (repliesFilter === 'atendidos') return m.atendido || m.leido_por_jefe;
+              return true;
+            });
+
+            if (filtered.length === 0) {
+              return (
+                <div className="py-16 text-center text-slate-400 space-y-3 bg-slate-50/60 rounded-3xl border border-slate-200/60">
+                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mx-auto text-slate-400 shadow-xs border border-slate-200">
+                    <MessageSquare className="w-6 h-6 text-emerald-500" />
+                  </div>
+                  <p className="text-sm font-bold text-slate-700">
+                    {repliesFilter === 'pendientes' 
+                      ? '¡Todo al día! No tienes mensajes o dudas pendientes de tus empleados.'
+                      : 'No hay mensajes en este registro.'}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Cuando un empleado responda a tus observaciones en su bitácora, aparecerá inmediatamente aquí.
+                  </p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 gap-3.5">
+                {filtered.map((msg, mIdx) => {
+                  const isUnread = !msg.leido_por_jefe && !msg.atendido;
+                  return (
+                    <div
+                      key={msg.id || mIdx}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group ${
+                        isUnread
+                          ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3.5 min-w-0 flex-1">
+                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 shadow-sm border border-slate-800">
+                          {String(msg.author || 'EM').substring(0, 2)}
+                        </div>
+                        <div className="space-y-1 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-slate-900 text-sm capitalize">{msg.author}</span>
+                            <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
+                              <CalendarIcon className="w-3 h-3 text-slate-400" /> {msg.fecha_bitacora ? `Bitácora ${msg.fecha_bitacora}` : msg.fecha}
+                            </span>
+                            {msg.atendido ? (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-teal-600" /> Atendido
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                                Pendiente
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs sm:text-sm font-medium text-slate-800 bg-white/80 p-2.5 rounded-xl border border-slate-200/70 leading-relaxed break-words">
+                            "{msg.mensaje}"
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Botones de acción */}
+                      <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenChatForReply(msg)}
+                          className="px-4 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          title="Abrir chat tipo WhatsApp con este empleado"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                          <span>Abrir Chat</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenReportForReply(msg)}
+                          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          title="Inspeccionar la bitácora oficial de este día"
+                        >
+                          <FileText className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Ver Bitácora</span>
+                        </button>
+
+                        {!msg.atendido ? (
+                          <button
+                            type="button"
+                            onClick={() => markEmployeeReplyRead(msg.id)}
+                            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                            title="Marcar como atendido"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Atendido</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try {
+                                const att = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
+                                const updated = att.filter((id: string) => String(id) !== String(msg.id));
+                                localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
+                              } catch (e) {}
+                              setEmployeeMessages(prev => prev.map(m => String(m.id) === String(msg.id) ? { ...m, atendido: false, leido_por_jefe: false } : m));
+                            }}
+                            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer"
+                            title="Reabrir mensaje para marcarlo como pendiente"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
