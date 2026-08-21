@@ -66,14 +66,21 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   }, [initialMessages]);
 
-  // Scroll automático al final cuando llegan mensajes
+  // Scroll automático al final cuando llegan mensajes o abre el chat
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => {
+      const t1 = setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 50);
+      const t2 = setTimeout(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
+      }, 200);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
     }
-  }, [isOpen, messages]);
+  }, [isOpen, messages.length, viewFilter]);
 
   // Si quien abre el chat es Jefatura (Luis), marcar los mensajes del empleado como leídos por el jefe
   useEffect(() => {
@@ -205,6 +212,23 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
       return m.mensaje.toLowerCase().includes(q) || m.author.toLowerCase().includes(q);
     }
     return true;
+  }).sort((a, b) => {
+    // 1. Extraer timestamp numérico del ID si existe (ej: chat_172426... o rep_172426...)
+    const parseIdTime = (id: string) => {
+      if (!id) return 0;
+      const parts = id.split('_');
+      if (parts.length >= 2) {
+        const num = parseInt(parts[1], 10);
+        if (!isNaN(num) && num > 1000000) return num;
+      }
+      return 0;
+    };
+    const tA = parseIdTime(a.id);
+    const tB = parseIdTime(b.id);
+    if (tA && tB && tA !== tB) return tA - tB;
+
+    // 2. Extraer fecha/hora si está disponible
+    return (a.fecha || '').localeCompare(b.fecha || '');
   });
 
   const pendingCount = messages.filter(m => !m.atendido && (!m.leido_por_jefe || !isJefatura)).length;
