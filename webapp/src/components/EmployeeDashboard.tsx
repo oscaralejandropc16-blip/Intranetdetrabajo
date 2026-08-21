@@ -203,6 +203,8 @@ export default function EmployeeDashboard() {
 
       const allNotifs: any[] = [];
       const hoy = format(new Date(), 'yyyy-MM-dd');
+      const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+      const isCurrentUserJefe = isJefaturaUser(currentLoggedUser);
 
       const parseJson = (val: any) => {
         if (Array.isArray(val)) return val;
@@ -364,7 +366,59 @@ export default function EmployeeDashboard() {
         });
       }
 
-      // 3. Feedback y modificaciones en borrador activo (Avance)
+      // 3. Si el usuario actual es Jefatura (Luis Delgado), cargar los mensajes y respuestas entrantes de los empleados
+      if (isCurrentUserJefe) {
+        try {
+          // A) De la API de WordPress
+          try {
+            const jefeMsgsRes = await api.get('/rd-intranet/v1/mensajes-jefatura');
+            if (jefeMsgsRes.data && Array.isArray(jefeMsgsRes.data)) {
+              jefeMsgsRes.data.forEach((jm: any) => {
+                const notifId = `emp-reply-${jm.id}`;
+                const isRead = jm.leido_por_jefe || jm.atendido || localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                if (!allNotifs.some(n => String(n.id) === String(notifId))) {
+                  allNotifs.push({
+                    id: notifId,
+                    post_id: jm.post_id,
+                    type: 'feedback',
+                    title: `Respuesta de ${jm.author || 'Empleado'} — ${jm.titulo || 'Bitácora'}`,
+                    message: jm.mensaje,
+                    sender: jm.author || 'Empleado',
+                    read: isRead,
+                    date: jm.fecha_bitacora || jm.fecha
+                  });
+                }
+              });
+            }
+          } catch (e) {}
+
+          // B) De la cola local de respuestas
+          const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
+          if (qRaw) {
+            const qList = JSON.parse(qRaw);
+            if (Array.isArray(qList)) {
+              qList.forEach((qItem: any) => {
+                const notifId = `emp-reply-${qItem.id}`;
+                const isRead = qItem.leido_por_jefe || qItem.atendido || localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                if (!allNotifs.some(n => String(n.id) === String(notifId))) {
+                  allNotifs.push({
+                    id: notifId,
+                    post_id: qItem.post_id,
+                    type: 'feedback',
+                    title: `Respuesta de ${qItem.author || 'Empleado'} — ${qItem.titulo || 'Bitácora'}`,
+                    message: qItem.mensaje,
+                    sender: qItem.author || 'Empleado',
+                    read: isRead,
+                    date: qItem.fecha_bitacora || qItem.fecha
+                  });
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      }
+
+      // 4. Feedback y modificaciones en borrador activo (Avance)
       const currentLoggedUserDraft = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
       const draftSupervisorName = draftRes.data?.supervisado_por || '';
       const isSelfDraft = currentLoggedUserDraft && draftSupervisorName.toLowerCase().includes(currentLoggedUserDraft);
