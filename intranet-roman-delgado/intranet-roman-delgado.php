@@ -369,6 +369,27 @@ add_action('rest_api_init', function () {
         'permission_callback' => $is_authorized_admin
     ));
 
+    // Endpoint: POST /rd-intranet/v1/responder-mensaje (Empleado responde a observación o instrucción)
+    register_rest_route('rd-intranet/v1', '/responder-mensaje', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_handle_employee_reply',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    // Endpoint: GET /rd-intranet/v1/mensajes-jefatura (Jefatura obtiene todas las respuestas de empleados)
+    register_rest_route('rd-intranet/v1', '/mensajes-jefatura', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_mensajes_jefatura',
+        'permission_callback' => $is_authorized_admin
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/marcar-mensaje-leido-jefe
+    register_rest_route('rd-intranet/v1', '/marcar-mensaje-leido-jefe', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_mark_reply_read_by_boss',
+        'permission_callback' => $is_authorized_admin
+    ));
+
     // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'POST',
@@ -1198,7 +1219,9 @@ function rd_intranet_get_bitacoras() {
                 'actuaciones' => rd_intranet_decode_meta_json($post_id, 'actuaciones_json'),
                 'ingresos' => rd_intranet_decode_meta_json($post_id, 'ingresos_json'),
                 'programaciones' => rd_intranet_decode_meta_json($post_id, 'programaciones_json'),
-                'evidences' => rd_intranet_decode_meta_json($post_id, 'evidences_json')
+                'evidences' => rd_intranet_decode_meta_json($post_id, 'evidences_json'),
+                'cambios_realizados' => rd_intranet_decode_meta_json($post_id, 'cambios_realizados_json'),
+                'respuestas_hilo' => rd_intranet_decode_meta_json($post_id, 'respuestas_hilo_json')
             );
         }
         wp_reset_postdata();
@@ -1617,7 +1640,8 @@ function rd_intranet_get_my_history() {
                 'programaciones' => rd_intranet_decode_meta_json($post_id, 'programaciones_json'),
                 'evidences' => rd_intranet_decode_meta_json($post_id, 'evidences_json'),
                 'cambios_realizados' => rd_intranet_decode_meta_json($post_id, 'cambios_realizados_json'),
-                'fecha_supervision' => get_post_meta($post_id, 'fecha_supervision', true) ?: ''
+                'fecha_supervision' => get_post_meta($post_id, 'fecha_supervision', true) ?: '',
+                'respuestas_hilo' => rd_intranet_decode_meta_json($post_id, 'respuestas_hilo_json')
             );
         }
         wp_reset_postdata();
@@ -1775,4 +1799,81 @@ function rd_intranet_is_authorized_admin($user_id = null) {
 function rd_intranet_is_authorized($request = null) {
     return get_current_user_id() > 0;
 }
+
+function rd_intranet_handle_employee_reply($request) {
+    $user = wp_get_current_user();
+    if (!$user || !$user->ID) {
+        return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
+    }
+    
+    $params = rd_intranet_get_request_data($request);
+    $notif_id = sanitize_text_field($params['notif_id'] ?? '');
+    $post_id = intval($params['post_id'] ?? 0);
+    $mensaje = sanitize_textarea_field($params['mensaje'] ?? '');
+    $titulo_origen = sanitize_text_field($params['titulo'] ?? 'Instrucción de Jefatura');
+    $fecha_bitacora = sanitize_text_field($params['date'] ?? current_time('Y-m-d'));
+    
+    if (empty($mensaje)) {
+        return rest_ensure_response(array('success' => false, 'message' => 'El mensaje no puede estar vacío.'));
+    }
+
+    $author_name = $user->display_name ?: ($user->user_nicename ?: $user->user_login);
+    $reply_item = array(
+        'id' => 'reply_' . time() . '_' . rand(100, 999),
+        'notif_id' => $notif_id,
+        'post_id' => $post_id,
+        'author_id' => $user->ID,
+        'author' => $author_name,
+        'author_email' => $user->user_email,
+        'mensaje' => $mensaje,
+        'titulo' => $titulo_origen,
+        'fecha' => current_time('Y-m-d H:i'),
+        'fecha_bitacora' => $fecha_bitacora,
+        'leido_por_jefe' => false
+    );
+
+    // 1. Guardar en el hilo del post si corresponde a una bitácora
+    if ($post_id > 0) {
+        $existing_replies = rd_intranet_decode_meta_json($post_id, 'respuestas_hilo_json');
+        if (!is_array($existing_replies)) $existing_replies = array();
+        $existing_replies[] = $reply_item;
+        update_post_meta($post_id, 'respuestas_hilo_json', wp_slash(wp_json_encode($existing_replies, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+    }
+
+    // 2. Guardar en la cola global de mensajes para Jefatura
+    $all_messages = get_option('rd_mensajes_para_jefatura', array());
+    if (!is_array($all_messages)) $all_messages = array();
+    array_unshift($all_messages, $reply_item);
+    $all_messages = array_slice($all_messages, 0, 200);
+    update_option('rd_mensajes_para_jefatura', $all_messages);
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => 'Respuesta enviada exitosamente a Jefatura.',
+        'reply' => $reply_item
+    ));
+}
+
+function rd_intranet_get_mensajes_jefatura() {
+    $all_messages = get_option('rd_mensajes_para_jefatura', array());
+    if (!is_array($all_messages)) $all_messages = array();
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($all_messages));
+}
+
+function rd_intranet_mark_reply_read_by_boss($request) {
+    $params = rd_intranet_get_request_data($request);
+    $reply_id = sanitize_text_field($params['reply_id'] ?? '');
+    
+    $all_messages = get_option('rd_mensajes_para_jefatura', array());
+    if (is_array($all_messages)) {
+        foreach ($all_messages as &$msg) {
+            if (empty($reply_id) || ($msg['id'] ?? '') === $reply_id) {
+                $msg['leido_por_jefe'] = true;
+            }
+        }
+        update_option('rd_mensajes_para_jefatura', $all_messages);
+    }
+    return rest_ensure_response(array('success' => true));
+}
+
 

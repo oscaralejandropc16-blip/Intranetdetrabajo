@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
-import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabAgenda from './employee/TabAgenda';
@@ -1098,10 +1097,9 @@ export default function EmployeeDashboard() {
   const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : null;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isLateClosure = clockInDateStr && clockInDateStr < todayStr;
-  const userName = localStorage.getItem('rd_user_name') || 'Empleado';
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-7 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-300">
       <SystemAlertModal
         isOpen={systemAlert.isOpen}
         type={systemAlert.type}
@@ -1117,169 +1115,106 @@ export default function EmployeeDashboard() {
       {/* BARRA DE DIVISAS, CLIMA Y RELOJ EN VIVO */}
       <LiveStatusBar />
 
-      {/* BANNER DESTACADO DE OBSERVACIONES Y CORRECCIONES DE JEFATURA */}
+      {/* BANNER COMPACTO DE NOTIFICACIÓN DE JEFATURA */}
       {unreadFeedbacks.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl border border-blue-400/30 relative overflow-hidden animate-in slide-in-from-top-2">
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-            <div className="flex items-start gap-4 flex-1">
-              <div className="w-11 h-11 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0">
-                <MessageSquare className="w-6 h-6 animate-pulse" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 bg-blue-400 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full">
-                    NUEVA INSTRUCCIÓN DE JEFATURA
-                  </span>
-                  <span className="text-xs text-blue-200 font-semibold">
-                    {unreadFeedbacks[0].date ? `Bitácora del ${unreadFeedbacks[0].date}` : 'Avance de Jornada'}
-                  </span>
-                </div>
-                <h4 className="text-base sm:text-lg font-black text-white">
-                  {unreadFeedbacks[0].title || 'Observaciones y Correcciones de Jefatura'}
-                </h4>
-                <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
-                  "{unreadFeedbacks[0].message}"
-                </p>
-              </div>
+        <div className="bg-slate-900 text-white p-3.5 sm:p-4 rounded-2xl shadow-md border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in slide-in-from-top-1">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-8 h-8 rounded-xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0">
+              <MessageSquare className="w-4 h-4 animate-pulse" />
             </div>
-            <div className="flex items-center gap-2 self-end md:self-center shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('notificaciones')}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors border border-white/20 cursor-pointer"
-              >
-                Abrir Buzón ({unreadFeedbacks.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => markFeedbackRead(unreadFeedbacks[0].id)}
-                className="px-4 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" /> Marcar Leído
-              </button>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.2 bg-blue-400 text-slate-950 text-[9px] font-black uppercase tracking-wider rounded-full">
+                  Instrucción
+                </span>
+                <span className="text-xs font-bold text-slate-200 truncate">
+                  {unreadFeedbacks[0].title}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium truncate max-w-xl">
+                "{unreadFeedbacks[0].message}"
+              </p>
             </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={() => setActiveTab('notificaciones')}
+              className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-lg transition-colors cursor-pointer"
+            >
+              Ver ({unreadFeedbacks.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => markFeedbackRead(unreadFeedbacks[0].id)}
+              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs rounded-lg transition-transform flex items-center gap-1 cursor-pointer"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" /> Leído
+            </button>
           </div>
         </div>
       )}
 
       {/* BANNER DE RETRASO */}
       {isLateClosure && !reportSubmitted && (
-        <div className="bg-rose-500 text-white p-4 rounded-2xl shadow-lg border border-rose-600 flex items-center justify-between animate-in slide-in-from-top">
+        <div className="bg-rose-500 text-white p-3.5 rounded-2xl shadow-sm border border-rose-600 flex items-center justify-between animate-in slide-in-from-top">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-6 h-6 animate-pulse" />
+            <AlertCircle className="w-5 h-5 animate-pulse" />
             <div>
-              <p className="font-bold text-base">Tienes una jornada pendiente del {clockInDateStr}</p>
-              <p className="text-xs text-rose-100">Debes cerrar esta jornada antes de registrar actividades de hoy.</p>
+              <p className="font-bold text-xs sm:text-sm">Tienes una jornada pendiente del {clockInDateStr}</p>
+              <p className="text-[11px] text-rose-100">Debes cerrar esta jornada antes de registrar actividades de hoy.</p>
             </div>
           </div>
           <button 
             onClick={handleEndDay} 
-            className="px-5 py-2 bg-white text-rose-600 font-bold text-xs rounded-xl shadow-md hover:bg-rose-50 transition-colors"
+            className="px-4 py-1.5 bg-white text-rose-600 font-bold text-xs rounded-lg shadow-sm hover:bg-rose-50 transition-colors"
           >
             Cerrar Jornada Anterior
           </button>
         </div>
       )}
 
-      {/* HEADER PRINCIPAL MODERNO Y ELEGANTE */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-2">
-              <span className={`w-2 h-2 rounded-full ${clockIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-              <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">
-                {clockIn ? 'Jornada Iniciada' : 'Jornada Sin Iniciar'}
-              </span>
-            </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
-              Hola, <span className="text-amber-400 capitalize">{userName}</span>
-            </h2>
-            <p className="text-slate-400 text-xs sm:text-sm font-medium capitalize flex items-center gap-2 mt-1">
-              <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
-              {format(new Date(), "EEEE, d 'de' MMMM, yyyy", { locale: es })}
-            </p>
-          </div>
-          
-          {/* Métricas Rápidas */}
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-            <button
-              onClick={() => setActiveTab('notificaciones')}
-              className={`px-4 py-3 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${
-                unreadCount > 0 
-                  ? 'bg-amber-500/20 border-amber-400/40 text-amber-300 hover:bg-amber-500/30' 
-                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-              }`}
-            >
-              <div className="relative">
-                <MessageSquare className="w-5 h-5" />
-                {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>}
-              </div>
-              <div className="text-left">
-                <p className="text-base font-black leading-none">{unreadCount}</p>
-                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Buzón</p>
-              </div>
-            </button>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <Activity className="w-5 h-5 text-emerald-400" />
-              <div>
-                <p className="text-base font-black leading-none text-white">{progress}%</p>
-                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Progreso</p>
-              </div>
-            </div>
-
-            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3">
-              <Briefcase className="w-5 h-5 text-blue-400" />
-              <div>
-                <p className="text-base font-black leading-none text-white">{actuaciones.length}</p>
-                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Actuaciones</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 5 PESTAÑAS PRINCIPALES: CLARAS, MODERNAS Y SIN AMONTONAMIENTO */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 scrollbar-none">
+      {/* 5 PESTAÑAS PRINCIPALES: COMPACTAS, ELEGANTES Y NÍTIDAS */}
+      <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-200/80 rounded-2xl border border-slate-300/80 scrollbar-none">
         <button 
           onClick={() => setActiveTab('jornada')}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
             activeTab === 'jornada' 
-              ? 'bg-slate-900 text-white shadow-md' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
-          <Clock className="w-4 h-4 text-amber-400" />
+          <Clock className="w-3.5 h-3.5 text-amber-500" />
           <span>Mi Jornada & Libros</span>
         </button>
         
         <button 
           onClick={() => setActiveTab('expedientes')}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
             activeTab === 'expedientes' 
-              ? 'bg-slate-900 text-white shadow-md' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
-          <Scale className="w-4 h-4 text-blue-400" />
+          <Scale className="w-3.5 h-3.5 text-blue-500" />
           <span>Expedientes & Casos</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('notificaciones')}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
             activeTab === 'notificaciones' 
-              ? 'bg-slate-900 text-white shadow-md' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
           <div className="relative">
-            <MessageSquare className="w-4 h-4 text-emerald-400" />
-            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>}
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
+            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>}
           </div>
           <span>Buzón de Jefatura</span>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-full">
+            <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 font-black text-[10px] rounded-full">
               {unreadCount}
             </span>
           )}
@@ -1287,25 +1222,25 @@ export default function EmployeeDashboard() {
 
         <button 
           onClick={() => setActiveTab('historial')}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
             activeTab === 'historial' 
-              ? 'bg-slate-900 text-white shadow-md' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
-          <History className="w-4 h-4 text-purple-400" />
+          <History className="w-3.5 h-3.5 text-purple-500" />
           <span>Mi Historial</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('investigaciones')}
-          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
             activeTab === 'investigaciones' 
-              ? 'bg-slate-900 text-white shadow-md' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
           }`}
         >
-          <BookOpen className="w-4 h-4 text-indigo-400" />
+          <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
           <span>Biblioteca & Sentencias</span>
         </button>
       </div>
@@ -1336,6 +1271,9 @@ export default function EmployeeDashboard() {
                         : 'bg-amber-100 text-amber-800'
                     }`}>
                       {reportSubmitted ? 'Jornada Concluida' : clockIn ? 'En Curso' : 'Pendiente Entrada'}
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-100 text-slate-600 font-bold text-[10px] rounded-md">
+                      {progress}% completado
                     </span>
                   </div>
                   
@@ -1525,16 +1463,7 @@ export default function EmployeeDashboard() {
 
         {/* VISTA 3: BUZÓN DE JEFATURA (ANCHO COMPLETO) */}
         {activeTab === 'notificaciones' && (
-          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[500px]">
-            <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
-              <h3 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-3">
-                <MessageSquare className="w-6 h-6 text-blue-600" /> 
-                <span>Buzón de Instrucciones y Correcciones</span>
-              </h3>
-              <span className="text-xs font-bold text-slate-500">
-                {notifications.length} {notifications.length === 1 ? 'comunicación' : 'comunicaciones'}
-              </span>
-            </div>
+          <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200">
             {notifications.length === 0 ? (
               <p className="text-slate-500 text-center py-12 font-medium">No tienes notificaciones en tu buzón.</p>
             ) : (

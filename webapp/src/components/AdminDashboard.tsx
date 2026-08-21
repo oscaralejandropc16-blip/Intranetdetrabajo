@@ -53,8 +53,9 @@ export default function AdminDashboard() {
 
   // Estados para interactividad de la UI
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationTab, setNotificationTab] = useState<'supervision' | 'equipo'>('supervision');
+  const [notificationTab, setNotificationTab] = useState<'respuestas' | 'supervision' | 'equipo'>('respuestas');
   const [myDirectFeedbacks, setMyDirectFeedbacks] = useState<any[]>([]);
+  const [employeeMessages, setEmployeeMessages] = useState<any[]>([]);
   const [dismissedFeedbackNotifs, setDismissedFeedbackNotifs] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('rd_jefe_read_feedbacks') || '[]');
@@ -67,6 +68,13 @@ export default function AdminDashboard() {
     const updated = [...dismissedFeedbackNotifs, String(id)];
     setDismissedFeedbackNotifs(updated);
     localStorage.setItem('rd_jefe_read_feedbacks', JSON.stringify(updated));
+  };
+
+  const markEmployeeReplyRead = async (replyId: string) => {
+    setEmployeeMessages(prev => prev.map(m => m.id === replyId ? { ...m, leido_por_jefe: true } : m));
+    try {
+      await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId });
+    } catch (e) {}
   };
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('Todos');
@@ -263,6 +271,7 @@ export default function AdminDashboard() {
               ingresos: parseJson(r.ingresos),
               programaciones: progs,
               evidences: parseJson(r.evidences),
+              respuestas_hilo: parseJson(r.respuestas_hilo),
               progress: computedProgress,
               cierreRetrasado: isLate,
               clockIn: clockInVal,
@@ -392,6 +401,11 @@ export default function AdminDashboard() {
           retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
         }
       } finally {
+        api.get('/rd-intranet/v1/mensajes-jefatura').then(res => {
+          if (Array.isArray(res.data)) {
+            setEmployeeMessages(res.data);
+          }
+        }).catch(() => {});
         setLoading(false);
       }
     };
@@ -898,6 +912,7 @@ export default function AdminDashboard() {
   ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
+  const unreadEmployeeReplies = employeeMessages.filter(m => !m.leido_por_jefe);
 
   // 2. Notificaciones de Bitácoras por Revisar del Equipo
   const activeNotifications = reports.filter(r =>
@@ -905,7 +920,7 @@ export default function AdminDashboard() {
     !dismissedNotifs.includes(r.id)
   );
 
-  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length;
+  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + unreadEmployeeReplies.length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-700">
@@ -923,6 +938,54 @@ export default function AdminDashboard() {
 
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
+
+      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO */}
+      {unreadEmployeeReplies.length > 0 && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-teal-900 border-2 border-emerald-400/40 rounded-3xl p-5 sm:p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-in slide-in-from-top-3">
+          <div className="flex items-start md:items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center text-emerald-400 flex-shrink-0 shadow-inner">
+              <MessageSquare className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500 text-slate-950 shadow-sm">
+                  RESPUESTA DE EMPLEADO
+                </span>
+                <span className="text-xs text-emerald-300 font-bold">{unreadEmployeeReplies[0].author} ({unreadEmployeeReplies[0].fecha})</span>
+              </div>
+              <h4 className="text-base sm:text-lg font-black text-white mt-1">
+                Respuesta a: "{unreadEmployeeReplies[0].titulo || 'Instrucción de Jefatura'}"
+              </h4>
+              <p className="text-sm text-slate-200 mt-0.5 max-w-3xl line-clamp-2 font-medium">
+                "{unreadEmployeeReplies[0].mensaje}"
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
+            <button
+              onClick={() => {
+                const targetRep = reports.find(r => r.id == unreadEmployeeReplies[0].post_id || (r.user === unreadEmployeeReplies[0].author && r.date === unreadEmployeeReplies[0].fecha_bitacora));
+                if (targetRep) {
+                  setSelectedReport(targetRep);
+                  setAdminComment(targetRep.comentario_admin || '');
+                  setAdminProgramaciones(ensureArray(targetRep.programaciones));
+                  setAdminActuaciones(ensureArray(targetRep.actuaciones));
+                  setAdminIngresos(ensureArray(targetRep.ingresos));
+                }
+              }}
+              className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+            >
+              <FileText className="w-4 h-4" /> Ver Bitácora
+            </button>
+            <button
+              onClick={() => markEmployeeReplyRead(unreadEmployeeReplies[0].id)}
+              className="px-3.5 py-2.5 bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Atendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* BANNER DESTACADO DE SUPERVISIÓN RECIBIDA ENTRE JEFES */}
       {unreadFeedbacks.length > 0 && (
@@ -1027,21 +1090,32 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Selector de Pestañas en la Campana */}
-                    <div className="flex gap-2 p-1 bg-slate-900 rounded-xl border border-white/5">
+                    <div className="flex gap-1.5 p-1 bg-slate-900 rounded-xl border border-white/5">
+                      <button
+                        onClick={() => setNotificationTab('respuestas')}
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          notificationTab === 'respuestas' 
+                            ? 'bg-emerald-600 text-white shadow-sm' 
+                            : 'text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Respuestas ({unreadEmployeeReplies.length})</span>
+                      </button>
                       <button
                         onClick={() => setNotificationTab('supervision')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                           notificationTab === 'supervision' 
                             ? 'bg-blue-600 text-white shadow-sm' 
                             : 'text-slate-400 hover:text-white'
                         }`}
                       >
-                        <MessageSquare className="w-3.5 h-3.5" />
+                        <ShieldCheck className="w-3.5 h-3.5" />
                         <span>Supervisión ({unreadFeedbacks.length})</span>
                       </button>
                       <button
                         onClick={() => setNotificationTab('equipo')}
-                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                        className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                           notificationTab === 'equipo' 
                             ? 'bg-amber-500 text-slate-950 shadow-sm' 
                             : 'text-slate-400 hover:text-white'
@@ -1054,6 +1128,67 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                    {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
+                    {notificationTab === 'respuestas' && (
+                      employeeMessages.length === 0 ? (
+                        <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                          No hay respuestas recientes de empleados.
+                        </div>
+                      ) : (
+                        employeeMessages.map((m, idx) => {
+                          const isUnread = !m.leido_por_jefe;
+                          return (
+                            <div 
+                              key={m.id || idx} 
+                              className={`p-3.5 rounded-2xl border transition-all ${
+                                isUnread 
+                                  ? 'bg-emerald-950/60 border-emerald-500/40' 
+                                  : 'bg-white/5 border-white/5'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2 mb-1">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" /> {m.author}
+                                </span>
+                                <span className="text-[10px] text-slate-400">{m.fecha}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
+                                Sobre: {m.titulo}
+                              </p>
+                              <p className="text-xs text-white italic mb-2.5 line-clamp-2 bg-black/20 p-2 rounded-lg">
+                                "{m.mensaje}"
+                              </p>
+                              <div className="flex justify-between items-center pt-2 border-t border-white/5">
+                                <button
+                                  onClick={() => {
+                                    const targetRep = reports.find(r => r.id == m.post_id || (r.user === m.author && r.date === m.fecha_bitacora));
+                                    if (targetRep) {
+                                      setSelectedReport(targetRep);
+                                      setShowNotifications(false);
+                                      setAdminComment(targetRep.comentario_admin || '');
+                                      setAdminProgramaciones(ensureArray(targetRep.programaciones));
+                                      setAdminActuaciones(ensureArray(targetRep.actuaciones));
+                                      setAdminIngresos(ensureArray(targetRep.ingresos));
+                                    }
+                                  }}
+                                  className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                                >
+                                  <FileText className="w-3 h-3" /> Ver Bitácora
+                                </button>
+                                {isUnread && (
+                                  <button
+                                    onClick={() => markEmployeeReplyRead(m.id)}
+                                    className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3" /> Marcar Atendido
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )
+                    )}
                     {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
                     {notificationTab === 'supervision' && (
                       mySupervisorFeedbacks.length === 0 ? (
@@ -2400,6 +2535,32 @@ export default function AdminDashboard() {
                   rows={4}
                   className="w-full p-4 text-lg border-2 border-slate-200 rounded-xl focus:ring-4 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none shadow-inner"
                 />
+
+                {/* HILO DE CONVERSACIÓN / RESPUESTAS DEL EMPLEADO */}
+                {((Array.isArray(selectedReport.respuestas_hilo) && selectedReport.respuestas_hilo.length > 0) || 
+                  employeeMessages.some(m => m.post_id == selectedReport.id || (m.author === selectedReport.user && m.fecha_bitacora === selectedReport.date))) && (
+                  <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                    <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-emerald-600" /> 
+                      Hilo de Conversación & Respuestas de {selectedReport.user}
+                    </h5>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {(selectedReport.respuestas_hilo || employeeMessages.filter(m => m.post_id == selectedReport.id || (m.author === selectedReport.user && m.fecha_bitacora === selectedReport.date))).map((rep: any, rIdx: number) => (
+                        <div key={rIdx} className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {rep.author || selectedReport.user}:
+                            </span>
+                            <span className="text-[10px] text-emerald-700 font-bold">{rep.fecha}</span>
+                          </div>
+                          <p className="text-xs text-slate-800 font-medium pl-4">
+                            "{rep.mensaje}"
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
