@@ -115,6 +115,66 @@ export default function AdminDashboard() {
       await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId });
     } catch (e) {}
   };
+
+  const handleOpenReportForReply = (msg: any) => {
+    if (!msg) return;
+    const authorClean = (msg.author || '').toLowerCase().trim();
+    const dateClean = msg.fecha_bitacora || '';
+    const postId = Number(msg.post_id) || 0;
+
+    let targetRep: any = null;
+
+    // 1. Coincidencia por Post ID
+    if (postId > 0) {
+      targetRep = reports.find(r => Number(r.id) === postId);
+    }
+
+    // 2. Coincidencia por Usuario y Fecha exacta
+    if (!targetRep && authorClean && dateClean) {
+      targetRep = reports.find(r => {
+        const rUser = (r.user || '').toLowerCase().trim();
+        return (rUser === authorClean || rUser.includes(authorClean) || authorClean.includes(rUser)) && r.date === dateClean;
+      });
+    }
+
+    // 3. Coincidencia por Usuario (la bitácora más reciente de ese empleado)
+    if (!targetRep && authorClean) {
+      const userReports = reports.filter(r => {
+        const rUser = (r.user || '').toLowerCase().trim();
+        return rUser === authorClean || rUser.includes(authorClean) || authorClean.includes(rUser);
+      });
+      if (userReports.length > 0) {
+        userReports.sort((a, b) => b.date.localeCompare(a.date));
+        targetRep = userReports[0];
+      }
+    }
+
+    // 4. Si no tiene bitácora guardada aún, abrir un contenedor virtual
+    if (!targetRep) {
+      targetRep = {
+        id: postId || `virtual_${Date.now()}`,
+        user: msg.author || 'Carmen Luisa',
+        date: dateClean || format(new Date(), 'yyyy-MM-dd'),
+        status: 'Enviado',
+        progress: 100,
+        clockIn: '08:00',
+        clockOut: '17:00',
+        actuaciones: [],
+        ingresos: [],
+        programaciones: [],
+        evidences: [],
+        comentario_admin: '',
+        respuestas_hilo: [msg]
+      };
+    }
+
+    setShowNotifications(false);
+    setSelectedReport(targetRep);
+    setAdminComment(targetRep.comentario_admin || '');
+    setAdminProgramaciones(ensureArray(targetRep.programaciones));
+    setAdminActuaciones(ensureArray(targetRep.actuaciones));
+    setAdminIngresos(ensureArray(targetRep.ingresos));
+  };
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
@@ -1010,16 +1070,7 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2 self-end md:self-center flex-shrink-0">
             <button
-              onClick={() => {
-                const targetRep = reports.find(r => r.id == unreadEmployeeReplies[0].post_id || (r.user === unreadEmployeeReplies[0].author && r.date === unreadEmployeeReplies[0].fecha_bitacora));
-                if (targetRep) {
-                  setSelectedReport(targetRep);
-                  setAdminComment(targetRep.comentario_admin || '');
-                  setAdminProgramaciones(ensureArray(targetRep.programaciones));
-                  setAdminActuaciones(ensureArray(targetRep.actuaciones));
-                  setAdminIngresos(ensureArray(targetRep.ingresos));
-                }
-              }}
+              onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0])}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
             >
               <FileText className="w-4 h-4" /> Ver Bitácora
@@ -1207,17 +1258,7 @@ export default function AdminDashboard() {
                               </p>
                               <div className="flex justify-between items-center pt-2 border-t border-white/5">
                                 <button
-                                  onClick={() => {
-                                    const targetRep = reports.find(r => r.id == m.post_id || (r.user === m.author && r.date === m.fecha_bitacora));
-                                    if (targetRep) {
-                                      setSelectedReport(targetRep);
-                                      setShowNotifications(false);
-                                      setAdminComment(targetRep.comentario_admin || '');
-                                      setAdminProgramaciones(ensureArray(targetRep.programaciones));
-                                      setAdminActuaciones(ensureArray(targetRep.actuaciones));
-                                      setAdminIngresos(ensureArray(targetRep.ingresos));
-                                    }
-                                  }}
+                                  onClick={() => handleOpenReportForReply(m)}
                                   className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
                                 >
                                   <FileText className="w-3 h-3" /> Ver Bitácora
@@ -2584,30 +2625,44 @@ export default function AdminDashboard() {
                 />
 
                 {/* HILO DE CONVERSACIÓN / RESPUESTAS DEL EMPLEADO */}
-                {((Array.isArray(selectedReport.respuestas_hilo) && selectedReport.respuestas_hilo.length > 0) || 
-                  employeeMessages.some(m => m.post_id == selectedReport.id || (m.author === selectedReport.user && m.fecha_bitacora === selectedReport.date))) && (
-                  <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
-                    <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-emerald-600" /> 
-                      Hilo de Conversación & Respuestas de {selectedReport.user}
-                    </h5>
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {(selectedReport.respuestas_hilo || employeeMessages.filter(m => m.post_id == selectedReport.id || (m.author === selectedReport.user && m.fecha_bitacora === selectedReport.date))).map((rep: any, rIdx: number) => (
-                        <div key={rIdx} className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {rep.author || selectedReport.user}:
-                            </span>
-                            <span className="text-[10px] text-emerald-700 font-bold">{rep.fecha}</span>
+                {(() => {
+                  const selUser = (selectedReport.user || '').toLowerCase().trim();
+                  const matchedReplies = [
+                    ...(Array.isArray(selectedReport.respuestas_hilo) ? selectedReport.respuestas_hilo : []),
+                    ...employeeMessages.filter(m => {
+                      const mAuthor = (m.author || '').toLowerCase().trim();
+                      const sameUser = selUser && mAuthor && (selUser === mAuthor || selUser.includes(mAuthor) || mAuthor.includes(selUser));
+                      const samePost = m.post_id && selectedReport.id && String(m.post_id) === String(selectedReport.id);
+                      return samePost || sameUser;
+                    })
+                  ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)));
+
+                  if (matchedReplies.length === 0) return null;
+
+                  return (
+                    <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
+                      <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-emerald-600" /> 
+                        Hilo de Conversación & Respuestas de {selectedReport.user}
+                      </h5>
+                      <div className="space-y-2 max-h-60 overflow-y-auto">
+                        {matchedReplies.map((rep: any, rIdx: number) => (
+                          <div key={rIdx} className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[11px] font-black text-emerald-900 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {rep.author || selectedReport.user}:
+                              </span>
+                              <span className="text-[10px] text-emerald-700 font-bold">{rep.fecha}</span>
+                            </div>
+                            <p className="text-xs text-slate-800 font-medium pl-4">
+                              "{rep.mensaje}"
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-800 font-medium pl-4">
-                            "{rep.mensaje}"
-                          </p>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
 
             </div>
