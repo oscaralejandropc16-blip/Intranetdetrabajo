@@ -175,24 +175,28 @@ export default function AdminDashboard() {
     } catch (e) {}
   };
 
-  const handleOpenChatForReply = (msg: any) => {
+  const handleOpenChatForReply = (msg: any, extraMessages?: any[]) => {
     setShowNotifications(false);
-    const targetUser = msg.author || 'Carmen Luisa';
+    const targetUser = (msg.author_role === 'empleado' || (msg.author && msg.author.toLowerCase().includes('carmen'))) ? 'Carmen Luisa' : (msg.author || 'Carmen Luisa');
+    const dateKey = msg.fecha_bitacora || msg.date || '';
+
     const userMsgs = employeeMessages.filter(m => {
       const a = (m.author || '').toLowerCase().trim();
       const t = targetUser.toLowerCase().trim();
       const sameUser = a === t || a.includes(t) || t.includes(a);
-      const samePost = msg.post_id && m.post_id && String(m.post_id) === String(msg.post_id);
-      return sameUser || samePost;
+      const sameDate = !dateKey || !m.fecha_bitacora || m.fecha_bitacora === dateKey;
+      return sameUser && sameDate;
     });
 
-    const reportMatch = reports.find(r => r.id == msg.post_id || ((r.user || '').toLowerCase().includes(targetUser.toLowerCase()) && r.date === msg.fecha_bitacora));
+    const reportMatch = reports.find(r => (dateKey && r.date === dateKey) || (r.id == msg.post_id) || ((r.user || '').toLowerCase().includes(targetUser.toLowerCase()) && r.date === dateKey));
+
+    const finalMsgs = extraMessages && extraMessages.length > 0 ? extraMessages : (userMsgs.length > 0 ? userMsgs : [msg]);
 
     setChatConfig({
       isOpen: true,
       targetUser,
-      reportContext: reportMatch || { date: msg.fecha_bitacora || format(new Date(), 'yyyy-MM-dd'), id: msg.post_id },
-      initialMessages: userMsgs.length > 0 ? userMsgs : [msg]
+      reportContext: reportMatch || { date: dateKey || format(new Date(), 'yyyy-MM-dd'), id: msg.post_id },
+      initialMessages: finalMsgs
     });
   };
 
@@ -1902,15 +1906,59 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Lista de Conversaciones */}
+          {/* Lista de Conversaciones Agrupadas por Bitácora y Empleado */}
           {(() => {
-            const filtered = employeeMessages.filter(m => {
-              if (repliesFilter === 'pendientes') return !m.atendido && !m.leido_por_jefe;
-              if (repliesFilter === 'atendidos') return m.atendido || m.leido_por_jefe;
+            // Agrupamos todos los mensajes por (Empleado + Fecha de Bitácora)
+            const groupedMap: Record<string, {
+              key: string;
+              fecha_bitacora: string;
+              author: string;
+              lastMessage: any;
+              messages: any[];
+              hasPending: boolean;
+              allAtendido: boolean;
+              totalCount: number;
+              post_id?: any;
+            }> = {};
+
+            employeeMessages.forEach(msg => {
+              const author = (msg.author_role === 'empleado' || (msg.author && msg.author.toLowerCase().includes('carmen'))) ? 'Carmen Luisa' : (msg.author || 'Carmen Luisa');
+              const dateKey = msg.fecha_bitacora || msg.fecha || format(new Date(), 'yyyy-MM-dd');
+              const groupKey = `${author}_${dateKey}`;
+
+              if (!groupedMap[groupKey]) {
+                groupedMap[groupKey] = {
+                  key: groupKey,
+                  fecha_bitacora: dateKey,
+                  author: author,
+                  lastMessage: msg,
+                  messages: [],
+                  hasPending: false,
+                  allAtendido: true,
+                  totalCount: 0,
+                  post_id: msg.post_id
+                };
+              }
+
+              groupedMap[groupKey].messages.push(msg);
+              groupedMap[groupKey].totalCount += 1;
+              if (!msg.atendido && !msg.leido_por_jefe) {
+                groupedMap[groupKey].hasPending = true;
+                groupedMap[groupKey].allAtendido = false;
+              }
+              // El más reciente
+              groupedMap[groupKey].lastMessage = msg;
+            });
+
+            const chatGroups = Object.values(groupedMap);
+
+            const filteredGroups = chatGroups.filter(g => {
+              if (repliesFilter === 'pendientes') return g.hasPending;
+              if (repliesFilter === 'atendidos') return !g.hasPending;
               return true;
             });
 
-            if (filtered.length === 0) {
+            if (filteredGroups.length === 0) {
               return (
                 <div className="py-16 text-center text-slate-400 space-y-3 bg-slate-50/60 rounded-3xl border border-slate-200/60">
                   <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mx-auto text-slate-400 shadow-xs border border-slate-200">
@@ -1918,23 +1966,23 @@ export default function AdminDashboard() {
                   </div>
                   <p className="text-sm font-bold text-slate-700">
                     {repliesFilter === 'pendientes' 
-                      ? '¡Todo al día! No tienes mensajes o dudas pendientes de tus empleados.'
-                      : 'No hay mensajes en este registro.'}
+                      ? '¡Todo al día! No tienes conversaciones ni dudas pendientes de tus empleados.'
+                      : 'No hay conversaciones en este registro.'}
                   </p>
                   <p className="text-xs text-slate-400">
-                    Cuando un empleado responda a tus observaciones en su bitácora, aparecerá inmediatamente aquí.
+                    Cuando un empleado envíe mensajes o dudas sobre una bitácora, aparecerán agrupadas aquí.
                   </p>
                 </div>
               );
             }
 
             return (
-              <div className="grid grid-cols-1 gap-3.5">
-                {filtered.map((msg, mIdx) => {
-                  const isUnread = !msg.leido_por_jefe && !msg.atendido;
+              <div className="grid grid-cols-1 gap-4">
+                {filteredGroups.map((group) => {
+                  const isUnread = group.hasPending;
                   return (
                     <div
-                      key={msg.id || mIdx}
+                      key={group.key}
                       className={`p-4 sm:p-5 rounded-2xl border transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group ${
                         isUnread
                           ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
@@ -1942,46 +1990,54 @@ export default function AdminDashboard() {
                       }`}
                     >
                       <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 shadow-sm border border-slate-800">
-                          {String(msg.author || 'EM').substring(0, 2)}
+                        <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 shadow-sm border border-slate-800">
+                          {String(group.author || 'EM').substring(0, 2)}
                         </div>
-                        <div className="space-y-1 min-w-0 flex-1">
+                        <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-slate-900 text-sm capitalize">{msg.author}</span>
-                            <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">
-                              <CalendarIcon className="w-3 h-3 text-slate-400" /> {msg.fecha_bitacora ? `Bitácora ${msg.fecha_bitacora}` : msg.fecha}
+                            <span className="font-extrabold text-slate-900 text-sm capitalize">{group.author}</span>
+                            <span className="text-[11px] text-slate-600 font-bold bg-slate-100 px-2.5 py-0.5 rounded-lg flex items-center gap-1 border border-slate-200">
+                              <CalendarIcon className="w-3 h-3 text-amber-500" /> Bitácora {group.fecha_bitacora}
                             </span>
-                            {msg.atendido ? (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
+                              💬 {group.totalCount} {group.totalCount === 1 ? 'mensaje' : 'mensajes'}
+                            </span>
+                            {group.hasPending ? (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                                🔴 Pendiente
+                              </span>
+                            ) : (
                               <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1">
                                 <CheckCircle2 className="w-3 h-3 text-teal-600" /> Atendido
                               </span>
-                            ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
-                                Pendiente
-                              </span>
                             )}
                           </div>
-                          <p className="text-xs sm:text-sm font-medium text-slate-800 bg-white/80 p-2.5 rounded-xl border border-slate-200/70 leading-relaxed break-words">
-                            "{msg.mensaje}"
-                          </p>
+                          
+                          {/* Último mensaje del hilo */}
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-slate-200/80 text-xs sm:text-sm text-slate-800 font-medium leading-relaxed">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-0.5">
+                              Último mensaje recibido:
+                            </span>
+                            "{group.lastMessage?.mensaje || 'Sin texto'}"
+                          </div>
                         </div>
                       </div>
 
-                      {/* Botones de acción */}
-                      <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                      {/* Botones de acción del hilo */}
+                      <div className="flex items-center gap-2 self-end md:self-center shrink-0 flex-wrap sm:flex-nowrap">
                         <button
                           type="button"
-                          onClick={() => handleOpenChatForReply(msg)}
+                          onClick={() => handleOpenChatForReply(group.lastMessage, group.messages)}
                           className="px-4 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-                          title="Abrir chat tipo WhatsApp con este empleado"
+                          title="Abrir conversación tipo WhatsApp con este empleado"
                         >
                           <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
-                          <span>Abrir Chat</span>
+                          <span>Abrir Chat ({group.totalCount})</span>
                         </button>
 
                         <button
                           type="button"
-                          onClick={() => handleOpenReportForReply(msg)}
+                          onClick={() => handleOpenReportForReply(group.lastMessage)}
                           className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
                           title="Inspeccionar la bitácora oficial de este día"
                         >
@@ -1989,12 +2045,15 @@ export default function AdminDashboard() {
                           <span>Ver Bitácora</span>
                         </button>
 
-                        {!msg.atendido ? (
+                        {group.hasPending ? (
                           <button
                             type="button"
-                            onClick={() => markEmployeeReplyRead(msg.id)}
+                            onClick={() => {
+                              // Marcar todos los mensajes del grupo como atendidos
+                              group.messages.forEach(m => markEmployeeReplyRead(m.id));
+                            }}
                             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                            title="Marcar como atendido"
+                            title="Marcar todos los mensajes de esta bitácora como atendidos"
                           >
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                             <span>Atendido</span>
@@ -2005,13 +2064,14 @@ export default function AdminDashboard() {
                             onClick={() => {
                               try {
                                 const att = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
-                                const updated = att.filter((id: string) => String(id) !== String(msg.id));
+                                const groupIds = group.messages.map(m => String(m.id));
+                                const updated = att.filter((id: string) => !groupIds.includes(String(id)));
                                 localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
                               } catch (e) {}
-                              setEmployeeMessages(prev => prev.map(m => String(m.id) === String(msg.id) ? { ...m, atendido: false, leido_por_jefe: false } : m));
+                              setEmployeeMessages(prev => prev.map(m => group.messages.some(gm => String(gm.id) === String(m.id)) ? { ...m, atendido: false, leido_por_jefe: false } : m));
                             }}
                             className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 rounded-xl transition-colors cursor-pointer"
-                            title="Reabrir mensaje para marcarlo como pendiente"
+                            title="Reabrir conversación para marcarla como pendiente"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </button>
