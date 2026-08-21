@@ -396,6 +396,20 @@ add_action('rest_api_init', function () {
         'callback' => 'rd_intranet_save_draft',
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
+
+    // Endpoint: POST /rd-intranet/v1/eliminar-mensaje-chat
+    register_rest_route('rd-intranet/v1', '/eliminar-mensaje-chat', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_delete_chat_message',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    // Endpoint: POST /rd-intranet/v1/limpiar-mensajes-prueba
+    register_rest_route('rd-intranet/v1', '/limpiar-mensajes-prueba', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_clear_test_messages',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
 });
 
 function rd_intranet_handle_login($request) {
@@ -1874,6 +1888,35 @@ function rd_intranet_mark_reply_read_by_boss($request) {
         update_option('rd_mensajes_para_jefatura', $all_messages);
     }
     return rest_ensure_response(array('success' => true));
+}
+
+function rd_intranet_delete_chat_message($request) {
+    $params = rd_intranet_get_request_data($request);
+    $msg_id = sanitize_text_field($params['id'] ?? '');
+    $text = sanitize_text_field($params['mensaje'] ?? '');
+    
+    $all_messages = get_option('rd_mensajes_para_jefatura', array());
+    if (is_array($all_messages)) {
+        $filtered = array_values(array_filter($all_messages, function($m) use ($msg_id, $text) {
+            if (!empty($msg_id) && ($m['id'] ?? '') === $msg_id) return false;
+            if (!empty($text) && ($m['mensaje'] ?? '') === $text) return false;
+            return true;
+        }));
+        update_option('rd_mensajes_para_jefatura', $filtered);
+    }
+    
+    return rest_ensure_response(array('success' => true));
+}
+
+function rd_intranet_clear_test_messages($request) {
+    update_option('rd_mensajes_para_jefatura', array());
+    
+    $posts = get_posts(array('post_type' => 'rd_bitacora', 'numberposts' => 150));
+    foreach ($posts as $p) {
+        delete_post_meta($p->ID, 'respuestas_hilo_json');
+    }
+    
+    return rest_ensure_response(array('success' => true, 'message' => 'Mensajes de prueba eliminados exitosamente.'));
 }
 
 

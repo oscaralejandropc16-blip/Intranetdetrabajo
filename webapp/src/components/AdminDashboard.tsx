@@ -1111,7 +1111,18 @@ export default function AdminDashboard() {
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
 
-  // Agrupar mensajes del buzón por Bitácora y Empleado (100% consistente)
+  // Agrupar mensajes del buzón por Bitácora y Empleado (100% consistente y sin mensajes de prueba)
+  const deletedMsgList: string[] = (() => {
+    try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+  })();
+
+  const cleanEmployeeMessages = employeeMessages.filter(msg => {
+    const txt = (msg.mensaje || '').trim();
+    if (txt.includes('Tengo una duda con respecto a este punto') || txt === 'probando') return false;
+    if (deletedMsgList.includes(msg.id) || deletedMsgList.includes(msg.mensaje)) return false;
+    return true;
+  });
+
   const groupedConversationsMap: Record<string, {
     key: string;
     fecha_bitacora: string;
@@ -1124,7 +1135,7 @@ export default function AdminDashboard() {
     post_id?: any;
   }> = {};
 
-  employeeMessages.forEach(msg => {
+  cleanEmployeeMessages.forEach(msg => {
     let dateKey = msg.fecha_bitacora || '';
     if (!dateKey && msg.fecha && msg.fecha.includes('2026-')) {
       const match = msg.fecha.match(/\d{4}-\d{2}-\d{2}/);

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   MessageSquare, 
   AlertCircle, 
@@ -55,6 +55,43 @@ export default function NotificationPanel({ notifications, setNotifications }: N
       return {};
     }
   });
+
+  // Limpieza de mensajes de prueba previos
+  useEffect(() => {
+    try {
+      const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
+      if (qRaw) {
+        const qList = JSON.parse(qRaw);
+        if (Array.isArray(qList)) {
+          const cleaned = qList.filter((m: any) => {
+            const txt = (m.mensaje || '').trim();
+            return !txt.includes('Tengo una duda con respecto a este punto') && txt !== 'probando';
+          });
+          localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(cleaned));
+        }
+      }
+
+      const mapRaw = localStorage.getItem('rd_local_employee_replies');
+      if (mapRaw) {
+        const map = JSON.parse(mapRaw);
+        let changed = false;
+        Object.keys(map).forEach(k => {
+          if (Array.isArray(map[k])) {
+            const initialLen = map[k].length;
+            map[k] = map[k].filter((m: any) => {
+              const txt = (m.mensaje || '').trim();
+              return !txt.includes('Tengo una duda con respecto a este punto') && txt !== 'probando';
+            });
+            if (map[k].length !== initialLen) changed = true;
+          }
+        });
+        if (changed) {
+          localStorage.setItem('rd_local_employee_replies', JSON.stringify(map));
+          setLocalRepliesMap(map);
+        }
+      }
+    } catch (e) {}
+  }, []);
 
   const handleMarkAsRead = (id: string | number) => {
     const newNotifs = notifications.map(n => {

@@ -9,7 +9,8 @@ import {
   User, 
   CheckCircle2, 
   RotateCcw,
-  Search
+  Search,
+  Trash2
 } from 'lucide-react';
 import api from '../../lib/api';
 
@@ -217,6 +218,24 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     if (onMarkAtendido) {
       onMarkAtendido(msgId);
     }
+  };
+
+  const handleDeleteMessage = async (msgId: string, msgText?: string) => {
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+    try {
+      const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
+      const filtered = q.filter((m: any) => m.id !== msgId && m.mensaje !== msgText);
+      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(filtered));
+
+      const delList = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+      delList.push(msgId);
+      if (msgText) delList.push(msgText);
+      localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
+    } catch (e) {}
+
+    try {
+      await api.post('/rd-intranet/v1/eliminar-mensaje-chat', { id: msgId, mensaje: msgText });
+    } catch (e) {}
   };
 
   // Filtrado de mensajes
@@ -443,8 +462,21 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                       {msg.mensaje}
                     </p>
 
-                    {/* Footer con hora y checks realistas estilo WhatsApp */}
-                    <div className="flex items-center justify-end gap-1 mt-1 text-[9.5px] text-white/60 font-medium">
+                    {/* Footer con hora, checks y botón de eliminar */}
+                    <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm('¿Deseas eliminar este mensaje?')) {
+                            handleDeleteMessage(msg.id, msg.mensaje);
+                          }
+                        }}
+                        title="Eliminar este mensaje"
+                        className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
                       <span>{msg.fecha}</span>
                       {isMe && (
                         (msg.atendido || (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)) ? (
