@@ -1922,15 +1922,42 @@ export default function AdminDashboard() {
             }> = {};
 
             employeeMessages.forEach(msg => {
-              const author = (msg.author_role === 'empleado' || (msg.author && msg.author.toLowerCase().includes('carmen'))) ? 'Carmen Luisa' : (msg.author || 'Carmen Luisa');
-              const dateKey = msg.fecha_bitacora || msg.fecha || format(new Date(), 'yyyy-MM-dd');
-              const groupKey = `${author}_${dateKey}`;
+              // 1. Determinar la fecha exacta de la bitácora
+              let dateKey = msg.fecha_bitacora || '';
+              if (!dateKey && msg.fecha && msg.fecha.includes('2026-')) {
+                const match = msg.fecha.match(/\d{4}-\d{2}-\d{2}/);
+                if (match) dateKey = match[0];
+              }
+              if (!dateKey && msg.post_id) {
+                const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
+                if (matchedRep) dateKey = matchedRep.date;
+              }
+              if (!dateKey) {
+                dateKey = format(new Date(), 'yyyy-MM-dd');
+              }
+
+              // 2. Determinar quién es el empleado dueño de la bitácora (NO el jefe)
+              let employeeOwner = 'Carmen Luisa';
+              const cleanAuth = (msg.author || '').toLowerCase().trim();
+              const isBoss = cleanAuth.includes('luis') || cleanAuth.includes('victor') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('delgado') || cleanAuth.includes('roman');
+
+              if (!isBoss && cleanAuth !== '') {
+                employeeOwner = msg.author;
+              } else if (msg.post_id) {
+                const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
+                if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
+              } else if (dateKey) {
+                const matchedRep = reports.find(r => r.date === dateKey);
+                if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
+              }
+
+              const groupKey = `${employeeOwner.toLowerCase().trim()}_${dateKey}`;
 
               if (!groupedMap[groupKey]) {
                 groupedMap[groupKey] = {
                   key: groupKey,
                   fecha_bitacora: dateKey,
-                  author: author,
+                  author: employeeOwner,
                   lastMessage: msg,
                   messages: [],
                   hasPending: false,
@@ -1942,11 +1969,14 @@ export default function AdminDashboard() {
 
               groupedMap[groupKey].messages.push(msg);
               groupedMap[groupKey].totalCount += 1;
-              if (!msg.atendido && !msg.leido_por_jefe) {
+
+              // Es pendiente si algún mensaje del empleado no ha sido atendido
+              if (!msg.atendido && !msg.leido_por_jefe && !isBoss) {
                 groupedMap[groupKey].hasPending = true;
                 groupedMap[groupKey].allAtendido = false;
               }
-              // El más reciente
+
+              // Guardar el mensaje más reciente para el preview
               groupedMap[groupKey].lastMessage = msg;
             });
 
