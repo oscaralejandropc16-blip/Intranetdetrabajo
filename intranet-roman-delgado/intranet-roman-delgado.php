@@ -352,7 +352,7 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/all-drafts', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_all_drafts',
-        'permission_callback' => $is_authorized_admin
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
     ));
 
     // Endpoint: GET /rd-intranet/v1/reserved-expedientes (Obtener expedientes apartados en borradores)
@@ -366,7 +366,7 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/admin-update-draft', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_admin_update_draft',
-        'permission_callback' => $is_authorized_admin
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
     ));
 
     // Endpoint: POST /rd-intranet/v1/responder-mensaje (Empleado responde a observación o instrucción)
@@ -380,14 +380,14 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/mensajes-jefatura', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_mensajes_jefatura',
-        'permission_callback' => $is_authorized_admin
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
     ));
 
     // Endpoint: POST /rd-intranet/v1/marcar-mensaje-leido-jefe
     register_rest_route('rd-intranet/v1', '/marcar-mensaje-leido-jefe', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_mark_reply_read_by_boss',
-        'permission_callback' => $is_authorized_admin
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
     ));
 
     // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)

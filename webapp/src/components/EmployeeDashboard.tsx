@@ -318,6 +318,7 @@ export default function EmployeeDashboard() {
               const msg = b.comentario_admin || (hasCambios ? b.cambios_realizados.join(' • ') : '');
               allNotifs.push({
                 id: notifId,
+                post_id: b.id,
                 type: hasCambios ? 'changes' : 'feedback',
                 title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${b.date}` : `Feedback Jefatura sobre Bitácora del ${b.date}`,
                 message: msg,
@@ -339,6 +340,7 @@ export default function EmployeeDashboard() {
                 if (!exists) {
                   allNotifs.push({
                     id: notifId,
+                    post_id: b.id,
                     type: 'instruction',
                     title: `Instrucción en Actuación: ${act.actuacion || 'Actuación'} (${act.numeroExpediente ? `Exp. ${act.numeroExpediente}` : b.date})`,
                     message: act.observaciones,
@@ -361,6 +363,7 @@ export default function EmployeeDashboard() {
                 if (!exists) {
                   allNotifs.push({
                     id: notifId,
+                    post_id: b.id,
                     type: 'instruction',
                     title: `Instrucción del Jefe: ${prog.tipoActuacion || 'Tarea'} (${prog.fecha || b.date} - ${prog.hora || ''})`,
                     message: prog.observaciones,
