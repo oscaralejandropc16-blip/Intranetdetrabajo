@@ -2666,11 +2666,35 @@ export default function AdminDashboard() {
                     {String(selectedReport?.user || 'Usuario').substring(0, 2)}
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold flex items-center gap-3">
-                      Bitácora de {selectedReport.user}
-                      <span className="bg-amber-500/20 text-amber-400 text-xs px-2 py-1 rounded-md border border-amber-500/30 uppercase tracking-widest font-bold">Modo Revisión</span>
+                    <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2.5 flex-wrap">
+                      <span className="capitalize">Bitácora de {selectedReport.user || 'Empleado'}</span>
+                      <span className="bg-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black">
+                        Modo Revisión
+                      </span>
                     </h3>
-                    <p className="text-slate-400 font-medium">{selectedReport.date}</p>
+                    <div className="flex items-center gap-2.5 mt-2 flex-wrap">
+                      <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs">
+                        <CalendarIcon className="w-4 h-4 text-amber-400" />
+                        Fecha: {selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha || format(new Date(), 'yyyy-MM-dd')}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const msg = {
+                            author: selectedReport.user,
+                            post_id: selectedReport.id,
+                            fecha_bitacora: selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha,
+                            mensaje: selectedReport.comentario_admin || 'Conversación oficial sobre esta bitácora'
+                          };
+                          handleOpenChatForReply(msg);
+                        }}
+                        className="px-3 py-1 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        title="Abrir chat tipo WhatsApp vinculado a esta bitácora"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                        <span>Abrir Chat de esta Bitácora</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
