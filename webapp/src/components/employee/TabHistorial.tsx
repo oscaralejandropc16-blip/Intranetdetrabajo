@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -28,6 +28,8 @@ export default function TabHistorial() {
   const [historial, setHistorial] = useState<BitacoraHistorial[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
   const [systemAlert, setSystemAlert] = useState<{ isOpen: boolean; type: AlertType; title: string; message: string }>({
     isOpen: false,
     type: 'info',
@@ -383,7 +385,9 @@ export default function TabHistorial() {
                 </td>
               </tr>
             ) : (
-              historial.map((bitacora) => {
+              historial
+                .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                .map((bitacora) => {
                 const hasEvidences = Array.isArray(bitacora.evidences) && bitacora.evidences.length > 0;
                 const isExpanded = expandedId === bitacora.id;
 
@@ -482,11 +486,11 @@ export default function TabHistorial() {
                     
                     {/* Fila desplegable con lista de archivos adjuntos */}
                     {isExpanded && hasEvidences && (
-                      <tr className="bg-blue-50/30">
-                        <td colSpan={6} className="px-6 py-4 border-t border-blue-100">
-                          <div className="bg-white p-4 rounded-xl border border-blue-100 shadow-sm space-y-3">
+                      <tr className="bg-blue-50/40">
+                        <td colSpan={6} className="px-6 py-4">
+                          <div className="bg-white rounded-2xl p-4 border border-blue-200/80 shadow-sm space-y-3">
                             <div className="flex items-center justify-between">
-                              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                              <h4 className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
                                 <Paperclip className="w-4 h-4 text-blue-600" />
                                 Archivos Anexados el {bitacora.date} ({bitacora.evidences!.length})
                               </h4>
@@ -526,7 +530,49 @@ export default function TabHistorial() {
           </tbody>
         </table>
       </div>
+
+      {/* Controles de Paginación de Historial */}
+      {Math.ceil(historial.length / itemsPerPage) > 1 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+          <span className="text-xs font-bold text-slate-500">
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, historial.length)} de {historial.length} bitácoras registradas
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              <ChevronLeft className="w-4 h-4" /> Anterior
+            </button>
+            
+            {Array.from({ length: Math.ceil(historial.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+              <button
+                key={page}
+                type="button"
+                onClick={() => setCurrentPage(page)}
+                className={`w-8 h-8 rounded-xl font-bold text-xs transition-all cursor-pointer ${
+                  currentPage === page 
+                    ? 'bg-amber-500 text-slate-950 shadow-md' 
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                }`}
+              >
+                {page}
+              </button>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(historial.length / itemsPerPage), prev + 1))}
+              disabled={currentPage === Math.ceil(historial.length / itemsPerPage)}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
+            >
+              Siguiente <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
