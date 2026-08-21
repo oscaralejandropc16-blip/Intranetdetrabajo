@@ -1363,14 +1363,48 @@ function rd_intranet_send_daily_summary_email() {
 
 function rd_intranet_get_my_tasks() {
     $user_id = get_current_user_id();
+    $current_user = wp_get_current_user();
+    $user_login = $current_user ? strtolower(trim($current_user->user_login)) : '';
+    $display_name = $current_user ? strtolower(trim($current_user->display_name)) : '';
+
     $args = array(
         'post_type' => 'rd_bitacora',
-        'author' => $user_id,
         'posts_per_page' => 50,
         'post_status' => array('publish', 'private', 'draft', 'pending'),
         'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
+    if ($user_id > 0) {
+        $args['author'] = $user_id;
+    }
     $query = new WP_Query($args);
+    
+    // Si no encontró por author ID, buscar bitácoras que pertenezcan a este nombre de usuario
+    if (!$query->have_posts() && ($user_login || $display_name)) {
+        unset($args['author']);
+        $fallback_q = new WP_Query($args);
+        $matched_ids = array();
+        if ($fallback_q->have_posts()) {
+            while ($fallback_q->have_posts()) {
+                $fallback_q->the_post();
+                $pid = get_the_ID();
+                $p_author_id = get_post_field('post_author', $pid);
+                $p_user_meta = strtolower(trim(get_post_meta($pid, 'usuario', true) ?: ''));
+                $p_auth_data = get_userdata($p_author_id);
+                $p_auth_name = $p_auth_data ? strtolower(trim($p_auth_data->display_name ?: $p_auth_data->user_login)) : '';
+
+                if (($user_login && (strpos($p_auth_name, $user_login) !== false || strpos($p_user_meta, $user_login) !== false)) ||
+                    ($display_name && (strpos($p_auth_name, $display_name) !== false || strpos($p_user_meta, $display_name) !== false)) ||
+                    (strpos($user_login, 'carmen') !== false && (strpos($p_auth_name, 'carmen') !== false || strpos($p_user_meta, 'carmen') !== false))) {
+                    $matched_ids[] = $pid;
+                }
+            }
+            wp_reset_postdata();
+        }
+        if (!empty($matched_ids)) {
+            $args['post__in'] = $matched_ids;
+            $query = new WP_Query($args);
+        }
+    }
     
     $todas_las_programaciones = array();
     $latest_comentario_admin = '';
@@ -1601,15 +1635,49 @@ function rd_intranet_reset_user_day($request) {
 
 function rd_intranet_get_my_history() {
     $user_id = get_current_user_id();
+    $current_user = wp_get_current_user();
+    $user_login = $current_user ? strtolower(trim($current_user->user_login)) : '';
+    $display_name = $current_user ? strtolower(trim($current_user->display_name)) : '';
+
     $args = array(
         'post_type' => 'rd_bitacora',
-        'author' => $user_id,
         'posts_per_page' => 50,
         'post_status' => array('publish', 'private', 'draft', 'pending'),
         'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
-    
+    if ($user_id > 0) {
+        $args['author'] = $user_id;
+    }
     $query = new WP_Query($args);
+    
+    // Si no encontró por author ID, buscar bitácoras que pertenezcan a este usuario
+    if (!$query->have_posts() && ($user_login || $display_name)) {
+        unset($args['author']);
+        $fallback_q = new WP_Query($args);
+        $matched_ids = array();
+        if ($fallback_q->have_posts()) {
+            while ($fallback_q->have_posts()) {
+                $fallback_q->the_post();
+                $pid = get_the_ID();
+                $p_author_id = get_post_field('post_author', $pid);
+                $p_user_meta = strtolower(trim(get_post_meta($pid, 'usuario', true) ?: ''));
+                $p_auth_data = get_userdata($p_author_id);
+                $p_auth_name = $p_auth_data ? strtolower(trim($p_auth_data->display_name ?: $p_auth_data->user_login)) : '';
+
+                if (($user_login && (strpos($p_auth_name, $user_login) !== false || strpos($p_user_meta, $user_login) !== false)) ||
+                    ($display_name && (strpos($p_auth_name, $display_name) !== false || strpos($p_user_meta, $display_name) !== false)) ||
+                    (strpos($user_login, 'carmen') !== false && (strpos($p_auth_name, 'carmen') !== false || strpos($p_user_meta, 'carmen') !== false))) {
+                    $matched_ids[] = $pid;
+                }
+            }
+            wp_reset_postdata();
+        }
+        if (!empty($matched_ids)) {
+            $args['post__in'] = $matched_ids;
+            $query = new WP_Query($args);
+        }
+    }
+
     $raw_resultados = array();
     
     if ($query->have_posts()) {
