@@ -531,6 +531,8 @@ export default function NotificationPanel({ notifications, setNotifications }: N
             // 2. Respuestas enviadas por ambas partes
             ...((() => {
               const notifKey = String(activeChatNotif.id);
+              const targetDate = activeChatNotif.date || '';
+              const targetPostId = activeChatNotif.post_id ? String(activeChatNotif.post_id) : '';
               let globalReplies: any[] = [];
               try {
                 const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
@@ -538,9 +540,10 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                   const qList = JSON.parse(qRaw);
                   if (Array.isArray(qList)) {
                     globalReplies = qList.filter((item: any) => {
-                      const sameNotif = item.notif_id && String(item.notif_id) === notifKey;
-                      const samePost = item.post_id && activeChatNotif.post_id && String(item.post_id) === String(activeChatNotif.post_id);
-                      return sameNotif || samePost;
+                      const sameNotif = item.notif_id && (String(item.notif_id) === notifKey || String(item.notif_id).includes(targetDate));
+                      const samePost = item.post_id && targetPostId && String(item.post_id) === targetPostId;
+                      const sameDate = item.fecha_bitacora && targetDate && item.fecha_bitacora === targetDate;
+                      return sameNotif || samePost || sameDate;
                     });
                   }
                 }

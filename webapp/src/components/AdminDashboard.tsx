@@ -1110,7 +1110,81 @@ export default function AdminDashboard() {
   ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
-  const unreadEmployeeReplies = employeeMessages.filter(m => !m.leido_por_jefe && !m.atendido);
+
+  // Agrupar mensajes del buzón por Bitácora y Empleado (100% consistente)
+  const groupedConversationsMap: Record<string, {
+    key: string;
+    fecha_bitacora: string;
+    author: string;
+    lastMessage: any;
+    messages: any[];
+    hasPending: boolean;
+    allAtendido: boolean;
+    totalCount: number;
+    post_id?: any;
+  }> = {};
+
+  employeeMessages.forEach(msg => {
+    let dateKey = msg.fecha_bitacora || '';
+    if (!dateKey && msg.fecha && msg.fecha.includes('2026-')) {
+      const match = msg.fecha.match(/\d{4}-\d{2}-\d{2}/);
+      if (match) dateKey = match[0];
+    }
+    if (!dateKey && msg.post_id) {
+      const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
+      if (matchedRep) dateKey = matchedRep.date;
+    }
+    if (!dateKey) {
+      dateKey = format(new Date(), 'yyyy-MM-dd');
+    }
+
+    let employeeOwner = 'Carmen Luisa';
+    const cleanAuth = (msg.author || '').toLowerCase().trim();
+    const isBoss = cleanAuth.includes('luis') || cleanAuth.includes('victor') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('delgado') || cleanAuth.includes('roman');
+
+    if (!isBoss && cleanAuth !== '') {
+      employeeOwner = msg.author;
+    } else if (msg.post_id) {
+      const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
+      if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
+    } else if (dateKey) {
+      const matchedRep = reports.find(r => r.date === dateKey);
+      if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
+    }
+
+    const groupKey = `${employeeOwner.toLowerCase().trim()}_${dateKey}`;
+
+    if (!groupedConversationsMap[groupKey]) {
+      groupedConversationsMap[groupKey] = {
+        key: groupKey,
+        fecha_bitacora: dateKey,
+        author: employeeOwner,
+        lastMessage: msg,
+        messages: [],
+        hasPending: false,
+        allAtendido: true,
+        totalCount: 0,
+        post_id: msg.post_id
+      };
+    }
+
+    groupedConversationsMap[groupKey].messages.push(msg);
+    groupedConversationsMap[groupKey].totalCount += 1;
+
+    // Solo es pendiente si es un mensaje de un empleado que NO ha sido marcado como atendido ni leído
+    if (!msg.atendido && !msg.leido_por_jefe && !isBoss) {
+      groupedConversationsMap[groupKey].hasPending = true;
+      groupedConversationsMap[groupKey].allAtendido = false;
+    }
+
+    groupedConversationsMap[groupKey].lastMessage = msg;
+  });
+
+  const allChatGroups = Object.values(groupedConversationsMap);
+  const pendingChatGroups = allChatGroups.filter(g => g.hasPending);
+  const attendedChatGroups = allChatGroups.filter(g => !g.hasPending);
+
+  const unreadEmployeeReplies = pendingChatGroups;
 
   // 2. Notificaciones de Bitácoras por Revisar del Equipo
   const activeNotifications = reports.filter(r =>
@@ -1118,7 +1192,7 @@ export default function AdminDashboard() {
     !dismissedNotifs.includes(r.id)
   );
 
-  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + unreadEmployeeReplies.length;
+  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + pendingChatGroups.length;
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
@@ -1142,38 +1216,37 @@ export default function AdminDashboard() {
         <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-xs animate-in slide-in-from-top-2">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white">
                   Respuesta de Empleado
                 </span>
                 <span className="text-xs font-black text-emerald-950 capitalize">{unreadEmployeeReplies[0].author}</span>
-                <span className="text-[11px] text-slate-500 font-medium">({unreadEmployeeReplies[0].fecha})</span>
+                <span className="text-[11px] text-slate-500 font-medium">({unreadEmployeeReplies[0].fecha_bitacora})</span>
               </div>
               <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
-                "{unreadEmployeeReplies[0].mensaje}"
+                "{unreadEmployeeReplies[0].lastMessage?.mensaje || 'Nuevo mensaje'}"
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
-              onClick={() => handleOpenChatForReply(unreadEmployeeReplies[0])}
+              onClick={() => handleOpenChatForReply(unreadEmployeeReplies[0].lastMessage, unreadEmployeeReplies[0].messages)}
               className="px-3.5 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
               title="Abrir chat interactivo tipo WhatsApp"
             >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat ({unreadEmployeeReplies[0].totalCount})
             </button>
             <button
-              onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0])}
+              onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0].lastMessage)}
               className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" /> Ver Bitácora
             </button>
             <button
-              onClick={() => markEmployeeReplyRead(unreadEmployeeReplies[0].id)}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+              onClick={() => {
+                unreadEmployeeReplies[0].messages.forEach(m => markEmployeeReplyRead(m.id));
+              }}
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Atendido
             </button>
@@ -1883,7 +1956,7 @@ export default function AdminDashboard() {
                   repliesFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🔴 Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
+                🔴 Pendientes ({pendingChatGroups.length})
               </button>
               <button
                 type="button"
@@ -1892,7 +1965,7 @@ export default function AdminDashboard() {
                   repliesFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ✅ Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
+                ✅ Atendidos ({attendedChatGroups.length})
               </button>
               <button
                 type="button"
@@ -1901,92 +1974,18 @@ export default function AdminDashboard() {
                   repliesFilter === 'todos' ? 'bg-slate-900 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Todos ({employeeMessages.length})
+                Todos ({allChatGroups.length})
               </button>
             </div>
           </div>
 
           {/* Lista de Conversaciones Agrupadas por Bitácora y Empleado */}
           {(() => {
-            // Agrupamos todos los mensajes por (Empleado + Fecha de Bitácora)
-            const groupedMap: Record<string, {
-              key: string;
-              fecha_bitacora: string;
-              author: string;
-              lastMessage: any;
-              messages: any[];
-              hasPending: boolean;
-              allAtendido: boolean;
-              totalCount: number;
-              post_id?: any;
-            }> = {};
-
-            employeeMessages.forEach(msg => {
-              // 1. Determinar la fecha exacta de la bitácora
-              let dateKey = msg.fecha_bitacora || '';
-              if (!dateKey && msg.fecha && msg.fecha.includes('2026-')) {
-                const match = msg.fecha.match(/\d{4}-\d{2}-\d{2}/);
-                if (match) dateKey = match[0];
-              }
-              if (!dateKey && msg.post_id) {
-                const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
-                if (matchedRep) dateKey = matchedRep.date;
-              }
-              if (!dateKey) {
-                dateKey = format(new Date(), 'yyyy-MM-dd');
-              }
-
-              // 2. Determinar quién es el empleado dueño de la bitácora (NO el jefe)
-              let employeeOwner = 'Carmen Luisa';
-              const cleanAuth = (msg.author || '').toLowerCase().trim();
-              const isBoss = cleanAuth.includes('luis') || cleanAuth.includes('victor') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('delgado') || cleanAuth.includes('roman');
-
-              if (!isBoss && cleanAuth !== '') {
-                employeeOwner = msg.author;
-              } else if (msg.post_id) {
-                const matchedRep = reports.find(r => String(r.id) === String(msg.post_id));
-                if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
-              } else if (dateKey) {
-                const matchedRep = reports.find(r => r.date === dateKey);
-                if (matchedRep && matchedRep.user) employeeOwner = matchedRep.user;
-              }
-
-              const groupKey = `${employeeOwner.toLowerCase().trim()}_${dateKey}`;
-
-              if (!groupedMap[groupKey]) {
-                groupedMap[groupKey] = {
-                  key: groupKey,
-                  fecha_bitacora: dateKey,
-                  author: employeeOwner,
-                  lastMessage: msg,
-                  messages: [],
-                  hasPending: false,
-                  allAtendido: true,
-                  totalCount: 0,
-                  post_id: msg.post_id
-                };
-              }
-
-              groupedMap[groupKey].messages.push(msg);
-              groupedMap[groupKey].totalCount += 1;
-
-              // Es pendiente si algún mensaje del empleado no ha sido atendido
-              if (!msg.atendido && !msg.leido_por_jefe && !isBoss) {
-                groupedMap[groupKey].hasPending = true;
-                groupedMap[groupKey].allAtendido = false;
-              }
-
-              // Guardar el mensaje más reciente para el preview
-              groupedMap[groupKey].lastMessage = msg;
-            });
-
-            const chatGroups = Object.values(groupedMap);
-
-            const filteredGroups = chatGroups.filter(g => {
-              if (repliesFilter === 'pendientes') return g.hasPending;
-              if (repliesFilter === 'atendidos') return !g.hasPending;
-              return true;
-            });
+            const filteredGroups = repliesFilter === 'pendientes'
+              ? pendingChatGroups
+              : repliesFilter === 'atendidos'
+                ? attendedChatGroups
+                : allChatGroups;
 
             if (filteredGroups.length === 0) {
               return (
