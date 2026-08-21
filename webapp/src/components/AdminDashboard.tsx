@@ -1223,17 +1223,20 @@ export default function AdminDashboard() {
 
       {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO (COMPACTO) */}
       {unreadEmployeeReplies.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-xs animate-in slide-in-from-top-2">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-sm animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm ring-2 ring-emerald-400/30">
+              <MessageSquare className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-2xs">
                   Respuesta de Empleado
                 </span>
                 <span className="text-xs font-black text-emerald-950 capitalize">{unreadEmployeeReplies[0].author}</span>
                 <span className="text-[11px] text-slate-500 font-medium">({unreadEmployeeReplies[0].fecha_bitacora})</span>
               </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
+              <p className="text-xs font-bold text-slate-800 truncate mt-1">
                 "{unreadEmployeeReplies[0].lastMessage?.mensaje || 'Nuevo mensaje'}"
               </p>
             </div>

@@ -1287,7 +1287,7 @@ export default function EmployeeDashboard() {
             <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
             {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>}
           </div>
-          <span>Buzón de Jefatura</span>
+          <span>Buzón</span>
           {unreadCount > 0 && (
             <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 font-black text-[10px] rounded-full">
               {unreadCount}
@@ -1536,14 +1536,10 @@ export default function EmployeeDashboard() {
           <ModuloExpedientes />
         )}
 
-        {/* VISTA 3: BUZÓN DE JEFATURA (ANCHO COMPLETO) */}
+        {/* VISTA 3: BUZÓN (ANCHO COMPLETO) */}
         {activeTab === 'notificaciones' && (
           <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200">
-            {notifications.length === 0 ? (
-              <p className="text-slate-500 text-center py-12 font-medium">No tienes notificaciones en tu buzón.</p>
-            ) : (
-              <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
-            )}
+            <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
           </div>
         )}
 
