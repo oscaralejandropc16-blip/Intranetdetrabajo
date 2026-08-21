@@ -83,23 +83,52 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   }, [isOpen, messages.length, viewFilter]);
 
-  // Si quien abre el chat es Jefatura (Luis), marcar los mensajes del empleado como leídos por el jefe
+  // Auto-marcar mensajes del interlocutor como leídos al abrir el chat
   useEffect(() => {
-    if (isJefatura && isOpen && messages.length > 0) {
-      let hasUnread = false;
+    if (isOpen && messages.length > 0) {
+      let hasChanges = false;
       const updated = messages.map(m => {
-        if (!m.leido_por_jefe && m.author_role !== 'jefatura') {
-          hasUnread = true;
-          return { ...m, leido_por_jefe: true };
+        const cleanAuth = (m.author || '').toLowerCase().trim();
+        const isFromBoss = m.author_role === 'jefatura' || m.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+        
+        if (isJefatura) {
+          // El jefe lee los mensajes del empleado
+          if (!isFromBoss && !m.leido_por_jefe) {
+            hasChanges = true;
+            return { ...m, leido_por_jefe: true };
+          }
+        } else {
+          // El empleado lee los mensajes del jefe
+          if (isFromBoss && !m.leido_por_empleado) {
+            hasChanges = true;
+            return { ...m, leido_por_empleado: true };
+          }
         }
         return m;
       });
-      if (hasUnread) {
+
+      if (hasChanges) {
         setMessages(updated);
         try {
           const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-          const updatedQ = q.map((item: any) => ({ ...item, leido_por_jefe: true }));
+          const updatedQ = q.map((item: any) => {
+            const cleanAuth = (item.author || '').toLowerCase().trim();
+            const isFromBoss = item.author_role === 'jefatura' || item.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+            if (isJefatura && !isFromBoss) {
+              return { ...item, leido_por_jefe: true };
+            } else if (!isJefatura && isFromBoss) {
+              return { ...item, leido_por_empleado: true };
+            }
+            return item;
+          });
           localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
+        } catch (e) {}
+
+        try {
+          api.post('/rd-intranet/v1/marcar-mensajes-leidos-chat', {
+            is_jefatura: isJefatura,
+            date: reportContext?.date
+          });
         } catch (e) {}
       }
     }
@@ -178,30 +207,16 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   };
 
-  const handleToggleAtendido = async (msgId: string) => {
-    const updated = messages.map(m => {
+  const handleToggleAtendido = (msgId: string) => {
+    setMessages(prev => prev.map(m => {
       if (m.id === msgId) {
-        const nextState = !m.atendido;
-        return { ...m, atendido: nextState, leido_por_jefe: true };
+        return { ...m, atendido: !m.atendido, leido_por_jefe: true };
       }
       return m;
-    });
-    setMessages(updated);
-
-    // Actualizar en localStorage
-    try {
-      const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const updatedQ = q.map((item: any) => item.id === msgId ? { ...item, atendido: true, leido_por_jefe: true } : item);
-      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
-    } catch (e) {}
-
+    }));
     if (onMarkAtendido) {
       onMarkAtendido(msgId);
     }
-
-    try {
-      await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: msgId, atendido: true });
-    } catch (e) {}
   };
 
   // Filtrado de mensajes
@@ -232,7 +247,16 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     return (a.fecha || '').localeCompare(b.fecha || '');
   });
 
-  const pendingCount = messages.filter(m => !m.atendido && (!m.leido_por_jefe || !isJefatura)).length;
+  const pendingCount = messages.filter(m => {
+    if (m.atendido) return false;
+    const cleanAuth = (m.author || '').toLowerCase().trim();
+    const isFromBoss = m.author_role === 'jefatura' || m.author_role === 'admin' || cleanAuth.includes('luis') || cleanAuth.includes('jefe') || cleanAuth.includes('admin') || cleanAuth.includes('victor') || cleanAuth.includes('delgado');
+    if (isJefatura) {
+      return !isFromBoss && !m.leido_por_jefe;
+    } else {
+      return isFromBoss && !m.leido_por_empleado;
+    }
+  }).length;
   const attendedCount = messages.filter(m => m.atendido).length;
 
   return (
