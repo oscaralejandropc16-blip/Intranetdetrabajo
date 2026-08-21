@@ -110,10 +110,30 @@ export default function NotificationPanel({ notifications, setNotifications }: N
 
     const newReplyItem = {
       id: `rep_${Date.now()}`,
+      notif_id: notif.id,
+      post_id: notif.post_id || (typeof notif.id === 'number' ? notif.id : 0),
+      titulo: notif.title || 'Instrucción de Jefatura',
       mensaje: text,
       fecha: `${fullDateStr}, ${nowStr}`,
-      author: userName
+      fecha_bitacora: notif.date || new Date().toISOString().split('T')[0],
+      author: userName,
+      leido_por_jefe: false
     };
+
+    // Guardar en la cola global de respuestas local
+    try {
+      const existingQueue = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
+      const updatedQueue = [newReplyItem, ...existingQueue.filter((q: any) => q.id !== newReplyItem.id)].slice(0, 100);
+      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQueue));
+    } catch (e) {}
+
+    // Guardar localmente para renderizado inmediato en el hilo
+    const updatedReplies = {
+      ...localRepliesMap,
+      [notifKey]: [...(localRepliesMap[notifKey] || []), newReplyItem]
+    };
+    setLocalRepliesMap(updatedReplies);
+    localStorage.setItem('rd_local_employee_replies', JSON.stringify(updatedReplies));
 
     try {
       await api.post('/rd-intranet/v1/responder-mensaje', {
@@ -123,34 +143,12 @@ export default function NotificationPanel({ notifications, setNotifications }: N
         titulo: notif.title,
         date: notif.date || new Date().toISOString().split('T')[0]
       });
-
-      // Guardar localmente para renderizado inmediato
-      const updatedReplies = {
-        ...localRepliesMap,
-        [notifKey]: [...(localRepliesMap[notifKey] || []), newReplyItem]
-      };
-      setLocalRepliesMap(updatedReplies);
-      localStorage.setItem('rd_local_employee_replies', JSON.stringify(updatedReplies));
-
-      // Limpiar texto de respuesta
-      setReplyTextMap(prev => ({ ...prev, [notifKey]: '' }));
-      setOpenReplyNotifId(null);
-
-      // Marcar automáticamente como leída
-      handleMarkAsRead(notif.id);
     } catch (error) {
       console.error('Error enviando respuesta a jefatura:', error);
-      // Fallback offline
-      const updatedReplies = {
-        ...localRepliesMap,
-        [notifKey]: [...(localRepliesMap[notifKey] || []), newReplyItem]
-      };
-      setLocalRepliesMap(updatedReplies);
-      localStorage.setItem('rd_local_employee_replies', JSON.stringify(updatedReplies));
+    } finally {
       setReplyTextMap(prev => ({ ...prev, [notifKey]: '' }));
       setOpenReplyNotifId(null);
       handleMarkAsRead(notif.id);
-    } finally {
       setSendingReplyId(null);
     }
   };

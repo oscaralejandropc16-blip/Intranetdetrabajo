@@ -52,10 +52,44 @@ export default function AdminDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
 
   // Estados para interactividad de la UI
+  const getLocalEmployeeMessages = () => {
+    const list: any[] = [];
+    try {
+      const q = localStorage.getItem('rd_all_employee_replies_queue');
+      if (q) {
+        const parsedQ = JSON.parse(q);
+        if (Array.isArray(parsedQ)) list.push(...parsedQ);
+      }
+      const mapRaw = localStorage.getItem('rd_local_employee_replies');
+      if (mapRaw) {
+        const parsedMap = JSON.parse(mapRaw);
+        Object.entries(parsedMap).forEach(([notifKey, items]: [string, any]) => {
+          if (Array.isArray(items)) {
+            items.forEach((item: any) => {
+              if (!list.some(m => m.id === item.id || (m.mensaje === item.mensaje && m.fecha === item.fecha))) {
+                list.push({
+                  id: item.id || `rep_${Date.now()}`,
+                  notif_id: notifKey,
+                  titulo: item.titulo || 'Instrucción de Jefatura',
+                  mensaje: item.mensaje,
+                  fecha: item.fecha,
+                  fecha_bitacora: item.fecha_bitacora || format(new Date(), 'yyyy-MM-dd'),
+                  author: item.author || 'Carmen Luisa',
+                  leido_por_jefe: item.leido_por_jefe || false
+                });
+              }
+            });
+          }
+        });
+      }
+    } catch (e) {}
+    return list;
+  };
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationTab, setNotificationTab] = useState<'respuestas' | 'supervision' | 'equipo'>('respuestas');
   const [myDirectFeedbacks, setMyDirectFeedbacks] = useState<any[]>([]);
-  const [employeeMessages, setEmployeeMessages] = useState<any[]>([]);
+  const [employeeMessages, setEmployeeMessages] = useState<any[]>(() => getLocalEmployeeMessages());
   const [dismissedFeedbackNotifs, setDismissedFeedbackNotifs] = useState<string[]>(() => {
     try {
       return JSON.parse(localStorage.getItem('rd_jefe_read_feedbacks') || '[]');
@@ -72,6 +106,11 @@ export default function AdminDashboard() {
 
   const markEmployeeReplyRead = async (replyId: string) => {
     setEmployeeMessages(prev => prev.map(m => m.id === replyId ? { ...m, leido_por_jefe: true } : m));
+    try {
+      const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
+      const updatedQ = q.map((item: any) => item.id === replyId ? { ...item, leido_por_jefe: true } : item);
+      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
+    } catch (e) {}
     try {
       await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId });
     } catch (e) {}
@@ -402,10 +441,18 @@ export default function AdminDashboard() {
         }
       } finally {
         api.get('/rd-intranet/v1/mensajes-jefatura').then(res => {
-          if (Array.isArray(res.data)) {
-            setEmployeeMessages(res.data);
-          }
-        }).catch(() => {});
+          const localList = getLocalEmployeeMessages();
+          const serverList = Array.isArray(res.data) ? res.data : [];
+          const merged = [...serverList];
+          localList.forEach(localItem => {
+            if (!merged.some(m => m.id === localItem.id || (m.mensaje === localItem.mensaje && m.fecha === localItem.fecha))) {
+              merged.unshift(localItem);
+            }
+          });
+          setEmployeeMessages(merged);
+        }).catch(() => {
+          setEmployeeMessages(getLocalEmployeeMessages());
+        });
         setLoading(false);
       }
     };
