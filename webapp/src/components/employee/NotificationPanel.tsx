@@ -11,12 +11,8 @@ import {
   Sparkles, 
   RotateCcw, 
   Calendar, 
-  Send, 
-  Loader2, 
-  CornerDownRight, 
-  MessageCircle 
+  CornerDownRight 
 } from 'lucide-react';
-import api from '../../lib/api';
 import { WhatsAppStyleChat } from '../chat/WhatsAppStyleChat';
 
 export interface Notification {
@@ -42,14 +38,6 @@ interface NotificationPanelProps {
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
 }
 
-const QUICK_REPLIES = [
-  '⚡ Listo jefe, ya lo revisé y quedó corregido.',
-  '📎 Ya adjunté el documento / comprobante en el sistema.',
-  '⏱️ En proceso, lo concluyo en el transcurso de la jornada.',
-  '👍 Enterada de la observación, muchas gracias.',
-  '❓ Tengo una duda con respecto a este punto.'
-];
-
 export default function NotificationPanel({ notifications, setNotifications }: NotificationPanelProps) {
   const [filterTab, setFilterTab] = useState<'unread' | 'read' | 'all'>('unread');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -59,9 +47,6 @@ export default function NotificationPanel({ notifications, setNotifications }: N
 
   // Estados para el chat tipo WhatsApp y respuestas
   const [activeChatNotif, setActiveChatNotif] = useState<Notification | null>(null);
-  const [openReplyNotifId, setOpenReplyNotifId] = useState<string | number | null>(null);
-  const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
-  const [sendingReplyId, setSendingReplyId] = useState<string | number | null>(null);
   const [localRepliesMap, setLocalRepliesMap] = useState<Record<string, any[]>>(() => {
     try {
       return JSON.parse(localStorage.getItem('rd_local_employee_replies') || '{}');
@@ -98,61 +83,6 @@ export default function NotificationPanel({ notifications, setNotifications }: N
       return { ...n, read: true };
     });
     setNotifications(newNotifs);
-  };
-
-  const handleSendReply = async (notif: Notification) => {
-    const notifKey = String(notif.id);
-    const text = (replyTextMap[notifKey] || '').trim();
-    if (!text) return;
-
-    setSendingReplyId(notif.id);
-    const nowStr = new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const fullDateStr = new Date().toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
-    const userName = localStorage.getItem('rd_user_name') || 'Empleado';
-
-    const newReplyItem = {
-      id: `rep_${Date.now()}`,
-      notif_id: notif.id,
-      post_id: notif.post_id || (typeof notif.id === 'number' ? notif.id : 0),
-      titulo: notif.title || 'Instrucción de Jefatura',
-      mensaje: text,
-      fecha: `${fullDateStr}, ${nowStr}`,
-      fecha_bitacora: notif.date || new Date().toISOString().split('T')[0],
-      author: userName,
-      leido_por_jefe: false
-    };
-
-    // Guardar en la cola global de respuestas local
-    try {
-      const existingQueue = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const updatedQueue = [newReplyItem, ...existingQueue.filter((q: any) => q.id !== newReplyItem.id)].slice(0, 100);
-      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQueue));
-    } catch (e) {}
-
-    // Guardar localmente para renderizado inmediato en el hilo
-    const updatedReplies = {
-      ...localRepliesMap,
-      [notifKey]: [...(localRepliesMap[notifKey] || []), newReplyItem]
-    };
-    setLocalRepliesMap(updatedReplies);
-    localStorage.setItem('rd_local_employee_replies', JSON.stringify(updatedReplies));
-
-    try {
-      await api.post('/rd-intranet/v1/responder-mensaje', {
-        notif_id: notif.id,
-        post_id: notif.post_id || (typeof notif.id === 'number' ? notif.id : 0),
-        mensaje: text,
-        titulo: notif.title,
-        date: notif.date || new Date().toISOString().split('T')[0]
-      });
-    } catch (error) {
-      console.error('Error enviando respuesta a jefatura:', error);
-    } finally {
-      setReplyTextMap(prev => ({ ...prev, [notifKey]: '' }));
-      setOpenReplyNotifId(null);
-      handleMarkAsRead(notif.id);
-      setSendingReplyId(null);
-    }
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -352,7 +282,6 @@ export default function NotificationPanel({ notifications, setNotifications }: N
           {paginatedList.map((notif) => {
             const isUnread = !notif.read;
             const notifKey = String(notif.id);
-            const isReplyOpen = openReplyNotifId === notif.id;
 
             // Obtener todas las respuestas combinando mapa local y cola global
             let globalQueueReplies: any[] = [];
@@ -450,37 +379,29 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                     </div>
                   </div>
 
-                  {/* Botones de Acción: Chat WhatsApp, Responder y Marcar Leído */}
-                  <div className="flex items-center gap-1.5 self-end md:self-center shrink-0">
+                  {/* Botones de Acción: Chat Unificado y Marcar Leído */}
+                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
                     <button
                       type="button"
                       onClick={() => setActiveChatNotif(notif)}
-                      className="px-3 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
-                      title="Abrir chat tipo WhatsApp con Jefatura"
+                      className="px-4 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs rounded-xl transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5"
+                      title="Abrir hilo de conversación oficial con Jefatura"
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
-                      <span>Chat</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setOpenReplyNotifId(isReplyOpen ? null : notif.id)}
-                      className={`px-3 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                        isReplyOpen 
-                          ? 'bg-slate-900 text-white shadow-xs' 
-                          : 'bg-white hover:bg-slate-100 text-blue-700 border border-blue-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{isReplyOpen ? 'Cerrar' : 'Responder'}</span>
+                      <MessageSquare className="w-4 h-4 text-emerald-300" />
+                      <span>Abrir Conversación</span>
+                      {replies.length > 0 && (
+                        <span className="px-1.5 py-0.2 bg-emerald-400 text-slate-950 font-black rounded-full text-[9px]">
+                          {replies.length}
+                        </span>
+                      )}
                     </button>
 
                     {isUnread ? (
                       <button
                         type="button"
                         onClick={() => handleMarkAsRead(notif.id)}
-                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                        title="Marcar como atendido"
+                        className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Marcar bitácora como atendida"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                         <span>Leído</span>
@@ -499,101 +420,26 @@ export default function NotificationPanel({ notifications, setNotifications }: N
 
                 </div>
 
-                {/* HILO DE RESPUESTAS ENVIADAS */}
+                {/* HILO DE RESPUESTAS RECIENTES (PREVIEW RÁPIDO) */}
                 {replies.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-slate-200/80 space-y-2">
                     <p className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1">
-                      <CornerDownRight className="w-3 h-3 text-blue-500" /> Conversación & Respuestas:
+                      <CornerDownRight className="w-3 h-3 text-emerald-600" /> Última actividad en esta Bitácora:
                     </p>
                     <div className="space-y-1.5">
-                      {replies.map((rep, rIdx) => (
+                      {replies.slice(-2).map((rep, rIdx) => (
                         <div key={rIdx} className="bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-xl flex items-start justify-between gap-3 text-xs">
-                          <div className="space-y-0.5">
+                          <div className="space-y-0.5 min-w-0">
                             <span className="font-bold text-emerald-900 flex items-center gap-1 text-[11px]">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> 
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" /> 
                               {rep.author || 'Tú'}:
                             </span>
-                            <p className="text-slate-800 font-medium pl-4">{rep.mensaje}</p>
+                            <p className="text-slate-800 font-medium pl-4 truncate">{rep.mensaje}</p>
                           </div>
                           <span className="text-[10px] text-emerald-700 font-bold shrink-0">{rep.fecha}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* CAJA INTERACTIVA PARA RESPONDER A JEFATURA */}
-                {isReplyOpen && (
-                  <div className="mt-3.5 pt-3.5 border-t border-slate-200/80 space-y-3 bg-slate-50/90 -mx-4 -mb-4 sm:-mx-5 sm:-mb-5 p-4 sm:p-5 rounded-b-2xl animate-in fade-in duration-200">
-                    <div>
-                      <h5 className="text-xs font-black text-slate-800 flex items-center gap-1.5">
-                        <Send className="w-3.5 h-3.5 text-blue-600" /> Responder a {notif.sender || 'Jefatura'}
-                      </h5>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                        Tu respuesta se enviará inmediatamente al panel de control de Jefatura vinculado a esta bitácora.
-                      </p>
-                    </div>
-
-                    {/* Chips de Respuestas Rápidas */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {QUICK_REPLIES.map((chip, cIdx) => (
-                        <button
-                          key={cIdx}
-                          type="button"
-                          onClick={() => setReplyTextMap(prev => ({ ...prev, [notifKey]: chip }))}
-                          className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-800 border border-slate-200 hover:border-blue-300 rounded-lg text-[11px] font-medium transition-all text-left cursor-pointer"
-                        >
-                          {chip}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Textarea para Escribir Respuesta */}
-                    <div className="space-y-2">
-                      <textarea
-                        rows={2}
-                        value={replyTextMap[notifKey] || ''}
-                        onChange={(e) => setReplyTextMap(prev => ({ ...prev, [notifKey]: e.target.value }))}
-                        placeholder="Escribe tu respuesta a Jefatura..."
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none shadow-inner"
-                      />
-
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[10px] text-slate-400 font-medium">
-                          {(replyTextMap[notifKey] || '').length} caracteres
-                        </span>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setOpenReplyNotifId(null)}
-                            className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-600 font-bold text-xs rounded-xl border border-slate-200 transition-colors cursor-pointer"
-                          >
-                            Cancelar
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleSendReply(notif)}
-                            disabled={sendingReplyId === notif.id || !(replyTextMap[notifKey] || '').trim()}
-                            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-black text-xs rounded-xl shadow-md transition-transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer"
-                          >
-                            {sendingReplyId === notif.id ? (
-                              <>
-                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                <span>Enviando...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Send className="w-3.5 h-3.5" />
-                                <span>Enviar Respuesta</span>
-                              </>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
                   </div>
                 )}
 

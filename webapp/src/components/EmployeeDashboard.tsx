@@ -298,7 +298,7 @@ export default function EmployeeDashboard() {
         }
       }
 
-      // 2. Feedback, cambios y notas específicas en historial de bitácoras
+      // 2. Feedback, cambios y notas unificadas por Bitácora
       if (histRes.data && Array.isArray(histRes.data)) {
         const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
         const isCurrentUserJefe = isJefaturaUser(currentLoggedUser);
@@ -306,74 +306,60 @@ export default function EmployeeDashboard() {
         histRes.data.forEach((b: any) => {
           const hasCambios = Array.isArray(b.cambios_realizados) && b.cambios_realizados.length > 0;
           const hasComment = b.comentario_admin && b.comentario_admin.trim() !== '';
-          const supervisorName = b.supervisado_por || '';
+          const supervisorName = b.supervisado_por || 'Luis Delgado / Jefatura';
           const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
 
-          // A) Notificación de observación general o cambios de jefatura (solo si no es auto-supervisión)
-          if (!isSelf && (hasComment || hasCambios)) {
-            const notifId = `feedback-bitacora-${b.id}`;
+          if (isSelf) return; // No auto-notificar al jefe sobre sus propias notas
+
+          // Recopilar notas en actuaciones
+          const actNotas: string[] = [];
+          if (!isCurrentUserJefe && Array.isArray(b.actuaciones)) {
+            b.actuaciones.forEach((act: any) => {
+              const obs = (act.observaciones || '').trim();
+              if (obs && obs.toUpperCase() !== 'SIN OBSERVACIONES') {
+                actNotas.push(`Actuación ${act.actuacion || 'Judicial'}${act.numeroExpediente ? ` (Exp. ${act.numeroExpediente})` : ''}: "${obs}"`);
+              }
+            });
+          }
+
+          // Recopilar notas en programaciones
+          const progNotas: string[] = [];
+          if (!isCurrentUserJefe && Array.isArray(b.programaciones)) {
+            b.programaciones.forEach((prog: any) => {
+              const obs = (prog.observaciones || '').trim();
+              if (obs && obs.toUpperCase() !== 'SIN OBSERVACIONES') {
+                progNotas.push(`Tarea ${prog.tipoActuacion || 'Programada'}: "${obs}"`);
+              }
+            });
+          }
+
+          // Si hay algún feedback, cambio o nota de supervisión en esta bitácora:
+          if (hasComment || hasCambios || actNotas.length > 0 || progNotas.length > 0) {
+            const notifId = `bitacora-chat-${b.id || b.date}`;
             const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
             const exists = allNotifs.some(n => String(n.id) === String(notifId));
+            
             if (!exists) {
-              const msg = b.comentario_admin || (hasCambios ? b.cambios_realizados.join(' • ') : '');
+              const detallesList = [
+                ...(hasCambios ? b.cambios_realizados.map((c: string) => `Modificación: ${c}`) : []),
+                ...actNotas,
+                ...progNotas
+              ];
+
+              const mainMsg = b.comentario_admin || (detallesList.length > 0 ? detallesList[0] : 'Observaciones de Jefatura');
+
               allNotifs.push({
                 id: notifId,
                 post_id: b.id,
-                type: hasCambios ? 'changes' : 'feedback',
-                title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${b.date}` : `Feedback Jefatura sobre Bitácora del ${b.date}`,
-                message: msg,
-                detalles: hasCambios ? b.cambios_realizados : undefined,
-                sender: supervisorName || 'Luis Delgado / Jefatura',
+                type: hasCambios ? 'changes' : (actNotas.length > 0 || progNotas.length > 0 ? 'instruction' : 'feedback'),
+                title: `Bitácora del ${b.date}`,
+                message: mainMsg,
+                detalles: detallesList.length > 0 ? detallesList : undefined,
+                sender: supervisorName,
                 read: isRead,
                 date: b.date
               });
             }
-          }
-
-          // B) Notas en actuaciones (solo para empleados, no para jefes sobre sus propias notas)
-          if (!isCurrentUserJefe && Array.isArray(b.actuaciones)) {
-            b.actuaciones.forEach((act: any, aIdx: number) => {
-              if (act.observaciones && String(act.observaciones).trim() !== '' && String(act.observaciones).trim().toUpperCase() !== 'SIN OBSERVACIONES') {
-                const notifId = `act-obs-${b.id}-${aIdx}`;
-                const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
-                const exists = allNotifs.some(n => String(n.id) === String(notifId));
-                if (!exists) {
-                  allNotifs.push({
-                    id: notifId,
-                    post_id: b.id,
-                    type: 'instruction',
-                    title: `Instrucción en Actuación: ${act.actuacion || 'Actuación'} (${act.numeroExpediente ? `Exp. ${act.numeroExpediente}` : b.date})`,
-                    message: act.observaciones,
-                    sender: supervisorName || 'Luis Delgado / Jefatura',
-                    read: isRead,
-                    date: b.date
-                  });
-                }
-              }
-            });
-          }
-
-          // C) Notas en tareas programadas (solo para empleados)
-          if (!isCurrentUserJefe && Array.isArray(b.programaciones)) {
-            b.programaciones.forEach((prog: any, pIdx: number) => {
-              if (prog.observaciones && String(prog.observaciones).trim() !== '' && String(prog.observaciones).trim().toUpperCase() !== 'SIN OBSERVACIONES') {
-                const notifId = `prog-obs-${b.id}-${pIdx}`;
-                const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
-                const exists = allNotifs.some(n => String(n.id) === String(notifId));
-                if (!exists) {
-                  allNotifs.push({
-                    id: notifId,
-                    post_id: b.id,
-                    type: 'instruction',
-                    title: `Instrucción del Jefe: ${prog.tipoActuacion || 'Tarea'} (${prog.fecha || b.date} - ${prog.hora || ''})`,
-                    message: prog.observaciones,
-                    sender: supervisorName || 'Luis Delgado / Jefatura',
-                    read: isRead,
-                    date: prog.fecha || b.date
-                  });
-                }
-              }
-            });
           }
         });
       }
