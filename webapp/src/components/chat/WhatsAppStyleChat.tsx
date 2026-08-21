@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Send, 
   X, 
+  Check,
   CheckCheck, 
   MessageSquare, 
   ShieldCheck, 
@@ -422,13 +423,13 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                     <div className="flex items-center justify-end gap-1 mt-1 text-[9.5px] text-white/60 font-medium">
                       <span>{msg.fecha}</span>
                       {isMe && (
-                        (msg.atendido || msg.leido_por_jefe) ? (
-                          <span title="Leído por el supervisor (Doble check azul)">
+                        (msg.atendido || (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)) ? (
+                          <span title="Leído por el destinatario (Doble check azul)">
                             <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
                           </span>
                         ) : (
-                          <span title="Entregado pero no leído (Doble check gris)">
-                            <CheckCheck className="w-3.5 h-3.5 text-white/40 shrink-0" />
+                          <span title="Enviado (Un check gris)">
+                            <Check className="w-3 h-3 text-white/60 shrink-0" />
                           </span>
                         )
                       )}
