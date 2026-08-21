@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
@@ -145,26 +145,52 @@ export default function TabRegistroDiario({
               <CheckCircle2 className="w-6 h-6 text-emerald-500" />
               <h3 className="text-xl font-bold text-slate-800">Mi Agenda para Hoy</h3>
             </div>
-            <p className="text-sm text-slate-500 font-medium mb-4">Actividades planificadas previamente.</p>
+            <p className="text-sm text-slate-500 font-medium mb-4">Actividades planificadas previamente e instrucciones asignadas por Jefatura.</p>
             
             <div className="bg-slate-50/50 p-6 rounded-2xl border border-slate-100 space-y-3">
-              {pendingTasks.map((task) => (
-                <label key={task.id} className={`group flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer ${task.completed ? 'bg-emerald-50/50 border-emerald-500 shadow-sm' : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-md'}`}>
-                  <div className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-colors ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-300 group-hover:border-emerald-400'}`}>
-                    {task.completed && <CheckCircle2 className="w-4 h-4 text-white" />}
-                  </div>
-                  <input 
-                    type="checkbox" 
-                    checked={task.completed}
-                    disabled={reportSubmitted}
-                    onChange={() => handleToggleTask(task.id)}
-                    className="hidden" 
-                  />
-                  <span className={`font-semibold text-base lg:text-lg ${task.completed ? 'text-emerald-700 line-through opacity-75' : 'text-slate-700'}`}>
-                    {task.text}
-                  </span>
-                </label>
-              ))}
+              {pendingTasks.length === 0 ? (
+                <div className="text-center py-6 text-slate-400 italic text-sm font-medium">
+                  No hay tareas programadas para hoy.
+                </div>
+              ) : pendingTasks.map((task) => {
+                const note = task.observaciones || task.originalData?.observaciones;
+                return (
+                  <label key={task.id} className={`group flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 rounded-2xl border-2 transition-all cursor-pointer ${task.completed ? 'bg-emerald-50/50 border-emerald-500 shadow-sm' : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-md'}`}>
+                    <div className="flex items-center gap-3 self-start sm:self-center">
+                      <div className={`flex items-center justify-center w-6 h-6 rounded-md border-2 transition-colors ${task.completed ? 'bg-emerald-500 border-emerald-500' : 'bg-transparent border-slate-300 group-hover:border-emerald-400'}`}>
+                        {task.completed && <CheckCircle2 className="w-4 h-4 text-white" />}
+                      </div>
+                      <input 
+                        type="checkbox" 
+                        checked={task.completed}
+                        disabled={reportSubmitted}
+                        onChange={() => handleToggleTask(task.id)}
+                        className="hidden" 
+                      />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <span className={`font-bold text-base lg:text-lg block ${task.completed ? 'text-emerald-700 line-through opacity-75' : 'text-slate-800'}`}>
+                        {task.title || task.text}
+                      </span>
+                      {note && (
+                        <div className="mt-2 p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5 shadow-sm">
+                          <div className="p-1 bg-amber-200 text-amber-900 rounded-lg shrink-0 mt-0.5">
+                            <AlertCircle className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <span className="text-[11px] font-black uppercase tracking-wider text-amber-900 block">
+                              INSTRUCCIÓN / CORRECCIÓN DE JEFATURA:
+                            </span>
+                            <p className="text-xs sm:text-sm font-semibold text-amber-950 mt-0.5 leading-relaxed">
+                              {note}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </section>
 

@@ -123,76 +123,10 @@ add_action('init', 'rd_intranet_register_cpt');
 
 // 2. Registrar Endpoints de la API REST
 add_action('rest_api_init', function () {
-    // Endpoint propio de Login (/rd-intranet/v1/login) para eludir conflictos del plugin externo jwt-auth y problemas CORS/Varnish
+    // Endpoint: POST /rd-intranet/v1/login (Autenticación nativa ultrarrápida)
     register_rest_route('rd-intranet/v1', '/login', array(
         'methods' => 'POST',
-        'callback' => function($request) {
-            $params = rd_intranet_get_request_data($request);
-            $username = trim($params['username'] ?? '');
-            $password = trim($params['password'] ?? '');
-
-            if (empty($username) || empty($password)) {
-                return rest_ensure_response(array(
-                    'success' => false,
-                    'message' => 'Por favor ingresa tu usuario y contraseña.'
-                ));
-            }
-
-            // Autenticar con WordPress directamente
-            $user = wp_authenticate($username, $password);
-            if (is_wp_error($user)) {
-                $error_msg = $user->get_error_message();
-                return rest_ensure_response(array(
-                    'success' => false,
-                    'message' => wp_strip_all_tags($error_msg) ?: 'Contraseña o usuario incorrectos.'
-                ));
-            }
-
-            // Generar o usar secreto de JWT de WordPress
-            $secret = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : (defined('AUTH_KEY') ? AUTH_KEY : 'rd-secret-key-2026');
-            
-            // Si está instalado y activo el plugin JWT Auth, podemos usar su clase si existe, o generar un token seguro y compatible
-            $issuedAt = time();
-            $notBefore = $issuedAt;
-            $expire = $issuedAt + (60 * 60 * 24 * 7); // 7 días de sesión
-
-            $token = '';
-            if (class_exists('Jwt_Auth_Public') && method_exists('Jwt_Auth_Public', 'generate_token')) {
-                // Si existe generador de clase
-            }
-            
-            // Generación de token JWT estándar y compatible con WordPress
-            $header = json_encode(array('typ' => 'JWT', 'alg' => 'HS256'));
-            $payload = json_encode(array(
-                'iss' => get_bloginfo('url'),
-                'iat' => $issuedAt,
-                'nbf' => $notBefore,
-                'exp' => $expire,
-                'data' => array(
-                    'user' => array(
-                        'id' => $user->ID
-                    )
-                )
-            ));
-
-            $base64UrlHeader = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($header));
-            $base64UrlPayload = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($payload));
-            $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $secret, true);
-            $base64UrlSignature = str_replace(array('+', '/', '='), array('-', '_', ''), base64_encode($signature));
-            $token = $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
-
-            $admin_users = array('victor', 'luis', 'romanydelgado', 'admin');
-            $is_admin = in_array(strtolower($user->user_login), $admin_users) || in_array('administrator', (array)$user->roles);
-
-            return rest_ensure_response(array(
-                'success' => true,
-                'token' => $token,
-                'user_email' => $user->user_email,
-                'user_nicename' => $user->user_nicename,
-                'user_display_name' => $user->display_name,
-                'is_admin' => $is_admin
-            ));
-        },
+        'callback' => 'rd_intranet_handle_login',
         'permission_callback' => '__return_true'
     ));
 
@@ -441,13 +375,6 @@ add_action('rest_api_init', function () {
         'callback' => 'rd_intranet_save_draft',
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
-
-    // Endpoint: POST /rd-intranet/v1/login (Autenticación nativa ultrarrápida)
-    register_rest_route('rd-intranet/v1', '/login', array(
-        'methods' => 'POST',
-        'callback' => 'rd_intranet_handle_login',
-        'permission_callback' => '__return_true'
-    ));
 });
 
 function rd_intranet_handle_login($request) {
@@ -614,10 +541,18 @@ function rd_intranet_admin_update_draft($request) {
     }
     
     $nuevo_comentario = sanitize_textarea_field($params['comentario_admin'] ?? '');
+    $supervisado_por = sanitize_text_field($params['supervisado_por'] ?? '');
+    if (!$supervisado_por) {
+        $current_user = wp_get_current_user();
+        if ($current_user && $current_user->ID) {
+            $supervisado_por = $current_user->display_name ?: ($current_user->user_nicename ?: $current_user->user_login);
+        }
+    }
 
     if ($target_user_id > 0) {
         $draft_str = get_user_meta($target_user_id, 'rd_intranet_draft', true);
         $draft = $draft_str ? json_decode($draft_str, true) : array();
+        if (!is_array($draft)) $draft = array();
         
         $draft['programaciones'] = $programaciones_editadas;
         
@@ -633,9 +568,20 @@ function rd_intranet_admin_update_draft($request) {
             $draft['comentario_admin'] = $nuevo_comentario;
         }
 
+        $cambios_realizados = $params['cambios_realizados'] ?? null;
+        if (is_string($cambios_realizados)) {
+            $cambios_realizados = json_decode(stripslashes($cambios_realizados), true);
+        }
+        if (is_array($cambios_realizados) && !empty($cambios_realizados)) {
+            $draft['cambios_realizados'] = $cambios_realizados;
+        }
+
+        $draft['supervisado_por'] = $supervisado_por ?: 'Luis Delgado / Jefatura';
+        $draft['fecha_supervision'] = current_time('Y-m-d H:i');
+
         update_user_meta($target_user_id, 'rd_intranet_draft', wp_json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
         
-        return rest_ensure_response(array('success' => true, 'message' => 'El borrador del empleado ha sido actualizado.'));
+        return rest_ensure_response(array('success' => true, 'message' => 'El borrador del empleado ha sido actualizado y notificado.'));
     }
     return new WP_Error('invalid_data', 'Datos de borrador inválidos o usuario no especificado.', array('status' => 400));
 }
@@ -677,7 +623,24 @@ function rd_intranet_save_draft($request) {
     if (!is_array($params)) $params = array();
 
     $today_str = current_time('Y-m-d');
-    // Blindaje: Si ya existe una hora inmutable para el día en el servidor, jamás permitir que un borrador desde móvil con clockIn nulo la borre
+    
+    // Obtener borrador actual existente en base de datos para preservar comentarios y metadatos de jefatura
+    $existing_draft_str = get_user_meta($user_id, 'rd_intranet_draft', true);
+    $existing_draft = $existing_draft_str ? json_decode($existing_draft_str, true) : array();
+    if (!is_array($existing_draft)) $existing_draft = array();
+
+    // Blindaje: Preservar observaciones/correcciones de Jefatura si no vienen en la petición del cliente
+    if (empty($params['comentario_admin']) && !empty($existing_draft['comentario_admin'])) {
+        $params['comentario_admin'] = $existing_draft['comentario_admin'];
+    }
+    if (empty($params['supervisado_por']) && !empty($existing_draft['supervisado_por'])) {
+        $params['supervisado_por'] = $existing_draft['supervisado_por'];
+    }
+    if (empty($params['fecha_supervision']) && !empty($existing_draft['fecha_supervision'])) {
+        $params['fecha_supervision'] = $existing_draft['fecha_supervision'];
+    }
+
+    // Blindaje de hora de entrada: Si ya existe una hora inmutable para el día en el servidor, jamás permitir que un borrador desde móvil con clockIn nulo la borre
     $today_clock = get_user_meta($user_id, 'rd_intranet_today_clockin', true);
     if (empty($today_clock)) {
         $today_clock = get_user_meta($user_id, 'rd_intranet_clockin_' . $today_str, true);
@@ -994,22 +957,20 @@ function rd_intranet_handle_submit($request) {
     );
 
     // Buscar si ya existe una bitácora de este usuario para la fecha del reporte para actualizarla en vez de crear duplicados
-    $existing_posts = get_posts(array(
-        'post_type' => 'rd_bitacora',
-        'author' => $user_id,
-        'date_query' => array(
-            array(
-                'year'  => date('Y', strtotime($fecha_reporte)),
-                'month' => date('m', strtotime($fecha_reporte)),
-                'day'   => date('d', strtotime($fecha_reporte)),
-            ),
-        ),
-        'numberposts' => 1,
-        'post_status' => 'any'
+    global $wpdb;
+    $existing_id = $wpdb->get_var($wpdb->prepare(
+        "SELECT ID FROM {$wpdb->posts} 
+         WHERE post_author = %d 
+           AND post_type = 'rd_bitacora' 
+           AND (post_date LIKE %s OR post_title LIKE %s)
+         ORDER BY ID DESC LIMIT 1",
+        $user_id,
+        $wpdb->esc_like($fecha_reporte) . '%',
+        '%' . $wpdb->esc_like($fecha_reporte) . '%'
     ));
 
-    if (!empty($existing_posts)) {
-        $post_data['ID'] = $existing_posts[0]->ID;
+    if ($existing_id && intval($existing_id) > 0) {
+        $post_data['ID'] = intval($existing_id);
         $post_id = wp_update_post($post_data);
     } else {
         $post_id = wp_insert_post($post_data);
@@ -1182,23 +1143,25 @@ function rd_intranet_decode_meta_json($post_id, $meta_key) {
 function rd_intranet_get_bitacoras() {
     $args = array(
         'post_type' => 'rd_bitacora',
-        'posts_per_page' => 100, // Últimas 100
+        'posts_per_page' => 150, // Últimas 150
         'post_status' => array('publish', 'private', 'draft', 'pending'),
         'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
     
     $query = new WP_Query($args);
-    $resultados = array();
+    $raw_resultados = array();
     
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
-            $author_id = get_post_field('post_author', get_the_ID());
+            $post_id = get_the_ID();
+            $author_id = get_post_field('post_author', $post_id);
             $author_obj = get_userdata($author_id);
             $user_display = $author_obj ? ($author_obj->display_name ?: ($author_obj->user_nicename ?: $author_obj->user_login)) : get_the_author();
+            $post_date = get_the_date('Y-m-d');
 
-            $clock_in = get_post_meta(get_the_ID(), 'hora_entrada', true) ?: 'N/A';
-            $clock_out = get_post_meta(get_the_ID(), 'hora_salida', true) ?: 'N/A';
+            $clock_in = get_post_meta($post_id, 'hora_entrada', true) ?: 'N/A';
+            $clock_out = get_post_meta($post_id, 'hora_salida', true) ?: 'N/A';
             if (strpos($clock_in, 'T') !== false && strpos($clock_in, 'Z') !== false) {
                 $clock_in = date('H:i', strtotime($clock_in) - 14400);
             } elseif (strpos($clock_in, ' ') !== false) {
@@ -1217,30 +1180,50 @@ function rd_intranet_get_bitacoras() {
                 }
             }
 
-            $resultados[] = array(
-                'id' => get_the_ID(),
+            $raw_resultados[] = array(
+                'id' => $post_id,
+                'author_id' => $author_id,
                 'user' => $user_display,
-                'date' => get_the_date('Y-m-d'),
+                'date' => $post_date,
                 'clockIn' => substr($clock_in, 0, 5),
                 'clockOut' => substr($clock_out, 0, 5),
-                'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
-                'comentario_admin' => get_post_meta(get_the_ID(), 'comentario_admin', true) ?: '',
-                'supervisado_por' => get_post_meta(get_the_ID(), 'supervisado_por', true) ?: '',
-                'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
-                'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
+                'status' => get_post_meta($post_id, 'estado_revision', true) ?: 'Enviado',
+                'comentario_admin' => get_post_meta($post_id, 'comentario_admin', true) ?: '',
+                'supervisado_por' => get_post_meta($post_id, 'supervisado_por', true) ?: '',
+                'ubicacionEntrada' => get_post_meta($post_id, 'ubicacion_entrada', true),
+                'ubicacionSalida' => get_post_meta($post_id, 'ubicacion_salida', true),
                 'content' => $query->post->post_content ?: get_the_content(),
-                'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
-                'cierreRetrasado' => get_post_meta(get_the_ID(), 'cierre_retrasado', true) === '1',
-                'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
-                'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
-                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json'),
-                'evidences' => rd_intranet_decode_meta_json(get_the_ID(), 'evidences_json')
+                'pdfBase64' => get_post_meta($post_id, 'bitacora_pdf_base64', true),
+                'cierreRetrasado' => get_post_meta($post_id, 'cierre_retrasado', true) === '1',
+                'actuaciones' => rd_intranet_decode_meta_json($post_id, 'actuaciones_json'),
+                'ingresos' => rd_intranet_decode_meta_json($post_id, 'ingresos_json'),
+                'programaciones' => rd_intranet_decode_meta_json($post_id, 'programaciones_json'),
+                'evidences' => rd_intranet_decode_meta_json($post_id, 'evidences_json')
             );
         }
         wp_reset_postdata();
     }
     
-    return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
+    // Deduplicación inteligente: Si existen múltiples registros del mismo usuario para la misma fecha (ej. 2026-08-14), conservar solo uno
+    $deduped = array();
+    $seen_keys = array();
+    foreach ($raw_resultados as $item) {
+        $key = ($item['author_id'] ?: $item['user']) . '_' . $item['date'];
+        if (!isset($seen_keys[$key])) {
+            $seen_keys[$key] = true;
+            $deduped[] = $item;
+        } else {
+            // Si el item duplicado tiene comentario o más datos, reemplazar
+            $idx = array_search($key, array_keys($seen_keys));
+            if ($idx !== false && isset($deduped[$idx])) {
+                if (!empty($item['comentario_admin']) && empty($deduped[$idx]['comentario_admin'])) {
+                    $deduped[$idx] = $item;
+                }
+            }
+        }
+    }
+
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes(array_values($deduped)));
 }
 
 function rd_intranet_handle_admin_update($request) {
@@ -1293,9 +1276,17 @@ function rd_intranet_handle_admin_update($request) {
         if (!empty($params['pdf_base64'])) {
             update_post_meta($post_id, 'bitacora_pdf_base64', $params['pdf_base64']);
         }
+        
+        $cambios_realizados = $params['cambios_realizados'] ?? null;
+        if (is_string($cambios_realizados)) {
+            $cambios_realizados = json_decode(stripslashes($cambios_realizados), true);
+        }
+        if (is_array($cambios_realizados) && !empty($cambios_realizados)) {
+            update_post_meta($post_id, 'cambios_realizados_json', wp_slash(wp_json_encode($cambios_realizados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+        }
+        update_post_meta($post_id, 'fecha_supervision', current_time('Y-m-d H:i'));
         update_post_meta($post_id, 'estado_revision', 'Revisado');
         
-        // Aquí se dispararía una notificación al empleado de que su jefe le dejó un comentario
         return rest_ensure_response(array('success' => true, 'message' => 'Bitácora actualizada y supervisión registrada.'));
     }
     return new WP_Error('invalid_id', 'ID inválido', array('status' => 400));
@@ -1338,41 +1329,110 @@ function rd_intranet_get_my_tasks() {
     $args = array(
         'post_type' => 'rd_bitacora',
         'author' => $user_id,
-        'posts_per_page' => 30,
-        'post_status' => 'publish'
+        'posts_per_page' => 50,
+        'post_status' => array('publish', 'private', 'draft', 'pending'),
+        'orderby' => array('date' => 'DESC', 'ID' => 'DESC')
     );
     $query = new WP_Query($args);
     
     $todas_las_programaciones = array();
-    $comentario_admin = '';
-    $fecha_bitacora = '';
+    $latest_comentario_admin = '';
+    $latest_supervisado_por = '';
+    $latest_fecha_bitacora = '';
+    $latest_cambios = array();
+    $feedbacks_historial = array();
 
     if ($query->have_posts()) {
-        $first = true;
         while ($query->have_posts()) {
             $query->the_post();
             $post_id = get_the_ID();
+            $post_date = get_the_date('Y-m-d');
             
-            $programaciones = json_decode(get_post_meta($post_id, 'programaciones_json', true), true) ?: array();
-            $todas_las_programaciones = array_merge($todas_las_programaciones, $programaciones);
+            $programaciones = rd_intranet_decode_meta_json($post_id, 'programaciones_json');
+            if (is_array($programaciones)) {
+                $todas_las_programaciones = array_merge($todas_las_programaciones, $programaciones);
+            }
             
-            if ($first) {
-                $comentario_admin = get_post_meta($post_id, 'comentario_admin', true) ?: '';
-                $fecha_bitacora = get_the_date('Y-m-d');
-                $first = false;
+            $actuaciones = rd_intranet_decode_meta_json($post_id, 'actuaciones_json');
+            $comment = get_post_meta($post_id, 'comentario_admin', true) ?: '';
+            $reviewer = get_post_meta($post_id, 'supervisado_por', true) ?: 'Luis Delgado / Jefatura';
+            $cambios = rd_intranet_decode_meta_json($post_id, 'cambios_realizados_json');
+            $fecha_sup = get_post_meta($post_id, 'fecha_supervision', true) ?: '';
+            
+            $has_notes_in_acts = false;
+            if (is_array($actuaciones)) {
+                foreach ($actuaciones as $act) {
+                    if (!empty($act['observaciones']) && trim($act['observaciones']) !== '') {
+                        $has_notes_in_acts = true;
+                        break;
+                    }
+                }
+            }
+            $has_notes_in_prog = false;
+            if (is_array($programaciones)) {
+                foreach ($programaciones as $prog) {
+                    if (!empty($prog['observaciones']) && trim($prog['observaciones']) !== '') {
+                        $has_notes_in_prog = true;
+                        break;
+                    }
+                }
+            }
+            
+            if ((!empty($comment) && trim($comment) !== '') || (!empty($cambios) && count($cambios) > 0) || $has_notes_in_acts || $has_notes_in_prog) {
+                if (empty($latest_comentario_admin) && empty($latest_cambios)) {
+                    $latest_comentario_admin = $comment;
+                    $latest_supervisado_por = $reviewer;
+                    $latest_fecha_bitacora = $post_date;
+                    $latest_cambios = $cambios;
+                }
+                $feedbacks_historial[] = array(
+                    'id' => $post_id,
+                    'date' => $post_date,
+                    'comentario_admin' => $comment,
+                    'supervisado_por' => $reviewer,
+                    'cambios_realizados' => $cambios,
+                    'actuaciones' => $actuaciones,
+                    'programaciones' => $programaciones,
+                    'fecha_supervision' => $fecha_sup
+                );
             }
         }
-        
         wp_reset_postdata();
-        
-        return rest_ensure_response(rd_intranet_fix_unicode_escapes(array(
-            'success' => true,
-            'programaciones' => $todas_las_programaciones,
-            'comentario_admin' => $comentario_admin,
-            'fecha_bitacora' => $fecha_bitacora
-        )));
     }
-    return rest_ensure_response(array('success' => true, 'programaciones' => array(), 'comentario_admin' => '', 'fecha_bitacora' => ''));
+
+    // Verificar también si hay comentarios o cambios en su borrador activo
+    $draft_str = get_user_meta($user_id, 'rd_intranet_draft', true);
+    $draft = $draft_str ? json_decode($draft_str, true) : array();
+    $draft_feedback = null;
+    $draft_has_changes = is_array($draft) && ((!empty($draft['comentario_admin']) && trim($draft['comentario_admin']) !== '') || (!empty($draft['cambios_realizados']) && count($draft['cambios_realizados']) > 0));
+
+    if ($draft_has_changes) {
+        $draft_feedback = array(
+            'id' => 'draft',
+            'date' => current_time('Y-m-d'),
+            'comentario_admin' => $draft['comentario_admin'] ?? '',
+            'supervisado_por' => $draft['supervisado_por'] ?? 'Luis Delgado / Jefatura',
+            'cambios_realizados' => $draft['cambios_realizados'] ?? array(),
+            'fecha_supervision' => $draft['fecha_supervision'] ?? current_time('Y-m-d H:i')
+        );
+        if (empty($latest_comentario_admin) && empty($latest_cambios)) {
+            $latest_comentario_admin = $draft['comentario_admin'] ?? '';
+            $latest_supervisado_por = $draft['supervisado_por'] ?? 'Luis Delgado / Jefatura';
+            $latest_fecha_bitacora = current_time('Y-m-d');
+            $latest_cambios = $draft['cambios_realizados'] ?? array();
+        }
+    }
+    
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes(array(
+        'success' => true,
+        'programaciones' => $todas_las_programaciones,
+        'comentario_admin' => $latest_comentario_admin,
+        'supervisado_por' => $latest_supervisado_por,
+        'fecha_bitacora' => $latest_fecha_bitacora,
+        'cambios_realizados' => $latest_cambios,
+        'feedbacks_historial' => $feedbacks_historial,
+        'draft_feedback' => $draft_feedback
+    )));
 }
 
 function rd_intranet_fix_unicode_escapes($data) {
@@ -1513,13 +1573,16 @@ function rd_intranet_get_my_history() {
     );
     
     $query = new WP_Query($args);
-    $resultados = array();
+    $raw_resultados = array();
     
     if ($query->have_posts()) {
         while ($query->have_posts()) {
             $query->the_post();
-            $clock_in = get_post_meta(get_the_ID(), 'hora_entrada', true) ?: 'N/A';
-            $clock_out = get_post_meta(get_the_ID(), 'hora_salida', true) ?: 'N/A';
+            $post_id = get_the_ID();
+            $post_date = get_the_date('Y-m-d');
+
+            $clock_in = get_post_meta($post_id, 'hora_entrada', true) ?: 'N/A';
+            $clock_out = get_post_meta($post_id, 'hora_salida', true) ?: 'N/A';
             if (strpos($clock_in, 'T') !== false && strpos($clock_in, 'Z') !== false) {
                 $clock_in = date('H:i', strtotime($clock_in) - 14400);
             } elseif (strpos($clock_in, ' ') !== false) {
@@ -1537,28 +1600,48 @@ function rd_intranet_get_my_history() {
                     $clock_in = date('H:i', $t_in - 14400);
                 }
             }
-            $resultados[] = array(
-                'id' => get_the_ID(),
-                'date' => get_the_date('Y-m-d'),
+            $raw_resultados[] = array(
+                'id' => $post_id,
+                'date' => $post_date,
                 'clockIn' => substr($clock_in, 0, 5),
                 'clockOut' => substr($clock_out, 0, 5),
-                'status' => get_post_meta(get_the_ID(), 'estado_revision', true) ?: 'Enviado',
-                'comentario_admin' => get_post_meta(get_the_ID(), 'comentario_admin', true) ?: '',
-                'supervisado_por' => get_post_meta(get_the_ID(), 'supervisado_por', true) ?: '',
-                'ubicacionEntrada' => get_post_meta(get_the_ID(), 'ubicacion_entrada', true),
-                'ubicacionSalida' => get_post_meta(get_the_ID(), 'ubicacion_salida', true),
+                'status' => get_post_meta($post_id, 'estado_revision', true) ?: 'Enviado',
+                'comentario_admin' => get_post_meta($post_id, 'comentario_admin', true) ?: '',
+                'supervisado_por' => get_post_meta($post_id, 'supervisado_por', true) ?: '',
+                'ubicacionEntrada' => get_post_meta($post_id, 'ubicacion_entrada', true),
+                'ubicacionSalida' => get_post_meta($post_id, 'ubicacion_salida', true),
                 'content' => $query->post->post_content ?: get_the_content(),
-                'pdfBase64' => get_post_meta(get_the_ID(), 'bitacora_pdf_base64', true),
-                'actuaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'actuaciones_json'),
-                'ingresos' => rd_intranet_decode_meta_json(get_the_ID(), 'ingresos_json'),
-                'programaciones' => rd_intranet_decode_meta_json(get_the_ID(), 'programaciones_json'),
-                'evidences' => rd_intranet_decode_meta_json(get_the_ID(), 'evidences_json')
+                'pdfBase64' => get_post_meta($post_id, 'bitacora_pdf_base64', true),
+                'actuaciones' => rd_intranet_decode_meta_json($post_id, 'actuaciones_json'),
+                'ingresos' => rd_intranet_decode_meta_json($post_id, 'ingresos_json'),
+                'programaciones' => rd_intranet_decode_meta_json($post_id, 'programaciones_json'),
+                'evidences' => rd_intranet_decode_meta_json($post_id, 'evidences_json'),
+                'cambios_realizados' => rd_intranet_decode_meta_json($post_id, 'cambios_realizados_json'),
+                'fecha_supervision' => get_post_meta($post_id, 'fecha_supervision', true) ?: ''
             );
         }
         wp_reset_postdata();
     }
     
-    return rest_ensure_response(rd_intranet_fix_unicode_escapes($resultados));
+    // Deduplicar por fecha (preservando el que tenga comentarios)
+    $deduped = array();
+    $seen_dates = array();
+    foreach ($raw_resultados as $item) {
+        $d = $item['date'];
+        if (!isset($seen_dates[$d])) {
+            $seen_dates[$d] = true;
+            $deduped[] = $item;
+        } else {
+            $idx = array_search($d, array_keys($seen_dates));
+            if ($idx !== false && isset($deduped[$idx])) {
+                if (!empty($item['comentario_admin']) && empty($deduped[$idx]['comentario_admin'])) {
+                    $deduped[$idx] = $item;
+                }
+            }
+        }
+    }
+    
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes(array_values($deduped)));
 }
 
 function rd_intranet_get_investigaciones() {

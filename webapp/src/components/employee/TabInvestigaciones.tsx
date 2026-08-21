@@ -27,7 +27,8 @@ export const TabInvestigaciones: React.FC = () => {
     opinion_rd: ''
   });
   const currentUserName = localStorage.getItem('rd_user_name') || '';
-  const isAdmin = currentUserName.toLowerCase().includes('roman') || localStorage.getItem('rd_user_role') === 'admin';
+  const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
+  const isAdmin = localStorage.getItem('rd_is_admin') === 'true' || adminUsers.some(u => currentUserName.toLowerCase().includes(u));
 
   const fetchInvestigaciones = async () => {
     setLoading(true);

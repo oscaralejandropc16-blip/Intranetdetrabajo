@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
 import api from '../../lib/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -447,11 +447,14 @@ export default function TabHistorial() {
                             {bitacora.status}
                           </span>
                           {bitacora.comentario_admin && (
-                            <div className="p-2 bg-blue-50/90 border border-blue-200 rounded-xl text-[11px] text-blue-900 max-w-[240px] shadow-sm">
-                              <span className="font-bold text-blue-950 block text-[10px] uppercase tracking-wider">
+                            <div className="p-3 bg-blue-50/95 border border-blue-300/80 rounded-2xl text-xs text-blue-950 shadow-sm max-w-sm sm:max-w-md mt-1.5 transition-all">
+                              <span className="font-black text-blue-950 flex items-center gap-1.5 text-[10px] uppercase tracking-wider mb-1">
+                                <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                 {bitacora.supervisado_por ? `Supervisado por: ${bitacora.supervisado_por}` : 'Observaciones de Jefatura'}:
                               </span>
-                              <span className="italic text-blue-800 line-clamp-3">"{bitacora.comentario_admin}"</span>
+                              <p className="italic text-blue-900 text-xs leading-relaxed whitespace-pre-wrap break-words font-medium">
+                                "{bitacora.comentario_admin}"
+                              </p>
                             </div>
                           )}
                         </div>

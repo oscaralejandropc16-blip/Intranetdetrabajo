@@ -1,24 +1,26 @@
 import { MessageSquare, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export interface Notification {
-  id: number;
+  id: string | number;
   type: string;
   title: string;
   message: string;
   sender: string;
   read: boolean;
+  date?: string;
+  detalles?: string[];
 }
 
 interface NotificationPanelProps {
   notifications: Notification[];
-  setNotifications: (notifications: Notification[]) => void;
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
 }
 
 export default function NotificationPanel({ notifications, setNotifications }: NotificationPanelProps) {
-  const handleMarkAsRead = (id: number) => {
+  const handleMarkAsRead = (id: string | number) => {
     const newNotifs = notifications.map(n => {
-      if (n.id === id) {
-        localStorage.setItem(`rd_notif_read_${n.id}_${n.title}`, 'true');
+      if (String(n.id) === String(id)) {
+        localStorage.setItem(`rd_notif_read_${n.id}`, 'true');
         return { ...n, read: true };
       }
       return n;
@@ -38,7 +40,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
         <div className="space-y-4">
           <h4 className="text-xs font-black uppercase tracking-wider text-blue-600 flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-600 animate-pulse"></span>
-            Nuevas Instrucciones / Feedback Pendiente ({unreadList.length})
+            Nuevas Instrucciones / Modificaciones Pendientes ({unreadList.length})
           </h4>
           {unreadList.map((notif, idx) => (
             <div 
@@ -56,11 +58,24 @@ export default function NotificationPanel({ notifications, setNotifications }: N
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="px-2.5 py-0.5 bg-blue-200/80 text-blue-900 text-[10px] font-black uppercase tracking-wider rounded-full">
-                    NUEVO MENSAJE
+                    {notif.type === 'changes' ? 'MODIFICACIÓN DE JEFATURA' : 'NUEVO MENSAJE'}
                   </span>
                 </div>
                 <h3 className={`text-xl font-black mb-1.5 ${notif.type === 'feedback' ? 'text-blue-950' : 'text-amber-950'}`}>{notif.title}</h3>
-                <p className={`text-base font-medium leading-relaxed ${notif.type === 'feedback' ? 'text-blue-900' : 'text-amber-900'}`}>{notif.message}</p>
+                
+                {Array.isArray(notif.detalles) && notif.detalles.length > 0 ? (
+                  <div className="mt-2.5 space-y-1.5 p-3.5 rounded-2xl bg-white/80 border border-slate-200/80 shadow-sm">
+                    <p className="text-xs font-bold text-slate-900">Detalles de las modificaciones aplicadas:</p>
+                    <ul className="text-xs sm:text-sm text-slate-800 font-semibold space-y-1.5 pl-4 list-disc">
+                      {notif.detalles.map((d, i) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className={`text-base font-medium leading-relaxed ${notif.type === 'feedback' ? 'text-blue-900' : 'text-amber-900'}`}>{notif.message}</p>
+                )}
+                
                 <p className={`text-xs font-bold uppercase tracking-wider mt-3 ${notif.type === 'feedback' ? 'text-blue-600' : 'text-amber-600'}`}>Emisor: {notif.sender}</p>
               </div>
               <button 
@@ -80,7 +95,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
       {readList.length > 0 && (
         <div className="space-y-4 pt-4 border-t border-slate-100">
           <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            Historial de Instrucciones Leídas ({readList.length})
+            Historial de Instrucciones y Modificaciones Leídas ({readList.length})
           </h4>
           {readList.map((notif) => (
             <div 
@@ -97,7 +112,17 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                   </span>
                 </div>
                 <h3 className="text-base font-bold text-slate-800 mb-1">{notif.title}</h3>
-                <p className="text-sm font-medium text-slate-600 leading-relaxed">{notif.message}</p>
+                
+                {Array.isArray(notif.detalles) && notif.detalles.length > 0 ? (
+                  <ul className="text-xs text-slate-600 font-medium space-y-1 pl-4 list-disc mt-1">
+                    {notif.detalles.map((d, i) => (
+                      <li key={i}>{d}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm font-medium text-slate-600 leading-relaxed">{notif.message}</p>
+                )}
+                
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-2">Emisor: {notif.sender}</p>
               </div>
             </div>

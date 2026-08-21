@@ -11,7 +11,7 @@ import {
   getStoredSeguimientos,
   saveStoredSeguimientos
 } from './mockExpedientesData';
-import api from '../../lib/api';
+import api, { submitToServer } from '../../lib/api';
 import DetalleExpedienteModal from './DetalleExpedienteModal';
 import PlanificacionSemanal from './PlanificacionSemanal';
 
@@ -61,7 +61,7 @@ export default function ModuloExpedientes() {
 
           if (missingOnServer.length > 0) {
             console.log(`Sincronizando ${missingOnServer.length} expedientes locales al servidor...`);
-            await api.post('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
+            await submitToServer('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
             
             // Refetch after sync
             const newRes = await api.get('/rd-intranet/v1/expedientes');

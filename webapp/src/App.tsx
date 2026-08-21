@@ -31,7 +31,10 @@ function App() {
     localStorage.removeItem('rd_jwt_token');
     localStorage.removeItem('rd_user_name');
     localStorage.removeItem('rd_user_email');
+    localStorage.removeItem('rd_is_admin');
+    sessionStorage.removeItem('rd_emp_active_tab');
     setAuthToken(null);
+    setIsAdmin(false);
   };
 
   const handleChangePassword = async (e: React.FormEvent) => {

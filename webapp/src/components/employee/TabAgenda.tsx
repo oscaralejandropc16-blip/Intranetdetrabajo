@@ -268,9 +268,12 @@ export default function TabAgenda({
                             </p>
                             
                             {task.observaciones && (
-                              <div className="mt-3 pt-3 border-t border-slate-100 bg-amber-50/50 -mx-4 -mb-4 px-4 pb-4">
-                                <span className="font-bold text-amber-700 block mb-0.5 text-xs">Nota de Jefatura:</span>
-                                <p className="text-xs text-amber-800">{decodeAccents(task.observaciones)}</p>
+                              <div className="mt-3 pt-3 border-t border-amber-200 bg-amber-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
+                                <div className="flex items-center gap-1.5 mb-1 text-amber-900 font-extrabold text-[11px] uppercase tracking-wider">
+                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                  Instrucción del Jefe:
+                                </div>
+                                <p className="text-xs text-amber-950 font-bold leading-relaxed">{decodeAccents(task.observaciones)}</p>
                               </div>
                             )}
                           </div>

@@ -118,7 +118,14 @@ export default function EmployeeDashboard() {
   const [pendingTasks, setPendingTasks] = useState<any[]>([]);
   const [allFutureTasks, setAllFutureTasks] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [draftComment, setDraftComment] = useState<string | null>(null);
+  const [draftSupervisor, setDraftSupervisor] = useState<string | null>(null);
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
+
+  const markFeedbackRead = (id: string | number) => {
+    localStorage.setItem(`rd_notif_read_${id}`, 'true');
+    setNotifications(prev => prev.map(n => String(n.id) === String(id) ? { ...n, read: true } : n));
+  };
 
   // Autoguardado (Local y Nube)
   useEffect(() => {
@@ -140,6 +147,8 @@ export default function EmployeeDashboard() {
       actuaciones,
       ingresos,
       programaciones,
+      comentario_admin: draftComment || undefined,
+      supervisado_por: draftSupervisor || undefined,
       attachedFiles: attachedFiles.map(f => ({
         name: f.name || f.file?.name,
         type: f.type || f.file?.type,
@@ -160,7 +169,9 @@ export default function EmployeeDashboard() {
           ...localDraft,
           actuaciones,
           ingresos,
-          programaciones
+          programaciones,
+          comentario_admin: draftComment || undefined,
+          supervisado_por: draftSupervisor || undefined
         };
         await submitToServer('/rd-intranet/v1/draft', apiDraft);
       } catch (e) {
@@ -169,7 +180,208 @@ export default function EmployeeDashboard() {
     }, 800);
 
     return () => clearTimeout(handler);
-  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, attachedFiles, loadingDraft]);
+  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, attachedFiles, loadingDraft, draftComment, draftSupervisor]);
+
+  const refreshTasksAndNotifications = async () => {
+    try {
+      const [tasksRes, histRes, draftRes] = await Promise.all([
+        api.get('/rd-intranet/v1/my-tasks').catch(() => ({ data: null })),
+        api.get('/rd-intranet/v1/my-history').catch(() => ({ data: [] })),
+        api.get('/rd-intranet/v1/draft').catch(() => ({ data: null }))
+      ]);
+
+      const allNotifs: any[] = [];
+      const hoy = format(new Date(), 'yyyy-MM-dd');
+
+      const parseJson = (val: any) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try { return JSON.parse(val); } catch(e) { return []; }
+        }
+        return [];
+      };
+
+      // 1. Tareas y feedback de my-tasks
+      if (tasksRes.data && tasksRes.data.success) {
+        const rawProgs = parseJson(tasksRes.data.programaciones);
+        const tareasHoy = rawProgs.filter((p: any) => p.fecha === hoy);
+        
+        setPendingTasks(tareasHoy.map((t: any, i: number) => ({
+          id: i + 1,
+          title: `${t.hora || ''} - ${t.tipoActuacion || ''} (${t.organismoTribunal || ''})`,
+          text: `${t.hora || ''} - ${t.tipoActuacion || ''} (${t.organismoTribunal || ''})`,
+          observaciones: t.observaciones || '',
+          completed: false,
+          originalData: t
+        })));
+
+        const futuras = rawProgs
+          .filter((p: any) => p.fecha >= hoy)
+          .sort((a: any, b: any) => {
+            const dateA = new Date(`${a.fecha}T${a.hora || '00:00'}`);
+            const dateB = new Date(`${b.fecha}T${b.hora || '00:00'}`);
+            return dateA.getTime() - dateB.getTime();
+          });
+        setAllFutureTasks(futuras);
+
+        // Capturar instrucciones específicas que el jefe dejó en tareas individuales
+        rawProgs.forEach((t: any, idx: number) => {
+          if (t.observaciones && String(t.observaciones).trim() !== '') {
+            const notifId = `task-instruccion-${t.fecha || hoy}-${idx}`;
+            const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+            allNotifs.push({
+              id: notifId,
+              type: 'instruction',
+              title: `Instrucción de Tarea: ${t.tipoActuacion || 'Actividad'} (${t.fecha || hoy})`,
+              message: t.observaciones,
+              sender: 'Luis Delgado / Jefatura',
+              read: isRead,
+              date: t.fecha || hoy
+            });
+          }
+        });
+
+        // Si vienen feedbacks o modificaciones en el historial de la API
+        if (Array.isArray(tasksRes.data.feedbacks_historial)) {
+          tasksRes.data.feedbacks_historial.forEach((fb: any) => {
+            const hasCambios = Array.isArray(fb.cambios_realizados) && fb.cambios_realizados.length > 0;
+            if ((fb.comentario_admin && fb.comentario_admin.trim() !== '') || hasCambios) {
+              const notifId = `feedback-bitacora-${fb.id}`;
+              const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+              const msg = fb.comentario_admin || (hasCambios ? fb.cambios_realizados.join(' • ') : '');
+              allNotifs.push({
+                id: notifId,
+                type: hasCambios ? 'changes' : 'feedback',
+                title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${fb.date}` : `Feedback Jefatura sobre Bitácora del ${fb.date}`,
+                message: msg,
+                detalles: hasCambios ? fb.cambios_realizados : undefined,
+                sender: fb.supervisado_por || 'Luis Delgado / Jefatura',
+                read: isRead,
+                date: fb.date
+              });
+            }
+          });
+        } else if (tasksRes.data.comentario_admin && tasksRes.data.comentario_admin.trim() !== '') {
+          const notifId = `feedback-bitacora-${tasksRes.data.fecha_bitacora || 'reciente'}`;
+          const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+          allNotifs.push({
+            id: notifId,
+            type: 'feedback',
+            title: `Feedback Jefatura sobre Bitácora del ${tasksRes.data.fecha_bitacora || 'reciente'}`,
+            message: tasksRes.data.comentario_admin,
+            sender: tasksRes.data.supervisado_por || 'Luis Delgado / Jefatura',
+            read: isRead,
+            date: tasksRes.data.fecha_bitacora
+          });
+        }
+      }
+
+      // 2. Feedback, cambios y notas específicas en historial de bitácoras
+      if (histRes.data && Array.isArray(histRes.data)) {
+        histRes.data.forEach((b: any) => {
+          const hasCambios = Array.isArray(b.cambios_realizados) && b.cambios_realizados.length > 0;
+          const hasComment = b.comentario_admin && b.comentario_admin.trim() !== '';
+
+          // A) Notificación de observación general o cambios de jefatura
+          if (hasComment || hasCambios) {
+            const notifId = `feedback-bitacora-${b.id}`;
+            const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+            const exists = allNotifs.some(n => String(n.id) === String(notifId));
+            if (!exists) {
+              const msg = b.comentario_admin || (hasCambios ? b.cambios_realizados.join(' • ') : '');
+              allNotifs.push({
+                id: notifId,
+                type: hasCambios ? 'changes' : 'feedback',
+                title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${b.date}` : `Feedback Jefatura sobre Bitácora del ${b.date}`,
+                message: msg,
+                detalles: hasCambios ? b.cambios_realizados : undefined,
+                sender: b.supervisado_por || 'Luis Delgado / Jefatura',
+                read: isRead,
+                date: b.date
+              });
+            }
+          }
+
+          // B) Notas que el jefe dejó en actuaciones de esa bitácora
+          if (Array.isArray(b.actuaciones)) {
+            b.actuaciones.forEach((act: any, aIdx: number) => {
+              if (act.observaciones && String(act.observaciones).trim() !== '' && String(act.observaciones).trim().toUpperCase() !== 'SIN OBSERVACIONES') {
+                const notifId = `act-obs-${b.id}-${aIdx}`;
+                const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                const exists = allNotifs.some(n => String(n.id) === String(notifId));
+                if (!exists) {
+                  allNotifs.push({
+                    id: notifId,
+                    type: 'instruction',
+                    title: `Instrucción en Actuación: ${act.actuacion || 'Actuación'} (${act.numeroExpediente ? `Exp. ${act.numeroExpediente}` : b.date})`,
+                    message: act.observaciones,
+                    sender: b.supervisado_por || 'Luis Delgado / Jefatura',
+                    read: isRead,
+                    date: b.date
+                  });
+                }
+              }
+            });
+          }
+
+          // C) Notas que el jefe dejó en tareas programadas de esa bitácora
+          if (Array.isArray(b.programaciones)) {
+            b.programaciones.forEach((prog: any, pIdx: number) => {
+              if (prog.observaciones && String(prog.observaciones).trim() !== '' && String(prog.observaciones).trim().toUpperCase() !== 'SIN OBSERVACIONES') {
+                const notifId = `prog-obs-${b.id}-${pIdx}`;
+                const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                const exists = allNotifs.some(n => String(n.id) === String(notifId));
+                if (!exists) {
+                  allNotifs.push({
+                    id: notifId,
+                    type: 'instruction',
+                    title: `Instrucción del Jefe: ${prog.tipoActuacion || 'Tarea'} (${prog.fecha || b.date} - ${prog.hora || ''})`,
+                    message: prog.observaciones,
+                    sender: b.supervisado_por || 'Luis Delgado / Jefatura',
+                    read: isRead,
+                    date: prog.fecha || b.date
+                  });
+                }
+              }
+            });
+          }
+        });
+      }
+
+      // 3. Feedback y modificaciones en borrador activo (Avance)
+      const draftHasCambios = draftRes.data && Array.isArray(draftRes.data.cambios_realizados) && draftRes.data.cambios_realizados.length > 0;
+      const draftHasComment = draftRes.data && draftRes.data.comentario_admin && draftRes.data.comentario_admin.trim() !== '';
+
+      if (draftHasComment || draftHasCambios) {
+        if (draftHasComment) setDraftComment(draftRes.data.comentario_admin);
+        setDraftSupervisor(draftRes.data.supervisado_por || 'Luis Delgado / Jefatura');
+        const notifId = `feedback-draft-${draftRes.data.fecha_supervision || hoy}`;
+        const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+        const exists = allNotifs.some(n => String(n.id) === String(notifId));
+        if (!exists) {
+          const msg = draftRes.data.comentario_admin || (draftHasCambios ? draftRes.data.cambios_realizados.join(' • ') : '');
+          allNotifs.unshift({
+            id: notifId,
+            type: draftHasCambios ? 'changes' : 'feedback',
+            title: draftHasCambios ? `Modificaciones de Jefatura en tu Jornada de Hoy` : `Observaciones de Jefatura sobre tu Avance de Hoy`,
+            message: msg,
+            detalles: draftHasCambios ? draftRes.data.cambios_realizados : undefined,
+            sender: draftRes.data.supervisado_por || 'Luis Delgado / Jefatura',
+            read: isRead,
+            date: hoy
+          });
+        }
+      }
+
+      // Deduplicar notificaciones respetando estado leído
+      const uniqueNotifs = allNotifs.filter((item, index, self) => 
+        index === self.findIndex(t => String(t.id) === String(item.id))
+      );
+      setNotifications(uniqueNotifs);
+    } catch (error) {
+      console.error('Error cargando tareas y notificaciones:', error);
+    }
+  };
 
   useEffect(() => {
     const fetchDraft = async () => {
@@ -190,6 +402,13 @@ export default function EmployeeDashboard() {
           } else {
             setReportSubmitted(false);
             setClockOut(null);
+          }
+
+          if (response.data.comentario_admin) {
+            setDraftComment(response.data.comentario_admin);
+          }
+          if (response.data.supervisado_por) {
+            setDraftSupervisor(response.data.supervisado_por);
           }
 
           if (response.data.clockIn && isSameLocalDate(response.data.clockIn, todayStr)) {
@@ -220,8 +439,8 @@ export default function EmployeeDashboard() {
             if (!localList || localList.length === 0) return serverList || [];
             if (!serverList || serverList.length === 0) return localList || [];
             const map = new Map<string | number, T>();
-            serverList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
             localList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
+            serverList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
             return Array.from(map.values());
           };
 
@@ -238,7 +457,9 @@ export default function EmployeeDashboard() {
             ubicacionEntrada: response.data.ubicacionEntrada || localDraft?.ubicacionEntrada || null,
             actuaciones: mergedActuaciones,
             ingresos: mergedIngresos,
-            programaciones: mergedProgramaciones
+            programaciones: mergedProgramaciones,
+            comentario_admin: response.data.comentario_admin || localDraft?.comentario_admin || undefined,
+            supervisado_por: response.data.supervisado_por || localDraft?.supervisado_por || undefined
           };
           localStorage.setItem(getStorageKey(), JSON.stringify(updatedLocalDraft));
 
@@ -264,60 +485,7 @@ export default function EmployeeDashboard() {
         setLoadingDraft(false);
       }
     };
-    fetchDraft();
 
-    const fetchMyTasks = async () => {
-      try {
-        const response = await api.get('/rd-intranet/v1/my-tasks');
-        if (response.data && response.data.success) {
-          const hoy = format(new Date(), 'yyyy-MM-dd');
-          const parseJson = (val: any) => {
-            if (Array.isArray(val)) return val;
-            if (typeof val === 'string') {
-              try { return JSON.parse(val); } catch(e) { return []; }
-            }
-            return [];
-          };
-          const rawProgs = parseJson(response.data.programaciones);
-          
-          // Filtrar tareas planificadas para hoy (o dejar todas si prefieres, pero filtramos hoy por contexto)
-          const tareasHoy = rawProgs.filter((p: any) => p.fecha === hoy);
-          
-          setPendingTasks(tareasHoy.map((t: any, i: number) => ({
-            id: i + 1,
-            text: `${t.hora} - ${t.tipoActuacion} (${t.organismoTribunal}) ${t.observaciones ? '⚠️ NOTA DEL JEFE: ' + t.observaciones : ''}`,
-            completed: false,
-            originalData: t
-          })));
-
-          // Filtrar todas las tareas futuras (hoy en adelante) para la Agenda Personal
-          const futuras = rawProgs
-            .filter((p: any) => p.fecha >= hoy)
-            .sort((a: any, b: any) => {
-              const dateA = new Date(`${a.fecha}T${a.hora || '00:00'}`);
-              const dateB = new Date(`${b.fecha}T${b.hora || '00:00'}`);
-              return dateA.getTime() - dateB.getTime();
-            });
-          setAllFutureTasks(futuras);
-
-          // Si hay comentario del jefe en la última bitácora
-          if (response.data.comentario_admin) {
-            const notifTitle = `Feedback Jefatura sobre Bitácora del ${response.data.fecha_bitacora}`;
-            const isRead = localStorage.getItem(`rd_notif_read_1_${notifTitle}`) === 'true';
-            setNotifications([{
-              id: 1,
-              type: 'feedback',
-              title: notifTitle,
-              message: response.data.comentario_admin,
-              sender: 'Revisión Administrativa',
-              read: isRead
-            }]);
-          }
-        }
-      } catch (error) {
-        console.error('Error cargando mis tareas:', error);
-      }
-    };
     const fetchExpedientes = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/expedientes');
@@ -328,8 +496,25 @@ export default function EmployeeDashboard() {
         console.error('Error fetching expedientes:', error);
       }
     };
-    fetchMyTasks();
+
+    fetchDraft();
+    refreshTasksAndNotifications();
     fetchExpedientes();
+
+    // Sincronización periódica en segundo plano cada 30 segundos
+    const interval = setInterval(() => {
+      refreshTasksAndNotifications();
+    }, 30000);
+
+    const handleFocus = () => {
+      refreshTasksAndNotifications();
+    };
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const handleEndDay = async (e?: React.FormEvent | React.MouseEvent) => {
@@ -789,7 +974,9 @@ export default function EmployeeDashboard() {
   useEffect(() => {
     sessionStorage.setItem('rd_emp_active_tab', activeTab);
   }, [activeTab]);
-  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const unreadFeedbacks = notifications.filter(n => !n.read);
+  const unreadCount = unreadFeedbacks.length;
 
   const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {
     try {
@@ -921,6 +1108,64 @@ export default function EmployeeDashboard() {
 
       {/* BARRA DE DIVISAS, CLIMA Y RELOJ EN VIVO */}
       <LiveStatusBar />
+
+      {/* BANNER DESTACADO DE OBSERVACIONES Y CORRECCIONES DE JEFATURA */}
+      {unreadFeedbacks.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl border-2 border-blue-400/40 relative overflow-hidden animate-in slide-in-from-top-3 duration-500">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+            <div className="flex items-start gap-4 flex-1">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/50 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
+                <MessageSquare className="w-6 h-6 animate-pulse" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 bg-blue-400 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full">
+                    NUEVA OBSERVACIÓN
+                  </span>
+                  <span className="text-xs text-blue-200 font-semibold">
+                    {unreadFeedbacks[0].date ? `Bitácora del ${unreadFeedbacks[0].date}` : 'Avance de Jornada'}
+                  </span>
+                </div>
+                <h4 className="text-lg font-black text-white">
+                  {unreadFeedbacks[0].sender ? `Mensaje de ${unreadFeedbacks[0].sender}` : 'Observaciones y Correcciones de Jefatura'}
+                </h4>
+                
+                {Array.isArray(unreadFeedbacks[0].detalles) && unreadFeedbacks[0].detalles.length > 0 ? (
+                  <div className="mt-2 p-3 bg-black/25 rounded-2xl border border-white/15 space-y-1.5">
+                    <p className="text-xs font-bold text-blue-200 uppercase tracking-wider">Modificaciones realizadas por Jefatura:</p>
+                    <ul className="text-xs sm:text-sm text-blue-50 font-semibold space-y-1 pl-4 list-disc">
+                      {unreadFeedbacks[0].detalles.map((d: string, i: number) => (
+                        <li key={i}>{d}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <p className="text-sm text-blue-100 font-medium italic leading-relaxed bg-black/20 p-3 rounded-xl border border-white/10 mt-2">
+                    "{unreadFeedbacks[0].message}"
+                  </p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setActiveTab('notificaciones')}
+                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors border border-white/20 cursor-pointer"
+              >
+                Ver Buzón ({unreadFeedbacks.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => markFeedbackRead(unreadFeedbacks[0].id)}
+                className="px-5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4" /> Entendido / Marcar Leído
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* BANNER DE RETRASO */}
       {isLateClosure && !reportSubmitted && (

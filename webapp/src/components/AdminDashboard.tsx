@@ -270,7 +270,13 @@ export default function AdminDashboard() {
               isJefatura
             };
           });
-          setReports(parsedData);
+          
+          // Deduplicación inteligente: agrupar por usuario y fecha (conservando el más completo o con comentarios)
+          const dedupedData = parsedData.filter((item, index, self) => {
+            const key = (item.user || '').toLowerCase().trim() + '_' + item.date;
+            return index === self.findIndex(t => ((t.user || '').toLowerCase().trim() + '_' + t.date) === key);
+          });
+          setReports(dedupedData);
           
           const todayStr = format(new Date(), 'yyyy-MM-dd');
           const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
@@ -416,6 +422,44 @@ export default function AdminDashboard() {
         console.warn('No se pudo regenerar base64 PDF al aprobar:', e);
       }
 
+      // Detectar cambios detallados realizados por el jefe para notificarlos puntualmente al empleado
+      const cambios: string[] = [];
+      
+      // 1. Instrucciones y cambios en programación
+      if (Array.isArray(adminProgramaciones)) {
+        adminProgramaciones.forEach((prog: any, idx: number) => {
+          const originalProg = Array.isArray(selectedReport?.programaciones) ? selectedReport.programaciones[idx] : null;
+          if (prog.observaciones && String(prog.observaciones).trim() !== '') {
+            cambios.push(`Instrucción en tarea (${prog.hora || 'Programada'} - ${prog.tipoActuacion || 'Actividad'}): "${prog.observaciones}"`);
+          }
+          if (originalProg && (originalProg.tipoActuacion !== prog.tipoActuacion || originalProg.hora !== prog.hora || originalProg.organismoTribunal !== prog.organismoTribunal)) {
+            cambios.push(`Modificación en programación (${prog.hora || ''}): ${prog.tipoActuacion || ''} en ${prog.organismoTribunal || ''}`);
+          }
+        });
+        if (Array.isArray(selectedReport?.programaciones) && adminProgramaciones.length > selectedReport.programaciones.length) {
+          cambios.push(`Se asignaron ${adminProgramaciones.length - selectedReport.programaciones.length} nuevas tareas programadas.`);
+        }
+      }
+
+      // 2. Cambios en actuaciones
+      if (Array.isArray(adminActuaciones)) {
+        adminActuaciones.forEach((act: any, idx: number) => {
+          const origAct = Array.isArray(selectedReport?.actuaciones) ? selectedReport.actuaciones[idx] : null;
+          if (origAct && (origAct.actuacion !== act.actuacion || origAct.observaciones !== act.observaciones || origAct.numeroExpediente !== act.numeroExpediente)) {
+            cambios.push(`Corrección en actuación (${act.hora || ''} - Exp. ${act.numeroExpediente || 'N/A'}): ${act.actuacion || ''}`);
+          }
+        });
+      }
+
+      // 3. Comentario general de jefatura
+      if (adminComment && adminComment.trim() !== '') {
+        cambios.push(`Observación General de Jefatura: "${adminComment}"`);
+      }
+
+      if (cambios.length === 0) {
+        cambios.push('Revisión y aprobación de bitácora completada.');
+      }
+
       const reviewerName = localStorage.getItem('rd_user_name') || 'Jefatura';
       const formData = new FormData();
       if (selectedReport.isDraft) {
@@ -428,6 +472,7 @@ export default function AdminDashboard() {
       formData.append('programaciones', JSON.stringify(adminProgramaciones));
       formData.append('actuaciones', JSON.stringify(adminActuaciones));
       formData.append('ingresos', JSON.stringify(adminIngresos));
+      formData.append('cambios_realizados', JSON.stringify(cambios));
 
       const token = localStorage.getItem('rd_jwt_token');
       const urlPath = selectedReport.isDraft ? '/rd-intranet/v1/admin-update-draft' : '/rd-intranet/v1/admin-update';
