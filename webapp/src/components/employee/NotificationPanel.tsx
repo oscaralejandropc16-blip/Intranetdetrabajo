@@ -17,6 +17,7 @@ import {
   MessageCircle 
 } from 'lucide-react';
 import api from '../../lib/api';
+import { WhatsAppStyleChat } from '../chat/WhatsAppStyleChat';
 
 export interface Notification {
   id: string | number;
@@ -56,7 +57,8 @@ export default function NotificationPanel({ notifications, setNotifications }: N
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [itemsPerPage, setItemsPerPage] = useState<number>(5);
 
-  // Estados para el sistema de respuesta bidireccional a Jefatura
+  // Estados para el chat tipo WhatsApp y respuestas
+  const [activeChatNotif, setActiveChatNotif] = useState<Notification | null>(null);
   const [openReplyNotifId, setOpenReplyNotifId] = useState<string | number | null>(null);
   const [replyTextMap, setReplyTextMap] = useState<Record<string, string>>({});
   const [sendingReplyId, setSendingReplyId] = useState<string | number | null>(null);
@@ -427,19 +429,29 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                     </div>
                   </div>
 
-                  {/* Botones de Acción: Responder y Marcar Leído */}
-                  <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                  {/* Botones de Acción: Chat WhatsApp, Responder y Marcar Leído */}
+                  <div className="flex items-center gap-1.5 self-end md:self-center shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setActiveChatNotif(notif)}
+                      className="px-3 py-2 bg-[#075E54] hover:bg-[#128C7E] text-white font-black text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                      title="Abrir chat tipo WhatsApp con Jefatura"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>Chat</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setOpenReplyNotifId(isReplyOpen ? null : notif.id)}
-                      className={`px-3.5 py-2 rounded-xl font-black text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
+                      className={`px-3 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                         isReplyOpen 
-                          ? 'bg-slate-900 text-white shadow-sm' 
+                          ? 'bg-slate-900 text-white shadow-xs' 
                           : 'bg-white hover:bg-slate-100 text-blue-700 border border-blue-200 hover:border-blue-300'
                       }`}
                     >
                       <MessageCircle className="w-3.5 h-3.5" />
-                      <span>{isReplyOpen ? 'Cerrar Respuesta' : 'Responder'}</span>
+                      <span>{isReplyOpen ? 'Cerrar' : 'Responder'}</span>
                     </button>
 
                     {isUnread ? (
@@ -627,6 +639,36 @@ export default function NotificationPanel({ notifications, setNotifications }: N
             </div>
           )}
         </div>
+      )}
+
+      {/* MODAL CHAT TIPO WHATSAPP PARA EMPLEADOS */}
+      {activeChatNotif && (
+        <WhatsAppStyleChat
+          isOpen={true}
+          onClose={() => setActiveChatNotif(null)}
+          currentUser={localStorage.getItem('rd_user_name') || 'Carmen Luisa'}
+          isJefatura={false}
+          targetUser={activeChatNotif.sender || 'Luis Delgado / Jefatura'}
+          reportContext={{ date: activeChatNotif.date || new Date().toISOString().split('T')[0], id: activeChatNotif.post_id }}
+          activeThreadId={String(activeChatNotif.id)}
+          initialMessages={(localRepliesMap[String(activeChatNotif.id)] || []).map(r => ({
+            id: r.id,
+            author: r.author || 'Carmen Luisa',
+            author_role: 'empleado',
+            mensaje: r.mensaje,
+            fecha: r.fecha,
+            atendido: r.atendido
+          }))}
+          onMessageSent={(newMsg) => {
+            const notifKey = String(activeChatNotif.id);
+            const updated = {
+              ...localRepliesMap,
+              [notifKey]: [...(localRepliesMap[notifKey] || []), newMsg]
+            };
+            setLocalRepliesMap(updated);
+            localStorage.setItem('rd_local_employee_replies', JSON.stringify(updated));
+          }}
+        />
       )}
 
     </div>

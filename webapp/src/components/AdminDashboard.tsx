@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -13,6 +13,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import LiveStatusBar from './common/LiveStatusBar';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { WhatsAppStyleChat } from './chat/WhatsAppStyleChat';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -88,6 +89,17 @@ export default function AdminDashboard() {
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [notificationTab, setNotificationTab] = useState<'respuestas' | 'supervision' | 'equipo'>('respuestas');
+  const [repliesFilter, setRepliesFilter] = useState<'pendientes' | 'atendidos' | 'todos'>('pendientes');
+  const [chatConfig, setChatConfig] = useState<{
+    isOpen: boolean;
+    targetUser: string;
+    reportContext?: any;
+    initialMessages: any[];
+  }>({
+    isOpen: false,
+    targetUser: 'Empleado',
+    initialMessages: []
+  });
   const [myDirectFeedbacks, setMyDirectFeedbacks] = useState<any[]>([]);
   const [employeeMessages, setEmployeeMessages] = useState<any[]>(() => getLocalEmployeeMessages());
   const [dismissedFeedbackNotifs, setDismissedFeedbackNotifs] = useState<string[]>(() => {
@@ -104,16 +116,43 @@ export default function AdminDashboard() {
     localStorage.setItem('rd_jefe_read_feedbacks', JSON.stringify(updated));
   };
 
-  const markEmployeeReplyRead = async (replyId: string) => {
-    setEmployeeMessages(prev => prev.map(m => m.id === replyId ? { ...m, leido_por_jefe: true } : m));
+  const markEmployeeReplyRead = async (replyId: string, toggleAtendido = true) => {
+    setEmployeeMessages(prev => prev.map(m => {
+      if (m.id === replyId) {
+        const nextAtendido = toggleAtendido ? !m.atendido : true;
+        return { ...m, leido_por_jefe: true, atendido: nextAtendido };
+      }
+      return m;
+    }));
     try {
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const updatedQ = q.map((item: any) => item.id === replyId ? { ...item, leido_por_jefe: true } : item);
+      const updatedQ = q.map((item: any) => item.id === replyId ? { ...item, leido_por_jefe: true, atendido: true } : item);
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
     } catch (e) {}
     try {
-      await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId });
+      await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId, atendido: true });
     } catch (e) {}
+  };
+
+  const handleOpenChatForReply = (msg: any) => {
+    setShowNotifications(false);
+    const targetUser = msg.author || 'Carmen Luisa';
+    const userMsgs = employeeMessages.filter(m => {
+      const a = (m.author || '').toLowerCase().trim();
+      const t = targetUser.toLowerCase().trim();
+      const sameUser = a === t || a.includes(t) || t.includes(a);
+      const samePost = msg.post_id && m.post_id && String(m.post_id) === String(msg.post_id);
+      return sameUser || samePost;
+    });
+
+    const reportMatch = reports.find(r => r.id == msg.post_id || ((r.user || '').toLowerCase().includes(targetUser.toLowerCase()) && r.date === msg.fecha_bitacora));
+
+    setChatConfig({
+      isOpen: true,
+      targetUser,
+      reportContext: reportMatch || { date: msg.fecha_bitacora || format(new Date(), 'yyyy-MM-dd'), id: msg.post_id },
+      initialMessages: userMsgs.length > 0 ? userMsgs : [msg]
+    });
   };
 
   const handleOpenReportForReply = (msg: any) => {
@@ -1068,8 +1107,15 @@ export default function AdminDashboard() {
           </div>
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
+              onClick={() => handleOpenChatForReply(unreadEmployeeReplies[0])}
+              className="px-3.5 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              title="Abrir chat interactivo tipo WhatsApp"
+            >
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat
+            </button>
+            <button
               onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0])}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <FileText className="w-3.5 h-3.5" /> Ver Bitácora
             </button>
@@ -1224,54 +1270,119 @@ export default function AdminDashboard() {
                 <div className="max-h-80 overflow-y-auto p-3 space-y-2">
                   {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
                   {notificationTab === 'respuestas' && (
-                    employeeMessages.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                        No hay respuestas recientes de empleados.
+                    <div className="space-y-2">
+                      {/* Subfiltros: Pendientes vs Atendidos */}
+                      <div className="flex items-center justify-between gap-1 p-1 bg-slate-950 rounded-xl border border-white/5 text-[10px]">
+                        <button
+                          onClick={() => setRepliesFilter('pendientes')}
+                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                            repliesFilter === 'pendientes' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🔴 Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
+                        </button>
+                        <button
+                          onClick={() => setRepliesFilter('atendidos')}
+                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                            repliesFilter === 'atendidos' ? 'bg-teal-700 text-white' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          ✅ Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
+                        </button>
+                        <button
+                          onClick={() => setRepliesFilter('todos')}
+                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
+                            repliesFilter === 'todos' ? 'bg-emerald-700 text-white' : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Todos ({employeeMessages.length})
+                        </button>
                       </div>
-                    ) : (
-                      employeeMessages.map((m, idx) => {
-                        const isUnread = !m.leido_por_jefe;
-                        return (
-                          <div 
-                            key={m.id || idx} 
-                            className={`p-3 rounded-xl border transition-all ${
-                              isUnread 
-                                ? 'bg-emerald-950/60 border-emerald-500/40' 
-                                : 'bg-white/5 border-white/5'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start gap-2 mb-1">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3" /> {m.author}
-                              </span>
-                              <span className="text-[10px] text-slate-400">{m.fecha}</span>
+
+                      {(() => {
+                        const filtered = employeeMessages.filter(m => {
+                          if (repliesFilter === 'pendientes') return !m.atendido && !m.leido_por_jefe;
+                          if (repliesFilter === 'atendidos') return m.atendido || m.leido_por_jefe;
+                          return true;
+                        });
+
+                        if (filtered.length === 0) {
+                          return (
+                            <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                              {repliesFilter === 'pendientes' 
+                                ? '¡Todo al día! No tienes respuestas pendientes.'
+                                : 'No hay respuestas en este historial.'}
                             </div>
-                            <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
-                              Sobre: {m.titulo}
-                            </p>
-                            <p className="text-xs text-white italic mb-2 line-clamp-2 bg-black/20 p-2 rounded-lg">
-                              "{m.mensaje}"
-                            </p>
-                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                              <button
-                                onClick={() => handleOpenReportForReply(m)}
-                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                              >
-                                <FileText className="w-3 h-3" /> Ver Bitácora
-                              </button>
-                              {isUnread && (
+                          );
+                        }
+
+                        return filtered.map((m, idx) => {
+                          const isUnread = !m.leido_por_jefe && !m.atendido;
+                          return (
+                            <div 
+                              key={m.id || idx} 
+                              className={`p-3 rounded-xl border transition-all ${
+                                isUnread 
+                                  ? 'bg-emerald-950/60 border-emerald-500/40' 
+                                  : 'bg-white/5 border-white/5 opacity-90'
+                              }`}
+                            >
+                              <div className="flex justify-between items-start gap-2 mb-1">
+                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                                  <MessageSquare className="w-3 h-3" /> {m.author}
+                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  {m.atendido && (
+                                    <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                      Atendido
+                                    </span>
+                                  )}
+                                  <span className="text-[10px] text-slate-400">{m.fecha}</span>
+                                </div>
+                              </div>
+                              <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
+                                Sobre: {m.titulo}
+                              </p>
+                              <p className="text-xs text-white italic mb-2 line-clamp-2 bg-black/20 p-2 rounded-lg">
+                                "{m.mensaje}"
+                              </p>
+                              <div className="flex justify-between items-center pt-2 border-t border-white/5 gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => handleOpenChatForReply(m)}
+                                    className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-950/80 px-2 py-1 rounded-md border border-emerald-500/30"
+                                    title="Abrir chat tipo WhatsApp"
+                                  >
+                                    <MessageSquare className="w-3 h-3" /> Chat WhatsApp
+                                  </button>
+                                  <button
+                                    onClick={() => handleOpenReportForReply(m)}
+                                    className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
+                                  >
+                                    <FileText className="w-3 h-3" /> Ver Bitácora
+                                  </button>
+                                </div>
+
                                 <button
                                   onClick={() => markEmployeeReplyRead(m.id)}
                                   className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
                                 >
-                                  <CheckCircle2 className="w-3 h-3" /> Marcar Atendido
+                                  {m.atendido ? (
+                                    <>
+                                      <RotateCcw className="w-3 h-3 text-amber-400" /> Reabrir
+                                    </>
+                                  ) : (
+                                    <>
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Marcar Atendido
+                                    </>
+                                  )}
                                 </button>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })
-                    )
+                          );
+                        });
+                      })()}
+                    </div>
                   )}
                   {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
                   {notificationTab === 'supervision' && (
@@ -2636,10 +2747,22 @@ export default function AdminDashboard() {
 
                   return (
                     <div className="mt-4 pt-4 border-t border-slate-200 space-y-3">
-                      <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4 text-emerald-600" /> 
-                        Hilo de Conversación & Respuestas de {selectedReport.user}
-                      </h5>
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-emerald-600" /> 
+                          Hilo de Conversación & Respuestas de {selectedReport.user}
+                        </h5>
+                        <button
+                          onClick={() => handleOpenChatForReply({
+                            author: selectedReport.user,
+                            post_id: selectedReport.id,
+                            fecha_bitacora: selectedReport.date
+                          })}
+                          className="px-3 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat WhatsApp
+                        </button>
+                      </div>
                       <div className="space-y-2 max-h-60 overflow-y-auto">
                         {matchedReplies.map((rep: any, rIdx: number) => (
                           <div key={rIdx} className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-1">
@@ -2804,6 +2927,22 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      {/* MODAL CHAT TIPO WHATSAPP */}
+      <WhatsAppStyleChat
+        isOpen={chatConfig.isOpen}
+        onClose={() => setChatConfig({ ...chatConfig, isOpen: false })}
+        currentUser={localStorage.getItem('rd_user_name') || 'Luis Delgado'}
+        isJefatura={true}
+        targetUser={chatConfig.targetUser}
+        reportContext={chatConfig.reportContext}
+        initialMessages={chatConfig.initialMessages}
+        onMessageSent={(newMsg) => {
+          setEmployeeMessages(prev => [newMsg, ...prev]);
+        }}
+        onMarkAtendido={(msgId) => {
+          markEmployeeReplyRead(msgId);
+        }}
+      />
     </div>
   );
 }
