@@ -55,11 +55,26 @@ export default function AdminDashboard() {
   // Estados para interactividad de la UI
   const getLocalEmployeeMessages = () => {
     const list: any[] = [];
+    const attendedIds: string[] = [];
+    try {
+      const att = localStorage.getItem('rd_jefe_attended_replies');
+      if (att) attendedIds.push(...JSON.parse(att));
+    } catch (e) {}
+
     try {
       const q = localStorage.getItem('rd_all_employee_replies_queue');
       if (q) {
         const parsedQ = JSON.parse(q);
-        if (Array.isArray(parsedQ)) list.push(...parsedQ);
+        if (Array.isArray(parsedQ)) {
+          parsedQ.forEach((item: any) => {
+            const isAtt = item.atendido === true || attendedIds.includes(String(item.id));
+            list.push({
+              ...item,
+              atendido: isAtt,
+              leido_por_jefe: isAtt || item.leido_por_jefe === true
+            });
+          });
+        }
       }
       const mapRaw = localStorage.getItem('rd_local_employee_replies');
       if (mapRaw) {
@@ -67,7 +82,8 @@ export default function AdminDashboard() {
         Object.entries(parsedMap).forEach(([notifKey, items]: [string, any]) => {
           if (Array.isArray(items)) {
             items.forEach((item: any) => {
-              if (!list.some(m => m.id === item.id || (m.mensaje === item.mensaje && m.fecha === item.fecha))) {
+              const isAtt = item.atendido === true || attendedIds.includes(String(item.id));
+              if (!list.some(m => String(m.id) === String(item.id) || (m.mensaje === item.mensaje && m.fecha === item.fecha))) {
                 list.push({
                   id: item.id || `rep_${Date.now()}`,
                   notif_id: notifKey,
@@ -76,7 +92,8 @@ export default function AdminDashboard() {
                   fecha: item.fecha,
                   fecha_bitacora: item.fecha_bitacora || format(new Date(), 'yyyy-MM-dd'),
                   author: item.author || 'Carmen Luisa',
-                  leido_por_jefe: item.leido_por_jefe || false
+                  leido_por_jefe: isAtt || item.leido_por_jefe === true || false,
+                  atendido: isAtt
                 });
               }
             });
@@ -116,19 +133,43 @@ export default function AdminDashboard() {
     localStorage.setItem('rd_jefe_read_feedbacks', JSON.stringify(updated));
   };
 
-  const markEmployeeReplyRead = async (replyId: string, toggleAtendido = true) => {
+  const markEmployeeReplyRead = async (replyId: string) => {
+    // 1. Guardar persistentemente en rd_jefe_attended_replies
+    try {
+      const existing = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
+      const updated = Array.from(new Set([...existing, String(replyId)]));
+      localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
+    } catch (e) {}
+
+    // 2. Actualizar estado reactivo en pantalla
     setEmployeeMessages(prev => prev.map(m => {
-      if (m.id === replyId) {
-        const nextAtendido = toggleAtendido ? !m.atendido : true;
-        return { ...m, leido_por_jefe: true, atendido: nextAtendido };
+      if (String(m.id) === String(replyId)) {
+        return { ...m, leido_por_jefe: true, atendido: true };
       }
       return m;
     }));
+
+    // 3. Actualizar en cola local
     try {
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const updatedQ = q.map((item: any) => item.id === replyId ? { ...item, leido_por_jefe: true, atendido: true } : item);
+      const updatedQ = q.map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true } : item);
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
     } catch (e) {}
+
+    // 4. Actualizar en mapa local
+    try {
+      const mapRaw = localStorage.getItem('rd_local_employee_replies');
+      if (mapRaw) {
+        const parsedMap = JSON.parse(mapRaw);
+        Object.keys(parsedMap).forEach(k => {
+          if (Array.isArray(parsedMap[k])) {
+            parsedMap[k] = parsedMap[k].map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true } : item);
+          }
+        });
+        localStorage.setItem('rd_local_employee_replies', JSON.stringify(parsedMap));
+      }
+    } catch (e) {}
+
     try {
       await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId, atendido: true });
     } catch (e) {}
@@ -1065,7 +1106,7 @@ export default function AdminDashboard() {
   ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
-  const unreadEmployeeReplies = employeeMessages.filter(m => !m.leido_por_jefe);
+  const unreadEmployeeReplies = employeeMessages.filter(m => !m.leido_por_jefe && !m.atendido);
 
   // 2. Notificaciones de Bitácoras por Revisar del Equipo
   const activeNotifications = reports.filter(r =>
