@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, Briefcase, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import NotificationPanel from './employee/NotificationPanel';
@@ -538,7 +538,8 @@ export default function EmployeeDashboard() {
     });
 
     if (invalidActuacionIndex !== -1) {
-      setActiveTab('registro');
+      setActiveTab('jornada');
+      setSubTabLibro('actuaciones');
       setSystemAlert({
         isOpen: true,
         type: 'error',
@@ -556,7 +557,8 @@ export default function EmployeeDashboard() {
     });
 
     if (invalidIngresoIndex !== -1) {
-      setActiveTab('ingresos');
+      setActiveTab('jornada');
+      setSubTabLibro('ingresos');
       setSystemAlert({
         isOpen: true,
         type: 'error',
@@ -574,7 +576,8 @@ export default function EmployeeDashboard() {
     });
 
     if (invalidProgIndex !== -1) {
-      setActiveTab('agenda');
+      setActiveTab('jornada');
+      setSubTabLibro('programacion');
       setSystemAlert({
         isOpen: true,
         type: 'error',
@@ -601,7 +604,8 @@ export default function EmployeeDashboard() {
       });
 
       if (hasDuplicateIngreso) {
-        setActiveTab('ingresos');
+        setActiveTab('jornada');
+        setSubTabLibro('ingresos');
         setSystemAlert({ isOpen: true, type: 'error', title: 'Expediente Duplicado', message: 'Hay ingresos judiciales con números de expediente que ya han sido asignados por otro usuario o están repetidos. El sistema te impide usar este número para evitar conflictos. Por favor corrígelo.' });
         return;
       }
@@ -958,7 +962,6 @@ export default function EmployeeDashboard() {
 
   const totalPendingTasks = pendingTasks.length;
   const completedPendingTasks = pendingTasks.filter(t => t.completed).length;
-  const tasksCompleted = completedPendingTasks;
 
   const totalItems = totalActuaciones + totalPendingTasks;
   const totalCompleted = completedActuaciones + completedPendingTasks;
@@ -967,8 +970,18 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'expedientes' | 'registro' | 'agenda' | 'ingresos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
-    return (sessionStorage.getItem('rd_emp_active_tab') as any) || 'expedientes';
+  const [activeTab, setActiveTab] = useState<'jornada' | 'expedientes' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
+    const saved = sessionStorage.getItem('rd_emp_active_tab');
+    if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
+    if (saved === 'expedientes' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
+    return 'jornada';
+  });
+
+  const [subTabLibro, setSubTabLibro] = useState<'actuaciones' | 'ingresos' | 'programacion'>(() => {
+    const saved = sessionStorage.getItem('rd_emp_active_tab');
+    if (saved === 'ingresos') return 'ingresos';
+    if (saved === 'agenda') return 'programacion';
+    return 'actuaciones';
   });
 
   useEffect(() => {
@@ -1018,35 +1031,30 @@ export default function EmployeeDashboard() {
   const handleClockIn = async () => {
     const now = new Date();
     const nowIso = now.toISOString();
-    
-    try {
-      setLoadingLocation(true);
-      
-      const immediatePayload = {
-        clockIn: nowIso,
-        ubicacionEntrada: 'Obteniendo ubicación...',
-        fecha: format(now, 'yyyy-MM-dd')
-      };
+    setLoadingLocation(true);
 
-      const res = { data: await submitToServer('/rd-intranet/v1/clock-in', immediatePayload) };
-      let finalClockIn = now;
-      if (res.data && res.data.already_registered && res.data.clockIn) {
-        finalClockIn = new Date(res.data.clockIn);
-      } else if (res.data && res.data.clockIn) {
-        finalClockIn = new Date(res.data.clockIn);
-      }
+    try {
+      const resp = await submitToServer('/rd-intranet/v1/clock-in', {
+        clockIn: nowIso,
+        ubicacionEntrada: 'Detectando satélite...',
+        fecha: format(now, 'yyyy-MM-dd')
+      });
       
-      // 2. Solo al confirmar que el servidor lo guardó, actualizamos el estado visual y el borrador
+      const finalClockIn = resp?.clockIn ? new Date(resp.clockIn) : now;
       setClockIn(finalClockIn);
+      setReportSubmitted(false);
+      setClockOut(null);
+      setActiveTab('jornada');
+      setSubTabLibro('actuaciones');
+
       const immediateDraft = {
         clockIn: finalClockIn.toISOString(),
-        ubicacionEntrada: 'Obteniendo ubicación...',
+        ubicacionEntrada: 'Detectando satélite...',
         actuaciones,
         ingresos,
         programaciones
       };
       localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
-      
       submitToServer('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
         console.warn('Sincronización de borrador demorada:', cloudError);
       });
@@ -1055,7 +1063,6 @@ export default function EmployeeDashboard() {
       setUbicacionEntrada(loc);
       setLoadingLocation(false);
 
-      // Actualizar la ubicación una vez resuelta por el satélite/mapa
       submitToServer('/rd-intranet/v1/clock-in', {
         clockIn: finalClockIn.toISOString(),
         ubicacionEntrada: loc,
@@ -1065,7 +1072,6 @@ export default function EmployeeDashboard() {
       console.error('Error al registrar entrada en el servidor', error);
       setLoadingLocation(false);
       
-      // Fallback: Proceed locally if server is unreachable or rate-limiting
       setClockIn(now);
       const immediateDraft = {
         clockIn: nowIso,
@@ -1077,7 +1083,8 @@ export default function EmployeeDashboard() {
       localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
       setReportSubmitted(false);
       setClockOut(null);
-      setActiveTab('registro');
+      setActiveTab('jornada');
+      setSubTabLibro('actuaciones');
       
       setSystemAlert({
         isOpen: true,
@@ -1091,9 +1098,10 @@ export default function EmployeeDashboard() {
   const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : null;
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isLateClosure = clockInDateStr && clockInDateStr < todayStr;
+  const userName = localStorage.getItem('rd_user_name') || 'Empleado';
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-8 animate-in fade-in duration-700">
+    <div className="max-w-7xl mx-auto space-y-6 lg:space-y-7 animate-in fade-in duration-500">
       <SystemAlertModal
         isOpen={systemAlert.isOpen}
         type={systemAlert.type}
@@ -1111,56 +1119,43 @@ export default function EmployeeDashboard() {
 
       {/* BANNER DESTACADO DE OBSERVACIONES Y CORRECCIONES DE JEFATURA */}
       {unreadFeedbacks.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl border-2 border-blue-400/40 relative overflow-hidden animate-in slide-in-from-top-3 duration-500">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/10 rounded-full blur-2xl pointer-events-none"></div>
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+        <div className="bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 text-white p-5 sm:p-6 rounded-3xl shadow-xl border border-blue-400/30 relative overflow-hidden animate-in slide-in-from-top-2">
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-start gap-4 flex-1">
-              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 border border-blue-400/50 flex items-center justify-center text-blue-300 shrink-0 shadow-inner">
+              <div className="w-11 h-11 rounded-2xl bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 shrink-0">
                 <MessageSquare className="w-6 h-6 animate-pulse" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 bg-blue-400 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full">
-                    NUEVA OBSERVACIÓN
+                    NUEVA INSTRUCCIÓN DE JEFATURA
                   </span>
                   <span className="text-xs text-blue-200 font-semibold">
                     {unreadFeedbacks[0].date ? `Bitácora del ${unreadFeedbacks[0].date}` : 'Avance de Jornada'}
                   </span>
                 </div>
-                <h4 className="text-lg font-black text-white">
-                  {unreadFeedbacks[0].sender ? `Mensaje de ${unreadFeedbacks[0].sender}` : 'Observaciones y Correcciones de Jefatura'}
+                <h4 className="text-base sm:text-lg font-black text-white">
+                  {unreadFeedbacks[0].title || 'Observaciones y Correcciones de Jefatura'}
                 </h4>
-                
-                {Array.isArray(unreadFeedbacks[0].detalles) && unreadFeedbacks[0].detalles.length > 0 ? (
-                  <div className="mt-2 p-3 bg-black/25 rounded-2xl border border-white/15 space-y-1.5">
-                    <p className="text-xs font-bold text-blue-200 uppercase tracking-wider">Modificaciones realizadas por Jefatura:</p>
-                    <ul className="text-xs sm:text-sm text-blue-50 font-semibold space-y-1 pl-4 list-disc">
-                      {unreadFeedbacks[0].detalles.map((d: string, i: number) => (
-                        <li key={i}>{d}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <p className="text-sm text-blue-100 font-medium italic leading-relaxed bg-black/20 p-3 rounded-xl border border-white/10 mt-2">
-                    "{unreadFeedbacks[0].message}"
-                  </p>
-                )}
+                <p className="text-xs sm:text-sm text-blue-100 font-medium leading-relaxed">
+                  "{unreadFeedbacks[0].message}"
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2 self-end md:self-center shrink-0">
               <button
                 type="button"
                 onClick={() => setActiveTab('notificaciones')}
-                className="px-5 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors border border-white/20 cursor-pointer"
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl transition-colors border border-white/20 cursor-pointer"
               >
-                Ver Buzón ({unreadFeedbacks.length})
+                Abrir Buzón ({unreadFeedbacks.length})
               </button>
               <button
                 type="button"
                 onClick={() => markFeedbackRead(unreadFeedbacks[0].id)}
-                className="px-5 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer"
+                className="px-4 py-2.5 bg-blue-500 hover:bg-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-transform hover:-translate-y-0.5 flex items-center gap-1.5 cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4" /> Entendido / Marcar Leído
+                <CheckCircle2 className="w-4 h-4" /> Marcar Leído
               </button>
             </div>
           </div>
@@ -1173,315 +1168,391 @@ export default function EmployeeDashboard() {
           <div className="flex items-center gap-3">
             <AlertCircle className="w-6 h-6 animate-pulse" />
             <div>
-              <p className="font-bold text-lg">Tienes una jornada pendiente del {clockInDateStr}</p>
-              <p className="text-sm text-rose-100">Debes cerrar esta jornada antes de poder registrar actividades del día de hoy.</p>
+              <p className="font-bold text-base">Tienes una jornada pendiente del {clockInDateStr}</p>
+              <p className="text-xs text-rose-100">Debes cerrar esta jornada antes de registrar actividades de hoy.</p>
             </div>
           </div>
           <button 
             onClick={handleEndDay} 
-            className="px-6 py-2 bg-white text-rose-600 font-bold rounded-xl shadow-md hover:bg-rose-50 transition-colors"
+            className="px-5 py-2 bg-white text-rose-600 font-bold text-xs rounded-xl shadow-md hover:bg-rose-50 transition-colors"
           >
             Cerrar Jornada Anterior
           </button>
         </div>
       )}
 
-      {/* Header Premium con Stats */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl border border-slate-800 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4 pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+      {/* HEADER PRINCIPAL MODERNO Y ELEGANTE */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-7 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+        <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-5">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">Jornada Activa</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 mb-2">
+              <span className={`w-2 h-2 rounded-full ${clockIn ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+              <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase">
+                {clockIn ? 'Jornada Iniciada' : 'Jornada Sin Iniciar'}
+              </span>
             </div>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight mb-2">Mi Jornada <span className="text-amber-400">KANT</span></h2>
-            <p className="text-slate-400 text-sm sm:text-base font-medium capitalize flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4 text-amber-400" />
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+              Hola, <span className="text-amber-400 capitalize">{userName}</span>
+            </h2>
+            <p className="text-slate-400 text-xs sm:text-sm font-medium capitalize flex items-center gap-2 mt-1">
+              <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
               {format(new Date(), "EEEE, d 'de' MMMM, yyyy", { locale: es })}
             </p>
           </div>
           
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 w-full lg:w-auto items-stretch">
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-5 flex-1 lg:w-36 text-center hover:bg-white/10 transition-colors">
-              <Activity className="w-5 h-5 text-amber-400 mx-auto mb-1.5" />
-              <p className="text-2xl sm:text-3xl font-black text-white">{progress}%</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Progreso</p>
+          {/* Métricas Rápidas */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+            <button
+              onClick={() => setActiveTab('notificaciones')}
+              className={`px-4 py-3 rounded-2xl border transition-all flex items-center gap-3 cursor-pointer ${
+                unreadCount > 0 
+                  ? 'bg-amber-500/20 border-amber-400/40 text-amber-300 hover:bg-amber-500/30' 
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <div className="relative">
+                <MessageSquare className="w-5 h-5" />
+                {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping"></span>}
+              </div>
+              <div className="text-left">
+                <p className="text-base font-black leading-none">{unreadCount}</p>
+                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Buzón</p>
+              </div>
+            </button>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <Activity className="w-5 h-5 text-emerald-400" />
+              <div>
+                <p className="text-base font-black leading-none text-white">{progress}%</p>
+                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Progreso</p>
+              </div>
             </div>
-            <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-5 flex-1 lg:w-36 text-center hover:bg-white/10 transition-colors">
-              <Briefcase className="w-5 h-5 text-blue-400 mx-auto mb-1.5" />
-              <p className="text-2xl sm:text-3xl font-black text-white">{pendingTasks.length - tasksCompleted}</p>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-bold uppercase tracking-wider mt-1">Pendientes</p>
+
+            <div className="bg-white/5 border border-white/10 rounded-2xl px-4 py-3 flex items-center gap-3">
+              <Briefcase className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-base font-black leading-none text-white">{actuaciones.length}</p>
+                <p className="text-[10px] uppercase font-bold text-slate-400 mt-0.5">Actuaciones</p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navegación por Pestañas Segmentada y Moderna */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 dark:bg-slate-900/60 rounded-2xl border border-slate-200/80 dark:border-white/10 scrollbar-thin scrollbar-thumb-slate-300">
+      {/* 5 PESTAÑAS PRINCIPALES: CLARAS, MODERNAS Y SIN AMONTONAMIENTO */}
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80 scrollbar-none">
+        <button 
+          onClick={() => setActiveTab('jornada')}
+          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'jornada' 
+              ? 'bg-slate-900 text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+          }`}
+        >
+          <Clock className="w-4 h-4 text-amber-400" />
+          <span>Mi Jornada & Libros</span>
+        </button>
+        
         <button 
           onClick={() => setActiveTab('expedientes')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'expedientes' 
+              ? 'bg-slate-900 text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+          }`}
         >
-          <Scale className="w-4 h-4" />
-          <span>Expedientes & Agenda</span>
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('ingresos')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'ingresos' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
-        >
-          <FileDigit className="w-4 h-4" />
-          <span>Libro de Ingresos</span>
-        </button>
-        
-        <button 
-          onClick={() => setActiveTab('registro')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'registro' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
-        >
-          <Activity className="w-4 h-4" />
-          <span>Libro de Actuaciones</span>
+          <Scale className="w-4 h-4 text-blue-400" />
+          <span>Expedientes & Casos</span>
         </button>
 
         <button 
-          onClick={() => setActiveTab('agenda')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
-        >
-          <CalendarIcon className="w-4 h-4" />
-          <span>Libro de Programación</span>
-        </button>
-        
-        <button 
           onClick={() => setActiveTab('notificaciones')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'notificaciones' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'notificaciones' 
+              ? 'bg-slate-900 text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+          }`}
         >
           <div className="relative">
-            <MessageSquare className="w-4 h-4" />
-            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full border-2 border-slate-900"></span>}
+            <MessageSquare className="w-4 h-4 text-emerald-400" />
+            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>}
           </div>
-          <span>Buzón {unreadCount > 0 && `(${unreadCount})`}</span>
+          <span>Buzón de Jefatura</span>
+          {unreadCount > 0 && (
+            <span className="px-2 py-0.5 bg-amber-500 text-slate-950 font-black text-[10px] rounded-full">
+              {unreadCount}
+            </span>
+          )}
         </button>
 
         <button 
           onClick={() => setActiveTab('historial')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'historial' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'historial' 
+              ? 'bg-slate-900 text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+          }`}
         >
-          <History className="w-4 h-4" />
+          <History className="w-4 h-4 text-purple-400" />
           <span>Mi Historial</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('investigaciones')}
-          className={`flex items-center gap-2 px-4 py-2.5 sm:px-5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${activeTab === 'investigaciones' ? 'bg-amber-500 text-slate-950 shadow-md' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/5'}`}
+          className={`flex items-center gap-2.5 px-5 py-3 rounded-xl font-black text-xs sm:text-sm transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'investigaciones' 
+              ? 'bg-slate-900 text-white shadow-md' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/80'
+          }`}
         >
-          <BookOpen className="w-4 h-4" />
-          <span>Investigaciones & Sentencias</span>
+          <BookOpen className="w-4 h-4 text-indigo-400" />
+          <span>Biblioteca & Sentencias</span>
         </button>
       </div>
 
-      {/* Estructura Principal con Panel Fijo (Sidebar) */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 mt-6">
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className="animate-in fade-in duration-300">
         
-        {/* PANEL FIJO IZQUIERDO: Asistencia y Cierre */}
-        <div className="xl:col-span-3 space-y-6">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 sticky top-6 flex flex-col min-h-[400px]">
-            <div className="flex items-center gap-4 mb-6">
-              <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Clock className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-slate-800">Horario</h3>
-                <p className="text-sm text-slate-500 font-medium">Panel de Control</p>
-              </div>
-            </div>
+        {/* VISTA 1: MI JORNADA & LIBROS DEL DÍA */}
+        {activeTab === 'jornada' && (
+          <div className="space-y-6">
             
-            <div className="space-y-4 flex-1">
-              <button
-                type="button"
-                onClick={handleClockIn}
-                disabled={clockIn !== null || loadingDraft || reportSubmitted}
-                className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm ${
-                  loadingDraft
-                    ? 'bg-amber-50 text-amber-700 cursor-wait border-2 border-amber-200'
-                    : reportSubmitted
-                    ? 'bg-slate-100 text-slate-500 cursor-not-allowed border-2 border-slate-200'
-                    : clockIn 
-                    ? 'bg-emerald-50 text-emerald-700 cursor-not-allowed border-2 border-emerald-100'
-                    : 'bg-slate-900 hover:bg-slate-800 text-white shadow-xl hover:shadow-2xl hover:-translate-y-1 border-2 border-slate-900 cursor-pointer'
-                }`}
-              >
-                <span className="flex items-center gap-2 mb-1">
-                  {loadingDraft ? <Clock className="w-5 h-5 animate-spin text-amber-600" /> : reportSubmitted ? <CheckCircle2 className="w-5 h-5 text-slate-500" /> : clockIn ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                  <span>{loadingDraft ? 'Sincronizando...' : reportSubmitted ? 'Jornada de Hoy Concluida' : clockIn ? 'Entrada Registrada' : 'Marcar Entrada'}</span>
-                </span>
-                {clockIn && (
-                  <div className="flex flex-col items-center gap-1 mt-1">
-                    <span className="text-emerald-900 bg-emerald-200/50 px-3 py-1 rounded-lg text-xs tracking-wider">{format(clockIn, 'hh:mm a')}</span>
-                    {loadingLocation || (ubicacionEntrada && ubicacionEntrada.toLowerCase().includes('obteniendo')) ? (
-                      <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight animate-pulse">
-                        📍 Buscando ciudad satelital...
-                      </span>
-                    ) : ubicacionEntrada && ubicacionEntrada !== 'N/A' ? (
-                      <span className="text-emerald-700 text-[10px] tracking-wide uppercase font-bold text-center leading-tight">
-                        📍 {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
-                            .replace(/\\u00f3/gi, 'ó')
-                            .replace(/\\u00e1/gi, 'á')
-                            .replace(/\\u00e9/gi, 'é')
-                            .replace(/\\u00ed/gi, 'í')
-                            .replace(/\\u00fa/gi, 'ú')
-                            .replace(/\\u00f1/gi, 'ñ')}
+            {/* TARJETA SUPERIOR DE CONTROL DE ASISTENCIA Y CIERRE */}
+            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-5">
+              
+              {/* Estado de Horario */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-800 shrink-0">
+                  <Clock className="w-6 h-6 text-blue-600" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Control de Asistencia</span>
+                    <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md ${
+                      reportSubmitted 
+                        ? 'bg-emerald-100 text-emerald-800' 
+                        : clockIn 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {reportSubmitted ? 'Jornada Concluida' : clockIn ? 'En Curso' : 'Pendiente Entrada'}
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center gap-3 mt-1">
+                    {clockIn ? (
+                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1">
+                        🟢 Entrada: <span className="text-blue-600">{format(clockIn, 'hh:mm a')}</span>
                       </span>
                     ) : (
-                      <span className="text-amber-600 text-[10px] tracking-wide uppercase font-medium text-center leading-tight">
-                        ⚠️ GPS no detectado o denegado
+                      <span className="text-sm font-semibold text-slate-400">Sin marcar entrada</span>
+                    )}
+
+                    {clockOut && (
+                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1">
+                        🔴 Salida: <span className="text-rose-600">{format(clockOut, 'hh:mm a')}</span>
+                      </span>
+                    )}
+
+                    {ubicacionEntrada && ubicacionEntrada !== 'N/A' && (
+                      <span className="text-xs font-bold text-slate-500 flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
+                        <MapPin className="w-3 h-3 text-blue-500" />
+                        {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
+                          .replace(/\\u00f3/gi, 'ó').replace(/\\u00e1/gi, 'á').replace(/\\u00e9/gi, 'é').replace(/\\u00ed/gi, 'í')}
                       </span>
                     )}
                   </div>
-                )}
-              </button>
+                </div>
+              </div>
 
-              <div className={`w-full py-4 px-4 rounded-2xl flex flex-col items-center justify-center font-bold transition-all duration-300 text-sm border-2 ${
-                  (clockOut || reportSubmitted)
-                    ? 'bg-rose-50 text-rose-700 border-rose-100'
-                    : 'bg-slate-50 text-slate-400 border-slate-100 border-dashed'
-                }`}
-              >
-                <span className="flex items-center gap-2 mb-1">
-                  {(clockOut || reportSubmitted) ? <CheckCircle2 className="w-5 h-5" /> : <Clock className="w-5 h-5 opacity-50" />}
-                  <span>{(clockOut || reportSubmitted) ? 'Salida Registrada' : 'Salida Pendiente'}</span>
-                </span>
-                {clockOut && <span className="text-rose-900 bg-rose-200/50 px-3 py-1 rounded-lg text-xs tracking-wider mt-1">{format(clockOut, 'hh:mm a')}</span>}
+              {/* Botones de Acción de Marcaje */}
+              <div className="flex flex-wrap items-center gap-3 self-start md:self-auto">
+                {!clockIn ? (
+                  <button
+                    type="button"
+                    onClick={handleClockIn}
+                    disabled={loadingDraft || loadingLocation}
+                    className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer hover:-translate-y-0.5"
+                  >
+                    <Clock className="w-4 h-4 text-amber-400" />
+                    <span>{loadingLocation ? 'Detectando satélite...' : loadingDraft ? 'Sincronizando...' : 'Marcar Entrada'}</span>
+                  </button>
+                ) : !reportSubmitted ? (
+                  <button
+                    type="button"
+                    onClick={handleEndDay}
+                    disabled={closingDay}
+                    className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer hover:-translate-y-0.5"
+                  >
+                    {closingDay ? (
+                      <>
+                        <Activity className="w-4 h-4 animate-spin" />
+                        <span>Generando PDF...</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>Cerrar Jornada (Enviar PDF)</span>
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <span className="px-4 py-2 bg-emerald-50 text-emerald-700 font-bold text-xs rounded-xl border border-emerald-200 flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4" /> Bitácora enviada con éxito
+                  </span>
+                )}
               </div>
             </div>
 
-            {reportSubmitted && (
-              <div className="mt-4 mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200 flex flex-col gap-2 text-amber-800 text-sm">
-                <AlertCircle className="w-5 h-5 flex-shrink-0 mx-auto" />
-                <p className="font-medium text-center leading-tight">Bitácora cerrada y enviada.</p>
+            {/* SI NO HA MARCADO ENTRADA: PANTALLA DE ACCESO */}
+            {clockIn === null && !reportSubmitted && !loadingDraft ? (
+              <div className="bg-white rounded-3xl p-10 sm:p-14 border-2 border-dashed border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-5 min-h-[400px]">
+                <div className="w-16 h-16 bg-amber-100 rounded-3xl flex items-center justify-center shadow-md">
+                  <Lock className="w-8 h-8 text-amber-600" />
+                </div>
+                <div className="max-w-md space-y-2">
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Marca tu Hora de Entrada</h3>
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed">
+                    Para comenzar a registrar tus actuaciones, ingresos o programar tu agenda diaria en la Intranet KANT, primero debes registrar tu hora de entrada.
+                  </p>
+                </div>
+                <button
+                  onClick={handleClockIn}
+                  className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <Clock className="w-4 h-4 text-amber-400" />
+                  <span>Marcar Entrada Ahora</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                
+                {/* SUB-PESTAÑAS DE LOS 3 LIBROS */}
+                <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                  <button
+                    type="button"
+                    onClick={() => setSubTabLibro('actuaciones')}
+                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                      subTabLibro === 'actuaciones'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <Activity className="w-4 h-4 text-blue-600" />
+                    <span>1. Libro de Actuaciones</span>
+                    <span className="px-2 py-0.2 bg-blue-100 text-blue-800 rounded-full text-[10px] font-black">
+                      {actuaciones.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubTabLibro('ingresos')}
+                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                      subTabLibro === 'ingresos'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <FileDigit className="w-4 h-4 text-emerald-600" />
+                    <span>2. Libro de Ingresos</span>
+                    <span className="px-2 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black">
+                      {ingresos.length}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubTabLibro('programacion')}
+                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                      subTabLibro === 'programacion'
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    <CalendarIcon className="w-4 h-4 text-amber-600" />
+                    <span>3. Libro de Programación</span>
+                    <span className="px-2 py-0.2 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
+                      {programaciones.length}
+                    </span>
+                  </button>
+                </div>
+
+                {/* CONTENIDO DEL LIBRO SELECCIONADO */}
+                <div className="animate-in fade-in duration-200">
+                  {subTabLibro === 'actuaciones' && (
+                    <TabRegistroDiario 
+                      reportSubmitted={reportSubmitted}
+                      actuaciones={actuaciones}
+                      setActuaciones={setActuaciones}
+                      attachedFiles={attachedFiles}
+                      setAttachedFiles={setAttachedFiles}
+                      pendingTasks={pendingTasks}
+                      setPendingTasks={setPendingTasks}
+                      globalExpedientes={globalExpedientes}
+                      ingresosActivos={ingresos}
+                    />
+                  )}
+
+                  {subTabLibro === 'ingresos' && (
+                    <TabLibroIngresos 
+                      ingresos={ingresos}
+                      setIngresos={setIngresos}
+                      reportSubmitted={reportSubmitted}
+                    />
+                  )}
+
+                  {subTabLibro === 'programacion' && (
+                    <TabAgenda 
+                      programaciones={programaciones}
+                      setProgramaciones={setProgramaciones}
+                      reportSubmitted={reportSubmitted}
+                      allFutureTasks={allFutureTasks}
+                    />
+                  )}
+                </div>
+
               </div>
             )}
 
-            <div className="mt-auto pt-6 border-t border-slate-100">
-              <button 
-                type="button"
-                onClick={handleEndDay}
-                disabled={reportSubmitted || clockIn === null || closingDay}
-                className={`w-full font-bold py-4 rounded-xl transition-all duration-300 shadow-lg hover:-translate-y-1 flex flex-col items-center justify-center gap-1 ${
-                  reportSubmitted
-                    ? 'bg-slate-200 text-slate-500 cursor-not-allowed shadow-none hover:translate-y-0'
-                    : closingDay
-                    ? 'bg-amber-300 text-slate-700 cursor-wait shadow-none hover:translate-y-0'
-                    : 'bg-amber-500 hover:bg-amber-400 hover:shadow-xl text-slate-900'
-                } ${(!reportSubmitted && clockIn === null) ? 'opacity-50 cursor-not-allowed hover:translate-y-0' : ''}`}
-              >
-                {reportSubmitted ? (
-                  <>
-                    <CheckCircle2 className="w-6 h-6" />
-                    <span>Bitácora Enviada</span>
-                  </>
-                ) : closingDay ? (
-                  <>
-                    <Activity className="w-6 h-6 animate-spin" />
-                    <span>Generando PDF y Enviando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Cerrar Jornada</span>
-                    <span className="text-xs font-medium opacity-80">(Guardar y Enviar PDF)</span>
-                  </>
-                )}
-              </button>
-            </div>
           </div>
-        </div>
+        )}
 
-        {/* ÁREA DINÁMICA DERECHA: Contenido de la pestaña */}
-        <div className="xl:col-span-9 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          {clockIn === null && !reportSubmitted && !loadingDraft && ['ingresos', 'registro', 'agenda', 'investigaciones'].includes(activeTab) ? (
-            <div className="bg-white rounded-3xl p-8 sm:p-12 lg:p-16 border-2 border-dashed border-amber-300 shadow-sm flex flex-col items-center justify-center text-center space-y-6 animate-in zoom-in-95 duration-500 min-h-[480px] relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/5 rounded-full blur-3xl pointer-events-none"></div>
-              <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-amber-600 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/30 rotate-3 hover:rotate-0 transition-transform duration-300">
-                <Lock className="w-10 h-10 text-slate-900" />
-              </div>
-              <div className="max-w-md space-y-2">
-                <span className="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold uppercase tracking-widest rounded-full">Acceso Bloqueado</span>
-                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Marca tu Hora de Entrada</h3>
-                <p className="text-slate-500 text-sm font-medium leading-relaxed">
-                  Para comenzar a registrar expedientes, actuaciones u organizar tu agenda diaria en la Intranet KANT, primero debes registrar tu hora de entrada.
-                </p>
-              </div>
-              <button
-                onClick={handleClockIn}
-                disabled={loadingDraft}
-                className="px-8 py-4 bg-slate-900 hover:bg-slate-800 text-white font-bold text-base rounded-2xl shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all flex items-center gap-3 cursor-pointer"
-              >
-                <Clock className="w-5 h-5 text-amber-400" />
-                <span>Marcar Entrada Ahora</span>
-              </button>
+        {/* VISTA 2: EXPEDIENTES & CASOS (ANCHO COMPLETO) */}
+        {activeTab === 'expedientes' && (
+          <ModuloExpedientes />
+        )}
+
+        {/* VISTA 3: BUZÓN DE JEFATURA (ANCHO COMPLETO) */}
+        {activeTab === 'notificaciones' && (
+          <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[500px]">
+            <div className="flex items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-800 flex items-center gap-3">
+                <MessageSquare className="w-6 h-6 text-blue-600" /> 
+                <span>Buzón de Instrucciones y Correcciones</span>
+              </h3>
+              <span className="text-xs font-bold text-slate-500">
+                {notifications.length} {notifications.length === 1 ? 'comunicación' : 'comunicaciones'}
+              </span>
             </div>
-          ) : (
-            <>
-              {activeTab === 'registro' && (
-                <TabRegistroDiario 
-                  reportSubmitted={reportSubmitted}
-                  actuaciones={actuaciones}
-                  setActuaciones={setActuaciones}
-                  attachedFiles={attachedFiles}
-                  setAttachedFiles={setAttachedFiles}
-                  pendingTasks={pendingTasks}
-                  setPendingTasks={setPendingTasks}
-                  globalExpedientes={globalExpedientes}
-                  ingresosActivos={ingresos}
-                />
-              )}
-              
-              {activeTab === 'agenda' && (
-                <TabAgenda 
-                  programaciones={programaciones}
-                  setProgramaciones={setProgramaciones}
-                  reportSubmitted={reportSubmitted}
-                  allFutureTasks={allFutureTasks}
-                />
-              )}
+            {notifications.length === 0 ? (
+              <p className="text-slate-500 text-center py-12 font-medium">No tienes notificaciones en tu buzón.</p>
+            ) : (
+              <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
+            )}
+          </div>
+        )}
 
-              {activeTab === 'ingresos' && (
-                <TabLibroIngresos 
-                  ingresos={ingresos}
-                  setIngresos={setIngresos}
-                  reportSubmitted={reportSubmitted}
-                />
-              )}
+        {/* VISTA 4: MI HISTORIAL (ANCHO COMPLETO) */}
+        {activeTab === 'historial' && (
+          <TabHistorial />
+        )}
 
-              {activeTab === 'notificaciones' && (
-                <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 min-h-[500px]">
-                  <h3 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-3">
-                    <MessageSquare className="w-7 h-7 text-blue-500" /> 
-                    Buzón de Mensajes
-                  </h3>
-                  {notifications.length === 0 ? (
-                    <p className="text-slate-500 text-center py-10">No tienes notificaciones.</p>
-                  ) : (
-                    <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
-                  )}
-                </div>
-              )}
+        {/* VISTA 5: BIBLIOTECA & INVESTIGACIONES (ANCHO COMPLETO) */}
+        {activeTab === 'investigaciones' && (
+          <TabInvestigaciones />
+        )}
 
-              {activeTab === 'historial' && (
-                <TabHistorial />
-              )}
-
-              {activeTab === 'expedientes' && (
-                <ModuloExpedientes />
-              )}
-
-              {activeTab === 'investigaciones' && (
-                <TabInvestigaciones />
-              )}
-            </>
-          )}
-        </div>
       </div>
     </div>
   );
