@@ -353,7 +353,28 @@ export default function NotificationPanel({ notifications, setNotifications }: N
             const isUnread = !notif.read;
             const notifKey = String(notif.id);
             const isReplyOpen = openReplyNotifId === notif.id;
-            const replies = [...(notif.respuestas || []), ...(localRepliesMap[notifKey] || [])];
+
+            // Obtener todas las respuestas combinando mapa local y cola global
+            let globalQueueReplies: any[] = [];
+            try {
+              const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
+              if (qRaw) {
+                const qList = JSON.parse(qRaw);
+                if (Array.isArray(qList)) {
+                  globalQueueReplies = qList.filter((item: any) => {
+                    const sameNotif = item.notif_id && String(item.notif_id) === notifKey;
+                    const samePost = item.post_id && notif.post_id && String(item.post_id) === String(notif.post_id);
+                    return sameNotif || samePost;
+                  });
+                }
+              }
+            } catch (e) {}
+
+            const replies = [
+              ...(notif.respuestas || []),
+              ...(localRepliesMap[notifKey] || []),
+              ...globalQueueReplies
+            ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)));
 
             return (
               <div 
@@ -651,14 +672,46 @@ export default function NotificationPanel({ notifications, setNotifications }: N
           targetUser={activeChatNotif.sender || 'Luis Delgado / Jefatura'}
           reportContext={{ date: activeChatNotif.date || new Date().toISOString().split('T')[0], id: activeChatNotif.post_id }}
           activeThreadId={String(activeChatNotif.id)}
-          initialMessages={(localRepliesMap[String(activeChatNotif.id)] || []).map(r => ({
-            id: r.id,
-            author: r.author || 'Carmen Luisa',
-            author_role: 'empleado',
-            mensaje: r.mensaje,
-            fecha: r.fecha,
-            atendido: r.atendido
-          }))}
+          initialMessages={[
+            // 1. Mensaje original de Jefatura como primera burbuja
+            ...(activeChatNotif.message ? [{
+              id: `orig_${activeChatNotif.id}`,
+              author: activeChatNotif.sender || 'Luis Delgado / Jefatura',
+              author_role: 'jefatura' as const,
+              mensaje: activeChatNotif.message,
+              fecha: activeChatNotif.date || 'Instrucción Original',
+              atendido: false
+            }] : []),
+            // 2. Respuestas enviadas por ambas partes
+            ...((() => {
+              const notifKey = String(activeChatNotif.id);
+              let globalReplies: any[] = [];
+              try {
+                const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
+                if (qRaw) {
+                  const qList = JSON.parse(qRaw);
+                  if (Array.isArray(qList)) {
+                    globalReplies = qList.filter((item: any) => {
+                      const sameNotif = item.notif_id && String(item.notif_id) === notifKey;
+                      const samePost = item.post_id && activeChatNotif.post_id && String(item.post_id) === String(activeChatNotif.post_id);
+                      return sameNotif || samePost;
+                    });
+                  }
+                }
+              } catch (e) {}
+              return [
+                ...(localRepliesMap[notifKey] || []),
+                ...globalReplies
+              ];
+            })()).map(r => ({
+              id: r.id || `rep_${Date.now()}`,
+              author: r.author || 'Carmen Luisa',
+              author_role: r.author_role || (r.author?.toLowerCase().includes('luis') ? 'jefatura' as const : 'empleado' as const),
+              mensaje: r.mensaje,
+              fecha: r.fecha,
+              atendido: r.atendido
+            }))
+          ].filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))}
           onMessageSent={(newMsg) => {
             const notifKey = String(activeChatNotif.id);
             const updated = {
