@@ -1622,52 +1622,52 @@ export default function AdminDashboard() {
       </div>
 
       {/* Tabs Vistas con Segmented Control Moderno y Compacto */}
-      <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 scrollbar-none">
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-sm scrollbar-none relative z-10 mx-auto w-full">
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'bitacoras' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'bitacoras' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <FileText className="w-3.5 h-3.5" /> Revisión de Bitácoras
+          <FileText className={`w-4 h-4 ${activeView === 'bitacoras' ? 'text-slate-900' : 'text-slate-400'}`} /> Revisión de Bitácoras
           {pendingReview > 0 && (
-            <span className="px-1.5 py-0.2 bg-slate-950 text-amber-400 font-black rounded-full text-[9px]">
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'bitacoras' ? 'bg-slate-900 text-amber-400' : 'bg-amber-500 text-slate-900'}`}>
               {pendingReview}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveView('buzon')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'buzon' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'buzon' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <MessageSquare className="w-3.5 h-3.5" /> Buzón & Conversaciones
+          <MessageSquare className={`w-4 h-4 ${activeView === 'buzon' ? 'text-slate-900' : 'text-slate-400'}`} /> Buzón & Conversaciones
           {unreadEmployeeReplies.length > 0 && (
-            <span className="px-1.5 py-0.2 bg-red-600 text-white font-black rounded-full text-[9px] animate-pulse">
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 animate-pulse ${activeView === 'buzon' ? 'bg-slate-900 text-white' : 'bg-red-500 text-white'}`}>
               {unreadEmployeeReplies.length}
             </span>
           )}
         </button>
         <button
           onClick={() => setActiveView('agenda')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'agenda' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'agenda' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <CalendarIcon className="w-3.5 h-3.5" /> Agenda Global
+          <CalendarIcon className={`w-4 h-4 ${activeView === 'agenda' ? 'text-slate-900' : 'text-slate-400'}`} /> Agenda Global
         </button>
         <button
           onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'expedientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'expedientes' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <Scale className="w-3.5 h-3.5" /> Expedientes & Casos
+          <Scale className={`w-4 h-4 ${activeView === 'expedientes' ? 'text-slate-900' : 'text-slate-400'}`} /> Expedientes & Casos
         </button>
         <button
           onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'mis_libros' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'mis_libros' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <BookOpen className="w-3.5 h-3.5" /> Biblioteca & Libros
+          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-slate-900' : 'text-slate-400'}`} /> Biblioteca & Libros
         </button>
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-3.5 py-2 rounded-xl font-bold flex items-center justify-center gap-1.5 text-xs transition-all cursor-pointer ${activeView === 'historial' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'}`}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'historial' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
-          <History className="w-3.5 h-3.5" /> Mi Historial de Jefatura
+          <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-900' : 'text-slate-400'}`} /> Mi Historial de Jefatura
         </button>
       </div>
 
@@ -2775,7 +2775,7 @@ export default function AdminDashboard() {
                       </span>
                     </h3>
                     <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                      <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl font-mono text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs">
+                      <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs">
                         <CalendarIcon className="w-4 h-4 text-amber-400" />
                         Fecha: {selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha || format(new Date(), 'yyyy-MM-dd')}
                       </span>

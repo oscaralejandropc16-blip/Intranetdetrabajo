@@ -208,11 +208,11 @@ export default function LiveStatusBar() {
           </div>
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base sm:text-lg font-black text-white font-mono tracking-tight leading-none truncate">
+              <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none truncate">
                 {formattedTime}
               </span>
-              <span className="text-[8px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-1 py-0.2 rounded border border-amber-500/30 shrink-0">
-                VET
+              <span translate="no" className="text-[8px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-1 py-0.2 rounded border border-amber-500/30 shrink-0 notranslate">
+                VEN
               </span>
             </div>
             <p className="text-[10px] text-slate-400 capitalize font-medium truncate">
@@ -233,7 +233,7 @@ export default function LiveStatusBar() {
                 <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400">USD BCV</span>
                 <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white font-mono leading-tight">
+              <p className="text-xs sm:text-sm font-black text-white leading-tight">
                 {dolarRate ? `Bs. ${dolarRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
@@ -249,7 +249,7 @@ export default function LiveStatusBar() {
                 <span className="text-[8px] font-black uppercase tracking-wider text-blue-400">EUR BCV</span>
                 <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white font-mono leading-tight">
+              <p className="text-xs sm:text-sm font-black text-white leading-tight">
                 {euroRate ? `Bs. ${euroRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
@@ -286,7 +286,7 @@ export default function LiveStatusBar() {
                 <span className="text-[9px] text-slate-400 font-medium hidden xl:inline">({activeCity.state})</span>
               </div>
               <div className="flex items-baseline gap-1.5 mt-0.2">
-                <span className="text-xs sm:text-sm font-black text-white font-mono leading-none">
+                <span className="text-xs sm:text-sm font-black text-white leading-none">
                   {activeWeatherData.temp !== undefined ? `${activeWeatherData.temp}°C` : '--°C'}
                 </span>
                 <span className="text-[10px] text-slate-300 font-medium truncate max-w-[100px] sm:max-w-none">
@@ -326,7 +326,7 @@ export default function LiveStatusBar() {
                         <p className={`text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'}`}>{c.state}</p>
                       </div>
                     </div>
-                    <div className="text-right font-mono text-xs font-black shrink-0 ml-2">
+                    <div className="text-right text-xs font-black shrink-0 ml-2">
                       {cWeather && cWeather.temp !== undefined ? `${cWeather.temp}°C` : '--'}
                     </div>
                   </button>

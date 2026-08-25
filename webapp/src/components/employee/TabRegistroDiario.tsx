@@ -342,7 +342,7 @@ export default function TabRegistroDiario({
                                   <span className="truncate">{currentStatus}</span>
                                 </div>
                                 {!reportSubmitted && (
-                                  <span className="text-[11px] opacity-50 font-mono shrink-0 ml-1">↻</span>
+                                  <span className="text-[11px] opacity-50 shrink-0 ml-1">↻</span>
                                 )}
                               </button>
                             );
