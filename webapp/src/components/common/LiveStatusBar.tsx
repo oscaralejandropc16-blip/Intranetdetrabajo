@@ -73,6 +73,8 @@ export default function LiveStatusBar() {
         if (dataUsd && dataUsd.promedio) {
           setDolarRate(dataUsd.promedio);
           localStorage.setItem('rd_bcv_usd', dataUsd.promedio.toString());
+          localStorage.setItem('rd_live_bcv_rate', dataUsd.promedio.toString());
+          window.dispatchEvent(new CustomEvent('rd_bcv_updated', { detail: dataUsd.promedio }));
         }
       }
 

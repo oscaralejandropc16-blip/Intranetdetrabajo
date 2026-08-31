@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Plus, Trash2, Receipt, Calendar, 
   Upload, Image as ImageIcon, CheckCircle2, ArrowLeft,
@@ -36,15 +36,15 @@ export default function FormRelacionGastos({
 }: FormRelacionGastosProps) {
   const currentUserName = localStorage.getItem('rd_user_name') || 'Empleado';
   
-  // Obtener tasa BCV desde localStorage si existe, o usar default
+  // Obtener tasa BCV desde localStorage sincronizada con LiveStatusBar
   const getInitialBcv = () => {
     try {
-      const savedRate = localStorage.getItem('rd_live_bcv_rate');
+      const savedRate = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
       if (savedRate && !isNaN(Number(savedRate)) && Number(savedRate) > 0) {
         return Number(savedRate);
       }
     } catch (e) {}
-    return 65.50; // Fallback seguro
+    return 794.99;
   };
 
   const today = new Date();
@@ -56,6 +56,37 @@ export default function FormRelacionGastos({
   const [fechaInicio, setFechaInicio] = useState(initialData?.fechaInicio || weekStart);
   const [fechaFin, setFechaFin] = useState(initialData?.fechaFin || weekEnd);
   const [tasaBcv, setTasaBcv] = useState<number>(initialData?.tasaBcv || getInitialBcv());
+
+  // Sincronización en vivo con la tasa oficial BCV de la barra superior
+  useEffect(() => {
+    const handleBcvUpdate = (e: any) => {
+      const liveRate = Number(e?.detail || localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate'));
+      if (liveRate && liveRate > 0 && !initialData?.tasaBcv) {
+        handleTasaChange(liveRate);
+      }
+    };
+
+    if (!initialData?.tasaBcv) {
+      const saved = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
+      if (saved && Number(saved) > 0) {
+        handleTasaChange(Number(saved));
+      } else {
+        fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+          .then(res => res.json())
+          .then(data => {
+            if (data?.promedio) {
+              handleTasaChange(data.promedio);
+              localStorage.setItem('rd_bcv_usd', data.promedio.toString());
+              localStorage.setItem('rd_live_bcv_rate', data.promedio.toString());
+            }
+          })
+          .catch(() => {});
+      }
+    }
+
+    window.addEventListener('rd_bcv_updated', handleBcvUpdate);
+    return () => window.removeEventListener('rd_bcv_updated', handleBcvUpdate);
+  }, []);
   
   // Lista de items de gasto
   const [items, setItems] = useState<GastoItem[]>(() => {
