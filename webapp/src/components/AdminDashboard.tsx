@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -10,6 +10,7 @@ import TabAgenda from './employee/TabAgenda';
 import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
+import ModuloGastos from './gastos/ModuloGastos';
 import LiveStatusBar from './common/LiveStatusBar';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -263,9 +264,10 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'buzon' | 'agenda' | 'mis_libros' | 'historial' | 'expedientes'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial'>(() => {
     return (sessionStorage.getItem('rd_admin_active_view') as any) || 'bitacoras';
   });
+  const [allGastos, setAllGastos] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
     return (sessionStorage.getItem('rd_admin_boss_sub_tab') as any) || 'actuaciones';
   });
@@ -522,6 +524,14 @@ export default function AdminDashboard() {
         if (invesRes.data && Array.isArray(invesRes.data)) {
           setAllInvestigaciones(invesRes.data);
         }
+
+        // Obtener relaciones de gastos globales
+        try {
+          const gastosRes = await api.get('/rd-intranet/v1/gastos');
+          if (gastosRes.data && Array.isArray(gastosRes.data)) {
+            setAllGastos(gastosRes.data);
+          }
+        } catch (e) {}
 
         // Obtener feedback directo asignado a mis tareas
         try {
@@ -1202,7 +1212,10 @@ export default function AdminDashboard() {
     !dismissedNotifs.includes(r.id)
   );
 
-  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + pendingChatGroups.length;
+  const pendingGastosList = allGastos.filter(g => g.estatus === 'Pendiente');
+  const pendingGastosCount = pendingGastosList.length;
+
+  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + pendingChatGroups.length + pendingGastosCount;
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
@@ -1220,6 +1233,36 @@ export default function AdminDashboard() {
 
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
+
+      {/* BANNER NOTIFICACIÓN DE GASTOS POR LIQUIDAR */}
+      {pendingGastosCount > 0 && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-sm animate-in slide-in-from-top-2">
+          <div className="flex items-center gap-3.5 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-sm font-black ring-2 ring-amber-400/40">
+              <Receipt className="w-5 h-5 animate-pulse" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-2xs">
+                  Gastos por Liquidar
+                </span>
+                <span className="text-xs font-black text-amber-950">
+                  {pendingGastosCount} relación(es) de gastos pendientes de revisión y pago
+                </span>
+              </div>
+              <p className="text-xs font-bold text-slate-700 truncate mt-0.5">
+                Última de: {pendingGastosList[0]?.empleado} ({pendingGastosList[0]?.periodo}) — Total: ${Number(pendingGastosList[0]?.totalUsd || 0).toFixed(2)} USD / Bs {Number(pendingGastosList[0]?.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveView('gastos')}
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> Ir a Liquidar Gastos
+          </button>
+        </div>
+      )}
 
       {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO (COMPACTO) */}
       {unreadEmployeeReplies.length > 0 && (
@@ -1656,6 +1699,17 @@ export default function AdminDashboard() {
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'expedientes' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
           <Scale className={`w-4 h-4 ${activeView === 'expedientes' ? 'text-slate-900' : 'text-slate-400'}`} /> Expedientes & Casos
+        </button>
+        <button
+          onClick={() => setActiveView('gastos')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'gastos' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
+        >
+          <Receipt className={`w-4 h-4 ${activeView === 'gastos' ? 'text-slate-900' : 'text-slate-400'}`} /> Gastos & Reembolsos
+          {pendingGastosCount > 0 && (
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'gastos' ? 'bg-slate-900 text-white' : 'bg-red-500 text-white animate-pulse'}`}>
+              {pendingGastosCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => setActiveView('mis_libros')}
@@ -2739,6 +2793,11 @@ export default function AdminDashboard() {
       {/* VISTA: EXPEDIENTES Y PLANIFICACIÓN SEMANAL */}
       {activeView === 'expedientes' && (
         <ModuloExpedientes />
+      )}
+
+      {/* VISTA: GASTOS Y REEMBOLSOS (DESEMBOLSOS DE TRÁMITES) */}
+      {activeView === 'gastos' && (
+        <ModuloGastos isJefatura={true} />
       )}
 
       {/* VISTA: MI HISTORIAL DE JEFATURA */}

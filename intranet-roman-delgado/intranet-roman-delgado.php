@@ -118,6 +118,15 @@ function rd_intranet_register_cpt() {
         'show_in_rest' => true,
     );
     register_post_type('rd_expediente', $args_exp);
+
+    $args_gasto = array(
+        'public'       => false,
+        'show_ui'      => true,
+        'label'        => 'Relaciones de Gastos',
+        'supports'     => array('title', 'editor', 'author', 'custom-fields'),
+        'show_in_rest' => true,
+    );
+    register_post_type('rd_gasto', $args_gasto);
 }
 add_action('init', 'rd_intranet_register_cpt');
 
@@ -408,6 +417,38 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/limpiar-mensajes-prueba', array(
         'methods' => 'POST',
         'callback' => 'rd_intranet_clear_test_messages',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    // Endpoints: Gestión de Gastos y Reembolsos Operativos (Taxes / Desembolsos de Trámites)
+    register_rest_route('rd-intranet/v1', '/gastos', array(
+        array(
+            'methods' => 'GET',
+            'callback' => 'rd_intranet_get_gastos',
+            'permission_callback' => 'rd_intranet_is_authorized'
+        ),
+        array(
+            'methods' => 'POST',
+            'callback' => 'rd_intranet_save_gasto',
+            'permission_callback' => 'rd_intranet_is_authorized'
+        )
+    ));
+
+    register_rest_route('rd-intranet/v1', '/gastos/pagar', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_pagar_gasto',
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
+    ));
+
+    register_rest_route('rd-intranet/v1', '/gastos/rechazar', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_rechazar_gasto',
+        'permission_callback' => 'rd_intranet_is_authorized_admin'
+    ));
+
+    register_rest_route('rd-intranet/v1', '/gastos/eliminar', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_eliminar_gasto',
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
 });
@@ -1985,6 +2026,266 @@ function rd_intranet_clear_test_messages($request) {
     }
     
     return rest_ensure_response(array('success' => true, 'message' => 'Mensajes de prueba eliminados exitosamente.'));
+}
+
+// -------------------------------------------------------------
+// CONTROLADOR DE GASTOS Y REEMBOLSOS OPERATIVOS (TAXES / TRÁMITES)
+// -------------------------------------------------------------
+
+function rd_intranet_get_gastos($request) {
+    $user_id = get_current_user_id();
+    $is_admin = rd_intranet_is_authorized_admin();
+    
+    $args = array(
+        'post_type'      => 'rd_gasto',
+        'posts_per_page' => -1,
+        'post_status'    => array('publish', 'draft', 'pending'),
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    );
+
+    if (!$is_admin && $user_id > 0) {
+        $args['author'] = $user_id;
+    }
+
+    $query = new WP_Query($args);
+    $results = array();
+
+    if ($query->have_posts()) {
+        foreach ($query->posts as $post) {
+            $author_user = get_userdata($post->post_author);
+            $author_name = $author_user ? $author_user->display_name : 'Empleado';
+            $author_email = $author_user ? $author_user->user_email : '';
+
+            $items_raw = get_post_meta($post->ID, 'items_gasto', true);
+            $items = array();
+            if (!empty($items_raw)) {
+                if (is_string($items_raw)) {
+                    $decoded = json_decode($items_raw, true);
+                    if (is_array($decoded)) $items = $decoded;
+                } elseif (is_array($items_raw)) {
+                    $items = $items_raw;
+                }
+            }
+
+            $results[] = array(
+                'id'                 => $post->ID,
+                'titulo'             => $post->post_title,
+                'empleado'           => get_post_meta($post->ID, 'autor_empleado', true) ?: $author_name,
+                'empleadoEmail'      => $author_email,
+                'fechaCreacion'      => get_the_date('Y-m-d', $post->ID),
+                'periodo'            => get_post_meta($post->ID, 'periodo_tipo', true) ?: 'Semanal',
+                'fechaInicio'        => get_post_meta($post->ID, 'fecha_inicio', true) ?: '',
+                'fechaFin'           => get_post_meta($post->ID, 'fecha_fin', true) ?: '',
+                'tasaBcv'            => floatval(get_post_meta($post->ID, 'tasa_bcv', true) ?: 0),
+                'items'              => $items,
+                'totalUsd'           => floatval(get_post_meta($post->ID, 'total_usd', true) ?: 0),
+                'totalVes'           => floatval(get_post_meta($post->ID, 'total_ves', true) ?: 0),
+                'estatus'            => get_post_meta($post->ID, 'estatus_gasto', true) ?: 'Pendiente',
+                'fechaPago'          => get_post_meta($post->ID, 'fecha_pago', true) ?: '',
+                'metodoPago'         => get_post_meta($post->ID, 'metodo_pago', true) ?: '',
+                'referenciaPago'     => get_post_meta($post->ID, 'referencia_pago', true) ?: '',
+                'comentariosJefatura'=> get_post_meta($post->ID, 'comentarios_jefatura', true) ?: '',
+                'pagadoPor'          => get_post_meta($post->ID, 'pagado_por', true) ?: '',
+                'createdAt'          => $post->post_date,
+                'updatedAt'          => $post->post_modified,
+            );
+        }
+    }
+
+    return rest_ensure_response($results);
+}
+
+function rd_intranet_save_gasto($request) {
+    $user_id = get_current_user_id();
+    $params = rd_intranet_get_request_data($request);
+    
+    $post_id = intval($params['id'] ?? 0);
+    $titulo = sanitize_text_field($params['titulo'] ?? '');
+    $periodo = sanitize_text_field($params['periodo'] ?? 'Semanal');
+    $fecha_inicio = sanitize_text_field($params['fechaInicio'] ?? '');
+    $fecha_fin = sanitize_text_field($params['fechaFin'] ?? '');
+    $tasa_bcv = floatval($params['tasaBcv'] ?? 0);
+    $total_usd = floatval($params['totalUsd'] ?? 0);
+    $total_ves = floatval($params['totalVes'] ?? 0);
+    $estatus = sanitize_text_field($params['estatus'] ?? 'Pendiente');
+    $items = $params['items'] ?? array();
+
+    if (is_string($items)) {
+        $decoded = json_decode($items, true);
+        if (is_array($decoded)) $items = $decoded;
+    }
+
+    $current_user = wp_get_current_user();
+    $author_name = $current_user && $current_user->ID ? $current_user->display_name : 'Empleado';
+    $custom_empleado = sanitize_text_field($params['empleado'] ?? '');
+    if (!empty($custom_empleado)) {
+        $author_name = $custom_empleado;
+    }
+
+    if (empty($titulo)) {
+        $titulo = "Relación de Gastos ({$periodo}) - " . ($fecha_inicio ? $fecha_inicio : date('Y-m-d')) . " - " . $author_name;
+    }
+
+    $post_data = array(
+        'post_title'   => $titulo,
+        'post_type'    => 'rd_gasto',
+        'post_status'  => 'publish',
+    );
+
+    if ($post_id > 0) {
+        $existing = get_post($post_id);
+        if ($existing && $existing->post_type === 'rd_gasto') {
+            $post_data['ID'] = $post_id;
+            wp_update_post($post_data);
+        } else {
+            $post_id = 0;
+        }
+    }
+
+    if ($post_id === 0) {
+        $post_data['post_author'] = $user_id;
+        $post_id = wp_insert_post($post_data);
+    }
+
+    if (is_wp_error($post_id) || !$post_id) {
+        return rest_ensure_response(array('success' => false, 'message' => 'Error al guardar la relación de gastos.'));
+    }
+
+    update_post_meta($post_id, 'autor_empleado', $author_name);
+    update_post_meta($post_id, 'periodo_tipo', $periodo);
+    update_post_meta($post_id, 'fecha_inicio', $fecha_inicio);
+    update_post_meta($post_id, 'fecha_fin', $fecha_fin);
+    update_post_meta($post_id, 'tasa_bcv', $tasa_bcv);
+    update_post_meta($post_id, 'total_usd', $total_usd);
+    update_post_meta($post_id, 'total_ves', $total_ves);
+    update_post_meta($post_id, 'estatus_gasto', $estatus);
+    update_post_meta($post_id, 'items_gasto', wp_slash(wp_json_encode($items, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
+
+    // Si pasa a estado Pendiente, generar alerta inmediata en la bandeja de Jefatura
+    if ($estatus === 'Pendiente') {
+        $all_messages = get_option('rd_mensajes_para_jefatura', array());
+        if (!is_array($all_messages)) $all_messages = array();
+        
+        $notif_item = array(
+            'id'             => 'gasto_' . $post_id . '_' . time(),
+            'post_id'        => $post_id,
+            'titulo'         => "Nueva Relación de Gastos: {$author_name}",
+            'mensaje'        => "Se ha enviado una relación de gastos ({$periodo}) por un total de $" . number_format($total_usd, 2) . " / Bs " . number_format($total_ves, 2) . " pendiente de revisión y pago.",
+            'fecha'          => current_time('mysql'),
+            'fecha_bitacora' => $fecha_inicio ?: date('Y-m-d'),
+            'author'         => $author_name,
+            'author_role'    => 'empleado',
+            'tipo_alerta'    => 'gasto',
+            'leido_por_jefe' => false,
+            'atendido'       => false
+        );
+        
+        $exists = false;
+        foreach ($all_messages as $m) {
+            if (($m['post_id'] ?? 0) === $post_id && ($m['tipo_alerta'] ?? '') === 'gasto' && !($m['atendido'] ?? false)) {
+                $exists = true;
+                break;
+            }
+        }
+        if (!$exists) {
+            array_unshift($all_messages, $notif_item);
+            $all_messages = array_slice($all_messages, 0, 200);
+            update_option('rd_mensajes_para_jefatura', $all_messages);
+        }
+    }
+
+    return rest_ensure_response(array(
+        'success'  => true,
+        'post_id'  => $post_id,
+        'message'  => $estatus === 'Pendiente' ? 'Relación de gastos enviada a Jefatura con éxito.' : 'Borrador guardado exitosamente.',
+    ));
+}
+
+function rd_intranet_pagar_gasto($request) {
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['id'] ?? 0);
+    $metodo_pago = sanitize_text_field($params['metodoPago'] ?? 'Transferencia Bs');
+    $referencia_pago = sanitize_text_field($params['referenciaPago'] ?? '');
+    $fecha_pago = sanitize_text_field($params['fechaPago'] ?? date('Y-m-d'));
+    $comentarios = sanitize_textarea_field($params['comentariosJefatura'] ?? '');
+
+    if (!$post_id) {
+        return rest_ensure_response(array('success' => false, 'message' => 'ID de relación no proporcionado.'));
+    }
+
+    $current_user = wp_get_current_user();
+    $pagado_por = $current_user && $current_user->ID ? $current_user->display_name : 'Jefatura';
+
+    update_post_meta($post_id, 'estatus_gasto', 'Pagado');
+    update_post_meta($post_id, 'metodo_pago', $metodo_pago);
+    update_post_meta($post_id, 'referencia_pago', $referencia_pago);
+    update_post_meta($post_id, 'fecha_pago', $fecha_pago);
+    update_post_meta($post_id, 'comentarios_jefatura', $comentarios);
+    update_post_meta($post_id, 'pagado_por', $pagado_por);
+
+    // Marcar como atendido en las alertas de Jefatura
+    $all_messages = get_option('rd_mensajes_para_jefatura', array());
+    if (is_array($all_messages)) {
+        foreach ($all_messages as &$m) {
+            if (($m['post_id'] ?? 0) === $post_id && ($m['tipo_alerta'] ?? '') === 'gasto') {
+                $m['atendido'] = true;
+                $m['leido_por_jefe'] = true;
+            }
+        }
+        update_option('rd_mensajes_para_jefatura', $all_messages);
+    }
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => 'Relación de gastos aprobada y marcada como pagada exitosamente.'
+    ));
+}
+
+function rd_intranet_rechazar_gasto($request) {
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['id'] ?? 0);
+    $comentarios = sanitize_textarea_field($params['comentariosJefatura'] ?? '');
+
+    if (!$post_id) {
+        return rest_ensure_response(array('success' => false, 'message' => 'ID de relación no proporcionado.'));
+    }
+
+    update_post_meta($post_id, 'estatus_gasto', 'Rechazado');
+    update_post_meta($post_id, 'comentarios_jefatura', $comentarios);
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => 'Relación de gastos devuelta para correcciones.'
+    ));
+}
+
+function rd_intranet_eliminar_gasto($request) {
+    $params = rd_intranet_get_request_data($request);
+    $post_id = intval($params['id'] ?? 0);
+
+    if (!$post_id) {
+        return rest_ensure_response(array('success' => false, 'message' => 'ID no válido.'));
+    }
+
+    $post = get_post($post_id);
+    if (!$post || $post->post_type !== 'rd_gasto') {
+        return rest_ensure_response(array('success' => false, 'message' => 'Relación no encontrada.'));
+    }
+
+    $user_id = get_current_user_id();
+    $is_admin = rd_intranet_is_authorized_admin();
+
+    if (!$is_admin && intval($post->post_author) !== $user_id) {
+        return rest_ensure_response(array('success' => false, 'message' => 'No tienes permisos para eliminar esta relación.'));
+    }
+
+    wp_delete_post($post_id, true);
+
+    return rest_ensure_response(array(
+        'success' => true,
+        'message' => 'Relación de gastos eliminada exitosamente.'
+    ));
 }
 
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin, Receipt } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
@@ -9,6 +9,7 @@ import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
+import ModuloGastos from './gastos/ModuloGastos';
 import LiveStatusBar from './common/LiveStatusBar';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
@@ -1044,10 +1045,10 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'expedientes' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'expedientes' | 'gastos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (saved === 'expedientes' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
+    if (saved === 'expedientes' || saved === 'gastos' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
     return 'jornada';
   });
 
@@ -1273,6 +1274,18 @@ export default function EmployeeDashboard() {
         >
           <Scale className="w-3.5 h-3.5 text-blue-500" />
           <span>Expedientes & Casos</span>
+        </button>
+
+        <button 
+          onClick={() => setActiveTab('gastos')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'gastos' 
+              ? 'bg-white text-slate-900 shadow-sm' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+          }`}
+        >
+          <Receipt className="w-3.5 h-3.5 text-amber-500" />
+          <span>Gastos & Reembolsos</span>
         </button>
 
         <button 
@@ -1534,6 +1547,11 @@ export default function EmployeeDashboard() {
         {/* VISTA 2: EXPEDIENTES & CASOS (ANCHO COMPLETO) */}
         {activeTab === 'expedientes' && (
           <ModuloExpedientes />
+        )}
+
+        {/* VISTA: GASTOS & REEMBOLSOS (ANCHO COMPLETO) */}
+        {activeTab === 'gastos' && (
+          <ModuloGastos isJefatura={false} />
         )}
 
         {/* VISTA 3: BUZÓN (ANCHO COMPLETO) */}
