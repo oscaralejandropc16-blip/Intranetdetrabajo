@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Plus, Trash2, Receipt, Calendar, 
   Upload, Image as ImageIcon, CheckCircle2, ArrowLeft,
-  Save, Send, Eye, X
+  Save, Send, Eye, X, ChevronDown, Scale
 } from 'lucide-react';
 import { format, startOfWeek, endOfWeek } from 'date-fns';
 import type { RelacionGastos, GastoItem, CategoriaGasto } from '../../types/gastos';
@@ -14,6 +14,121 @@ interface FormRelacionGastosProps {
   onSaveSuccess: () => void;
   onCancel: () => void;
   globalExpedientes?: any[];
+}
+
+interface TramiteAutocompleteInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  globalExpedientes: any[];
+  placeholder?: string;
+}
+
+function TramiteAutocompleteInput({
+  value,
+  onChange,
+  globalExpedientes = [],
+  placeholder = 'Ej: RD-J-2026-12779 o Notaría 1era de Valencia...'
+}: TramiteAutocompleteInputProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredExpedientes = globalExpedientes.filter((exp: any) => {
+    if (!value.trim()) return true;
+    const q = value.toLowerCase();
+    const matchNum = (exp.numeroExpediente || '').toLowerCase().includes(q);
+    const matchCod = (exp.codigoCorrelativo || '').toLowerCase().includes(q);
+    const matchPartes = (exp.partes || '').toLowerCase().includes(q);
+    const matchJuzgado = (exp.juzgado || '').toLowerCase().includes(q);
+    return matchNum || matchCod || matchPartes || matchJuzgado;
+  });
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div className="relative">
+        <input
+          type="text"
+          value={value}
+          placeholder={placeholder}
+          onFocus={() => setIsOpen(true)}
+          onChange={(e) => {
+            onChange(e.target.value);
+            setIsOpen(true);
+          }}
+          className="w-full pl-3 pr-8 py-1.5 text-xs font-bold text-slate-800 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-2xs"
+        />
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={() => setIsOpen(!isOpen)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 cursor-pointer"
+        >
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${isOpen ? 'rotate-180 text-blue-600' : ''}`} />
+        </button>
+      </div>
+
+      {isOpen && (
+        <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white/95 backdrop-blur-xl rounded-2xl border border-slate-200 shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 max-h-56 overflow-y-auto p-1.5 space-y-1">
+          <div className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-100 flex items-center justify-between">
+            <span>Expedientes del Sistema</span>
+            <span className="text-blue-600 font-bold">{filteredExpedientes.length} disponibles</span>
+          </div>
+
+          {filteredExpedientes.length === 0 ? (
+            <div className="p-3 text-center text-xs text-slate-500">
+              <p className="font-bold text-slate-700">Trámite libre / Personalizado</p>
+              <p className="text-[11px] text-slate-400">Puedes escribir el nombre que desees.</p>
+            </div>
+          ) : (
+            filteredExpedientes.slice(0, 25).map((exp: any, idx: number) => {
+              const displayNum = exp.numeroExpediente || exp.codigoCorrelativo;
+              const isSelected = value === displayNum;
+
+              return (
+                <button
+                  key={exp.id || idx}
+                  type="button"
+                  onClick={() => {
+                    onChange(displayNum);
+                    setIsOpen(false);
+                  }}
+                  className={`w-full text-left p-2 rounded-xl text-xs transition-all cursor-pointer flex flex-col ${
+                    isSelected ? 'bg-blue-50 text-blue-900 font-black' : 'hover:bg-slate-100 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-black text-slate-900 flex items-center gap-1.5">
+                      <Scale className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      {displayNum}
+                    </span>
+                    {exp.estatusActual && (
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-slate-200/70 text-slate-700">
+                        {exp.estatusActual}
+                      </span>
+                    )}
+                  </div>
+                  {exp.partes && (
+                    <span className="text-[11px] text-slate-500 font-medium truncate mt-0.5 pl-5">
+                      {exp.partes}
+                    </span>
+                  )}
+                </button>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 const CATEGORIAS_RAPIDAS: { label: CategoriaGasto; icon: string; bg: string }[] = [
@@ -515,31 +630,18 @@ export default function FormRelacionGastos({
                     <label className="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-0.5">
                       Trámite / Asunto Judicial o Gestión
                     </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        list={`expedientes-list-${tIndex}`}
-                        value={tramiteName}
-                        placeholder="Ej: RD-J-2026-12779 o Notaría 1era de Valencia..."
-                        onChange={(e) => {
-                          const newName = e.target.value;
-                          setItems(prev => prev.map(item => {
-                            if (item.tramiteExpediente.trim() === tramiteName.trim()) {
-                              return { ...item, tramiteExpediente: newName };
-                            }
-                            return item;
-                          }));
-                        }}
-                        className="w-full px-3 py-1.5 text-xs font-bold text-slate-800 rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
-                      />
-                      <datalist id={`expedientes-list-${tIndex}`}>
-                        {globalExpedientes.map((exp: any, idx: number) => (
-                          <option key={exp.id || idx} value={exp.numeroExpediente || exp.codigoCorrelativo}>
-                            {exp.partes ? `${exp.numeroExpediente} - ${exp.partes}` : exp.numeroExpediente}
-                          </option>
-                        ))}
-                      </datalist>
-                    </div>
+                    <TramiteAutocompleteInput
+                      value={tramiteName}
+                      globalExpedientes={globalExpedientes}
+                      onChange={(newName) => {
+                        setItems(prev => prev.map(item => {
+                          if (item.tramiteExpediente.trim() === tramiteName.trim()) {
+                            return { ...item, tramiteExpediente: newName };
+                          }
+                          return item;
+                        }));
+                      }}
+                    />
                   </div>
                 </div>
 
