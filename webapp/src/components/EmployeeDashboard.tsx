@@ -491,9 +491,16 @@ export default function EmployeeDashboard() {
           if (response.data.clockIn && isSameLocalDate(response.data.clockIn, todayStr)) {
             setClockIn(new Date(response.data.clockIn));
             setUbicacionEntrada(response.data.ubicacionEntrada || null);
-          } else if (localDraft?.clockIn && isSameLocalDate(localDraft.clockIn, todayStr)) {
-            setClockIn(new Date(localDraft.clockIn));
-            if (localDraft.ubicacionEntrada) setUbicacionEntrada(localDraft.ubicacionEntrada);
+          } else {
+            // El servidor dice que NO hay marca de entrada para hoy.
+            // Esto significa que el empleado aún no ha entrado, o que Jefatura reseteó el día.
+            // Por lo tanto, debemos limpiar cualquier estado local residual.
+            setClockIn(null);
+            setUbicacionEntrada(null);
+            if (localDraft?.clockIn) {
+              // Limpiar también el localStorage para forzar sincronía
+              localStorage.removeItem(getStorageKey());
+            }
           }
 
           const parseJson = (val: any) => {
@@ -1118,6 +1125,10 @@ export default function EmployeeDashboard() {
         ubicacionEntrada: 'Detectando satélite...',
         fecha: format(now, 'yyyy-MM-dd')
       });
+      
+      if (resp && resp.success === false) {
+        throw new Error(resp.message || 'No se pudo marcar la entrada. Verifica si ya cerraste tu jornada hoy.');
+      }
       
       const finalClockIn = resp?.clockIn ? new Date(resp.clockIn) : now;
       setClockIn(finalClockIn);
