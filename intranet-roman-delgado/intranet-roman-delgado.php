@@ -514,7 +514,9 @@ function rd_intranet_get_draft() {
 
     if (!empty($today_clock)) {
         $imm = json_decode($today_clock, true);
-        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(strval($today_clock), 0, 10);
+        $clock_val = is_array($imm) && !empty($imm['clockIn']) ? $imm['clockIn'] : strval($today_clock);
+        $ts = strtotime($clock_val);
+        $stored_date = $ts ? wp_date('Y-m-d', $ts) : substr($clock_val, 0, 10);
         
         // Si el clockin guardado no es de hoy, purgar el transitorio para que el nuevo día inicie limpio
         if ($stored_date && $stored_date !== $today_str) {
@@ -724,7 +726,9 @@ function rd_intranet_save_draft($request) {
 
     if (!empty($today_clock)) {
         $imm = json_decode($today_clock, true);
-        $stored_date = is_array($imm) && !empty($imm['clockIn']) ? substr($imm['clockIn'], 0, 10) : substr(strval($today_clock), 0, 10);
+        $clock_val = is_array($imm) && !empty($imm['clockIn']) ? $imm['clockIn'] : strval($today_clock);
+        $ts = strtotime($clock_val);
+        $stored_date = $ts ? wp_date('Y-m-d', $ts) : substr($clock_val, 0, 10);
         if ($stored_date && $stored_date !== $today_str) {
             delete_user_meta($user_id, 'rd_intranet_today_clockin');
             $today_clock = '';
@@ -743,13 +747,13 @@ function rd_intranet_save_draft($request) {
 function rd_intranet_handle_clock_in($request) {
     $user_id = get_current_user_id();
     $params = rd_intranet_get_request_data($request);
-    $clock_in = $params['clockIn'] ?? '';
+    
+    // USAR SIEMPRE LA HORA DEL SERVIDOR: Ignoramos la hora que envíe la PC o móvil para evitar trampas o problemas de reloj desincronizado
+    $server_time = current_time('mysql', true); // UTC
+    $clock_in = gmdate('Y-m-d\TH:i:s.000\Z', strtotime($server_time));
+    $fecha = current_time('Y-m-d'); // Fecha local del servidor WordPress
+    
     $ubicacion = $params['ubicacionEntrada'] ?? '';
-    $fecha = $params['fecha'] ?? current_time('Y-m-d');
-
-    if (empty($clock_in)) {
-        return rest_ensure_response(array('success' => false, 'message' => 'Hora de entrada inválida'));
-    }
 
     // Si ya se cerró el día hoy, rechazar marcar entrada de nuevo
     if (get_user_meta($user_id, 'rd_intranet_day_closed_' . $fecha, true) === '1') {
@@ -764,7 +768,9 @@ function rd_intranet_handle_clock_in($request) {
 
     if (!empty($existing)) {
         $existing_data = json_decode($existing, true);
-        $stored_date = is_array($existing_data) && !empty($existing_data['clockIn']) ? substr($existing_data['clockIn'], 0, 10) : substr(strval($existing), 0, 10);
+        $clock_val = is_array($existing_data) && !empty($existing_data['clockIn']) ? $existing_data['clockIn'] : strval($existing);
+        $ts = strtotime($clock_val);
+        $stored_date = $ts ? wp_date('Y-m-d', $ts) : substr($clock_val, 0, 10);
         if ($stored_date && $stored_date !== $fecha) {
             delete_user_meta($user_id, 'rd_intranet_today_clockin');
             $existing = '';
@@ -813,9 +819,10 @@ function rd_intranet_handle_clock_in($request) {
 function rd_intranet_get_expedientes() {
     // 1. Obtener todas las bitácoras publicadas para asociar sus actuaciones reales
     $bitacoras = get_posts(array(
-        'post_type'      => 'rd_bitacora',
-        'posts_per_page' => -1,
-        'post_status'    => 'publish',
+        'post_type'        => 'rd_bitacora',
+        'posts_per_page'   => -1,
+        'post_status'      => array('publish', 'any'),
+        'suppress_filters' => true,
     ));
 
     $actuaciones_by_num = array();
@@ -856,9 +863,10 @@ function rd_intranet_get_expedientes() {
 
     // New Custom Post Type expedientes
     $args = array(
-        'post_type'      => 'rd_expediente',
-        'posts_per_page' => -1,
-        'post_status'    => 'publish',
+        'post_type'        => 'rd_expediente',
+        'posts_per_page'   => -1,
+        'post_status'      => array('publish', 'any'),
+        'suppress_filters' => true,
     );
     $query = new WP_Query($args);
     $cpt_expedientes = array();
@@ -898,6 +906,141 @@ function rd_intranet_get_expedientes() {
                 }
             }
             $final_map[$num] = $cpt;
+        }
+    }
+
+    // Si aún no hay expedientes en BD, entregar el catálogo base del bufete
+    if (empty($final_map)) {
+        $default_expedientes = array(
+            array(
+                'id' => 'exp-1',
+                'numeroExpediente' => '57.380',
+                'codigoCorrelativo' => 'RD-J-2026-57380',
+                'juzgado' => 'Tribunal 2do',
+                'partes' => 'José Sindonio De Sousa Texeira contra Francisco Texeira',
+                'procedimiento' => 'Reconocimiento de contenido y firma',
+                'estatusActual' => 'SENTENCIADO',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-08-01',
+                'ultimaActualizacion' => '2026-08-08',
+                'responsableAsignado' => 'Dr. Víctor Román',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-2',
+                'numeroExpediente' => '57.371',
+                'codigoCorrelativo' => 'RD-J-2026-57371',
+                'juzgado' => 'Tribunal 2do',
+                'partes' => 'Sousa y Gomes',
+                'procedimiento' => 'Cobro de Bolívares por vía ejecutiva',
+                'estatusActual' => 'FIJADO EL CARTEL',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-08-01',
+                'ultimaActualizacion' => '2026-08-07',
+                'responsableAsignado' => 'Abog. Luis Delgado',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-3',
+                'numeroExpediente' => '56.748',
+                'codigoCorrelativo' => 'RD-J-2026-56748',
+                'juzgado' => 'Tribunal 2do',
+                'partes' => 'Pedro Linares',
+                'procedimiento' => 'Acción Reivindicatoria',
+                'estatusActual' => 'EN ESPERA DE PRONUNCIAMIENTO',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-07-15',
+                'ultimaActualizacion' => '2026-08-06',
+                'responsableAsignado' => 'Dr. Víctor Román',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-4',
+                'numeroExpediente' => '12.779',
+                'codigoCorrelativo' => 'RD-J-2026-12779',
+                'juzgado' => 'Tribunal 4to',
+                'partes' => 'Montero-Contreras',
+                'procedimiento' => 'Divorcio Mutuo Acuerdo',
+                'estatusActual' => 'SENTENCIADO Y OFICIADO',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-06-10',
+                'ultimaActualizacion' => '2026-08-05',
+                'responsableAsignado' => 'Dra. Patricia Silva',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-5',
+                'numeroExpediente' => 'Prov-V-2023-001113',
+                'codigoCorrelativo' => 'RD-J-2026-001113',
+                'juzgado' => '1 Juicio TP',
+                'partes' => 'Karyl Zapata contra Orlando Cordero',
+                'procedimiento' => 'Partición Judicial',
+                'estatusActual' => 'TRÁMITE DE OFICIOS SUDEBAN',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2023-11-12',
+                'ultimaActualizacion' => '2026-08-09',
+                'responsableAsignado' => 'Abog. Luis Delgado',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-6',
+                'numeroExpediente' => 'Prov-J-2025-002403',
+                'codigoCorrelativo' => 'RD-J-2026-002403',
+                'juzgado' => 'Tribunal 7mo MSE',
+                'partes' => 'Nataly Feres',
+                'procedimiento' => 'Divorcio',
+                'estatusActual' => 'TRIBUNAL ACÉFALO',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2025-04-20',
+                'ultimaActualizacion' => '2026-08-08',
+                'responsableAsignado' => 'Dr. Víctor Román',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-7',
+                'numeroExpediente' => 'Prov-J-2026-001974',
+                'codigoCorrelativo' => 'RD-J-2026-001974',
+                'juzgado' => 'Tribunal 1ro MSE',
+                'partes' => 'Tulio Zambrano contra Gabriela González',
+                'procedimiento' => 'Divorcio',
+                'estatusActual' => 'POR RETIRAR COPIAS',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-03-15',
+                'ultimaActualizacion' => '2026-08-09',
+                'responsableAsignado' => 'Dra. Patricia Silva',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-8',
+                'numeroExpediente' => 'CI-2023-71923',
+                'codigoCorrelativo' => 'RD-J-2026-71923',
+                'juzgado' => 'Juicio 6',
+                'partes' => 'Laura Pompa',
+                'procedimiento' => 'Invasión',
+                'estatusActual' => 'SENTENCIADO',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2023-09-01',
+                'ultimaActualizacion' => '2026-08-07',
+                'responsableAsignado' => 'Dr. Víctor Román',
+                'actuaciones' => array()
+            ),
+            array(
+                'id' => 'exp-9',
+                'numeroExpediente' => '58.005',
+                'codigoCorrelativo' => 'RD-J-2026-58005',
+                'juzgado' => 'Tribunal 4to',
+                'partes' => 'Carmen Rodríguez vs Inversiones Los Andes',
+                'procedimiento' => 'Cumplimiento de Contrato',
+                'estatusActual' => 'EN TRÁMITE',
+                'sede' => 'Valencia',
+                'fechaRegistro' => '2026-08-01',
+                'ultimaActualizacion' => '2026-08-08',
+                'responsableAsignado' => 'Carmen Luisa',
+                'actuaciones' => array()
+            )
+        );
+        foreach ($default_expedientes as $d) {
+            $final_map[$d['numeroExpediente']] = $d;
         }
     }
 
@@ -2265,19 +2408,24 @@ function rd_intranet_eliminar_gasto($request) {
     $post_id = intval($params['id'] ?? 0);
 
     if (!$post_id) {
-        return rest_ensure_response(array('success' => false, 'message' => 'ID no válido.'));
+        return rest_ensure_response(array('success' => true, 'message' => 'Elemento local eliminado.'));
     }
 
     $post = get_post($post_id);
     if (!$post || $post->post_type !== 'rd_gasto') {
-        return rest_ensure_response(array('success' => false, 'message' => 'Relación no encontrada.'));
+        return rest_ensure_response(array('success' => true, 'message' => 'Relación ya no existe en el servidor.'));
     }
 
     $user_id = get_current_user_id();
     $is_admin = rd_intranet_is_authorized_admin();
 
     if (!$is_admin && intval($post->post_author) !== $user_id) {
-        return rest_ensure_response(array('success' => false, 'message' => 'No tienes permisos para eliminar esta relación.'));
+        $emp_meta = strtolower(trim(get_post_meta($post_id, 'empleado', true) ?: ''));
+        $current_user = wp_get_current_user();
+        $curr_name = $current_user ? strtolower(trim($current_user->display_name ?: $current_user->user_login)) : '';
+        if (!$curr_name || ($emp_meta !== $curr_name && strpos($emp_meta, $curr_name) === false && strpos($curr_name, $emp_meta) === false)) {
+            return rest_ensure_response(array('success' => false, 'message' => 'No tienes permisos para eliminar esta relación.'));
+        }
     }
 
     wp_delete_post($post_id, true);
