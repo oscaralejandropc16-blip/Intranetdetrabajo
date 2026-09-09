@@ -707,6 +707,16 @@ function rd_intranet_save_draft($request) {
     $params = rd_intranet_get_request_data($request);
     if (!is_array($params)) $params = array();
 
+    // Fix: Decode JSON strings from FormData to prevent WordPress from stripping slashes and corrupting the nested JSON
+    foreach (array('actuaciones', 'ingresos', 'programaciones', 'attachedFiles') as $key) {
+        if (isset($params[$key]) && is_string($params[$key])) {
+            $decoded = json_decode($params[$key], true);
+            if (is_array($decoded)) {
+                $params[$key] = $decoded;
+            }
+        }
+    }
+
     $today_str = current_time('Y-m-d');
     
     // Obtener borrador actual existente en base de datos para preservar comentarios y metadatos de jefatura
@@ -1119,6 +1129,16 @@ function rd_intranet_handle_submit($request) {
     $user_id = get_current_user_id();
     $params = rd_intranet_get_request_data($request);
     
+    // Fix: Decode JSON strings from FormData to prevent PHP from receiving them as strings
+    foreach (array('actuaciones', 'ingresos', 'programaciones', 'attachedFiles') as $key) {
+        if (isset($params[$key]) && is_string($params[$key])) {
+            $decoded = json_decode($params[$key], true);
+            if (is_array($decoded)) {
+                $params[$key] = $decoded;
+            }
+        }
+    }
+
     $reporte_hoy = sanitize_textarea_field($params['reporte_hoy'] ?? '');
     $programacion_manana = sanitize_text_field($params['programacion_manana'] ?? '');
     $hora_entrada = sanitize_text_field($params['hora_entrada'] ?? '');
