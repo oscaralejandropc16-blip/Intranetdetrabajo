@@ -9,9 +9,11 @@ import FormRelacionGastos from './FormRelacionGastos';
 import PanelJefaturaGastos from './PanelJefaturaGastos';
 import { exportarRelacionGastosPDF } from './pdfExportGastos';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
+import { getStoredExpedientes } from '../expedientes/mockExpedientesData';
 
 interface ModuloGastosProps {
   isJefatura?: boolean;
+  globalExpedientes?: any[];
 }
 
 const isJefaturaUser = (userName: string) => {
@@ -26,12 +28,17 @@ const isJefaturaUser = (userName: string) => {
   return jefaturaExact.some(j => lower === j || lower.startsWith('luis delgado') || lower.startsWith('victor roman') || lower.startsWith('romanydelgado'));
 };
 
-export default function ModuloGastos({ isJefatura: propIsJefatura }: ModuloGastosProps) {
+export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedientes: propGlobalExpedientes }: ModuloGastosProps) {
   const currentLoggedUser = localStorage.getItem('rd_user_name') || 'Empleado';
   const isJefe = propIsJefatura !== undefined ? propIsJefatura : isJefaturaUser(currentLoggedUser);
 
   const [relaciones, setRelaciones] = useState<RelacionGastos[]>([]);
-  const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
+  const [globalExpedientes, setGlobalExpedientes] = useState<any[]>(() => {
+    if (Array.isArray(propGlobalExpedientes) && propGlobalExpedientes.length > 0) {
+      return propGlobalExpedientes;
+    }
+    return getStoredExpedientes();
+  });
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'lista' | 'nuevo' | 'editar'>(isJefe ? 'lista' : 'lista');
   const [activeTabJefe, setActiveTabJefe] = useState<'supervision' | 'mis_gastos'>('supervision');
@@ -44,6 +51,8 @@ export default function ModuloGastos({ isJefatura: propIsJefatura }: ModuloGasto
     message: string;
     showCancel?: boolean;
     onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
   }>({
     isOpen: false,
     type: 'info',
@@ -74,8 +83,14 @@ export default function ModuloGastos({ isJefatura: propIsJefatura }: ModuloGasto
       } catch (e) {}
 
       setRelaciones(serverGastos);
-      if (Array.isArray(expRes.data)) {
+      
+      // Expedientes con respaldo sólido
+      if (Array.isArray(expRes.data) && expRes.data.length > 0) {
         setGlobalExpedientes(expRes.data);
+      } else if (Array.isArray(propGlobalExpedientes) && propGlobalExpedientes.length > 0) {
+        setGlobalExpedientes(propGlobalExpedientes);
+      } else {
+        setGlobalExpedientes(getStoredExpedientes());
       }
     } catch (err) {
       console.error('Error fetching gastos:', err);
@@ -110,12 +125,38 @@ export default function ModuloGastos({ isJefatura: propIsJefatura }: ModuloGasto
       title: '¿Eliminar Relación de Gastos?',
       message: `Esta acción eliminará de forma permanente la relación "${rel.titulo}". ¿Deseas continuar?`,
       showCancel: true,
+      confirmText: 'Sí, Eliminar',
+      cancelText: 'Cancelar',
       onConfirm: async () => {
+        // 1. Cerrar diálogo de inmediato para no congelar la pantalla
+        setSystemAlert(prev => ({ ...prev, isOpen: false }));
+
+        // 2. Limpiar de borradores locales si existía
         try {
-          await submitToServer('/rd-intranet/v1/gastos/eliminar', { id: rel.id });
+          const localDrafts = JSON.parse(localStorage.getItem('rd_local_gastos_drafts') || '[]');
+          if (Array.isArray(localDrafts)) {
+            const updated = localDrafts.filter((ld: any) => String(ld.id) !== String(rel.id));
+            localStorage.setItem('rd_local_gastos_drafts', JSON.stringify(updated));
+          }
+        } catch (e) {}
+
+        // 3. Eliminación optimista en el estado de React
+        setRelaciones(prev => prev.filter(r => String(r.id) !== String(rel.id)));
+
+        // 4. Intentar eliminar en servidor si tiene ID
+        try {
+          const res = await submitToServer('/rd-intranet/v1/gastos/eliminar', { id: rel.id });
+          if (res && res.success === false) {
+            setSystemAlert({
+              isOpen: true,
+              type: 'error',
+              title: 'Aviso de Eliminación',
+              message: res.message || 'No se pudo eliminar en el servidor.'
+            });
+          }
           fetchGastos();
-        } catch (e) {
-          console.error('Error eliminando', e);
+        } catch (e: any) {
+          console.error('Error eliminando en servidor:', e);
         }
       }
     });
@@ -129,6 +170,8 @@ export default function ModuloGastos({ isJefatura: propIsJefatura }: ModuloGasto
         title={systemAlert.title}
         message={systemAlert.message}
         showCancel={systemAlert.showCancel}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
         onConfirm={systemAlert.onConfirm}
         onClose={() => setSystemAlert(prev => ({ ...prev, isOpen: false }))}
       />

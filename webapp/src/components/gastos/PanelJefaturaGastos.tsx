@@ -63,6 +63,8 @@ export default function PanelJefaturaGastos({
     message: string;
     showCancel?: boolean;
     onConfirm?: () => void;
+    confirmText?: string;
+    cancelText?: string;
   }>({
     isOpen: false,
     type: 'info',
@@ -223,12 +225,33 @@ export default function PanelJefaturaGastos({
       title: '¿Eliminar Relación de Gastos?',
       message: `Esta acción eliminará de forma permanente la relación "${rel.titulo}". ¿Deseas continuar?`,
       showCancel: true,
+      confirmText: 'Sí, Eliminar',
+      cancelText: 'Cancelar',
       onConfirm: async () => {
+        setSystemAlert(prev => ({ ...prev, isOpen: false }));
+
+        // Limpiar de borradores locales si existiera
         try {
-          await submitToServer('/rd-intranet/v1/gastos/eliminar', { id: rel.id });
+          const localDrafts = JSON.parse(localStorage.getItem('rd_local_gastos_drafts') || '[]');
+          if (Array.isArray(localDrafts)) {
+            const updated = localDrafts.filter((ld: any) => String(ld.id) !== String(rel.id));
+            localStorage.setItem('rd_local_gastos_drafts', JSON.stringify(updated));
+          }
+        } catch (e) {}
+
+        try {
+          const res = await submitToServer('/rd-intranet/v1/gastos/eliminar', { id: rel.id });
+          if (res && res.success === false) {
+            setSystemAlert({
+              isOpen: true,
+              type: 'error',
+              title: 'Aviso de Eliminación',
+              message: res.message || 'No se pudo eliminar en el servidor.'
+            });
+          }
           onRefresh();
-        } catch (e) {
-          console.error('Error eliminando relación', e);
+        } catch (e: any) {
+          console.error('Error eliminando relación:', e);
         }
       }
     });
@@ -242,6 +265,8 @@ export default function PanelJefaturaGastos({
         title={systemAlert.title}
         message={systemAlert.message}
         showCancel={systemAlert.showCancel}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
         onConfirm={systemAlert.onConfirm}
         onClose={() => setSystemAlert(prev => ({ ...prev, isOpen: false }))}
       />

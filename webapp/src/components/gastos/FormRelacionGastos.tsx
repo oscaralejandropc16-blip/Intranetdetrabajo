@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Plus, Trash2, Receipt, Calendar, 
   Upload, Image as ImageIcon, CheckCircle2, ArrowLeft,
@@ -8,6 +8,7 @@ import { format, startOfWeek, endOfWeek } from 'date-fns';
 import type { RelacionGastos, GastoItem, CategoriaGasto } from '../../types/gastos';
 import { submitToServer, fileToDataUrl } from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
+import { getStoredExpedientes } from '../expedientes/mockExpedientesData';
 
 interface FormRelacionGastosProps {
   initialData?: RelacionGastos | null;
@@ -32,6 +33,14 @@ function TramiteAutocompleteInput({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Fallback a expedientes del sistema si globalExpedientes viene vacío
+  const expedientesList = useMemo(() => {
+    if (Array.isArray(globalExpedientes) && globalExpedientes.length > 0) {
+      return globalExpedientes;
+    }
+    return getStoredExpedientes();
+  }, [globalExpedientes]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -42,7 +51,7 @@ function TramiteAutocompleteInput({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredExpedientes = globalExpedientes.filter((exp: any) => {
+  const filteredExpedientes = expedientesList.filter((exp: any) => {
     if (!value.trim()) return true;
     const q = value.toLowerCase();
     const matchNum = (exp.numeroExpediente || '').toLowerCase().includes(q);
