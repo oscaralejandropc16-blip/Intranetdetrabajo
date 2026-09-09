@@ -10,6 +10,7 @@ import TabHistorial from './employee/TabHistorial';
 import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
+import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import LiveStatusBar from './common/LiveStatusBar';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
@@ -132,7 +133,7 @@ export default function EmployeeDashboard() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [draftComment, setDraftComment] = useState<string | null>(null);
   const [draftSupervisor, setDraftSupervisor] = useState<string | null>(null);
-  const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
+  const [globalExpedientes, setGlobalExpedientes] = useState<any[]>(() => getStoredExpedientes());
 
   const markFeedbackRead = (id: string | number) => {
     localStorage.setItem(`rd_notif_read_${id}`, 'true');
@@ -154,6 +155,7 @@ export default function EmployeeDashboard() {
     }
 
     const localDraft = {
+      lastUpdated: Date.now(),
       clockIn: clockIn ? clockIn.toISOString() : null,
       ubicacionEntrada,
       actuaciones,
@@ -510,29 +512,28 @@ export default function EmployeeDashboard() {
           const localIngresos: Ingreso[] = Array.isArray(localDraft?.ingresos) ? localDraft.ingresos : [];
           const localProgramaciones: Programacion[] = Array.isArray(localDraft?.programaciones) ? localDraft.programaciones : [];
 
-          const mergeLists = <T extends { id?: string | number }>(localList: T[], serverList: T[]): T[] => {
-            if (!localList || localList.length === 0) return serverList || [];
-            if (!serverList || serverList.length === 0) return localList || [];
-            const map = new Map<string | number, T>();
-            localList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
-            serverList.forEach(item => { if (item && item.id != null) map.set(item.id, item); });
-            return Array.from(map.values());
-          };
+          // Conflicto de versiones: Si el borrador local es más reciente que el de la nube (ej. trabajó offline), usar el local.
+          // Si el borrador de la nube es más reciente (ej. editó desde su celular y ahora abre la laptop), usar el de la nube.
+          const serverTime = response.data.lastUpdated ? Number(response.data.lastUpdated) : 0;
+          const localTime = localDraft?.lastUpdated ? Number(localDraft.lastUpdated) : 0;
+          
+          const useServer = serverTime >= localTime;
 
-          const mergedActuaciones = mergeLists<Actuacion>(localActuaciones, serverActuaciones);
-          const mergedIngresos = mergeLists<Ingreso>(localIngresos, serverIngresos);
-          const mergedProgramaciones = mergeLists<Programacion>(localProgramaciones, serverProgramaciones);
+          const finalActuaciones = useServer ? serverActuaciones : localActuaciones;
+          const finalIngresos = useServer ? serverIngresos : localIngresos;
+          const finalProgramaciones = useServer ? serverProgramaciones : localProgramaciones;
 
-          setActuaciones(mergedActuaciones);
-          setIngresos(mergedIngresos);
-          setProgramaciones(mergedProgramaciones);
+          setActuaciones(finalActuaciones);
+          setIngresos(finalIngresos);
+          setProgramaciones(finalProgramaciones);
 
           const updatedLocalDraft = {
+            lastUpdated: useServer ? serverTime : localTime,
             clockIn: response.data.clockIn || localDraft?.clockIn || null,
             ubicacionEntrada: response.data.ubicacionEntrada || localDraft?.ubicacionEntrada || null,
-            actuaciones: mergedActuaciones,
-            ingresos: mergedIngresos,
-            programaciones: mergedProgramaciones,
+            actuaciones: finalActuaciones,
+            ingresos: finalIngresos,
+            programaciones: finalProgramaciones,
             comentario_admin: response.data.comentario_admin || localDraft?.comentario_admin || undefined,
             supervisado_por: response.data.supervisado_por || localDraft?.supervisado_por || undefined
           };
@@ -564,11 +565,14 @@ export default function EmployeeDashboard() {
     const fetchExpedientes = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/expedientes');
-        if (response.data && Array.isArray(response.data)) {
+        if (response.data && Array.isArray(response.data) && response.data.length > 0) {
           setGlobalExpedientes(response.data);
+        } else {
+          setGlobalExpedientes(getStoredExpedientes());
         }
       } catch (error) {
         console.error('Error fetching expedientes:', error);
+        setGlobalExpedientes(getStoredExpedientes());
       }
     };
 
@@ -1551,7 +1555,7 @@ export default function EmployeeDashboard() {
 
         {/* VISTA: GASTOS & REEMBOLSOS (ANCHO COMPLETO) */}
         {activeTab === 'gastos' && (
-          <ModuloGastos isJefatura={false} />
+          <ModuloGastos isJefatura={false} globalExpedientes={globalExpedientes} />
         )}
 
         {/* VISTA 3: BUZÓN (ANCHO COMPLETO) */}
