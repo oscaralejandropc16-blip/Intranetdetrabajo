@@ -399,6 +399,13 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'rd_intranet_is_authorized_admin'
     ));
 
+    // Endpoint: POST /rd-intranet/v1/clock-in (Marcar entrada)
+    register_rest_route('rd-intranet/v1', '/clock-in', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_handle_clock_in',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
     // Endpoint: POST /rd-intranet/v1/draft (Guardar borrador)
     register_rest_route('rd-intranet/v1', '/draft', array(
         'methods' => 'POST',
