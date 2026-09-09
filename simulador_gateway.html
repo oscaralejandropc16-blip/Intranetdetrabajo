@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Entrada - Román & Delgado</title>
+    <style>
+        body, html {
+            margin: 0; padding: 0; height: 100%; font-family: 'Montserrat', Arial, sans-serif;
+            background-color: #1e1e1e; color: white; overflow: hidden;
+        }
+        .fake-website {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: #232323; z-index: 1;
+            transition: background-color 1s ease;
+        }
+        .fake-website h1 { font-size: 50px; margin-bottom: 10px; transition: color 1s ease;}
+        .accent-text { color: #C49A45; } 
+        .fake-btn {
+            padding: 15px 30px; border-radius: 30px; font-weight: bold; font-size: 18px;
+            background-color: #C49A45; color: #111; cursor: pointer; border: none;
+            transition: background-color 1s ease;
+        }
+
+        /* GATEWAY */
+        #rd-gateway-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 9999999; display: flex; flex-direction: row;
+            background-color: #0d0d0d;
+            transition: opacity 0.8s ease, visibility 0.8s;
+        }
+        .rd-split {
+            flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+            position: relative; overflow: hidden;
+        }
+        .rd-split:hover { flex: 1.3; }
+        .rd-split img {
+            width: 280px; height: auto; max-width: 80%; z-index: 2;
+            transition: transform 0.5s ease;
+            filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6));
+        }
+        .rd-split:hover img { transform: scale(1.08); }
+        .rd-split-content {
+            z-index: 2; text-align: center; margin-top: 40px; opacity: 0.9;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(20px);
+            text-shadow: 0 4px 10px rgba(0,0,0,0.8); /* Para que el texto resalte sobre la foto */
+        }
+        .rd-split:hover .rd-split-content { opacity: 1; transform: translateY(0); }
+        .rd-split h2 { font-size: 28px; letter-spacing: 3px; margin: 0; font-weight: 800; }
+        .rd-split p { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; font-weight: 500; color: white !important;}
+        
+        /* FONDO VENEZUELA (Cerro Ávila / Esfera de Soto) con capa oscura dorada */
+        .rd-ven {
+            background: linear-gradient(135deg, rgba(20,20,20,0.85) 0%, rgba(10,10,10,0.95) 100%),
+                        url('.user_uploaded/media_1788892173704.png') center/cover;
+            border-right: 1px solid rgba(196, 154, 69, 0.3);
+        }
+        .rd-ven:hover { 
+            background: linear-gradient(135deg, rgba(20,20,20,0.6) 0%, rgba(10,10,10,0.8) 100%),
+                        url('.user_uploaded/media_1788892173704.png') center/cover;
+        }
+        .rd-ven h2 { color: #C49A45; }
+
+        /* FONDO USA (Estatua de la Libertad / Bandera) con capa oscura */
+        .rd-usa {
+            background: linear-gradient(135deg, rgba(10,10,10,0.85) 0%, rgba(0,0,0,0.95) 100%),
+                        url('.user_uploaded/media_1788892210271.png') center/cover;
+        }
+        .rd-usa:hover { 
+            background: linear-gradient(135deg, rgba(10,10,10,0.6) 0%, rgba(0,0,0,0.8) 100%),
+                        url('.user_uploaded/media_1788892210271.png') center/cover;
+        }
+        .rd-usa h2 { color: #117aca; }
+
+        @media (max-width: 768px) {
+            #rd-gateway-overlay { flex-direction: column; }
+            .rd-split img { width: 180px; }
+            .rd-ven { border-right: none; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            .rd-split-content { margin-top: 15px; transform: translateY(0); opacity: 1; }
+            .rd-split h2 { font-size: 20px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="fake-website">
+        <h1 id="fake-title-h1">Bienvenidos a <span id="fake-title" class="accent-text">Román & Delgado</span></h1>
+        <p>El color de la web cambiará dependiendo de a qué puerta entres.</p>
+        <button id="fake-btn" class="fake-btn">AGENDAR CITA</button>
+        <p style="margin-top: 50px; opacity: 0.5; font-size: 12px; cursor: pointer;" onclick="reiniciarSimulador()">[Pisar aquí para reiniciar el simulador]</p>
+    </div>
+
+    <div id="rd-gateway-overlay">
+        
+        <div class="rd-split rd-ven" onclick="entrarA('ven')">
+            <img src="https://romanydelgado.com/wp-content/uploads/2026/04/cropped-cropped-logo-blancodorado-scaled-1.png" alt="Sede Venezuela">
+            <div class="rd-split-content">
+                <h2>VENEZUELA</h2>
+                <p>Portal en Español</p>
+            </div>
+        </div>
+
+        <div class="rd-split rd-usa" onclick="entrarA('usa')">
+            <img src="https://romanydelgado.com/wp-content/uploads/2026/09/logo_chase_propuesta.png" alt="Sede USA">
+            <div class="rd-split-content">
+                <h2>UNITED STATES</h2>
+                <p>US LLC - English Portal</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function entrarA(region) {
+            var overlay = document.getElementById('rd-gateway-overlay');
+            overlay.style.opacity = '0';
+            setTimeout(function() { overlay.style.visibility = 'hidden'; }, 800);
+            if (region === 'usa') activarModoAzulYTraducir();
+        }
+
+        function activarModoAzulYTraducir() {
+            document.getElementById('fake-title').style.color = '#117aca';
+            document.getElementById('fake-btn').style.backgroundColor = '#117aca';
+            document.getElementById('fake-btn').style.color = '#ffffff';
+            document.getElementById('fake-btn').innerText = 'SCHEDULE APPOINTMENT';
+            document.getElementById('fake-title-h1').innerHTML = 'Welcome to <span id="fake-title" style="color: #117aca;">Román & Delgado</span>';
+        }
+
+        function reiniciarSimulador() {
+            location.reload();
+        }
+    </script>
+</body>
+</html>

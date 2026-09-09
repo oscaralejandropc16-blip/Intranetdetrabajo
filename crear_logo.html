@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de Logo Exacto</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #232323; color: white; text-align: center; padding: 20px; }
+        canvas { border: none; max-width: 100%; height: auto; margin-top: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .btn { background: #117aca; color: white; padding: 15px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 18px; margin-top: 20px; font-weight: bold; text-decoration: none; display: inline-block; }
+        .btn:hover { background: #005eb8; }
+        .instructions { max-width: 600px; margin: 0 auto; color: #ccc; font-size: 16px; }
+    </style>
+</head>
+<body>
+
+    <h2>Tu Logo Original con el Azul Chase Perfecto</h2>
+    <p class="instructions">Esta herramienta web 100% segura toma tu archivo <strong>logo.png</strong> original. Pinta el cuadro derecho con el <strong>Azul Chase Exacto (#117ACA)</strong> de forma sólida (sin el efecto luz exagerado) y añade el texto en inglés. ¡Todo esto manteniendo la balanza intacta!</p>
+    
+    <!-- Aquí previsualizamos sobre un fondo oscuro simulando la web -->
+    <div style="background-color: #232323; padding: 20px; border-radius: 10px; display: inline-block; margin-top: 10px;">
+        <canvas id="canvas"></canvas>
+    </div>
+    
+    <br>
+    <a id="downloadBtn" class="btn" download="logo_roman_delgado_chase.png" href="#">⬇️ Descargar Mi Logo Final</a>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        
+        // Cargamos el logo local original
+        img.src = 'webapp/public/logo.png'; 
+        
+        img.onload = function() {
+            canvas.width = 2560;
+            canvas.height = 2560;
+            
+            // Dibujamos el logo
+            ctx.drawImage(img, 0, 0);
+            
+            // Obtenemos los píxeles
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+            
+            // Reemplazar dorado por Azul Chase vibrante (#117ACA -> RGB: 17, 122, 202)
+            for (let i = 0; i < data.length; i += 4) {
+                let r = data[i];
+                let g = data[i+1];
+                let b = data[i+2];
+                let a = data[i+3];
+                
+                // Rango de color dorado
+                if (r > 120 && g > 80 && b < 100 && a > 10) {
+                    data[i] = 17;     // R
+                    data[i+1] = 122;  // G
+                    data[i+2] = 202;  // B
+                }
+            }
+            
+            ctx.putImageData(imageData, 0, 0);
+            
+            // Borrar texto anterior (debajo de Y=1750)
+            ctx.clearRect(0, 1750, canvas.width, canvas.height - 1750);
+            
+            // Añadir los nuevos textos
+            ctx.fillStyle = "white";
+            ctx.textAlign = "center";
+            let cx = canvas.width / 2;
+            
+            ctx.font = "bold 110px Arial, sans-serif";
+            ctx.fillText("ROMÁN & DELGADO LLC", cx, 1830);
+            
+            ctx.font = "70px Arial, sans-serif";
+            ctx.fillText("INTERNATIONAL BUSINESS CONSULTING", cx, 1980);
+            
+            ctx.font = "60px Arial, sans-serif";
+            ctx.fillText("UNITED STATES OF AMERICA", cx, 2090);
+            
+            // Configurar botón de descarga
+            const downloadBtn = document.getElementById('downloadBtn');
+            downloadBtn.href = canvas.toDataURL('image/png');
+        };
+    </script>
+</body>
+</html>

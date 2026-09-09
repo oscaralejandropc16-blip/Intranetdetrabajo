@@ -1874,18 +1874,62 @@ function rd_intranet_get_my_history() {
                 $p_user_meta = strtolower(trim(get_post_meta($pid, 'usuario', true) ?: ''));
                 $p_auth_data = get_userdata($p_author_id);
                 $p_auth_name = $p_auth_data ? strtolower(trim($p_auth_data->display_name ?: $p_auth_data->user_login)) : '';
+                $p_title = strtolower(get_the_title($pid));
 
-                if (($user_login && (strpos($p_auth_name, $user_login) !== false || strpos($p_user_meta, $user_login) !== false)) ||
-                    ($display_name && (strpos($p_auth_name, $display_name) !== false || strpos($p_user_meta, $display_name) !== false)) ||
-                    (strpos($user_login, 'carmen') !== false && (strpos($p_auth_name, 'carmen') !== false || strpos($p_user_meta, 'carmen') !== false))) {
+                if (($user_login && (strpos($p_auth_name, $user_login) !== false || strpos($p_user_meta, $user_login) !== false || strpos($p_title, $user_login) !== false)) ||
+                    ($display_name && (strpos($p_auth_name, $display_name) !== false || strpos($p_user_meta, $display_name) !== false || strpos($p_title, $display_name) !== false)) ||
+                    (strpos($user_login, 'carmen') !== false && (strpos($p_auth_name, 'carmen') !== false || strpos($p_user_meta, 'carmen') !== false || strpos($p_title, 'carmen') !== false))) {
                     $matched_ids[] = $pid;
                 }
             }
             wp_reset_postdata();
         }
         if (!empty($matched_ids)) {
-            $args['post__in'] = $matched_ids;
-            $query = new WP_Query($args);
+            $raw_resultados = array();
+            foreach ($matched_ids as $pid) {
+                $p_obj = get_post($pid);
+                if (!$p_obj) continue;
+                $post_id = $pid;
+                $post_date = get_the_date('Y-m-d', $pid);
+
+                $clock_in = get_post_meta($post_id, 'hora_entrada', true) ?: 'N/A';
+                $clock_out = get_post_meta($post_id, 'hora_salida', true) ?: 'N/A';
+                if (strpos($clock_in, 'T') !== false && strpos($clock_in, 'Z') !== false) {
+                    $clock_in = date('H:i', strtotime($clock_in) - 14400);
+                } elseif (strpos($clock_in, ' ') !== false) {
+                    $clock_in = date('H:i', strtotime($clock_in));
+                }
+                if (strpos($clock_out, 'T') !== false && strpos($clock_out, 'Z') !== false) {
+                    $clock_out = date('H:i', strtotime($clock_out) - 14400);
+                } elseif (strpos($clock_out, ' ') !== false) {
+                    $clock_out = date('H:i', strtotime($clock_out));
+                }
+                if ($clock_in !== 'N/A' && $clock_out !== 'N/A' && strcmp(substr($clock_in, 0, 5), substr($clock_out, 0, 5)) > 0) {
+                    $t_in = strtotime($clock_in);
+                    $t_out = strtotime($clock_out);
+                    if ($t_in !== false && $t_out !== false && $t_in > $t_out) {
+                        $clock_in = date('H:i', $t_in - 14400);
+                    }
+                }
+                $raw_resultados[] = array(
+                    'id' => $post_id,
+                    'date' => $post_date,
+                    'clockIn' => substr($clock_in, 0, 5),
+                    'clockOut' => substr($clock_out, 0, 5),
+                    'status' => get_post_meta($post_id, 'estado_revision', true) ?: 'Enviado',
+                    'comentario_admin' => get_post_meta($post_id, 'comentario_admin', true) ?: '',
+                    'supervisado_por' => get_post_meta($post_id, 'supervisado_por', true) ?: '',
+                    'ubicacionEntrada' => get_post_meta($post_id, 'ubicacion_entrada', true),
+                    'ubicacionSalida' => get_post_meta($post_id, 'ubicacion_salida', true),
+                    'content' => $p_obj->post_content,
+                    'pdfBase64' => get_post_meta($post_id, 'bitacora_pdf_base64', true),
+                    'actuaciones' => rd_intranet_decode_meta_json($post_id, 'actuaciones_json'),
+                    'ingresos' => rd_intranet_decode_meta_json($post_id, 'ingresos_json'),
+                    'programaciones' => rd_intranet_decode_meta_json($post_id, 'programaciones_json'),
+                    'evidences' => rd_intranet_decode_meta_json($post_id, 'evidencias_adjuntas_json')
+                );
+            }
+            return rest_ensure_response($raw_resultados);
         }
     }
 
