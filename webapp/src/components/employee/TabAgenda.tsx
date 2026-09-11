@@ -109,14 +109,14 @@ export default function TabAgenda({
 
       let progData: any[][] = [];
       if (programaciones && programaciones.length > 0) {
-        progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
+        progData = programaciones.map(p => [`${p.fecha || ''} ${p.hora || ''}`.trim() || 'N/A', p.numeroAsunto || '—', p.organismoTribunal || 'N/A', p.tipoActuacion || 'N/A', p.resumen || '—', p.observaciones || '—']);
       } else {
-        progData = [['—', '—', '—', 'Sin programación o agenda futura registrada', '—']];
+        progData = [['—', '—', '—', '—', 'Sin programación o agenda futura registrada', '—']];
       }
 
       autoTable(doc, {
         startY: finalY + 8,
-        head: [['FECHA Y HORA', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
+        head: [['FECHA Y HORA', 'N° ASUNTO', 'TRIBUNAL / LUGAR', 'ACTUACIÓN A REALIZAR', 'SÍNTESIS', 'OBSERVACIONES / INSTRUCCIONES']],
         body: progData,
         theme: 'grid',
         headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8.5, cellPadding: 3, lineColor: [203, 213, 225], lineWidth: 0.2 },
@@ -193,6 +193,7 @@ export default function TabAgenda({
       id: Math.random().toString(36).substring(7),
       fecha: tomorrow,
       hora: '09:00',
+      numeroAsunto: '',
       organismoTribunal: '',
       tipoActuacion: '',
       resumen: '',
@@ -334,6 +335,7 @@ export default function TabAgenda({
             <tr>
               <th className="px-4 py-4 min-w-[150px]">Fecha</th>
               <th className="px-4 py-4 w-32">Hora</th>
+              <th className="px-4 py-4 min-w-[180px]">N° Asunto</th>
               <th className="px-4 py-4 min-w-[200px]">Organismo / Tribunal <span className="text-rose-500 font-black">*</span></th>
               <th className="px-4 py-4 min-w-[200px]">Tipo de Actuación <span className="text-rose-500 font-black">*</span></th>
               <th className="px-4 py-4 min-w-[250px]">Resumen</th>
@@ -344,7 +346,7 @@ export default function TabAgenda({
           <tbody className="divide-y divide-slate-100">
             {programaciones.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-slate-500 font-medium">
+                <td colSpan={8} className="px-4 py-12 text-center text-slate-500 font-medium">
                   No has planificado tareas futuras. Haz clic en "Nueva Programación" para agendar.
                 </td>
               </tr>
@@ -373,6 +375,25 @@ export default function TabAgenda({
                     <input 
                       type="text" 
                       list="expedientes-agenda"
+                      value={prog.numeroAsunto || ''}
+                      disabled={reportSubmitted}
+                      onChange={(e) => updateField(prog.id, 'numeroAsunto', e.target.value)}
+                      className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-bold transition-colors ${
+                        !prog.numeroAsunto || prog.numeroAsunto.trim() === ''
+                          ? 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                      }`}
+                      placeholder="Ej: RD-J-2026..."
+                    />
+                    <datalist id="expedientes-agenda">
+                      {allCombinedExpedientes.map((exp, idx) => (
+                        <option key={idx} value={exp.numeroExpediente}>{exp.partes}</option>
+                      ))}
+                    </datalist>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <input 
+                      type="text" 
                       value={prog.organismoTribunal}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'organismoTribunal', e.target.value)}
@@ -383,11 +404,6 @@ export default function TabAgenda({
                       }`}
                       placeholder="Ej: Registro Principal *"
                     />
-                    <datalist id="expedientes-agenda">
-                      {allCombinedExpedientes.map((exp, idx) => (
-                        <option key={idx} value={exp.numeroExpediente}>{exp.partes}</option>
-                      ))}
-                    </datalist>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <input 

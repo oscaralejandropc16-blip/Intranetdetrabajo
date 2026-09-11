@@ -24,6 +24,7 @@ export interface Programacion {
   id: string;
   fecha: string;
   hora: string;
+  numeroAsunto?: string;
   organismoTribunal: string;
   tipoActuacion: string;
   resumen: string;
