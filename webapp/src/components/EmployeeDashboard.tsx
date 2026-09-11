@@ -1549,6 +1549,8 @@ export default function EmployeeDashboard() {
                       setProgramaciones={setProgramaciones}
                       reportSubmitted={reportSubmitted}
                       allFutureTasks={allFutureTasks}
+                      globalExpedientes={globalExpedientes}
+                      ingresosActivos={ingresos}
                     />
                   )}
                 </div>

@@ -13,6 +13,8 @@ interface TabAgendaProps {
   reportSubmitted: boolean;
   allFutureTasks?: any[];
   isAdmin?: boolean;
+  globalExpedientes?: any[];
+  ingresosActivos?: any[];
 }
 
 export default function TabAgenda({
@@ -20,7 +22,9 @@ export default function TabAgenda({
   setProgramaciones,
   reportSubmitted,
   allFutureTasks = [],
-  isAdmin = false
+  isAdmin = false,
+  globalExpedientes = [],
+  ingresosActivos = []
 }: TabAgendaProps) {
 
   const decodeAccents = (str?: any) => {
@@ -35,6 +39,11 @@ export default function TabAgenda({
       .replace(/\\u00f1|u00f1/g, 'ñ').replace(/\\u00d1|u00d1/g, 'Ñ')
       .replace(/\\u00bf|u00bf/g, '¿').replace(/\\u00a1|u00a1/g, '¡');
   };
+
+  const allCombinedExpedientes = [
+    ...globalExpedientes,
+    ...ingresosActivos
+  ].filter((v, i, a) => a.findIndex(t => t.numeroExpediente === v.numeroExpediente) === i);
 
   const [syncing, setSyncing] = React.useState(false);
   const [synced, setSynced] = React.useState(false);
@@ -363,6 +372,7 @@ export default function TabAgenda({
                   <td className="px-4 py-3 align-top">
                     <input 
                       type="text" 
+                      list="expedientes-agenda"
                       value={prog.organismoTribunal}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'organismoTribunal', e.target.value)}
@@ -373,6 +383,11 @@ export default function TabAgenda({
                       }`}
                       placeholder="Ej: Registro Principal *"
                     />
+                    <datalist id="expedientes-agenda">
+                      {allCombinedExpedientes.map((exp, idx) => (
+                        <option key={idx} value={exp.numeroExpediente}>{exp.partes}</option>
+                      ))}
+                    </datalist>
                   </td>
                   <td className="px-4 py-3 align-top">
                     <input 
