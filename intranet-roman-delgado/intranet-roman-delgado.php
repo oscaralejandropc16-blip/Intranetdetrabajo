@@ -2161,21 +2161,31 @@ function rd_intranet_is_authorized($request = null) {
 function rd_intranet_get_all_chat_store() {
     $msgs = get_option('rd_chat_global_messages', null);
     if (!is_array($msgs)) {
-        // Migrar de mensajes previos si existen
-        $old = get_option('rd_mensajes_para_jefatura', array());
-        $msgs = is_array($old) ? $old : array();
-        update_option('rd_chat_global_messages', $msgs);
+        $msgs = array();
     }
-    return $msgs;
+    // Purga automática de alertas de gastos que no pertenecen al chat entre personas
+    $cleaned = array_values(array_filter($msgs, function($m) {
+        if (!empty($m['tipo_alerta']) && $m['tipo_alerta'] === 'gasto') return false;
+        if (isset($m['mensaje']) && strpos($m['mensaje'], 'relación de gastos') !== false) return false;
+        return true;
+    }));
+    if (count($cleaned) !== count($msgs)) {
+        update_option('rd_chat_global_messages', $cleaned);
+    }
+    return $cleaned;
 }
 
 function rd_intranet_save_all_chat_store($msgs) {
     if (!is_array($msgs)) $msgs = array();
+    // Filtrar siempre para que nunca se guarden gastos en el chat personal
+    $msgs = array_values(array_filter($msgs, function($m) {
+        if (!empty($m['tipo_alerta']) && $m['tipo_alerta'] === 'gasto') return false;
+        if (isset($m['mensaje']) && strpos($m['mensaje'], 'relación de gastos') !== false) return false;
+        return true;
+    }));
     // Limitar a los 500 mensajes más recientes para rendimiento óptimo
     $msgs = array_slice($msgs, 0, 500);
     update_option('rd_chat_global_messages', $msgs);
-    // Sincronizar retrocompatible
-    update_option('rd_mensajes_para_jefatura', $msgs);
 }
 
 function rd_intranet_is_user_boss($author_name, $role = '') {
@@ -2196,20 +2206,39 @@ function rd_intranet_is_user_boss($author_name, $role = '') {
 function rd_intranet_get_chat_messages($request) {
     $params = $request ? $request->get_params() : array();
     $contact_filter = sanitize_text_field($params['employee'] ?? ($params['contact'] ?? ''));
+    $user_filter = sanitize_text_field($params['user'] ?? ($params['currentUser'] ?? ''));
+    
+    $user_obj = wp_get_current_user();
+    if (empty($user_filter) && $user_obj && $user_obj->ID) {
+        $user_filter = $user_obj->display_name ?: ($user_obj->user_nicename ?: $user_obj->user_login);
+    }
     
     $all = rd_intranet_get_all_chat_store();
     
     if (!empty($contact_filter)) {
         $c_clean = strtolower(trim($contact_filter));
-        $filtered = array_values(array_filter($all, function($m) use ($c_clean) {
+        $u_clean = strtolower(trim($user_filter));
+        
+        $is_boss_c = rd_intranet_is_user_boss($contact_filter);
+        $is_boss_u = !empty($user_filter) ? rd_intranet_is_user_boss($user_filter) : false;
+
+        $filtered = array_values(array_filter($all, function($m) use ($c_clean, $u_clean, $is_boss_c, $is_boss_u) {
             $author = strtolower(trim($m['author'] ?? ''));
             $recipient = strtolower(trim($m['recipient'] ?? ''));
-            
-            // Si el contacto es el autor o el destinatario
-            $matches_author = strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false;
-            $matches_recipient = strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false;
-            
-            return $matches_author || $matches_recipient;
+
+            if (empty($u_clean)) {
+                return strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false;
+            }
+
+            // De Current a Contact
+            $from_u_to_c = (strpos($author, $u_clean) !== false || strpos($u_clean, $author) !== false) &&
+                           (strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false || ($is_boss_c && $recipient === 'jefatura'));
+
+            // De Contact a Current
+            $from_c_to_u = (strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false) &&
+                           (strpos($recipient, $u_clean) !== false || strpos($u_clean, $recipient) !== false || ($is_boss_u && $recipient === 'jefatura') || empty($recipient));
+
+            return $from_u_to_c || $from_c_to_u;
         }));
         return rest_ensure_response(rd_intranet_fix_unicode_escapes($filtered));
     }

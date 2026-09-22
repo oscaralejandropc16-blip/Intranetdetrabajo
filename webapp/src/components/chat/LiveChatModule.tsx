@@ -11,7 +11,8 @@ import {
   X, 
   Sparkles,
   RefreshCw,
-  Users
+  Users,
+  Receipt
 } from 'lucide-react';
 import api from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
@@ -188,10 +189,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const fetchMessages = useCallback(async (silent = true) => {
     if (!silent) setIsRefreshing(true);
     try {
-      // 1. Obtener mensajes del servidor
-      const empQuery = isJefatura ? activeEmployee : (effectiveCurrentUser || 'Carmen Luisa');
+      // 1. Obtener mensajes del servidor para la conversación entre el usuario actual y el contacto seleccionado
       const response = await api.get('/rd-intranet/v1/chat/messages', {
-        params: { employee: empQuery }
+        params: { 
+          employee: activeEmployee,
+          user: effectiveCurrentUser
+        }
       });
 
       let serverMsgs: LiveChatMessage[] = [];
@@ -433,26 +436,30 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const filteredMessages = useMemo(() => {
     const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
     const cleanActive = (activeEmployee || '').toLowerCase().trim();
+    const isMeBoss = isUserBoss(cleanCurrent);
+    const isActiveBoss = isUserBoss(cleanActive);
 
     return messages
       .filter(m => {
+        // Excluir alertas de gastos del chat personal entre colegas
+        if ((m as any).tipo_alerta === 'gasto' || (m.mensaje || '').toLowerCase().includes('relación de gastos')) {
+          return false;
+        }
+
         const author = (m.author || '').toLowerCase().trim();
         const recipient = (m.recipient || '').toLowerCase().trim();
 
         // 1. Mensaje de mí para el contacto activo
         const isFromCurrentToActive = 
           (author.includes(cleanCurrent) || cleanCurrent.includes(author)) &&
-          (!recipient || recipient.includes(cleanActive) || cleanActive.includes(recipient));
+          (!recipient || recipient.includes(cleanActive) || cleanActive.includes(recipient) || (isActiveBoss && recipient === 'jefatura'));
 
         // 2. Mensaje del contacto activo para mí
         const isFromActiveToCurrent = 
           (author.includes(cleanActive) || cleanActive.includes(author)) &&
-          (!recipient || recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient));
+          (!recipient || recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient) || (isMeBoss && recipient === 'jefatura'));
 
-        // 3. Coincidencia de autor con el contacto activo
-        const isAuthorMatch = author.includes(cleanActive) || cleanActive.includes(author);
-
-        if (!isFromCurrentToActive && !isFromActiveToCurrent && !isAuthorMatch) {
+        if (!isFromCurrentToActive && !isFromActiveToCurrent) {
           return false;
         }
 
@@ -769,13 +776,19 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               const cleanAuthor = (msg.author || '').toLowerCase().trim();
               const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
               
+              const isSystemNotification = (msg as any).tipo_alerta === 'gasto' || 
+                                           (msg.mensaje || '').toLowerCase().includes('relación de gastos') || 
+                                           (msg.titulo || '').toLowerCase().includes('gastos');
+
               // REGLA FUNDAMENTAL DE ALINEACIÓN:
-              // isMe = true (Tú a la DERECHA en verde) solo si el autor coincide con el usuario actualmente logueado
-              const isMe = cleanAuthor === cleanCurrent || 
-                           (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) || 
-                           (cleanCurrent.includes('delgado') && cleanAuthor.includes('delgado')) || 
-                           (cleanCurrent.includes('luis') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
-                           (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen'));
+              // isMe = true (Tú a la DERECHA en verde) solo si el autor coincide con el usuario actualmente logueado y NO es un aviso del sistema
+              const isMe = !isSystemNotification && (
+                cleanAuthor === cleanCurrent || 
+                (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) || 
+                (cleanCurrent.includes('delgado') && cleanAuthor.includes('delgado')) || 
+                (cleanCurrent.includes('luis') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
+                (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen'))
+              );
 
               // REGLA DE DOBLE CHECK AZUL:
               // Un mensaje propio (isMe) está LEÍDO si el destinatario abrió y leyó la conversación
@@ -784,30 +797,35 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 (isUserBoss(msg.recipient || activeEmployee) ? msg.leido_por_jefe : msg.leido_por_empleado)
               );
 
-              const headerLabel = isMe
-                ? 'Tú'
-                : (msg.author || activeEmployee);
+              const headerLabel = isSystemNotification
+                ? '⚡ Notificación del Sistema (Gastos)'
+                : (isMe ? 'Tú' : (msg.author || activeEmployee));
 
-              const canDelete = isMe || isJefatura;
+              const canDelete = isMe || isJefatura || isSystemNotification;
 
               return (
                 <div
                   key={msg.id}
-                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
+                  className={`flex flex-col ${isSystemNotification ? 'items-center my-2' : (isMe ? 'items-end' : 'items-start')} group`}
                 >
                   <div
                     className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
-                      isMe 
-                        ? 'bg-[#005c4b] text-white rounded-tr-xs' 
-                        : 'bg-[#202c33] text-slate-100 rounded-tl-xs'
+                      isSystemNotification
+                        ? 'bg-[#182229] border border-amber-500/30 text-amber-100 rounded-2xl text-center'
+                        : (isMe 
+                            ? 'bg-[#005c4b] text-white rounded-tr-xs' 
+                            : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
                     } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
                   >
                     {/* Header de la burbuja */}
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
+                    <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
+                      <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                        isSystemNotification ? 'text-amber-400' : (isMe ? 'text-emerald-200' : 'text-amber-400')
+                      }`}>
+                        {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-amber-400" />}
                         {headerLabel}
                       </span>
-                      {msg.atendido && (
+                      {msg.atendido && !isSystemNotification && (
                         <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
                           <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
                         </span>
@@ -815,7 +833,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                     </div>
 
                     {/* Texto del mensaje */}
-                    <p className="text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text">
+                    <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-amber-200/90' : ''}`}>
                       {msg.mensaje}
                     </p>
 
