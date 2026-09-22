@@ -43,7 +43,14 @@ const isJefaturaUser = (userName: string) => {
 };
 
 export default function AdminDashboard() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('rd_cached_admin_reports');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [allInvestigaciones, setAllInvestigaciones] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
@@ -469,10 +476,17 @@ export default function AdminDashboard() {
           
           // Deduplicación inteligente: agrupar por usuario y fecha (conservando el más completo o con comentarios)
           const dedupedData = parsedData.filter((item, index, self) => {
-            const key = (item.user || '').toLowerCase().trim() + '_' + item.date;
-            return index === self.findIndex(t => ((t.user || '').toLowerCase().trim() + '_' + t.date) === key);
+            const key = ((item.user || item.author_name || item.usuario || '').toLowerCase().trim()) + '_' + item.date;
+            return index === self.findIndex(t => (((t.user || t.author_name || t.usuario || '').toLowerCase().trim()) + '_' + t.date) === key);
           });
-          setReports(dedupedData);
+          if (dedupedData.length > 0) {
+            setReports(dedupedData);
+            try {
+              localStorage.setItem('rd_cached_admin_reports', JSON.stringify(dedupedData));
+            } catch (e) {}
+          } else if (reports.length === 0) {
+            setReports(dedupedData);
+          }
           
           const todayStr = format(new Date(), 'yyyy-MM-dd');
           const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
@@ -1027,7 +1041,7 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
 
-  let filteredReports = reports.filter(r => r.user.toLowerCase().includes(searchTerm.toLowerCase()));
+  let filteredReports = reports.filter(r => ((r.user || r.author_name || r.usuario || '').toLowerCase().includes((searchTerm || '').toLowerCase())));
 
   if (statusFilter !== 'Todos') {
     filteredReports = filteredReports.filter(r => r.status === statusFilter);

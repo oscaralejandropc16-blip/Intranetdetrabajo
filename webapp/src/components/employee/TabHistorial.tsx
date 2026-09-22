@@ -25,7 +25,14 @@ interface BitacoraHistorial {
 }
 
 export default function TabHistorial() {
-  const [historial, setHistorial] = useState<BitacoraHistorial[]>([]);
+  const [historial, setHistorial] = useState<BitacoraHistorial[]>(() => {
+    try {
+      const cached = localStorage.getItem('rd_cached_user_history');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -58,7 +65,14 @@ export default function TabHistorial() {
               evidences: parseJson(r.evidences)
             };
           });
-          setHistorial(parsedData);
+          if (parsedData.length > 0) {
+            setHistorial(parsedData);
+            try {
+              localStorage.setItem('rd_cached_user_history', JSON.stringify(parsedData));
+            } catch (e) {}
+          } else if (historial.length === 0) {
+            setHistorial(parsedData);
+          }
         }
       } catch (error) {
         console.error('Error cargando el historial', error);
