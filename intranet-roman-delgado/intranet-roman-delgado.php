@@ -50,22 +50,31 @@ function rd_intranet_decode_jwt_token($user_id) {
     if ($user_id > 0) return $user_id;
 
     $auth_header = isset($_SERVER['HTTP_AUTHORIZATION']) ? $_SERVER['HTTP_AUTHORIZATION'] : (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) ? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] : '');
+    if (empty($auth_header) && function_exists('getallheaders')) {
+        $gh = getallheaders();
+        if (isset($gh['Authorization'])) $auth_header = $gh['Authorization'];
+        elseif (isset($gh['authorization'])) $auth_header = $gh['authorization'];
+    }
     if (empty($auth_header) && function_exists('apache_request_headers')) {
         $headers = apache_request_headers();
         if (isset($headers['Authorization'])) $auth_header = $headers['Authorization'];
         elseif (isset($headers['authorization'])) $auth_header = $headers['authorization'];
     }
+    if (empty($auth_header) && isset($_REQUEST['token'])) {
+        $auth_header = 'Bearer ' . sanitize_text_field($_REQUEST['token']);
+    }
 
     if (!empty($auth_header) && preg_match('/Bearer\s+(\S+)/i', $auth_header, $matches)) {
         $token = $matches[1];
         
-        // Buscar por user_meta si el token fue generado por el login nativo
+        // 1. Buscar por user_meta si el token fue generado por el login nativo
         global $wpdb;
         $matched_uid = $wpdb->get_var($wpdb->prepare("SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'rd_intranet_token' AND meta_value = %s LIMIT 1", $token));
         if ($matched_uid && intval($matched_uid) > 0) {
             return intval($matched_uid);
         }
 
+        // 2. Decodificar payload JWT
         $parts = explode('.', $token);
         if (count($parts) === 3) {
             $payload = $parts[1];
@@ -278,7 +287,7 @@ add_action('rest_api_init', function () {
     register_rest_route('rd-intranet/v1', '/bitacoras', array(
         'methods' => 'GET',
         'callback' => 'rd_intranet_get_bitacoras',
-        'permission_callback' => $is_authorized_admin
+        'permission_callback' => 'rd_intranet_is_authorized'
     ));
     
     // Endpoint: POST /rd-intranet/v1/admin-update (Modificar y Comentar por el Jefe)
