@@ -2291,23 +2291,38 @@ function rd_intranet_get_chat_conversations($request) {
             );
         }
     }
+    $is_boss_u = $user && $user->ID ? rd_intranet_is_user_boss($current_logged) : false;
 
     foreach ($all_firm_contacts as $contact) {
         $c_name = $contact['name'];
         $c_clean = strtolower(trim($c_name));
+        $is_boss_c = $contact['isBoss'];
 
-        // Filtrar mensajes de este contacto
-        $c_msgs = array_values(array_filter($all, function($m) use ($c_clean) {
+        // Filtrar mensajes específicos entre el usuario actual y este contacto
+        $c_msgs = array_values(array_filter($all, function($m) use ($c_clean, $current_clean, $is_boss_c, $is_boss_u) {
             $author = strtolower(trim($m['author'] ?? ''));
             $recipient = strtolower(trim($m['recipient'] ?? ''));
-            return strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false;
+
+            if (empty($current_clean)) {
+                return strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false;
+            }
+
+            // De Current a Contact
+            $from_u_to_c = (strpos($author, $current_clean) !== false || strpos($current_clean, $author) !== false) &&
+                           (strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false || ($is_boss_c && $recipient === 'jefatura'));
+
+            // De Contact a Current
+            $from_c_to_u = (strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false) &&
+                           (strpos($recipient, $current_clean) !== false || strpos($current_clean, $recipient) !== false || ($is_boss_u && $recipient === 'jefatura') || empty($recipient));
+
+            return $from_u_to_c || $from_c_to_u;
         }));
 
         $unread_count = 0;
         $last_msg = null;
 
         if (!empty($c_msgs)) {
-            $last_msg = $c_msgs[0];
+            $last_msg = $c_msgs[0]; // Como están en array_unshift, el [0] es el más reciente de esta conversación P2P
             foreach ($c_msgs as $em) {
                 $author = strtolower(trim($em['author'] ?? ''));
                 // Si el mensaje lo envió este contacto y no ha sido leído
