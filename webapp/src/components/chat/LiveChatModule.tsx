@@ -320,23 +320,31 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }
   }, [activeEmployee, effectiveCurrentUser, isJefatura, messages]);
 
-  // Polling periódico cada 2.5 segundos para sincronía en vivo
+  // Polling periódico cada 5 segundos optimizado (pausado si la pestaña está en segundo plano)
   useEffect(() => {
     fetchMessages(true);
     fetchConversations();
 
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-      fetchConversations();
-    }, 2500);
+    }, 5000);
 
-    return () => clearInterval(interval);
+    const convInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchConversations();
+    }, 20000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(convInterval);
+    };
   }, [fetchConversations, fetchMessages]);
 
-  // Auto-marcar como leído cada vez que cambian los mensajes o el empleado seleccionado
+  // Auto-marcar como leído al cambiar de conversación
   useEffect(() => {
     markAsRead();
-  }, [messages.length, activeEmployee, markAsRead]);
+  }, [activeEmployee, markAsRead]);
 
   // Enviar un mensaje nuevo
   const handleSend = async (customText?: string) => {
