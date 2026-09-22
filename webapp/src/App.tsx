@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import EmployeeDashboard from './components/EmployeeDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
-import api from './lib/api';
+import { submitToServer } from './lib/api';
 import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
 
 function App() {
@@ -20,10 +20,11 @@ function App() {
   const [changeMessage, setChangeMessage] = useState('');
   const [changeError, setChangeError] = useState('');
 
+  // Sincronizar nombre de usuario
   useEffect(() => {
-    if (authToken) {
-      setUserName(localStorage.getItem('rd_user_name') || 'Usuario');
-      setIsAdmin(localStorage.getItem('rd_is_admin') === 'true');
+    const storedUser = localStorage.getItem('rd_user_name');
+    if (storedUser) {
+      setUserName(storedUser);
     }
   }, [authToken]);
 
@@ -39,8 +40,12 @@ function App() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setChangeError('Por favor completa todos los campos.');
+      return;
+    }
     if (newPassword !== confirmPassword) {
-      setChangeError('La nueva contraseña y su confirmación no coinciden.');
+      setChangeError('Las contraseñas nuevas no coinciden.');
       return;
     }
     if (newPassword.length < 6) {
@@ -53,17 +58,17 @@ function App() {
     setChangeMessage('');
 
     try {
-      const res = await api.post('/rd-intranet/v1/change-password', {
+      const res = await submitToServer('/rd-intranet/v1/change-password', {
         current_password: currentPassword,
         new_password: newPassword
       });
-      if (res.data && res.data.success) {
-        setChangeMessage(res.data.message || 'Contraseña actualizada exitosamente.');
+      if (res && res.success) {
+        setChangeMessage(res.message || 'Contraseña actualizada exitosamente.');
         setCurrentPassword('');
         setNewPassword('');
         setConfirmPassword('');
       } else {
-        setChangeError(res.data?.message || 'Error al cambiar la contraseña.');
+        setChangeError(res?.message || 'Error al cambiar la contraseña.');
       }
     } catch (err: any) {
       console.error('Error al cambiar contraseña:', err);

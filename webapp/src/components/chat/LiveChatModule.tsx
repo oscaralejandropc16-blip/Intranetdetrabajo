@@ -14,7 +14,7 @@ import {
   Users,
   Receipt
 } from 'lucide-react';
-import api from '../../lib/api';
+import api, { submitToServer } from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
 
 export interface LiveChatMessage {
@@ -312,7 +312,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         }
 
         // Llamar al backend para persistir doble check azul en WordPress
-        await api.post('/rd-intranet/v1/chat/mark-read', {
+        await submitToServer('/rd-intranet/v1/chat/mark-read', {
           is_jefatura: isJefatura,
           employee: activeEmployee
         });
@@ -386,7 +386,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
     // Enviar al backend de WordPress
     try {
-      await api.post('/rd-intranet/v1/chat/send', {
+      await submitToServer('/rd-intranet/v1/chat/send', {
         id: newMsg.id,
         mensaje: newMsg.mensaje,
         author: newMsg.author,
@@ -435,7 +435,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       }
 
       // 3. Notificar al backend
-      await api.post('/rd-intranet/v1/chat/delete', { id: msgId, mensaje: msgText });
+      await submitToServer('/rd-intranet/v1/chat/delete', { id: msgId, mensaje: msgText });
       fetchConversations();
     } catch (e) {}
   };

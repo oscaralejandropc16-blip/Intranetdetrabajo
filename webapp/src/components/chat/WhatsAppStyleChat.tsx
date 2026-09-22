@@ -11,7 +11,7 @@ import {
   Search,
   Trash2
 } from 'lucide-react';
-import api from '../../lib/api';
+import { submitToServer } from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
 
 export interface ChatMessage {
@@ -162,7 +162,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         } catch (e) {}
 
         try {
-          api.post('/rd-intranet/v1/chat/mark-read', {
+          submitToServer('/rd-intranet/v1/chat/mark-read', {
             is_jefatura: isJefatura,
             employee: targetUser
           });
@@ -229,7 +229,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
     // Enviar a WordPress REST API
     try {
-      await api.post('/rd-intranet/v1/chat/send', {
+      await submitToServer('/rd-intranet/v1/chat/send', {
         id: newMsg.id,
         notif_id: newMsg.notif_id,
         post_id: newMsg.post_id,
@@ -295,7 +295,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
 
     try {
-      await api.post('/rd-intranet/v1/eliminar-mensaje-chat', { id: msgId, mensaje: msgText });
+      await submitToServer('/rd-intranet/v1/eliminar-mensaje-chat', { id: msgId, mensaje: msgText });
     } catch (e) {}
   };
 

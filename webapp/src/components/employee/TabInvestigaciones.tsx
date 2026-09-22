@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb, Trash2, Edit3 } from 'lucide-react';
-import api from '../../lib/api';
+import api, { submitToServer } from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export const TabInvestigaciones: React.FC = () => {
@@ -66,7 +66,7 @@ export const TabInvestigaciones: React.FC = () => {
     setMessage(null);
 
     try {
-      await api.post('/rd-intranet/v1/investigaciones', formData);
+      await submitToServer('/rd-intranet/v1/investigaciones', formData);
       setMessage({ type: 'success', text: '¡Investigación y sentencia guardada con éxito en el Repositorio Jurídico KANT!' });
       setFormData({
         tema: '',
@@ -112,7 +112,7 @@ export const TabInvestigaciones: React.FC = () => {
       onConfirm: async () => {
         setSystemAlert(prev => ({ ...prev, isOpen: false }));
         try {
-          await api.post('/rd-intranet/v1/delete-investigacion', { post_id: id });
+          await submitToServer('/rd-intranet/v1/delete-investigacion', { post_id: id });
           setMessage({ type: 'success', text: 'Investigación eliminada correctamente.' });
           fetchInvestigaciones();
           setTimeout(() => setMessage(null), 3000);

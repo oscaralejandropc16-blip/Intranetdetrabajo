@@ -3,7 +3,7 @@ import { CalendarIcon, Plus, X, Clock, Activity } from 'lucide-react';
 import type { Programacion } from '../../types/libros';
 import { format, addDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import api from '../../lib/api';
+import { submitToServer } from '../../lib/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -58,9 +58,9 @@ export default function TabAgenda({
       const localDraft = localStorage.getItem(`rd_intranet_draft_${user}`) || localStorage.getItem('rd_intranet_draft');
       if (localDraft) {
         const parsed = JSON.parse(localDraft);
-        await api.post('/rd-intranet/v1/draft', { ...parsed, programaciones });
+        await submitToServer('/rd-intranet/v1/draft', { ...parsed, programaciones });
       } else {
-        await api.post('/rd-intranet/v1/draft', { programaciones });
+        await submitToServer('/rd-intranet/v1/draft', { programaciones });
       }
     } catch (e) {
       console.warn('No se pudo enviar el avance al servidor (Modo offline), pero se generará el PDF localmente.', e);

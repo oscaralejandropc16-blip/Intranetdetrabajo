@@ -180,7 +180,7 @@ export default function AdminDashboard() {
     } catch (e) {}
 
     try {
-      await api.post('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId, atendido: true });
+      await submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId, atendido: true });
     } catch (e) {}
   };
 

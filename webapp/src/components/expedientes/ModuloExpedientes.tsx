@@ -16,11 +16,18 @@ import DetalleExpedienteModal from './DetalleExpedienteModal';
 import PlanificacionSemanal from './PlanificacionSemanal';
 
 export default function ModuloExpedientes() {
-  const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>([]);
+  const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>(() => {
+    try {
+      const cached = localStorage.getItem('rd_cached_expedientes');
+      return cached ? JSON.parse(cached) : [];
+    } catch (e) {
+      return [];
+    }
+  });
   const [audiencias, setAudiencias] = useState<AudienciaSemanal[]>(() => getStoredAudiencias());
   const [asuntosNuevos, setAsuntosNuevos] = useState<AsuntoNuevo[]>(() => getStoredAsuntosNuevos());
   const [seguimientos, setSeguimientos] = useState<SeguimientoPendiente[]>(() => getStoredSeguimientos());
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'expedientes' | 'planificacion'>('expedientes');
   const [searchTerm, setSearchTerm] = useState('');
@@ -136,7 +143,7 @@ export default function ModuloExpedientes() {
     
     // Guardar en el servidor
     try {
-      await api.post('/rd-intranet/v1/expedientes', { expedientes: [updated] });
+      await submitToServer('/rd-intranet/v1/expedientes', { expedientes: [updated] });
     } catch (e) {
       console.error('Error al actualizar expediente:', e);
     }
@@ -179,7 +186,7 @@ export default function ModuloExpedientes() {
     setNumExp('');
     
     // Guardar en servidor
-    api.post('/rd-intranet/v1/expedientes', { expedientes: [newExp] })
+    submitToServer('/rd-intranet/v1/expedientes', { expedientes: [newExp] })
       .catch(e => console.error('Error creando expediente:', e));
     
     setPartes('');
