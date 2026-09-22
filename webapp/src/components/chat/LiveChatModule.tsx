@@ -12,7 +12,8 @@ import {
   Sparkles,
   RefreshCw,
   Users,
-  Receipt
+  Receipt,
+  ArrowLeft
 } from 'lucide-react';
 import api, { submitToServer } from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
@@ -540,7 +541,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     >
       
       {/* SIDEBAR DE CONVERSACIONES / DIRECTORIO DE LA FIRMA */}
-      <div className="w-full md:w-80 lg:w-96 bg-[#111b21] border-r border-white/5 flex flex-col shrink-0 h-full overflow-hidden">
+      <div className={`w-full md:w-80 lg:w-96 bg-[#111b21] border-r border-white/5 flex flex-col shrink-0 h-full overflow-hidden transition-all duration-300 ${activeEmployee ? 'hidden md:flex' : 'flex'}`}>
         
         {/* Header del Sidebar */}
         <div className="p-3.5 bg-[#1f2c34] border-b border-white/5 flex items-center justify-between">
@@ -647,11 +648,18 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       </div>
 
       {/* ÁREA PRINCIPAL DE CHAT (VENTANA DE CONVERSACIÓN) */}
-      <div className="flex-1 flex flex-col bg-[#0b141a] relative h-full overflow-hidden">
+      <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#0b141a] relative ${!activeEmployee ? 'hidden md:flex' : 'flex'}`}>
         
         {/* WHATSAPP-STYLE HEADER */}
         <div className="bg-[#1f2c34] px-4 py-3 sm:px-5 sm:py-3.5 border-b border-white/5 flex items-center justify-between gap-3 text-white">
           <div className="flex items-center gap-3 min-w-0">
+            {/* Back button for mobile */}
+            <button 
+              onClick={() => setActiveEmployee('')}
+              className="md:hidden p-1.5 -ml-2 text-slate-300 hover:text-white rounded-full hover:bg-white/5 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <div className="relative shrink-0">
               <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-emerald-400/30">
                 {isUserBoss(activeEmployee) ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />}

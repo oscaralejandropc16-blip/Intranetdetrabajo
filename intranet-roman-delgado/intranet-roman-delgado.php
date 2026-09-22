@@ -2298,6 +2298,12 @@ function rd_intranet_get_chat_conversations($request) {
         $c_clean = strtolower(trim($c_name));
         $is_boss_c = $contact['isBoss'];
 
+        // Regla: Los empleados solo pueden hablar con jefatura.
+        // Si el usuario actual es empleado y el contacto de la lista también es empleado, lo ocultamos.
+        if (!$is_boss_u && !$is_boss_c && $current_clean !== $c_clean) {
+            continue;
+        }
+
         // Filtrar mensajes específicos entre el usuario actual y este contacto
         $c_msgs = array_values(array_filter($all, function($m) use ($c_clean, $current_clean, $is_boss_c, $is_boss_u) {
             $author = strtolower(trim($m['author'] ?? ''));
