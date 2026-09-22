@@ -1680,6 +1680,12 @@ export default function AdminDashboard() {
           )}
         </button>
         <button
+          onClick={() => setActiveView('mis_libros')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'mis_libros' ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black shadow-md shadow-blue-500/20 ring-1 ring-blue-400' : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'}`}
+        >
+          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> 📝 Mi Bitácora Diaria (Jefatura)
+        </button>
+        <button
           onClick={() => setActiveView('chat')}
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'chat' ? 'bg-[#00a884] text-white font-black shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400' : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'}`}
         >
@@ -1723,12 +1729,6 @@ export default function AdminDashboard() {
               {pendingGastosCount}
             </span>
           )}
-        </button>
-        <button
-          onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'mis_libros' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
-        >
-          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-slate-900' : 'text-slate-400'}`} /> Biblioteca & Libros
         </button>
         <button
           onClick={() => setActiveView('historial')}

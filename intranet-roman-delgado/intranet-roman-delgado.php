@@ -2195,24 +2195,21 @@ function rd_intranet_is_user_boss($author_name, $role = '') {
 
 function rd_intranet_get_chat_messages($request) {
     $params = $request ? $request->get_params() : array();
-    $employee_filter = sanitize_text_field($params['employee'] ?? '');
+    $contact_filter = sanitize_text_field($params['employee'] ?? ($params['contact'] ?? ''));
     
     $all = rd_intranet_get_all_chat_store();
     
-    if (!empty($employee_filter)) {
-        $emp_clean = strtolower(trim($employee_filter));
-        $filtered = array_values(array_filter($all, function($m) use ($emp_clean) {
+    if (!empty($contact_filter)) {
+        $c_clean = strtolower(trim($contact_filter));
+        $filtered = array_values(array_filter($all, function($m) use ($c_clean) {
             $author = strtolower(trim($m['author'] ?? ''));
             $recipient = strtolower(trim($m['recipient'] ?? ''));
-            $is_from_boss = rd_intranet_is_user_boss($m['author'] ?? '', $m['author_role'] ?? '');
             
-            if ($is_from_boss) {
-                // Mensaje del jefe dirigido al empleado o general
-                return empty($recipient) || strpos($recipient, $emp_clean) !== false || strpos($emp_clean, $recipient) !== false;
-            } else {
-                // Mensaje emitido por el empleado
-                return strpos($author, $emp_clean) !== false || strpos($emp_clean, $author) !== false;
-            }
+            // Si el contacto es el autor o el destinatario
+            $matches_author = strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false;
+            $matches_recipient = strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false;
+            
+            return $matches_author || $matches_recipient;
         }));
         return rest_ensure_response(rd_intranet_fix_unicode_escapes($filtered));
     }
@@ -2223,67 +2220,77 @@ function rd_intranet_get_chat_messages($request) {
 function rd_intranet_get_chat_conversations($request) {
     $all = rd_intranet_get_all_chat_store();
     $conversations = array();
-    $employees_found = array();
 
-    // Empleados predeterminados asegurados
-    $known_employees = array('Carmen Luisa');
-    
-    foreach ($all as $m) {
-        $author = $m['author'] ?? 'Empleado';
-        $recipient = $m['recipient'] ?? '';
-        $is_boss = rd_intranet_is_user_boss($author, $m['author_role'] ?? '');
-        
-        $emp_key = '';
-        if (!$is_boss && !empty($author)) {
-            $emp_key = $author;
-        } elseif ($is_boss && !empty($recipient) && !rd_intranet_is_user_boss($recipient)) {
-            $emp_key = $recipient;
+    $user = wp_get_current_user();
+    $current_logged = $user && $user->ID ? ($user->display_name ?: $user->user_login) : '';
+    $current_clean = strtolower(trim($current_logged));
+
+    // Directorio oficial de la firma
+    $all_firm_contacts = array(
+        array('name' => 'Luis Delgado', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
+        array('name' => 'Victor Roman', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
+        array('name' => 'Carmen Luisa', 'role' => 'Asistente Legal / Empleado', 'isBoss' => false),
+    );
+
+    // Buscar si hay otros usuarios registrados en el sistema
+    $wp_users = get_users(array('number' => 50));
+    foreach ($wp_users as $u) {
+        $name = $u->display_name ?: $u->user_login;
+        $clean_n = strtolower(trim($name));
+        $already = false;
+        foreach ($all_firm_contacts as $c) {
+            if (strpos($clean_n, strtolower($c['name'])) !== false || strpos(strtolower($c['name']), $clean_n) !== false) {
+                $already = true;
+                break;
+            }
         }
-        
-        if (!empty($emp_key) && !in_array($emp_key, $known_employees)) {
-            $known_employees[] = $emp_key;
+        if (!$already) {
+            $is_b = rd_intranet_is_user_boss($name);
+            $all_firm_contacts[] = array(
+                'name' => $name,
+                'role' => $is_b ? 'Jefatura' : 'Empleado',
+                'isBoss' => $is_b
+            );
         }
     }
 
-    foreach ($known_employees as $emp) {
-        $emp_clean = strtolower(trim($emp));
-        $emp_msgs = array_values(array_filter($all, function($m) use ($emp_clean) {
+    foreach ($all_firm_contacts as $contact) {
+        $c_name = $contact['name'];
+        $c_clean = strtolower(trim($c_name));
+
+        // Filtrar mensajes de este contacto
+        $c_msgs = array_values(array_filter($all, function($m) use ($c_clean) {
             $author = strtolower(trim($m['author'] ?? ''));
             $recipient = strtolower(trim($m['recipient'] ?? ''));
-            $is_boss = rd_intranet_is_user_boss($m['author'] ?? '', $m['author_role'] ?? '');
-            if ($is_boss) {
-                return empty($recipient) || strpos($recipient, $emp_clean) !== false || strpos($emp_clean, $recipient) !== false;
-            } else {
-                return strpos($author, $emp_clean) !== false || strpos($emp_clean, $author) !== false;
-            }
+            return strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false;
         }));
 
-        $unread_jefe = 0;
-        $unread_empleado = 0;
+        $unread_count = 0;
         $last_msg = null;
 
-        if (!empty($emp_msgs)) {
-            $last_msg = $emp_msgs[0]; // El más reciente está primero
-            foreach ($emp_msgs as $em) {
-                $is_boss = rd_intranet_is_user_boss($em['author'] ?? '', $em['author_role'] ?? '');
-                if (!$is_boss && empty($em['leido_por_jefe'])) {
-                    $unread_jefe++;
-                }
-                if ($is_boss && empty($em['leido_por_empleado'])) {
-                    $unread_empleado++;
+        if (!empty($c_msgs)) {
+            $last_msg = $c_msgs[0];
+            foreach ($c_msgs as $em) {
+                $author = strtolower(trim($em['author'] ?? ''));
+                // Si el mensaje lo envió este contacto y no ha sido leído
+                if (strpos($author, $c_clean) !== false) {
+                    if (empty($em['leido_por_jefe']) && empty($em['leido_por_empleado'])) {
+                        $unread_count++;
+                    }
                 }
             }
         }
 
         $conversations[] = array(
-            'employee' => $emp,
-            'role' => 'Empleado',
-            'unreadCountJefe' => $unread_jefe,
-            'unreadCountEmpleado' => $unread_empleado,
-            'lastMessage' => $last_msg ? ($last_msg['mensaje'] ?? '') : 'Conversación iniciada',
+            'employee' => $c_name,
+            'role' => $contact['role'],
+            'isBoss' => $contact['isBoss'],
+            'unreadCountJefe' => $unread_count,
+            'unreadCountEmpleado' => $unread_count,
+            'lastMessage' => $last_msg ? ($last_msg['mensaje'] ?? '') : 'Canal oficial disponible',
             'lastMessageTime' => $last_msg ? ($last_msg['fecha'] ?? '') : '',
-            'lastMessageIsMe' => $last_msg ? rd_intranet_is_user_boss($last_msg['author'] ?? '', $last_msg['author_role'] ?? '') : false,
-            'totalMessages' => count($emp_msgs)
+            'lastMessageIsMe' => false,
+            'totalMessages' => count($c_msgs)
         );
     }
 

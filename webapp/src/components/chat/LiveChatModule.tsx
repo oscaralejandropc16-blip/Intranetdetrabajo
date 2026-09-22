@@ -100,39 +100,89 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   className = '',
   compactMode = false
 }) => {
-  // Lista de empleados registrados por defecto
-  const [conversations, setConversations] = useState<ConversationItem[]>([
+  const DEFAULT_CONTACTS: ConversationItem[] = [
     {
-      employee: 'Carmen Luisa',
-      role: 'Empleado / Asistente Legal',
+      employee: 'Luis Delgado',
+      role: 'Socio Director / Jefatura',
       unreadCountJefe: 0,
       unreadCountEmpleado: 0,
-      lastMessage: 'Canal oficial abierto',
+      lastMessage: 'Canal oficial disponible',
+      lastMessageTime: '',
+      lastMessageIsMe: false,
+      totalMessages: 0
+    },
+    {
+      employee: 'Victor Roman',
+      role: 'Socio Director / Jefatura',
+      unreadCountJefe: 0,
+      unreadCountEmpleado: 0,
+      lastMessage: 'Canal oficial disponible',
+      lastMessageTime: '',
+      lastMessageIsMe: false,
+      totalMessages: 0
+    },
+    {
+      employee: 'Carmen Luisa',
+      role: 'Asistente Legal / Empleado',
+      unreadCountJefe: 0,
+      unreadCountEmpleado: 0,
+      lastMessage: 'Canal oficial disponible',
       lastMessageTime: '',
       lastMessageIsMe: false,
       totalMessages: 0
     }
-  ]);
+  ];
 
-  const [activeEmployee, setActiveEmployee] = useState<string>(initialEmployee);
+  const effectiveCurrentUser = currentUser || localStorage.getItem('rd_user_name') || (isJefatura ? 'Victor Roman' : 'Carmen Luisa');
+
+  // Inicializar contacto activo asegurando que no sea el mismo usuario
+  const [conversations, setConversations] = useState<ConversationItem[]>(DEFAULT_CONTACTS);
+
+  const [activeEmployee, setActiveEmployee] = useState<string>(() => {
+    const curClean = effectiveCurrentUser.toLowerCase();
+    if (initialEmployee && !curClean.includes(initialEmployee.toLowerCase())) {
+      return initialEmployee;
+    }
+    if (curClean.includes('victor')) return 'Luis Delgado';
+    if (curClean.includes('luis')) return 'Victor Roman';
+    return 'Luis Delgado';
+  });
+
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
   const [inputText, setInputText] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'todos' | 'pendientes' | 'atendidos'>('todos');
+  const [searchQuery, setSearchQuery] = useState('');
   const [searchConversation, setSearchConversation] = useState('');
-  const [deleteConfirm, setDeleteConfirm] = useState<{
-    isOpen: boolean;
-    msgId: string;
-    msgText?: string;
-  }>({ isOpen: false, msgId: '', msgText: '' });
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; msgId: string; msgText?: string }>({
+    isOpen: false,
+    msgId: '',
+    msgText: ''
+  });
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const prevMessagesCountRef = useRef<number>(0);
-  const initialFetchDoneRef = useRef<boolean>(false);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const activeEmployeeRef = useRef<string>(activeEmployee);
+  const initialFetchDoneRef = useRef(false);
+  const prevMessagesCountRef = useRef(0);
 
-  const effectiveCurrentUser = currentUser || (isJefatura ? 'Luis Delgado' : 'Carmen Luisa');
+  const scrollToBottom = useCallback((smooth = true) => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: smooth ? 'smooth' : 'auto'
+      });
+    }
+  }, []);
+
+  // Scroll al final al cambiar de conversación o primer render
+  useEffect(() => {
+    activeEmployeeRef.current = activeEmployee;
+    const t = setTimeout(() => {
+      scrollToBottom(false);
+    }, 60);
+    return () => clearTimeout(t);
+  }, [activeEmployee, scrollToBottom]);
 
   // Función para obtener la lista de mensajes del backend y sincronizar localStorage
   const fetchMessages = useCallback(async (silent = true) => {
@@ -204,9 +254,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }
   }, [activeEmployee, effectiveCurrentUser, isJefatura, onUnreadCountChange]);
 
-  // Cargar lista de conversaciones (para Jefatura)
+  // Cargar lista de conversaciones (para todos: Jefatura y Empleados)
   const fetchConversations = useCallback(async () => {
-    if (!isJefatura) return;
     try {
       const res = await api.get('/rd-intranet/v1/chat/conversations');
       if (Array.isArray(res.data) && res.data.length > 0) {
@@ -215,22 +264,22 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     } catch (e) {
       // ignore
     }
-  }, [isJefatura]);
+  }, []);
 
   // Marcar automáticamente como leídos los mensajes que veo en pantalla
   const markAsRead = useCallback(async () => {
     if (messages.length === 0) return;
 
     let needsUpdate = false;
+    const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
     const updated = messages.map(m => {
-      const fromBoss = isUserBoss(m.author, m.author_role);
-      if (isJefatura) {
-        if (!fromBoss && !m.leido_por_jefe) {
+      const author = (m.author || '').toLowerCase().trim();
+      const isFromMe = author.includes(cleanCurrent) || cleanCurrent.includes(author);
+      if (!isFromMe) {
+        if (isJefatura && !m.leido_por_jefe) {
           needsUpdate = true;
           return { ...m, leido_por_jefe: true };
-        }
-      } else {
-        if (fromBoss && !m.leido_por_empleado) {
+        } else if (!isJefatura && !m.leido_por_empleado) {
           needsUpdate = true;
           return { ...m, leido_por_empleado: true };
         }
@@ -247,9 +296,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           const qList = JSON.parse(qRaw);
           if (Array.isArray(qList)) {
             const updatedQ = qList.map((item: any) => {
-              const fromBoss = isUserBoss(item.author, item.author_role);
-              if (isJefatura && !fromBoss) return { ...item, leido_por_jefe: true };
-              if (!isJefatura && fromBoss) return { ...item, leido_por_empleado: true };
+              const author = (item.author || '').toLowerCase().trim();
+              const isFromMe = author.includes(cleanCurrent) || cleanCurrent.includes(author);
+              if (!isFromMe) {
+                if (isJefatura) return { ...item, leido_por_jefe: true };
+                return { ...item, leido_por_empleado: true };
+              }
               return item;
             });
             localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
@@ -263,7 +315,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         });
       } catch (e) {}
     }
-  }, [activeEmployee, isJefatura, messages]);
+  }, [activeEmployee, effectiveCurrentUser, isJefatura, messages]);
 
   // Polling periódico cada 2.5 segundos para sincronía en vivo
   useEffect(() => {
@@ -283,14 +335,6 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     markAsRead();
   }, [messages.length, activeEmployee, markAsRead]);
 
-  // Scroll al final al recibir mensajes o cambiar de chat
-  useEffect(() => {
-    const t = setTimeout(() => {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [messages.length, activeEmployee, filterMode]);
-
   // Enviar un mensaje nuevo
   const handleSend = async (customText?: string) => {
     const textToSend = (customText || inputText).trim();
@@ -305,7 +349,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
       author: effectiveCurrentUser,
       author_role: isJefatura ? 'jefatura' : 'empleado',
-      recipient: isJefatura ? activeEmployee : 'Jefatura',
+      recipient: activeEmployee,
       mensaje: textToSend,
       fecha: fullDate,
       fecha_timestamp: Math.floor(Date.now() / 1000),
@@ -320,6 +364,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     const updatedMessages = [newMsg, ...messages];
     setMessages(updatedMessages);
     setInputText('');
+    setTimeout(() => scrollToBottom(true), 40);
 
     // Guardar en cola local
     try {
@@ -386,22 +431,29 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   // Filtrado y ordenamiento cronológico (más antiguos arriba, más recientes abajo)
   const filteredMessages = useMemo(() => {
+    const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
+    const cleanActive = (activeEmployee || '').toLowerCase().trim();
+
     return messages
       .filter(m => {
-        // Filtrar por empleado activo si es modo jefatura
-        if (isJefatura && activeEmployee) {
-          const author = (m.author || '').toLowerCase();
-          const recipient = (m.recipient || '').toLowerCase();
-          const emp = activeEmployee.toLowerCase();
-          const isFromBoss = isUserBoss(m.author, m.author_role);
+        const author = (m.author || '').toLowerCase().trim();
+        const recipient = (m.recipient || '').toLowerCase().trim();
 
-          if (isFromBoss) {
-            const matchesRecipient = !recipient || recipient.includes(emp) || emp.includes(recipient);
-            if (!matchesRecipient) return false;
-          } else {
-            const matchesAuthor = author.includes(emp) || emp.includes(author);
-            if (!matchesAuthor) return false;
-          }
+        // 1. Mensaje de mí para el contacto activo
+        const isFromCurrentToActive = 
+          (author.includes(cleanCurrent) || cleanCurrent.includes(author)) &&
+          (!recipient || recipient.includes(cleanActive) || cleanActive.includes(recipient));
+
+        // 2. Mensaje del contacto activo para mí
+        const isFromActiveToCurrent = 
+          (author.includes(cleanActive) || cleanActive.includes(author)) &&
+          (!recipient || recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient));
+
+        // 3. Coincidencia de autor con el contacto activo
+        const isAuthorMatch = author.includes(cleanActive) || cleanActive.includes(author);
+
+        if (!isFromCurrentToActive && !isFromActiveToCurrent && !isAuthorMatch) {
+          return false;
         }
 
         // Filtro por Atendidos / Pendientes
@@ -431,7 +483,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         if (tA && tB && tA !== tB) return tA - tB;
         return (a.fecha || '').localeCompare(b.fecha || '');
       });
-  }, [activeEmployee, filterMode, isJefatura, messages, searchQuery]);
+  }, [activeEmployee, effectiveCurrentUser, filterMode, messages, searchQuery]);
 
   // Presets de respuestas rápidas
   const quickPresets = isJefatura ? [
@@ -456,134 +508,138 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   const attendedCount = messages.filter(m => m.atendido).length;
 
-  // Filtrado de contactos para el sidebar de Jefatura
+  // Filtrado de contactos excluyendo al usuario actualmente logueado
   const filteredConversations = conversations.filter(c => {
+    const isSelf = c.employee.toLowerCase().includes(effectiveCurrentUser.toLowerCase()) || 
+                   effectiveCurrentUser.toLowerCase().includes(c.employee.toLowerCase());
+    if (isSelf) return false;
     if (!searchConversation) return true;
     return c.employee.toLowerCase().includes(searchConversation.toLowerCase()) || 
            c.lastMessage.toLowerCase().includes(searchConversation.toLowerCase());
   });
 
   return (
-    <div className={`bg-[#0b141a] rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white ${className}`} style={{ minHeight: compactMode ? '580px' : '700px', height: '100%' }}>
+    <div 
+      className={`bg-[#0b141a] rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white ${className}`} 
+      style={{ height: compactMode ? '580px' : 'calc(100vh - 210px)', minHeight: '520px', maxHeight: '820px' }}
+    >
       
-      {/* SIDEBAR DE CONVERSACIONES (SOLO JEFATURA) */}
-      {isJefatura && (
-        <div className="w-full md:w-80 lg:w-96 bg-[#111b21] border-r border-white/5 flex flex-col shrink-0">
-          
-          {/* Header del Sidebar */}
-          <div className="p-3.5 bg-[#1f2c34] border-b border-white/5 flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow-sm ring-2 ring-emerald-400/30">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-white">Canal Jefatura</h3>
-                <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  En línea • Supervisión
-                </p>
-              </div>
+      {/* SIDEBAR DE CONVERSACIONES / DIRECTORIO DE LA FIRMA */}
+      <div className="w-full md:w-80 lg:w-96 bg-[#111b21] border-r border-white/5 flex flex-col shrink-0 h-full overflow-hidden">
+        
+        {/* Header del Sidebar */}
+        <div className="p-3.5 bg-[#1f2c34] border-b border-white/5 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-white shadow-sm ring-2 ring-emerald-400/30">
+              <ShieldCheck className="w-5 h-5" />
             </div>
-
-            <button
-              onClick={() => fetchMessages(false)}
-              title="Actualizar mensajes"
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
-            </button>
-          </div>
-
-          {/* Buscador de Empleados / Chats */}
-          <div className="p-2.5 border-b border-white/5 bg-[#111b21]">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar conversación..."
-                value={searchConversation}
-                onChange={(e) => setSearchConversation(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-[#202c33] rounded-xl text-xs text-white placeholder-slate-400 outline-none border border-transparent focus:border-emerald-500/40 transition-all font-normal"
-              />
-              {searchConversation && (
-                <button onClick={() => setSearchConversation('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
-                  ✕
-                </button>
-              )}
+            <div>
+              <h3 className="text-sm font-bold text-white">Directorio KANT</h3>
+              <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>{effectiveCurrentUser} • En línea</span>
+              </p>
             </div>
           </div>
 
-          {/* Lista de Chats / Empleados */}
-          <div className="flex-1 overflow-y-auto divide-y divide-white/5">
-            {filteredConversations.map((conv, cIdx) => {
-              const isActive = activeEmployee.toLowerCase() === conv.employee.toLowerCase();
-              return (
-                <button
-                  key={cIdx}
-                  type="button"
-                  onClick={() => setActiveEmployee(conv.employee)}
-                  className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${
-                    isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
-                  }`}
-                >
-                  <div className="relative shrink-0">
-                    <div className="w-10 h-10 rounded-full bg-[#202c33] border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs">
-                      {conv.employee.charAt(0).toUpperCase()}
-                    </div>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#111b21] rounded-full"></span>
-                  </div>
+          <button
+            onClick={() => fetchMessages(false)}
+            title="Actualizar mensajes"
+            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+          </button>
+        </div>
 
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <h4 className="text-xs font-bold text-white truncate">{conv.employee}</h4>
-                      {conv.lastMessageTime && (
-                        <span className="text-[10px] text-slate-400 shrink-0">{conv.lastMessageTime.split(',')[1] || conv.lastMessageTime}</span>
-                      )}
-                    </div>
-
-                    <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
-                      {conv.lastMessageIsMe && (
-                        <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0 inline" />
-                      )}
-                      <span>{conv.lastMessage || 'Conversación activa'}</span>
-                    </p>
-                  </div>
-
-                  {conv.unreadCountJefe > 0 && (
-                    <span className="px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-black rounded-full text-[10px] shadow-sm shrink-0 self-center">
-                      {conv.unreadCountJefe}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Footer de Estado */}
-          <div className="p-3 bg-[#182229] border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{conversations.length} Contacto(s)</span>
-            </span>
-            {pendingCount > 0 && (
-              <span className="text-amber-400 font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                {pendingCount} sin leer
-              </span>
+        {/* Buscador de Empleados / Chats */}
+        <div className="p-2.5 border-b border-white/5 bg-[#111b21]">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Buscar conversación..."
+              value={searchConversation}
+              onChange={(e) => setSearchConversation(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 bg-[#202c33] rounded-xl text-xs text-white placeholder-slate-400 outline-none border border-transparent focus:border-emerald-500/40 transition-all font-normal"
+            />
+            {searchConversation && (
+              <button onClick={() => setSearchConversation('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
+                ✕
+              </button>
             )}
           </div>
         </div>
-      )}
+
+        {/* Lista de Chats / Empleados */}
+        <div className="flex-1 overflow-y-auto divide-y divide-white/5">
+          {filteredConversations.map((conv, cIdx) => {
+            const isActive = activeEmployee.toLowerCase() === conv.employee.toLowerCase();
+            return (
+              <button
+                key={cIdx}
+                type="button"
+                onClick={() => setActiveEmployee(conv.employee)}
+                className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${
+                  isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
+                }`}
+              >
+                <div className="relative shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-[#202c33] border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs">
+                    {conv.employee.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#111b21] rounded-full"></span>
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-1 mb-0.5">
+                    <h4 className="text-xs font-bold text-white truncate">{conv.employee}</h4>
+                    {conv.lastMessageTime && (
+                      <span className="text-[10px] text-slate-400 shrink-0">{conv.lastMessageTime.split(',')[1] || conv.lastMessageTime}</span>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 truncate flex items-center gap-1">
+                    {conv.lastMessageIsMe && (
+                      <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0 inline" />
+                    )}
+                    <span>{conv.lastMessage || 'Conversación activa'}</span>
+                  </p>
+                </div>
+
+                {conv.unreadCountJefe > 0 && (
+                  <span className="px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-black rounded-full text-[10px] shadow-sm shrink-0 self-center">
+                    {conv.unreadCountJefe}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Footer de Estado */}
+        <div className="p-3 bg-[#182229] border-t border-white/5 text-[11px] text-slate-400 flex items-center justify-between">
+          <span className="flex items-center gap-1.5">
+            <Users className="w-3.5 h-3.5 text-emerald-400" />
+            <span>{filteredConversations.length} Contacto(s)</span>
+          </span>
+          {pendingCount > 0 && (
+            <span className="text-amber-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              {pendingCount} sin leer
+            </span>
+          )}
+        </div>
+      </div>
 
       {/* ÁREA PRINCIPAL DE CHAT (VENTANA DE CONVERSACIÓN) */}
-      <div className="flex-1 flex flex-col bg-[#0b141a] relative overflow-hidden">
+      <div className="flex-1 flex flex-col bg-[#0b141a] relative h-full overflow-hidden">
         
         {/* WHATSAPP-STYLE HEADER */}
         <div className="bg-[#1f2c34] px-4 py-3 sm:px-5 sm:py-3.5 border-b border-white/5 flex items-center justify-between gap-3 text-white">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
               <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-emerald-400/30">
-                {isJefatura ? <User className="w-5 h-5" /> : <ShieldCheck className="w-5 h-5" />}
+                {isUserBoss(activeEmployee) ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />}
               </div>
               <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#1f2c34] rounded-full"></span>
             </div>
@@ -591,12 +647,14 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm sm:text-base font-bold text-white truncate">
-                  {isJefatura ? activeEmployee : 'Dr. Luis Delgado / Jefatura Jurídica'}
+                  {activeEmployee}
                 </h3>
                 <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  isJefatura ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                  isUserBoss(activeEmployee) 
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                 }`}>
-                  {isJefatura ? 'Empleado' : 'Jefatura Oficial'}
+                  {isUserBoss(activeEmployee) ? 'Jefatura / Socio' : 'Equipo'}
                 </span>
               </div>
               <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
@@ -680,6 +738,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
         {/* CHAT MESSAGES BODY */}
         <div 
+          ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 relative"
           style={{
             backgroundColor: '#0b141a',
@@ -707,27 +766,27 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             </div>
           ) : (
             filteredMessages.map((msg) => {
-              const fromBoss = isUserBoss(msg.author, msg.author_role);
+              const cleanAuthor = (msg.author || '').toLowerCase().trim();
+              const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
               
-              // REGLA DE ALINEACIÓN:
-              // Si el usuario logueado es Jefe: mensajes del jefe a la DERECHA en verde (`isMe = true`).
-              // Si el usuario logueado es Empleado: mensajes del empleado a la DERECHA en verde (`isMe = true`).
-              const isMe = isJefatura ? fromBoss : !fromBoss;
+              // REGLA FUNDAMENTAL DE ALINEACIÓN:
+              // isMe = true (Tú a la DERECHA en verde) solo si el autor coincide con el usuario actualmente logueado
+              const isMe = cleanAuthor === cleanCurrent || 
+                           (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) || 
+                           (cleanCurrent.includes('delgado') && cleanAuthor.includes('delgado')) || 
+                           (cleanCurrent.includes('luis') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
+                           (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen'));
 
               // REGLA DE DOBLE CHECK AZUL:
-              // Un mensaje propio (isMe) está LEÍDO si:
-              // - Si soy jefe: el empleado lo leyó (`msg.leido_por_empleado === true` o `msg.atendido === true`).
-              // - Si soy empleado: el jefe lo leyó (`msg.leido_por_jefe === true` o `msg.atendido === true`).
+              // Un mensaje propio (isMe) está LEÍDO si el destinatario abrió y leyó la conversación
               const isReadByRecipient = isMe && (
                 msg.atendido === true || 
-                (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)
+                (isUserBoss(msg.recipient || activeEmployee) ? msg.leido_por_jefe : msg.leido_por_empleado)
               );
 
               const headerLabel = isMe
                 ? 'Tú'
-                : (isJefatura 
-                    ? (msg.author || activeEmployee || 'Carmen Luisa') 
-                    : (msg.author || 'Dr. Luis Delgado / Jefatura'));
+                : (msg.author || activeEmployee);
 
               const canDelete = isMe || isJefatura;
 
@@ -817,7 +876,6 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               );
             })
           )}
-          <div ref={messagesEndRef} />
         </div>
 
         {/* QUICK REPLY PRESETS */}
