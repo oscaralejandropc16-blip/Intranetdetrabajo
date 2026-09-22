@@ -50,6 +50,64 @@ api.interceptors.response.use(
   }
 );
 
+// REEMPLAZO GLOBAL DE GET PARA EVITAR BLOQUEOS DEL WAF DE NAMECHEAP
+// Namecheap WAF bloquea las peticiones GET hechas por Axios porque incluye cabeceras
+// que son consideradas "sospechosas" o porque bloquea la firma de Axios.
+// Al envolver api.get usando fetch() nativo, engañamos al WAF.
+const originalGet = api.get;
+// @ts-ignore - Ignorar error de TypeScript por sobreescribir la firma original de Axios
+api.get = async function (url: string, config?: any) {
+  const token = localStorage.getItem('rd_jwt_token');
+  
+  // Si la petición es fuera de wp-json (ej. un archivo estático), usamos axios
+  if (!url.startsWith('/rd-intranet/v1') && !url.startsWith('/jwt-auth/v1')) {
+    return originalGet.apply(api, [url, config]);
+  }
+
+  // Construir query string si hay params
+  let queryString = '';
+  if (config && config.params) {
+    const params = new URLSearchParams();
+    Object.entries(config.params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        params.append(key, String(value));
+      }
+    });
+    const query = params.toString();
+    if (query) {
+      queryString = url.includes('?') ? `&${query}` : `?${query}`;
+    }
+  }
+
+  const fullUrl = `${BASE_URL}${url}${queryString}`;
+
+  try {
+    const response = await fetch(fullUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}` // Evitamos cabeceras de Axios que el WAF bloquea
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401 && !window.location.pathname.includes('/login')) {
+        localStorage.removeItem('rd_jwt_token');
+        localStorage.removeItem('rd_user_name');
+        localStorage.removeItem('rd_user_email');
+        localStorage.removeItem('rd_is_admin');
+        window.location.href = '/login';
+        return new Promise(() => {});
+      }
+      throw new Error(`Error ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return { data, status: response.status, headers: response.headers };
+  } catch (err) {
+    throw err;
+  }
+};
+
 /**
  * Función universal para enviar datos al servidor usando fetch nativo.
  * fetch nativo con FormData NO es bloqueado por el WAF de Namecheap,
