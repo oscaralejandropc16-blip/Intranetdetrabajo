@@ -15,6 +15,7 @@ import LiveStatusBar from './common/LiveStatusBar';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
+import LiveChatModule from './chat/LiveChatModule';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -264,9 +265,10 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial'>(() => {
     return (sessionStorage.getItem('rd_admin_active_view') as any) || 'bitacoras';
   });
+  const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [allGastos, setAllGastos] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
     return (sessionStorage.getItem('rd_admin_boss_sub_tab') as any) || 'actuaciones';
@@ -1678,6 +1680,17 @@ export default function AdminDashboard() {
           )}
         </button>
         <button
+          onClick={() => setActiveView('chat')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'chat' ? 'bg-[#00a884] text-white font-black shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400' : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'}`}
+        >
+          <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} /> Chat en Vivo (WhatsApp)
+          {unreadChatLive > 0 && (
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 animate-pulse ${activeView === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-slate-950'}`}>
+              {unreadChatLive}
+            </span>
+          )}
+        </button>
+        <button
           onClick={() => setActiveView('buzon')}
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${activeView === 'buzon' ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'}`}
         >
@@ -2179,6 +2192,17 @@ export default function AdminDashboard() {
               </div>
             );
           })()}
+        </div>
+      )}
+
+      {/* VISTA: CHAT EN VIVO WHATSAPP (MULTI-EMPLEADO CON DOBLE CHECK AZUL) */}
+      {activeView === 'chat' && (
+        <div className="animate-in fade-in duration-200">
+          <LiveChatModule 
+            isJefatura={true}
+            currentUser={currentLoggedUser || 'Luis Delgado'}
+            onUnreadCountChange={setUnreadChatLive}
+          />
         </div>
       )}
 

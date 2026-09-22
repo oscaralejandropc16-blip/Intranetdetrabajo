@@ -16,6 +16,7 @@ import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
+import LiveChatModule from './chat/LiveChatModule';
 
 const getStorageKey = () => {
   const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
@@ -1056,12 +1057,13 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'expedientes' | 'gastos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (saved === 'expedientes' || saved === 'gastos' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
     return 'jornada';
   });
+  const [unreadChatLive, setUnreadChatLive] = useState(0);
 
   const [subTabLibro, setSubTabLibro] = useState<'actuaciones' | 'ingresos' | 'programacion'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
@@ -1279,6 +1281,23 @@ export default function EmployeeDashboard() {
           <span>Mi Jornada & Libros</span>
         </button>
         
+        <button 
+          onClick={() => setActiveTab('chat')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+            activeTab === 'chat' 
+              ? 'bg-[#00a884] text-white shadow-md shadow-emerald-600/30' 
+              : 'text-emerald-700 hover:text-emerald-950 hover:bg-emerald-50'
+          }`}
+        >
+          <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
+          <span>Chat con Jefatura</span>
+          {unreadChatLive > 0 && (
+            <span className={`px-1.5 py-0.2 font-black text-[10px] rounded-full animate-pulse ${activeTab === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-white'}`}>
+              {unreadChatLive}
+            </span>
+          )}
+        </button>
+
         <button 
           onClick={() => setActiveTab('expedientes')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
@@ -1558,6 +1577,17 @@ export default function EmployeeDashboard() {
               </div>
             )}
 
+          </div>
+        )}
+
+        {/* VISTA: CHAT EN VIVO WHATSAPP CON JEFATURA (TIEMPO REAL Y DOBLE CHECK AZUL) */}
+        {activeTab === 'chat' && (
+          <div className="animate-in fade-in duration-200">
+            <LiveChatModule
+              isJefatura={false}
+              currentUser={localStorage.getItem('rd_user_name') || 'Carmen Luisa'}
+              onUnreadCountChange={setUnreadChatLive}
+            />
           </div>
         )}
 

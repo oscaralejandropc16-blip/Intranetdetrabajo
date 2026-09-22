@@ -413,17 +413,34 @@ add_action('rest_api_init', function () {
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
-    // Endpoint: POST /rd-intranet/v1/eliminar-mensaje-chat
-    register_rest_route('rd-intranet/v1', '/eliminar-mensaje-chat', array(
-        'methods' => 'POST',
-        'callback' => 'rd_intranet_delete_chat_message',
+    // Endpoints: Chat en Vivo / WhatsApp Corporativo (Tiempo Real y Doble Check)
+    register_rest_route('rd-intranet/v1', '/chat/messages', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_chat_messages',
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
-    // Endpoint: POST /rd-intranet/v1/limpiar-mensajes-prueba
-    register_rest_route('rd-intranet/v1', '/limpiar-mensajes-prueba', array(
+    register_rest_route('rd-intranet/v1', '/chat/conversations', array(
+        'methods' => 'GET',
+        'callback' => 'rd_intranet_get_chat_conversations',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    register_rest_route('rd-intranet/v1', '/chat/send', array(
         'methods' => 'POST',
-        'callback' => 'rd_intranet_clear_test_messages',
+        'callback' => 'rd_intranet_send_chat_message',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    register_rest_route('rd-intranet/v1', '/chat/mark-read', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_mark_chat_read',
+        'permission_callback' => 'rd_intranet_is_authorized'
+    ));
+
+    register_rest_route('rd-intranet/v1', '/chat/delete', array(
+        'methods' => 'POST',
+        'callback' => 'rd_intranet_delete_chat_item',
         'permission_callback' => 'rd_intranet_is_authorized'
     ));
 
@@ -2137,109 +2154,290 @@ function rd_intranet_is_authorized($request = null) {
     return get_current_user_id() > 0;
 }
 
-function rd_intranet_handle_employee_reply($request) {
-    $user = wp_get_current_user();
-    if (!$user || !$user->ID) {
-        return new WP_Error('unauthorized', 'No autorizado', array('status' => 401));
+// -------------------------------------------------------------
+// CONTROLADOR DE CHAT EN VIVO Y MENSAJERÍA (WHATSAPP CORPORATIVO)
+// -------------------------------------------------------------
+
+function rd_intranet_get_all_chat_store() {
+    $msgs = get_option('rd_chat_global_messages', null);
+    if (!is_array($msgs)) {
+        // Migrar de mensajes previos si existen
+        $old = get_option('rd_mensajes_para_jefatura', array());
+        $msgs = is_array($old) ? $old : array();
+        update_option('rd_chat_global_messages', $msgs);
+    }
+    return $msgs;
+}
+
+function rd_intranet_save_all_chat_store($msgs) {
+    if (!is_array($msgs)) $msgs = array();
+    // Limitar a los 500 mensajes más recientes para rendimiento óptimo
+    $msgs = array_slice($msgs, 0, 500);
+    update_option('rd_chat_global_messages', $msgs);
+    // Sincronizar retrocompatible
+    update_option('rd_mensajes_para_jefatura', $msgs);
+}
+
+function rd_intranet_is_user_boss($author_name, $role = '') {
+    $clean = strtolower(trim($author_name));
+    if (strpos($clean, 'carmen') !== false || $role === 'empleado') return false;
+    if ($role === 'jefatura' || $role === 'admin') return true;
+    return strpos($clean, 'delgado') !== false || 
+           strpos($clean, 'roman') !== false || 
+           strpos($clean, 'jefe') !== false || 
+           strpos($clean, 'jefatura') !== false || 
+           strpos($clean, 'admin') !== false || 
+           $clean === 'luis' || 
+           strpos($clean, 'luis ') === 0 || 
+           $clean === 'victor' || 
+           strpos($clean, 'victor ') === 0;
+}
+
+function rd_intranet_get_chat_messages($request) {
+    $params = $request ? $request->get_params() : array();
+    $employee_filter = sanitize_text_field($params['employee'] ?? '');
+    
+    $all = rd_intranet_get_all_chat_store();
+    
+    if (!empty($employee_filter)) {
+        $emp_clean = strtolower(trim($employee_filter));
+        $filtered = array_values(array_filter($all, function($m) use ($emp_clean) {
+            $author = strtolower(trim($m['author'] ?? ''));
+            $recipient = strtolower(trim($m['recipient'] ?? ''));
+            $is_from_boss = rd_intranet_is_user_boss($m['author'] ?? '', $m['author_role'] ?? '');
+            
+            if ($is_from_boss) {
+                // Mensaje del jefe dirigido al empleado o general
+                return empty($recipient) || strpos($recipient, $emp_clean) !== false || strpos($emp_clean, $recipient) !== false;
+            } else {
+                // Mensaje emitido por el empleado
+                return strpos($author, $emp_clean) !== false || strpos($emp_clean, $author) !== false;
+            }
+        }));
+        return rest_ensure_response(rd_intranet_fix_unicode_escapes($filtered));
     }
     
-    $params = rd_intranet_get_request_data($request);
-    $notif_id = sanitize_text_field($params['notif_id'] ?? '');
-    $post_id = intval($params['post_id'] ?? 0);
-    $mensaje = sanitize_textarea_field($params['mensaje'] ?? '');
-    $titulo_origen = sanitize_text_field($params['titulo'] ?? 'Instrucción de Jefatura');
-    $fecha_bitacora = sanitize_text_field($params['date'] ?? current_time('Y-m-d'));
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($all));
+}
+
+function rd_intranet_get_chat_conversations($request) {
+    $all = rd_intranet_get_all_chat_store();
+    $conversations = array();
+    $employees_found = array();
+
+    // Empleados predeterminados asegurados
+    $known_employees = array('Carmen Luisa');
     
+    foreach ($all as $m) {
+        $author = $m['author'] ?? 'Empleado';
+        $recipient = $m['recipient'] ?? '';
+        $is_boss = rd_intranet_is_user_boss($author, $m['author_role'] ?? '');
+        
+        $emp_key = '';
+        if (!$is_boss && !empty($author)) {
+            $emp_key = $author;
+        } elseif ($is_boss && !empty($recipient) && !rd_intranet_is_user_boss($recipient)) {
+            $emp_key = $recipient;
+        }
+        
+        if (!empty($emp_key) && !in_array($emp_key, $known_employees)) {
+            $known_employees[] = $emp_key;
+        }
+    }
+
+    foreach ($known_employees as $emp) {
+        $emp_clean = strtolower(trim($emp));
+        $emp_msgs = array_values(array_filter($all, function($m) use ($emp_clean) {
+            $author = strtolower(trim($m['author'] ?? ''));
+            $recipient = strtolower(trim($m['recipient'] ?? ''));
+            $is_boss = rd_intranet_is_user_boss($m['author'] ?? '', $m['author_role'] ?? '');
+            if ($is_boss) {
+                return empty($recipient) || strpos($recipient, $emp_clean) !== false || strpos($emp_clean, $recipient) !== false;
+            } else {
+                return strpos($author, $emp_clean) !== false || strpos($emp_clean, $author) !== false;
+            }
+        }));
+
+        $unread_jefe = 0;
+        $unread_empleado = 0;
+        $last_msg = null;
+
+        if (!empty($emp_msgs)) {
+            $last_msg = $emp_msgs[0]; // El más reciente está primero
+            foreach ($emp_msgs as $em) {
+                $is_boss = rd_intranet_is_user_boss($em['author'] ?? '', $em['author_role'] ?? '');
+                if (!$is_boss && empty($em['leido_por_jefe'])) {
+                    $unread_jefe++;
+                }
+                if ($is_boss && empty($em['leido_por_empleado'])) {
+                    $unread_empleado++;
+                }
+            }
+        }
+
+        $conversations[] = array(
+            'employee' => $emp,
+            'role' => 'Empleado',
+            'unreadCountJefe' => $unread_jefe,
+            'unreadCountEmpleado' => $unread_empleado,
+            'lastMessage' => $last_msg ? ($last_msg['mensaje'] ?? '') : 'Conversación iniciada',
+            'lastMessageTime' => $last_msg ? ($last_msg['fecha'] ?? '') : '',
+            'lastMessageIsMe' => $last_msg ? rd_intranet_is_user_boss($last_msg['author'] ?? '', $last_msg['author_role'] ?? '') : false,
+            'totalMessages' => count($emp_msgs)
+        );
+    }
+
+    return rest_ensure_response(rd_intranet_fix_unicode_escapes($conversations));
+}
+
+function rd_intranet_send_chat_message($request) {
+    $user = wp_get_current_user();
+    $params = rd_intranet_get_request_data($request);
+    
+    $mensaje = sanitize_textarea_field($params['mensaje'] ?? '');
     if (empty($mensaje)) {
         return rest_ensure_response(array('success' => false, 'message' => 'El mensaje no puede estar vacío.'));
     }
 
-    $author_name = $user->display_name ?: ($user->user_nicename ?: $user->user_login);
-    $reply_item = array(
-        'id' => 'reply_' . time() . '_' . rand(100, 999),
+    $is_jefatura_param = isset($params['is_jefatura']) ? filter_var($params['is_jefatura'], FILTER_VALIDATE_BOOLEAN) : false;
+    $author_role = $is_jefatura_param ? 'jefatura' : sanitize_text_field($params['author_role'] ?? 'empleado');
+    $author_name = sanitize_text_field($params['author'] ?? '');
+    if (empty($author_name)) {
+        $author_name = $user && $user->ID ? ($user->display_name ?: $user->user_login) : ($is_jefatura_param ? 'Luis Delgado' : 'Carmen Luisa');
+    }
+
+    $recipient = sanitize_text_field($params['recipient'] ?? ($is_jefatura_param ? 'Carmen Luisa' : 'Jefatura'));
+    $notif_id = sanitize_text_field($params['notif_id'] ?? '');
+    $post_id = intval($params['post_id'] ?? 0);
+    $fecha_bitacora = sanitize_text_field($params['date'] ?? current_time('Y-m-d'));
+
+    $msg_id = sanitize_text_field($params['id'] ?? ('chat_' . time() . '_' . rand(100, 999)));
+
+    $is_from_boss = rd_intranet_is_user_boss($author_name, $author_role);
+
+    $msg_item = array(
+        'id' => $msg_id,
         'notif_id' => $notif_id,
         'post_id' => $post_id,
-        'author_id' => $user->ID,
+        'author_id' => $user ? $user->ID : 0,
         'author' => $author_name,
-        'author_email' => $user->user_email,
+        'author_role' => $is_from_boss ? 'jefatura' : 'empleado',
+        'recipient' => $recipient,
         'mensaje' => $mensaje,
-        'titulo' => $titulo_origen,
+        'titulo' => sanitize_text_field($params['titulo'] ?? 'Mensaje Directo'),
         'fecha' => current_time('Y-m-d H:i'),
+        'fecha_timestamp' => time(),
         'fecha_bitacora' => $fecha_bitacora,
-        'leido_por_jefe' => false
+        'leido_por_jefe' => $is_from_boss ? true : false,
+        'leido_por_empleado' => $is_from_boss ? false : true,
+        'atendido' => false
     );
 
-    // 1. Guardar en el hilo del post si corresponde a una bitácora
+    $all_messages = rd_intranet_get_all_chat_store();
+    array_unshift($all_messages, $msg_item);
+    rd_intranet_save_all_chat_store($all_messages);
+
+    // Si tiene post_id asociado, guardar en el post
     if ($post_id > 0) {
         $existing_replies = rd_intranet_decode_meta_json($post_id, 'respuestas_hilo_json');
         if (!is_array($existing_replies)) $existing_replies = array();
-        $existing_replies[] = $reply_item;
+        $existing_replies[] = $msg_item;
         update_post_meta($post_id, 'respuestas_hilo_json', wp_slash(wp_json_encode($existing_replies, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)));
     }
 
-    // 2. Guardar en la cola global de mensajes para Jefatura
-    $all_messages = get_option('rd_mensajes_para_jefatura', array());
-    if (!is_array($all_messages)) $all_messages = array();
-    array_unshift($all_messages, $reply_item);
-    $all_messages = array_slice($all_messages, 0, 200);
-    update_option('rd_mensajes_para_jefatura', $all_messages);
-
     return rest_ensure_response(array(
         'success' => true,
-        'message' => 'Respuesta enviada exitosamente a Jefatura.',
-        'reply' => $reply_item
+        'message' => 'Mensaje enviado exitosamente.',
+        'data' => $msg_item
     ));
 }
 
+function rd_intranet_mark_chat_read($request) {
+    $params = rd_intranet_get_request_data($request);
+    $is_jefatura = isset($params['is_jefatura']) ? filter_var($params['is_jefatura'], FILTER_VALIDATE_BOOLEAN) : false;
+    $employee = sanitize_text_field($params['employee'] ?? '');
+    $msg_id = sanitize_text_field($params['id'] ?? '');
+
+    $all_messages = rd_intranet_get_all_chat_store();
+    $has_changes = false;
+
+    foreach ($all_messages as &$msg) {
+        if (!empty($msg_id) && ($msg['id'] ?? '') !== $msg_id) {
+            continue;
+        }
+
+        $from_boss = rd_intranet_is_user_boss($msg['author'] ?? '', $msg['author_role'] ?? '');
+
+        if ($is_jefatura) {
+            // Jefe leyendo mensajes del empleado
+            if (!$from_boss) {
+                if (empty($employee) || strpos(strtolower($msg['author'] ?? ''), strtolower($employee)) !== false) {
+                    if (empty($msg['leido_por_jefe'])) {
+                        $msg['leido_por_jefe'] = true;
+                        $has_changes = true;
+                    }
+                }
+            }
+        } else {
+            // Empleado leyendo mensajes de Jefatura
+            if ($from_boss) {
+                if (empty($msg['leido_por_empleado'])) {
+                    $msg['leido_por_empleado'] = true;
+                    $has_changes = true;
+                }
+            }
+        }
+    }
+
+    if ($has_changes) {
+        rd_intranet_save_all_chat_store($all_messages);
+    }
+
+    return rest_ensure_response(array('success' => true, 'updated' => $has_changes));
+}
+
+function rd_intranet_delete_chat_item($request) {
+    $params = rd_intranet_get_request_data($request);
+    $msg_id = sanitize_text_field($params['id'] ?? '');
+    $text = sanitize_text_field($params['mensaje'] ?? '');
+
+    $all_messages = rd_intranet_get_all_chat_store();
+    $filtered = array_values(array_filter($all_messages, function($m) use ($msg_id, $text) {
+        if (!empty($msg_id) && ($m['id'] ?? '') === $msg_id) return false;
+        if (!empty($text) && ($m['mensaje'] ?? '') === $text) return false;
+        return true;
+    }));
+
+    rd_intranet_save_all_chat_store($filtered);
+    return rest_ensure_response(array('success' => true));
+}
+
+// Retrocompatibilidad con nombres anteriores
+function rd_intranet_handle_employee_reply($request) {
+    return rd_intranet_send_chat_message($request);
+}
+
 function rd_intranet_get_mensajes_jefatura() {
-    $all_messages = get_option('rd_mensajes_para_jefatura', array());
-    if (!is_array($all_messages)) $all_messages = array();
-    return rest_ensure_response(rd_intranet_fix_unicode_escapes($all_messages));
+    return rd_intranet_get_chat_messages(null);
 }
 
 function rd_intranet_mark_reply_read_by_boss($request) {
     $params = rd_intranet_get_request_data($request);
-    $reply_id = sanitize_text_field($params['reply_id'] ?? '');
-    
-    $all_messages = get_option('rd_mensajes_para_jefatura', array());
-    if (is_array($all_messages)) {
-        foreach ($all_messages as &$msg) {
-            if (empty($reply_id) || ($msg['id'] ?? '') === $reply_id) {
-                $msg['leido_por_jefe'] = true;
-            }
-        }
-        update_option('rd_mensajes_para_jefatura', $all_messages);
-    }
-    return rest_ensure_response(array('success' => true));
+    $params['is_jefatura'] = true;
+    return rd_intranet_mark_chat_read($request);
 }
 
 function rd_intranet_delete_chat_message($request) {
-    $params = rd_intranet_get_request_data($request);
-    $msg_id = sanitize_text_field($params['id'] ?? '');
-    $text = sanitize_text_field($params['mensaje'] ?? '');
-    
-    $all_messages = get_option('rd_mensajes_para_jefatura', array());
-    if (is_array($all_messages)) {
-        $filtered = array_values(array_filter($all_messages, function($m) use ($msg_id, $text) {
-            if (!empty($msg_id) && ($m['id'] ?? '') === $msg_id) return false;
-            if (!empty($text) && ($m['mensaje'] ?? '') === $text) return false;
-            return true;
-        }));
-        update_option('rd_mensajes_para_jefatura', $filtered);
-    }
-    
-    return rest_ensure_response(array('success' => true));
+    return rd_intranet_delete_chat_item($request);
 }
 
 function rd_intranet_clear_test_messages($request) {
-    update_option('rd_mensajes_para_jefatura', array());
-    
+    rd_intranet_save_all_chat_store(array());
     $posts = get_posts(array('post_type' => 'rd_bitacora', 'numberposts' => 150));
     foreach ($posts as $p) {
         delete_post_meta($p->ID, 'respuestas_hilo_json');
     }
-    
-    return rest_ensure_response(array('success' => true, 'message' => 'Mensajes de prueba eliminados exitosamente.'));
+    return rest_ensure_response(array('success' => true, 'message' => 'Historial de chat limpiado exitosamente.'));
 }
 
 // -------------------------------------------------------------

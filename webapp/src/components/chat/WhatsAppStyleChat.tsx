@@ -162,9 +162,9 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         } catch (e) {}
 
         try {
-          api.post('/rd-intranet/v1/marcar-mensajes-leidos-chat', {
+          api.post('/rd-intranet/v1/chat/mark-read', {
             is_jefatura: isJefatura,
-            date: reportContext?.date
+            employee: targetUser
           });
         } catch (e) {}
       }
@@ -229,13 +229,17 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
     // Enviar a WordPress REST API
     try {
-      await api.post('/rd-intranet/v1/responder-mensaje', {
+      await api.post('/rd-intranet/v1/chat/send', {
+        id: newMsg.id,
         notif_id: newMsg.notif_id,
         post_id: newMsg.post_id,
         mensaje: newMsg.mensaje,
         titulo: newMsg.titulo,
-        date: newMsg.fecha_bitacora,
-        author_role: newMsg.author_role
+        author: newMsg.author,
+        author_role: newMsg.author_role,
+        is_jefatura: isJefatura,
+        recipient: isJefatura ? targetUser : 'Jefatura',
+        date: newMsg.fecha_bitacora
       });
     } catch (err) {
       console.warn('Mensaje almacenado en cola local:', err);
