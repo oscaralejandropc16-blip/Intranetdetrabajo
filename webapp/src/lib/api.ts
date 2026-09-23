@@ -81,22 +81,27 @@ api.get = async function (url: string, config?: any) {
 
   const fullUrl = `${BASE_URL}${url}${queryString}`;
 
+  const headers: Record<string, string> = {
+    'Accept': 'application/json'
+  };
+
+  // Solo enviar cabecera Authorization si existe un token real (evitar enviar "Bearer null" o "Bearer demo_token")
+  if (token && token !== 'null' && token !== 'undefined' && !token.startsWith('demo_token_')) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
     const response = await fetch(fullUrl, {
       method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}` // Evitamos cabeceras de Axios que el WAF bloquea
-      }
+      headers
     });
 
     if (!response.ok) {
-      if (response.status === 401 && !window.location.pathname.includes('/login')) {
-        localStorage.removeItem('rd_jwt_token');
-        localStorage.removeItem('rd_user_name');
-        localStorage.removeItem('rd_user_email');
-        localStorage.removeItem('rd_is_admin');
-        window.location.href = '/login';
-        return new Promise(() => {});
+      if (response.status === 401) {
+        console.warn('Sesión no autorizada en GET:', url);
+        if (token && !token.startsWith('demo_token_')) {
+          localStorage.removeItem('rd_jwt_token');
+        }
       }
       throw new Error(`Error ${response.status}: ${response.statusText}`);
     }
@@ -128,14 +133,17 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
     }
   });
 
+  const headers: Record<string, string> = {};
+  if (token && token !== 'null' && token !== 'undefined' && !token.startsWith('demo_token_')) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   let lastErr: any;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const response = await fetch(`${BASE_URL}${endpoint}`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
+        headers,
         body: formData
       });
 

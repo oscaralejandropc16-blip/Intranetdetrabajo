@@ -34,6 +34,7 @@ function App() {
     localStorage.removeItem('rd_user_email');
     localStorage.removeItem('rd_is_admin');
     sessionStorage.removeItem('rd_emp_active_tab');
+    sessionStorage.removeItem('rd_admin_active_view');
     setAuthToken(null);
     setIsAdmin(false);
   };

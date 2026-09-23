@@ -167,6 +167,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const activeEmployeeRef = useRef<string>(activeEmployee);
   const initialFetchDoneRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
+  const messagesRef = useRef<LiveChatMessage[]>([]);
+  messagesRef.current = messages;
 
   const scrollToBottom = useCallback((smooth = true) => {
     if (chatContainerRef.current) {
@@ -261,22 +263,25 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   // Cargar lista de conversaciones (para todos: Jefatura y Empleados)
   const fetchConversations = useCallback(async () => {
     try {
-      const res = await api.get('/rd-intranet/v1/chat/conversations');
+      const res = await api.get('/rd-intranet/v1/chat/conversations', {
+        params: { user: effectiveCurrentUser }
+      });
       if (Array.isArray(res.data) && res.data.length > 0) {
         setConversations(res.data);
       }
     } catch (e) {
       // ignore
     }
-  }, []);
+  }, [effectiveCurrentUser]);
 
   // Marcar automáticamente como leídos los mensajes que veo en pantalla
   const markAsRead = useCallback(async () => {
-    if (messages.length === 0) return;
+    const currentMsgs = messagesRef.current;
+    if (currentMsgs.length === 0) return;
 
     let needsUpdate = false;
     const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
-    const updated = messages.map(m => {
+    const updated = currentMsgs.map(m => {
       const author = (m.author || '').toLowerCase().trim();
       const isFromMe = author.includes(cleanCurrent) || cleanCurrent.includes(author);
       if (!isFromMe) {
@@ -319,9 +324,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         });
       } catch (e) {}
     }
-  }, [activeEmployee, effectiveCurrentUser, isJefatura, messages]);
+  }, [activeEmployee, effectiveCurrentUser, isJefatura]);
 
-  // Polling periódico cada 5 segundos optimizado (pausado si la pestaña está en segundo plano)
+  // Polling periódico cada 10 segundos (pausado si la pestaña está en segundo plano para no saturar servidor)
   useEffect(() => {
     fetchMessages(true);
     fetchConversations();
@@ -329,12 +334,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-    }, 5000);
+    }, 10000);
 
     const convInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchConversations();
-    }, 20000);
+    }, 30000);
 
     return () => {
       clearInterval(interval);

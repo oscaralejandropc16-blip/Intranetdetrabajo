@@ -90,14 +90,7 @@ function rd_intranet_decode_jwt_token($user_id) {
     return $user_id;
 }
 
-// Anti-lockout: Limpiar automáticamente bloqueos por reintentos de login en la API REST (transitorios de JWT Auth / Limit Login)
-add_action('init', 'rd_intranet_clear_lockouts_automatically');
-function rd_intranet_clear_lockouts_automatically() {
-    if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], 'wp-json') !== false) {
-        global $wpdb;
-        $wpdb->query("DELETE FROM {$wpdb->options} WHERE option_name LIKE '%_transient_jwt_auth_retries_%' OR option_name LIKE '%_transient_timeout_jwt_auth_retries_%' OR option_name LIKE '%limit_login_%'");
-    }
-}
+// Limpieza específica de transitorios de bloqueo solo cuando sea necesario, sin bloquear wp_options en cada petición REST
 
 // 1. Registrar Custom Post Type: Bitácora Diaria y Repositorio Jurídico (Investigaciones KANT)
 function rd_intranet_register_cpt() {
@@ -2260,38 +2253,46 @@ function rd_intranet_get_chat_conversations($request) {
     $conversations = array();
 
     $user = wp_get_current_user();
-    $current_logged = $user && $user->ID ? ($user->display_name ?: $user->user_login) : '';
+    $param_user = sanitize_text_field($request ? ($request->get_param('user') ?: $request->get_param('currentUser')) : '');
+    $current_logged = $user && $user->ID ? ($user->display_name ?: $user->user_login) : $param_user;
     $current_clean = strtolower(trim($current_logged));
 
-    // Directorio oficial de la firma
-    $all_firm_contacts = array(
-        array('name' => 'Luis Delgado', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
-        array('name' => 'Victor Roman', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
-        array('name' => 'Carmen Luisa', 'role' => 'Asistente Legal / Empleado', 'isBoss' => false),
-    );
+    // Directorio oficial en caché (evita consultar base de datos en cada sondeo)
+    $all_firm_contacts = get_transient('rd_firm_contacts_cache');
+    if (!is_array($all_firm_contacts)) {
+        $all_firm_contacts = array(
+            array('name' => 'Luis Delgado', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
+            array('name' => 'Victor Roman', 'role' => 'Socio Director / Jefatura', 'isBoss' => true),
+            array('name' => 'Carmen Luisa', 'role' => 'Asistente Legal / Empleado', 'isBoss' => false),
+        );
 
-    // Buscar si hay otros usuarios registrados en el sistema
-    $wp_users = get_users(array('number' => 50));
-    foreach ($wp_users as $u) {
-        $name = $u->display_name ?: $u->user_login;
-        $clean_n = strtolower(trim($name));
-        $already = false;
-        foreach ($all_firm_contacts as $c) {
-            if (strpos($clean_n, strtolower($c['name'])) !== false || strpos(strtolower($c['name']), $clean_n) !== false) {
-                $already = true;
-                break;
+        $wp_users = get_users(array('number' => 20, 'fields' => array('ID', 'display_name', 'user_login')));
+        foreach ($wp_users as $u) {
+            $name = $u->display_name ?: $u->user_login;
+            $clean_n = strtolower(trim($name));
+            $already = false;
+            foreach ($all_firm_contacts as $c) {
+                if (strpos($clean_n, strtolower($c['name'])) !== false || strpos(strtolower($c['name']), $clean_n) !== false) {
+                    $already = true;
+                    break;
+                }
+            }
+            if (!$already) {
+                $is_b = rd_intranet_is_user_boss($name);
+                $all_firm_contacts[] = array(
+                    'name' => $name,
+                    'role' => $is_b ? 'Jefatura' : 'Empleado',
+                    'isBoss' => $is_b
+                );
             }
         }
-        if (!$already) {
-            $is_b = rd_intranet_is_user_boss($name);
-            $all_firm_contacts[] = array(
-                'name' => $name,
-                'role' => $is_b ? 'Jefatura' : 'Empleado',
-                'isBoss' => $is_b
-            );
-        }
+        set_transient('rd_firm_contacts_cache', $all_firm_contacts, 300);
     }
-    $is_boss_u = $user && $user->ID ? rd_intranet_is_user_boss($current_logged) : false;
+
+    $is_boss_u = !empty($current_logged) ? rd_intranet_is_user_boss($current_logged) : false;
+
+    // Solo inspeccionar los 100 mensajes más recientes para calcular el resumen de la barra lateral (ultrarrápido)
+    $sample_messages = array_slice($all, 0, 100);
 
     foreach ($all_firm_contacts as $contact) {
         $c_name = $contact['name'];
@@ -2300,40 +2301,36 @@ function rd_intranet_get_chat_conversations($request) {
 
         // Regla: Los empleados solo pueden hablar con jefatura.
         // Si el usuario actual es empleado y el contacto de la lista también es empleado, lo ocultamos.
-        if (!$is_boss_u && !$is_boss_c && $current_clean !== $c_clean) {
+        if (!$is_boss_u && !$is_boss_c && !empty($current_clean) && $current_clean !== $c_clean) {
             continue;
         }
 
-        // Filtrar mensajes específicos entre el usuario actual y este contacto
-        $c_msgs = array_values(array_filter($all, function($m) use ($c_clean, $current_clean, $is_boss_c, $is_boss_u) {
+        $unread_count = 0;
+        $last_msg = null;
+        $total_found = 0;
+
+        foreach ($sample_messages as $m) {
             $author = strtolower(trim($m['author'] ?? ''));
             $recipient = strtolower(trim($m['recipient'] ?? ''));
 
+            $is_match = false;
             if (empty($current_clean)) {
-                return strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false;
+                $is_match = (strpos($author, $c_clean) !== false || strpos($recipient, $c_clean) !== false);
+            } else {
+                $from_u_to_c = (strpos($author, $current_clean) !== false || strpos($current_clean, $author) !== false) &&
+                               (strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false || ($is_boss_c && $recipient === 'jefatura'));
+                $from_c_to_u = (strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false) &&
+                               (strpos($recipient, $current_clean) !== false || strpos($current_clean, $recipient) !== false || ($is_boss_u && $recipient === 'jefatura') || empty($recipient));
+                $is_match = ($from_u_to_c || $from_c_to_u);
             }
 
-            // De Current a Contact
-            $from_u_to_c = (strpos($author, $current_clean) !== false || strpos($current_clean, $author) !== false) &&
-                           (strpos($recipient, $c_clean) !== false || strpos($c_clean, $recipient) !== false || ($is_boss_c && $recipient === 'jefatura'));
-
-            // De Contact a Current
-            $from_c_to_u = (strpos($author, $c_clean) !== false || strpos($c_clean, $author) !== false) &&
-                           (strpos($recipient, $current_clean) !== false || strpos($current_clean, $recipient) !== false || ($is_boss_u && $recipient === 'jefatura') || empty($recipient));
-
-            return $from_u_to_c || $from_c_to_u;
-        }));
-
-        $unread_count = 0;
-        $last_msg = null;
-
-        if (!empty($c_msgs)) {
-            $last_msg = $c_msgs[0]; // Como están en array_unshift, el [0] es el más reciente de esta conversación P2P
-            foreach ($c_msgs as $em) {
-                $author = strtolower(trim($em['author'] ?? ''));
-                // Si el mensaje lo envió este contacto y no ha sido leído
+            if ($is_match) {
+                $total_found++;
+                if (!$last_msg) {
+                    $last_msg = $m;
+                }
                 if (strpos($author, $c_clean) !== false) {
-                    if (empty($em['leido_por_jefe']) && empty($em['leido_por_empleado'])) {
+                    if (empty($m['leido_por_jefe']) && empty($m['leido_por_empleado'])) {
                         $unread_count++;
                     }
                 }
@@ -2349,7 +2346,7 @@ function rd_intranet_get_chat_conversations($request) {
             'lastMessage' => $last_msg ? ($last_msg['mensaje'] ?? '') : 'Canal oficial disponible',
             'lastMessageTime' => $last_msg ? ($last_msg['fecha'] ?? '') : '',
             'lastMessageIsMe' => false,
-            'totalMessages' => count($c_msgs)
+            'totalMessages' => $total_found
         );
     }
 

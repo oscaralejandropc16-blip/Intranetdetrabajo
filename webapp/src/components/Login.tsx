@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../lib/api';
+import { submitToServer } from '../lib/api';
 import { Lock, User, ArrowRight, ShieldCheck, HelpCircle, Mail, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -24,28 +24,24 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
     setError('');
 
     try {
-      // Llamada al endpoint del plugin JWT Authentication for WP-API
-      let response;
-      try {
-        // 1. Intentar primero con nuestro endpoint propio nativo de WordPress (/rd-intranet/v1/login) que elude CORS y Varnish
-        response = await api.post('/rd-intranet/v1/login', { username, password });
-        if (response.data && response.data.success === false) {
-          setError(response.data.message || 'Contraseña o usuario incorrectos.');
-          setLoading(false);
-          return;
-        }
-      } catch (nativeErr: any) {
-        // Si el endpoint nativo da 404 (porque aún no han subido la versión 1.0.4 del plugin), usar el plugin externo jwt-auth
-        if (nativeErr.response?.status === 404) {
-          response = await api.post('/jwt-auth/v1/token', { username, password });
-        } else {
-          throw nativeErr;
-        }
+      // Iniciar sesión usando submitToServer (fetch + FormData) para eludir el WAF de Namecheap
+      const res = await submitToServer('/rd-intranet/v1/login', { username, password });
+
+      if (!res || res.success === false) {
+        setError(res?.message || 'Contraseña o usuario incorrectos.');
+        setLoading(false);
+        return;
       }
 
-      const token = response.data.token;
-      const user_email = response.data.user_email || `${username}@romanydelgado.com`;
-      const user_display_name = response.data.user_display_name || response.data.user_nicename || username;
+      const token = res.token;
+      if (!token) {
+        setError('El servidor no devolvió una clave de sesión válida.');
+        setLoading(false);
+        return;
+      }
+
+      const user_email = res.user_email || `${username}@romanydelgado.com`;
+      const user_display_name = res.user_display_name || res.user_nicename || username;
       
       // Guardar el token en el navegador
       localStorage.setItem('rd_jwt_token', token);
@@ -54,7 +50,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
       
       // Identificar si es admin
       const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
-      const isAdmin = response.data.is_admin || adminUsers.includes(username.toLowerCase());
+      const isAdmin = res.is_admin || adminUsers.includes(username.toLowerCase());
       localStorage.setItem('rd_is_admin', isAdmin ? 'true' : 'false');
       
       // Actualizar el estado de la app
@@ -68,23 +64,8 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
       }
 
     } catch (err: any) {
-      console.warn('API de servidor no conectada, accediendo en Modo Demostración:', err);
-      const demoToken = 'demo_token_' + Date.now();
-      const displayName = username.trim() ? (username.charAt(0).toUpperCase() + username.slice(1)) : 'Dr. Víctor Román';
-      const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
-      const isAdmin = adminUsers.includes(username.toLowerCase().trim());
-      
-      localStorage.setItem('rd_jwt_token', demoToken);
-      localStorage.setItem('rd_user_name', displayName);
-      localStorage.setItem('rd_user_email', `${username || 'demo'}@romanydelgado.com`);
-      localStorage.setItem('rd_is_admin', isAdmin ? 'true' : 'false');
-      
-      setAuthToken(demoToken);
-      if (isAdmin) {
-        navigate('/admin');
-      } else {
-        navigate('/');
-      }
+      console.error('Error al iniciar sesión:', err);
+      setError(err?.message || 'Error de conexión con el servidor. Verifica tus credenciales e intenta de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -98,11 +79,11 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
     setForgotMessage('');
 
     try {
-      const res = await api.post('/rd-intranet/v1/forgot-password', { username: forgotInput.trim() });
-      if (res.data && res.data.success) {
-        setForgotMessage(res.data.message || 'Se han enviado las instrucciones a tu correo registrado.');
+      const res = await submitToServer('/rd-intranet/v1/forgot-password', { username: forgotInput.trim() });
+      if (res && res.success) {
+        setForgotMessage(res.message || 'Se han enviado las instrucciones a tu correo registrado.');
       } else {
-        setForgotError(res.data?.message || 'No se encontró una cuenta con ese identificador o correo.');
+        setForgotError(res?.message || 'No se encontró una cuenta con ese identificador o correo.');
       }
     } catch (err: any) {
       console.error('Error en recuperación:', err);
