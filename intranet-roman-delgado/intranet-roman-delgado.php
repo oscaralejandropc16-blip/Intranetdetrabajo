@@ -513,8 +513,22 @@ function rd_intranet_handle_login($request) {
 
     update_user_meta($user->ID, 'rd_intranet_token', $jwt_token);
 
-    $admin_users = array('victor', 'luis', 'romanydelgado', 'admin');
-    $is_admin = in_array(strtolower($user->user_login), $admin_users) || in_array('administrator', (array)$user->roles) || user_can($user->ID, 'administrator');
+    $login_clean = strtolower(trim($user->user_login));
+    $display_clean = strtolower(trim($user->display_name));
+    $admin_users = array('victor', 'luis', 'romanydelgado', 'admin', 'luis delgado', 'victor roman', 'luisdelgado', 'victorroman');
+    $is_boss = in_array($login_clean, $admin_users) || 
+               in_array($display_clean, $admin_users) || 
+               strpos($login_clean, 'delgado') !== false || 
+               strpos($login_clean, 'roman') !== false || 
+               strpos($login_clean, 'luis') !== false || 
+               strpos($login_clean, 'victor') !== false || 
+               strpos($display_clean, 'delgado') !== false || 
+               strpos($display_clean, 'roman') !== false || 
+               strpos($display_clean, 'luis') !== false || 
+               strpos($display_clean, 'victor') !== false || 
+               in_array('administrator', (array)$user->roles) || 
+               user_can($user->ID, 'administrator');
+    $is_admin = (bool)$is_boss;
 
     return rest_ensure_response(array(
         'success' => true,

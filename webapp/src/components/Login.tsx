@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { submitToServer } from '../lib/api';
+import { checkIsJefatura } from '../App';
 import { Lock, User, ArrowRight, ShieldCheck, HelpCircle, Mail, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,8 +50,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
       localStorage.setItem('rd_user_email', user_email);
       
       // Identificar si es admin
-      const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
-      const isAdmin = res.is_admin || adminUsers.includes(username.toLowerCase());
+      const isAdmin = checkIsJefatura(username, res.is_admin) || checkIsJefatura(user_display_name, res.is_admin);
       localStorage.setItem('rd_is_admin', isAdmin ? 'true' : 'false');
       
       // Actualizar el estado de la app

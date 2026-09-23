@@ -6,10 +6,26 @@ import Login from './components/Login';
 import { submitToServer } from './lib/api';
 import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
 
+export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
+  if (flag === true) return true;
+  if (!nameOrEmail) return false;
+  const lower = nameOrEmail.toLowerCase().trim();
+  const bosses = [
+    'victor', 'víctor', 'victor roman', 'víctor román',
+    'luis', 'luis delgado', 'delgado', 'roman', 'román',
+    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com'
+  ];
+  return bosses.some(b => lower === b || lower.includes(b));
+};
+
 function App() {
   const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('rd_jwt_token'));
-  const [userName, setUserName] = useState<string>('Usuario');
-  const [isAdmin, setIsAdmin] = useState<boolean>(localStorage.getItem('rd_is_admin') === 'true');
+  const [userName, setUserName] = useState<string>(() => localStorage.getItem('rd_user_name') || 'Usuario');
+  const [isAdmin, setIsAdmin] = useState<boolean>(() => {
+    const storedUser = localStorage.getItem('rd_user_name');
+    const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
+    return checkIsJefatura(storedUser, storedAdmin);
+  });
 
   // Estados para Cambiar Contraseña desde el Navbar
   const [showChangeModal, setShowChangeModal] = useState(false);
@@ -20,12 +36,16 @@ function App() {
   const [changeMessage, setChangeMessage] = useState('');
   const [changeError, setChangeError] = useState('');
 
-  // Sincronizar nombre de usuario
+  // Sincronizar nombre de usuario y rol de admin
   useEffect(() => {
     const storedUser = localStorage.getItem('rd_user_name');
+    const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
     if (storedUser) {
       setUserName(storedUser);
     }
+    const adminDetected = checkIsJefatura(storedUser, storedAdmin);
+    setIsAdmin(adminDetected);
+    localStorage.setItem('rd_is_admin', adminDetected ? 'true' : 'false');
   }, [authToken]);
 
   const handleLogout = () => {
