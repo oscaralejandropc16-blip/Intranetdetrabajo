@@ -390,11 +390,28 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
   }
 
   // Limpiar el borrador del usuario para hoy
-  await supabase
+  const { data: draftRows } = await supabase
     .from('bitacora_drafts')
-    .delete()
-    .eq('user_name', currentUser)
+    .select('id, draft_data')
     .eq('fecha', fecha);
+
+  const cleanCurrent = currentUser.toLowerCase().trim();
+  const rowToDelete = (draftRows || []).find(r => {
+    const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();
+    if (cleanCurrent.includes('carmen')) return u.includes('carmen');
+    if (cleanCurrent.includes('mariela')) return u.includes('mariela');
+    if (cleanCurrent.includes('hector')) return u.includes('hector');
+    if (cleanCurrent.includes('luis')) return u.includes('luis') && !u.includes('carmen');
+    if (cleanCurrent.includes('victor')) return u.includes('victor');
+    return u === cleanCurrent;
+  });
+
+  if (rowToDelete) {
+    await supabase
+      .from('bitacora_drafts')
+      .delete()
+      .eq('id', rowToDelete.id);
+  }
 
   return {
     success: true,
@@ -448,16 +465,18 @@ export async function supabaseAdminUpdateBitacora(params: Record<string, any>): 
 }
 
 export async function supabaseAdminUpdateDraft(params: Record<string, any>): Promise<any> {
-  const targetUser = params.target_user || params.user || params.user_name || '';
+  const targetUser = (params.target_user || params.user || params.user_name || '').toLowerCase().trim();
   const today = new Date().toISOString().split('T')[0];
 
-  const { data: existingDraft } = await supabase
+  const { data: rows } = await supabase
     .from('bitacora_drafts')
-    .select('*')
-    .or(`user_name.ilike.%${targetUser}%,fecha.eq.${today}`)
-    .order('updated_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select('id, draft_data')
+    .eq('fecha', today);
+
+  const existingDraft = (rows || []).find(r => {
+    const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();
+    return u.includes(targetUser) || targetUser.includes(u);
+  });
 
   if (existingDraft) {
     const updatedDraftData = {
@@ -483,50 +502,97 @@ export async function supabaseAdminUpdateDraft(params: Record<string, any>): Pro
 }
 
 // -------------------------------------------------------------
-// 4. BORRADORES (DRAFTS)
+// 4. BORRADORES (DRAFTS - SINCRONIZACIÓN EN TIEMPO REAL NUBE / MÓVIL / PC)
 // -------------------------------------------------------------
 export async function supabaseGetDraft(): Promise<any> {
   const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
   const today = new Date().toISOString().split('T')[0];
 
-  const { data, error } = await supabase
+  const { data: rows, error } = await supabase
     .from('bitacora_drafts')
-    .select('draft_data')
-    .eq('user_name', currentUser)
+    .select('id, draft_data, updated_at')
     .eq('fecha', today)
-    .maybeSingle();
+    .order('updated_at', { ascending: false });
 
-  if (error || !data) {
+  if (error || !rows || rows.length === 0) {
     return { draft: null };
   }
 
-  return { draft: data.draft_data, ...data.draft_data };
+  const cleanCur = currentUser.toLowerCase().trim();
+  const userRow = rows.find(r => {
+    const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();
+    if (cleanCur.includes('carmen')) return u.includes('carmen');
+    if (cleanCur.includes('mariela')) return u.includes('mariela');
+    if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
+    if (cleanCur.includes('victor')) return u.includes('victor');
+    return u === cleanCur;
+  });
+
+  if (!userRow || !userRow.draft_data) {
+    return { draft: null };
+  }
+
+  return { draft: userRow.draft_data, ...userRow.draft_data };
 }
 
 export async function supabaseSaveDraft(draftData: any): Promise<any> {
   const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
   const today = new Date().toISOString().split('T')[0];
 
-  const { error } = await supabase
-    .from('bitacora_drafts')
-    .upsert({
-      user_name: currentUser,
-      fecha: today,
-      draft_data: draftData,
-      updated_at: new Date().toISOString()
-    }, { onConflict: 'user_id,fecha' });
+  const fullDraftData = {
+    ...draftData,
+    user: currentUser,
+    user_name: currentUser,
+    lastUpdated: draftData.lastUpdated || Date.now()
+  };
 
-  if (error) {
-    // Si falla por foreign key de user_id, intentar insertar directo con user_name
-    await supabase.from('bitacora_drafts').insert({
-      user_name: currentUser,
-      fecha: today,
-      draft_data: draftData,
-      updated_at: new Date().toISOString()
-    });
+  // 1. Buscar si ya existe un borrador de hoy para este empleado
+  const { data: rows } = await supabase
+    .from('bitacora_drafts')
+    .select('id, draft_data')
+    .eq('fecha', today);
+
+  const cleanCur = currentUser.toLowerCase().trim();
+  const existingRow = (rows || []).find(r => {
+    const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();
+    if (cleanCur.includes('carmen')) return u.includes('carmen');
+    if (cleanCur.includes('mariela')) return u.includes('mariela');
+    if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
+    if (cleanCur.includes('victor')) return u.includes('victor');
+    return u === cleanCur;
+  });
+
+  if (existingRow) {
+    // 2. Si ya existe, actualizarlo con los nuevos datos
+    const { error: updateError } = await supabase
+      .from('bitacora_drafts')
+      .update({
+        draft_data: fullDraftData,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', existingRow.id);
+
+    if (updateError) {
+      console.error('Error actualizando borrador en Supabase:', updateError);
+    }
+  } else {
+    // 3. Si no existe, crear la nueva fila del día
+    const { error: insertError } = await supabase
+      .from('bitacora_drafts')
+      .insert({
+        fecha: today,
+        draft_data: fullDraftData,
+        updated_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Error insertando borrador en Supabase:', insertError);
+    }
   }
 
-  return { success: true, message: 'Borrador guardado' };
+  return { success: true, message: 'Borrador guardado en la nube' };
 }
 
 export async function supabaseGetAllDrafts(): Promise<any[]> {
@@ -536,7 +602,7 @@ export async function supabaseGetAllDrafts(): Promise<any[]> {
     .order('updated_at', { ascending: false });
 
   return (data || []).map((d: any) => ({
-    user: d.user_name,
+    user: d.draft_data?.user || d.draft_data?.user_name || 'Desconocido',
     date: d.fecha,
     updated_at: d.updated_at,
     ...(d.draft_data || {})
