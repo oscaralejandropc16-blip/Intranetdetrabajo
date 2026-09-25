@@ -64,9 +64,14 @@ function App() {
     localStorage.removeItem('rd_user_email');
     localStorage.removeItem('rd_is_admin');
     localStorage.removeItem('rd_cached_user_history');
+    localStorage.removeItem('rd_jefe_actuaciones');
+    localStorage.removeItem('rd_jefe_ingresos');
+    localStorage.removeItem('rd_jefe_programacion');
+    localStorage.removeItem('rd_jefe_attachedFiles');
+    localStorage.removeItem('rd_admin_draft_actuaciones');
     try {
       Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('rd_cached_user_history')) {
+        if (key.startsWith('rd_cached_user_history') || key.startsWith('rd_jefe_') || key.startsWith('rd_admin_')) {
           localStorage.removeItem(key);
         }
       });

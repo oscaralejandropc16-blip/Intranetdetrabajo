@@ -289,16 +289,58 @@ export default function AdminDashboard() {
     sessionStorage.setItem('rd_admin_boss_sub_tab', bossSubTab);
   }, [bossSubTab]);
 
+  // Claves scoped por jefe para aislar borradores de Luis y Victor
+  const currentBossName = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+  const bossKey = currentBossName.replace(/[^a-z0-9]/g, '_');
+  const bossActuacionesKey = `rd_jefe_actuaciones_${bossKey}`;
+  const bossIngresosKey = `rd_jefe_ingresos_${bossKey}`;
+  const bossProgramacionKey = `rd_jefe_programacion_${bossKey}`;
+
   // Estado local para Libros de Jefatura (sin horario/GPS)
   const [actuacionesJefe, setActuacionesJefe] = useState<any[]>(() => {
-    const saved = localStorage.getItem('rd_jefe_actuaciones');
-    return saved ? JSON.parse(saved) : [];
+    // 1. Intentar cargar de la clave scoped del jefe
+    if (bossKey) {
+      const savedScoped = localStorage.getItem(bossActuacionesKey);
+      if (savedScoped) {
+        try { return JSON.parse(savedScoped); } catch (e) { return []; }
+      }
+    }
+    // 2. Si no hay clave scoped, revisar legacy y descartar si contiene actuaciones de Carmen
+    const savedLegacy = localStorage.getItem('rd_jefe_actuaciones');
+    if (savedLegacy) {
+      try {
+        const parsed = JSON.parse(savedLegacy);
+        const str = JSON.stringify(parsed).toUpperCase();
+        const hasCarmenData = str.includes('WILLIAM BELLO') || str.includes('ALAYETO') || str.includes('DILCIA');
+        if (hasCarmenData && currentBossName.includes('luis')) {
+          localStorage.removeItem('rd_jefe_actuaciones');
+          localStorage.removeItem('rd_admin_draft_actuaciones');
+          return [];
+        }
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        return [];
+      }
+    }
+    return [];
   });
   const [ingresosJefe, setIngresosJefe] = useState<any[]>(() => {
+    if (bossKey) {
+      const savedScoped = localStorage.getItem(bossIngresosKey);
+      if (savedScoped) {
+        try { return JSON.parse(savedScoped); } catch (e) { return []; }
+      }
+    }
     const saved = localStorage.getItem('rd_jefe_ingresos');
     return saved ? JSON.parse(saved) : [];
   });
   const [programacionesJefe, setProgramacionesJefe] = useState<any[]>(() => {
+    if (bossKey) {
+      const savedScoped = localStorage.getItem(bossProgramacionKey);
+      if (savedScoped) {
+        try { return JSON.parse(savedScoped); } catch (e) { return []; }
+      }
+    }
     const saved = localStorage.getItem('rd_jefe_programacion');
     return saved ? JSON.parse(saved) : [];
   });
@@ -325,16 +367,25 @@ export default function AdminDashboard() {
   const [submittingJefe, setSubmittingJefe] = useState(false);
 
   useEffect(() => {
+    if (bossKey) {
+      localStorage.setItem(bossActuacionesKey, JSON.stringify(actuacionesJefe));
+    }
     localStorage.setItem('rd_jefe_actuaciones', JSON.stringify(actuacionesJefe));
-  }, [actuacionesJefe]);
+  }, [actuacionesJefe, bossActuacionesKey, bossKey]);
 
   useEffect(() => {
+    if (bossKey) {
+      localStorage.setItem(bossIngresosKey, JSON.stringify(ingresosJefe));
+    }
     localStorage.setItem('rd_jefe_ingresos', JSON.stringify(ingresosJefe));
-  }, [ingresosJefe]);
+  }, [ingresosJefe, bossIngresosKey, bossKey]);
 
   useEffect(() => {
+    if (bossKey) {
+      localStorage.setItem(bossProgramacionKey, JSON.stringify(programacionesJefe));
+    }
     localStorage.setItem('rd_jefe_programacion', JSON.stringify(programacionesJefe));
-  }, [programacionesJefe]);
+  }, [programacionesJefe, bossProgramacionKey, bossKey]);
 
   useEffect(() => {
     const serialized = attachedFilesJefe.map(f => ({
@@ -351,7 +402,9 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchDraft = async () => {
       try {
-        const response = await api.get('/rd-intranet/v1/draft');
+        const response = await api.get('/rd-intranet/v1/draft', {
+          params: { user: currentBossName }
+        });
         if (response.data && typeof response.data === 'object') {
           const parseJson = (val: any) => {
             if (Array.isArray(val)) return val;
@@ -495,7 +548,17 @@ export default function AdminDashboard() {
           const todayReport = parsedData.find(r => {
             if (r.date !== todayStr) return false;
             const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
-            return reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
+            // NUNCA asignar reportes de empleados al despacho de jefatura
+            if (reportUser.includes('carmen') || reportUser.includes('mariela') || reportUser.includes('hector')) {
+              return false;
+            }
+            if (currentLoggedUser.includes('luis')) {
+              return reportUser.includes('luis') && !reportUser.includes('carmen');
+            }
+            if (currentLoggedUser.includes('victor')) {
+              return reportUser.includes('victor');
+            }
+            return reportUser === currentLoggedUser;
           });
 
           if (todayReport && !isReopenedToday) {
@@ -2442,7 +2505,16 @@ export default function AdminDashboard() {
                   const todayReport = reports.find(r => {
                     if (r.date !== todayStr) return false;
                     const rUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
-                    return rUser === currentLoggedUser || (currentLoggedUser && rUser.includes(currentLoggedUser)) || (rUser && currentLoggedUser.includes(rUser));
+                    if (rUser.includes('carmen') || rUser.includes('mariela') || rUser.includes('hector')) {
+                      return false;
+                    }
+                    if (currentLoggedUser.includes('luis')) {
+                      return rUser.includes('luis') && !rUser.includes('carmen');
+                    }
+                    if (currentLoggedUser.includes('victor')) {
+                      return rUser.includes('victor');
+                    }
+                    return rUser === currentLoggedUser;
                   });
 
                   if (todayReport) {
