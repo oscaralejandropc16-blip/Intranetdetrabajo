@@ -70,11 +70,13 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
       const serverGastos: RelacionGastos[] = Array.isArray(gastosRes.data) ? gastosRes.data : [];
       
-      // Combinar con borradores locales si no existen en el servidor
+      // Combinar con borradores locales válidos si no existen en el servidor
       try {
         const localDrafts = JSON.parse(localStorage.getItem('rd_local_gastos_drafts') || '[]');
         if (Array.isArray(localDrafts)) {
-          localDrafts.forEach((ld: any) => {
+          const validDrafts = localDrafts.filter((ld: any) => Number(ld.totalUsd || ld.monto || 0) > 0);
+          localStorage.setItem('rd_local_gastos_drafts', JSON.stringify(validDrafts));
+          validDrafts.forEach((ld: any) => {
             if (!serverGastos.some(sg => String(sg.id) === String(ld.id))) {
               serverGastos.unshift(ld);
             }
@@ -82,7 +84,9 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
         }
       } catch (e) {}
 
-      setRelaciones(serverGastos);
+      // Excluir relaciones vacías o en $0
+      const validRelaciones = serverGastos.filter(g => Number(g.totalUsd || 0) > 0);
+      setRelaciones(validRelaciones);
       
       // Expedientes con respaldo sólido
       if (Array.isArray(expRes.data) && expRes.data.length > 0) {

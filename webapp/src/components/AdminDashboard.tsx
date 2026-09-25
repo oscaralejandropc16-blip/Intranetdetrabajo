@@ -136,8 +136,10 @@ export default function AdminDashboard() {
     }
   });
 
-  const markFeedbackAsRead = (id: string | number) => {
-    const updated = [...dismissedFeedbackNotifs, String(id)];
+  const markFeedbackAsRead = (id: string | number, report?: any) => {
+    const idStr = String(id || '');
+    const keyStr = report ? `${report.date}_${report.user}_${report.comentario_admin}` : '';
+    const updated = Array.from(new Set([...dismissedFeedbackNotifs, idStr, keyStr].filter(Boolean)));
     setDismissedFeedbackNotifs(updated);
     localStorage.setItem('rd_jefe_read_feedbacks', JSON.stringify(updated));
   };
@@ -1196,13 +1198,27 @@ export default function AdminDashboard() {
   const mySupervisorFeedbacks = [
     ...reports.filter(r => {
       const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
+      const supervisor = (r.supervisado_por || '').toLowerCase().trim();
       const isMine = reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
-      return isMine && r.comentario_admin && r.comentario_admin.trim() !== '';
+      // No mostrar auto-supervisión
+      if (supervisor && (supervisor === currentLoggedUser || supervisor === reportUser || currentLoggedUser.includes(supervisor) || supervisor.includes(currentLoggedUser))) {
+        return false;
+      }
+      const comment = (r.comentario_admin || '').trim();
+      if (!comment || comment.toLowerCase() === 'prueba' || comment.toLowerCase() === 'probando') return false;
+      return isMine;
     }),
-    ...myDirectFeedbacks
+    ...myDirectFeedbacks.filter(f => {
+      const comment = (f.comentario_admin || '').trim();
+      return comment && comment.toLowerCase() !== 'prueba' && comment.toLowerCase() !== 'probando';
+    })
   ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
 
-  const unreadFeedbacks = mySupervisorFeedbacks.filter(f => !dismissedFeedbackNotifs.includes(String(f.id)));
+  const unreadFeedbacks = mySupervisorFeedbacks.filter(f => {
+    const idStr = String(f.id || '');
+    const keyStr = `${f.date}_${f.user}_${f.comentario_admin}`;
+    return !dismissedFeedbackNotifs.includes(idStr) && !dismissedFeedbackNotifs.includes(keyStr);
+  });
 
   // Agrupar mensajes del buzón por Bitácora y Empleado (100% consistente y sin mensajes de prueba)
   const deletedMsgList: string[] = (() => {
@@ -1427,7 +1443,7 @@ export default function AdminDashboard() {
               <FileText className="w-3.5 h-3.5" /> Ver Detalles
             </button>
             <button
-              onClick={() => markFeedbackAsRead(unreadFeedbacks[0].id)}
+              onClick={() => markFeedbackAsRead(unreadFeedbacks[0].id, unreadFeedbacks[0])}
               className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Leído

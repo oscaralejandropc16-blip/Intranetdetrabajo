@@ -748,18 +748,62 @@ export async function supabaseGetGastos(): Promise<any[]> {
 
 export async function supabaseSaveGasto(payload: any): Promise<any> {
   const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
-  const newGasto = {
-    empleado_nombre: payload.empleado_nombre || currentUser,
-    expediente_numero: payload.expediente_numero || '',
-    concepto: payload.concepto || 'Gasto operativo',
-    monto: Number(payload.monto) || 0,
-    moneda: payload.moneda || 'USD',
-    fecha: payload.fecha || new Date().toISOString().split('T')[0],
-    comprobante_url: payload.comprobante_url || '',
-    estado: 'pendiente'
+  const totalUsd = Number(payload.totalUsd ?? payload.total_usd ?? payload.monto) || 0;
+  const tasaBcv = Number(payload.tasaBcv ?? payload.tasa_bcv) || 832.48;
+  const totalVes = Number(payload.totalVes ?? payload.total_ves) || (totalUsd * tasaBcv);
+
+  // Validación estricta: No permitir guardar relaciones en $0.00
+  if (totalUsd <= 0) {
+    throw new Error('El monto total de la relación de gastos debe ser mayor a 0$.');
+  }
+
+  const rawItems = Array.isArray(payload.items) ? payload.items : [];
+  const items = rawItems.map((item: any, idx: number) => ({
+    id: item.id || `item_${idx + 1}`,
+    tramiteExpediente: item.tramiteExpediente || '',
+    categoria: item.categoria || 'Otro',
+    descripcion: item.descripcion || '',
+    moneda: item.moneda || 'USD',
+    monto: Number(item.monto ?? item.montoUsd) || 0,
+    montoUsd: Number(item.montoUsd ?? item.monto) || 0,
+    montoVes: Number(item.montoVes) || 0,
+    comprobanteUrl: item.comprobanteUrl || '',
+    comprobanteBase64: item.comprobanteBase64 || '',
+    comprobanteName: item.comprobanteName || '',
+    fechaGasto: item.fechaGasto || payload.fechaInicio || new Date().toISOString().split('T')[0]
+  }));
+
+  const gastoData = {
+    empleado_nombre: payload.empleado || payload.empleado_nombre || currentUser,
+    titulo: payload.titulo || `Gastos - ${payload.fechaInicio || ''} - ${payload.empleado || currentUser}`,
+    periodo: payload.periodo || 'Semanal',
+    fecha_inicio: payload.fechaInicio || payload.fecha_inicio || payload.fecha || new Date().toISOString().split('T')[0],
+    fecha_fin: payload.fechaFin || payload.fecha_fin || payload.fecha || new Date().toISOString().split('T')[0],
+    tasa_bcv: tasaBcv,
+    total_usd: totalUsd,
+    total_ves: totalVes,
+    monto: totalUsd,
+    moneda: 'USD',
+    fecha: payload.fechaInicio || payload.fecha || new Date().toISOString().split('T')[0],
+    estado: payload.estatus ? payload.estatus.toLowerCase() : 'pendiente',
+    items: items,
+    concepto: payload.titulo || (items[0]?.descripcion || 'Relación de gastos'),
+    comprobante_url: items.find((i: any) => i.comprobanteUrl || i.comprobanteBase64)?.comprobanteUrl || ''
   };
 
-  const { data, error } = await supabase.from('gastos').insert(newGasto).select().single();
+  // Si trae ID existente válido (UUID), actualizar en lugar de duplicar
+  if (payload.id && typeof payload.id === 'string' && payload.id.length > 10) {
+    const { data, error } = await supabase
+      .from('gastos')
+      .update(gastoData)
+      .eq('id', payload.id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { success: true, gasto: data };
+  }
+
+  const { data, error } = await supabase.from('gastos').insert(gastoData).select().single();
   if (error) throw new Error(error.message);
   return { success: true, gasto: data };
 }

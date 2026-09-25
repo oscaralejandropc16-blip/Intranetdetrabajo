@@ -387,14 +387,24 @@ export default function FormRelacionGastos({
   };
 
   const handleSubmit = async (targetEstatus: 'Borrador' | 'Pendiente') => {
-    // Validaciones
-    const validItems = items.filter(i => (i.monto && i.monto > 0) || i.descripcion.trim() !== '');
+    // Validaciones estrictas: no permitir montos en 0
+    if (totalUsd <= 0) {
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: 'Monto Inválido ($0.00)',
+        message: 'No es posible guardar una relación de gastos en 0$ ni 0 Bs. Por favor ingresa el monto correspondiente a cada gasto.'
+      });
+      return;
+    }
+
+    const validItems = items.filter(i => (Number(i.montoUsd || i.monto) > 0));
     if (validItems.length === 0) {
       setSystemAlert({
         isOpen: true,
         type: 'warning',
-        title: 'Gastos Vacíos',
-        message: 'Por favor añade al menos un gasto con su monto respectivo antes de guardar o enviar.'
+        title: 'Gastos sin Monto',
+        message: 'Por favor añade al menos un gasto con un monto mayor a 0$ antes de guardar o enviar.'
       });
       return;
     }

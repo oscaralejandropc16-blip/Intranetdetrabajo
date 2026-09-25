@@ -249,5 +249,30 @@ export async function exportarRelacionGastosPDF(relacion: RelacionGastos, logoBa
     doc.text(`Página ${i} de ${totalPages}`, pageWidth - margin, pageHeight - 7, { align: 'right' });
   }
 
-  doc.save(`Gastos_${relacion.empleado.replace(/\s+/g, '_')}_${relacion.periodo}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+  const rawEmp = (relacion.empleado || 'empleado').trim();
+  const cleanEmp = rawEmp.replace(/\s+/g, '_');
+  const cleanPeriod = (relacion.periodo || 'Periodo').trim().replace(/\s+/g, '_');
+  const dateStr = format(new Date(), 'yyyy-MM-dd');
+  const fileName = `Gastos_${cleanEmp}_${cleanPeriod}_${dateStr}.pdf`;
+
+  try {
+    const pdfBlob = doc.output('blob');
+    const blobUrl = URL.createObjectURL(pdfBlob);
+
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = fileName;
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      if (link.parentNode) {
+        link.parentNode.removeChild(link);
+      }
+      URL.revokeObjectURL(blobUrl);
+    }, 15000);
+  } catch (err) {
+    doc.save(fileName);
+  }
 }

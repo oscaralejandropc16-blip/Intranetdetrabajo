@@ -81,6 +81,9 @@ export default function PanelJefaturaGastos({
 
   // Filtrado reactivo
   const filteredRelaciones = relaciones.filter(r => {
+    // Excluir relaciones vacías o en $0
+    if (Number(r.totalUsd || 0) <= 0) return false;
+
     // 1. Búsqueda por texto
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
