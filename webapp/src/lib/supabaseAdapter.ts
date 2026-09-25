@@ -293,9 +293,13 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
     // Normalizar estado para la visualización del dashboard
     const rawStatus = (b.estado || '').toLowerCase();
     let displayStatus = 'Enviado';
-    if (rawStatus.includes('aprob')) displayStatus = 'Aprobado';
-    else if (rawStatus.includes('observ')) displayStatus = 'Con observaciones';
-    else if (rawStatus.includes('revis')) displayStatus = 'Revisado';
+    if (rawStatus.includes('aprob') || rawStatus.includes('revis') || (b.supervisado_por && b.supervisado_por.trim())) {
+      displayStatus = 'Revisado';
+    } else if (rawStatus.includes('observ')) {
+      displayStatus = 'Con observaciones';
+    } else if (rawStatus.includes('curs') || rawStatus.includes('inici')) {
+      displayStatus = 'En Curso';
+    }
 
     const acts = (Array.isArray(b.actuaciones) && b.actuaciones.length > 0) 
       ? b.actuaciones 

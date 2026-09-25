@@ -54,6 +54,15 @@ export default function AdminDashboard() {
   const [allDrafts, setAllDrafts] = useState<any[]>([]);
   const [allInvestigaciones, setAllInvestigaciones] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any>(null);
+  const isReportApproved = Boolean(
+    selectedReport && (
+      selectedReport.status === 'Revisado' ||
+      selectedReport.status === 'Aprobado' ||
+      (selectedReport.estado || '').toLowerCase().includes('aprob') ||
+      (selectedReport.estado || '').toLowerCase().includes('revis') ||
+      (typeof selectedReport.supervisado_por === 'string' && selectedReport.supervisado_por.trim().length > 0)
+    )
+  );
   const [adminComment, setAdminComment] = useState('');
   const [adminProgramaciones, setAdminProgramaciones] = useState<any[]>([]);
   const [adminActuaciones, setAdminActuaciones] = useState<any[]>([]);
@@ -1134,8 +1143,8 @@ export default function AdminDashboard() {
   const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
   const paginatedReports = filteredReports.slice((validCurrentPage - 1) * itemsPerPage, validCurrentPage * itemsPerPage);
 
-  const pendingReview = reports.filter(r => r.status === 'Enviado').length;
-  const inProgress = reports.filter(r => r.status === 'En Curso').length;
+  const pendingReview = reports.filter(r => !r.isJefatura && r.status === 'Enviado').length;
+  const inProgress = reports.filter(r => !r.isJefatura && r.status === 'En Curso').length;
 
   const handleConfirmReset = async () => {
     setIsResetting(true);
@@ -1309,6 +1318,7 @@ export default function AdminDashboard() {
 
   // 2. Notificaciones de Bitácoras por Revisar del Equipo
   const activeNotifications = reports.filter(r =>
+    !r.isJefatura &&
     r.status === 'Enviado' &&
     !dismissedNotifs.includes(r.id)
   );
@@ -2979,9 +2989,15 @@ export default function AdminDashboard() {
                   <div>
                     <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2.5 flex-wrap">
                       <span className="capitalize">Bitácora de {selectedReport.user || 'Empleado'}</span>
-                      <span className="bg-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black">
-                        Modo Revisión
-                      </span>
+                      {isReportApproved ? (
+                        <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-lg border border-emerald-500/30 uppercase tracking-widest font-black flex items-center gap-1.5 shadow-2xs">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Aprobada & Supervisada
+                        </span>
+                      ) : (
+                        <span className="bg-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black shadow-2xs">
+                          Modo Revisión
+                        </span>
+                      )}
                     </h3>
                     <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                       <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs">
@@ -3529,21 +3545,46 @@ export default function AdminDashboard() {
             </div>
 
             {/* Modal Footer (Limpio y seguro sin botones destructivos expuestos) */}
-            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-end items-center gap-4 rounded-b-3xl">
-              <button 
-                type="button"
-                onClick={() => setSelectedReport(null)} 
-                className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-base cursor-pointer"
-              >
-                Cerrar
-              </button>
-              <button 
-                type="button"
-                onClick={handleSaveComment} 
-                className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-base hover:-translate-y-0.5 cursor-pointer"
-              >
-                <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Aprobar y Notificar
-              </button>
+            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
+              {isReportApproved ? (
+                <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full sm:w-auto shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Bitácora ya revisada y aprobada{selectedReport.supervisado_por ? ` por ${selectedReport.supervisado_por}` : ''}.</span>
+                </div>
+              ) : (
+                <div className="text-xs text-slate-400 font-medium hidden sm:block">
+                  Al aprobar se notificará al empleado y se actualizará el estado de la bitácora.
+                </div>
+              )}
+
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button 
+                  type="button"
+                  onClick={() => setSelectedReport(null)} 
+                  className="flex-1 sm:flex-none px-8 py-3.5 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-sm cursor-pointer"
+                >
+                  Cerrar
+                </button>
+
+                {!isReportApproved ? (
+                  <button 
+                    type="button"
+                    onClick={handleSaveComment} 
+                    className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-2.5 text-sm hover:-translate-y-0.5 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Aprobar y Notificar
+                  </button>
+                ) : (
+                  <button 
+                    type="button"
+                    onClick={handleSaveComment} 
+                    className="flex-1 sm:flex-none bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 px-6 py-3.5 rounded-xl font-bold transition-all flex items-center justify-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    title="Actualizar observaciones o cambios realizados"
+                  >
+                    Guardar Modificaciones
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
