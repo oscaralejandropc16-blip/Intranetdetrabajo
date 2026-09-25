@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   CheckCircle2, Clock, Search, 
   Download, Eye, AlertCircle, X, ChevronDown, ChevronUp,
-  Receipt, User, RefreshCw, Send, Trash2, RotateCcw
+  Receipt, User, RefreshCw, Send, Trash2, RotateCcw, ExternalLink
 } from 'lucide-react';
 import { format, isWithinInterval, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import type { RelacionGastos, MetodoPagoGasto } from '../../types/gastos';
@@ -278,22 +278,56 @@ export default function PanelJefaturaGastos({
 
       {/* Modal visor de comprobante */}
       {previewImage && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-4 border border-white/10 shadow-2xl flex flex-col items-center">
-            <button 
-              onClick={() => setPreviewImage(null)}
-              className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-            <div className="text-white font-bold text-sm mb-3 flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-amber-400" /> Soporte / Factura Adjunta
+        <div 
+          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-5 border border-white/10 shadow-2xl flex flex-col items-center cursor-default"
+          >
+            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+              <div className="text-white font-bold text-sm flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-amber-400" /> Soporte / Factura Adjunta
+              </div>
+              <div className="flex items-center gap-2">
+                {previewImage.startsWith('http') && (
+                  <a
+                    href={previewImage}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-200 hover:text-white transition-colors text-xs flex items-center gap-1.5 font-bold"
+                    title="Abrir imagen en pestaña nueva"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 text-amber-400" /> Ver Original
+                  </a>
+                )}
+                <button 
+                  onClick={() => setPreviewImage(null)}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer"
+                  title="Cerrar"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            <img 
-              src={previewImage} 
-              alt="Comprobante" 
-              className="max-h-[75vh] w-auto rounded-2xl object-contain shadow-lg border border-slate-800"
-            />
+            
+            <div className="w-full flex items-center justify-center bg-slate-950/60 rounded-2xl p-2 min-h-[220px]">
+              <img 
+                src={previewImage} 
+                alt="Comprobante de soporte" 
+                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-lg border border-slate-800"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                  const fallback = document.getElementById('comprobante-error-msg');
+                  if (fallback) fallback.style.display = 'flex';
+                }}
+              />
+              <div id="comprobante-error-msg" style={{ display: 'none' }} className="flex flex-col items-center justify-center py-8 text-slate-400 text-xs">
+                <AlertCircle className="w-8 h-8 text-amber-400 mb-2 opacity-80" />
+                <span>No se pudo cargar la vista previa del comprobante.</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
