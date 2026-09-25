@@ -70,15 +70,15 @@ interface LiveChatModuleProps {
 // Determinar si un autor/rol corresponde a Jefatura
 export const isUserBoss = (author?: string, role?: string): boolean => {
   const clean = (author || '').toLowerCase().trim();
-  if (clean.includes('carmen') || role === 'empleado') return false;
+  if (clean.includes('carmen') || clean.includes('mariela') || clean.includes('hector') || role === 'empleado') return false;
   if (role === 'jefatura' || role === 'admin') return true;
-  return clean.includes('delgado') || 
-         clean.includes('roman') || 
+  return clean.includes('roman') || 
          clean.includes('jefe') || 
          clean.includes('jefatura') || 
          clean.includes('admin') || 
          clean === 'luis' || 
          clean.startsWith('luis ') || 
+         clean.includes('luis delgado') ||
          clean === 'victor' || 
          clean.startsWith('victor ');
 };
@@ -137,7 +137,27 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     },
     {
       employee: 'Carmen Luisa',
-      role: 'Asistente Legal / Empleado',
+      role: 'Abogado / Empleado',
+      unreadCountJefe: 0,
+      unreadCountEmpleado: 0,
+      lastMessage: 'Canal oficial disponible',
+      lastMessageTime: '',
+      lastMessageIsMe: false,
+      totalMessages: 0
+    },
+    {
+      employee: 'Mariela Isabel',
+      role: 'Abogado / Empleado',
+      unreadCountJefe: 0,
+      unreadCountEmpleado: 0,
+      lastMessage: 'Canal oficial disponible',
+      lastMessageTime: '',
+      lastMessageIsMe: false,
+      totalMessages: 0
+    },
+    {
+      employee: 'Hector',
+      role: 'Abogado / Empleado',
       unreadCountJefe: 0,
       unreadCountEmpleado: 0,
       lastMessage: 'Canal oficial disponible',
@@ -158,7 +178,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       return initialEmployee;
     }
     if (curClean.includes('victor')) return 'Luis Delgado';
-    if (curClean.includes('luis')) return 'Victor Roman';
+    if (curClean.includes('luis') && !curClean.includes('carmen')) return 'Victor Roman';
     return 'Luis Delgado';
   });
 
@@ -856,9 +876,10 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               const isMe = !isSystemNotification && (
                 cleanAuthor === cleanCurrent || 
                 (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) || 
-                (cleanCurrent.includes('delgado') && cleanAuthor.includes('delgado')) || 
-                (cleanCurrent.includes('luis') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
-                (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen'))
+                (cleanCurrent.includes('luis') && !cleanCurrent.includes('carmen') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
+                (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen')) ||
+                (cleanCurrent.includes('mariela') && cleanAuthor.includes('mariela')) ||
+                (cleanCurrent.includes('hector') && cleanAuthor.includes('hector'))
               );
 
               // REGLA DE DOBLE CHECK AZUL:

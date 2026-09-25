@@ -52,8 +52,13 @@ api.get = async function (url: string, config?: any) {
     const params = config?.params || {};
 
     // 1. Bitácoras y tareas
-    if (cleanUrl.endsWith('/bitacoras') || cleanUrl.endsWith('/my-tasks') || cleanUrl.endsWith('/my-history')) {
-      const bitacoras = await supabaseGetBitacoras();
+    if (cleanUrl.endsWith('/bitacoras')) {
+      const bitacoras = await supabaseGetBitacoras(params.user || params.author);
+      return { data: bitacoras, status: 200 };
+    }
+    if (cleanUrl.endsWith('/my-tasks') || cleanUrl.endsWith('/my-history')) {
+      const currentUser = params.user || params.author || localStorage.getItem('rd_user_name') || localStorage.getItem('rd_user_email') || '';
+      const bitacoras = await supabaseGetBitacoras(currentUser);
       return { data: bitacoras, status: 200 };
     }
 

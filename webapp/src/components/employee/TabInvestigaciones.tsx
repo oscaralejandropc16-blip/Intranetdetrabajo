@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, Send, Search, PlusCircle, CheckCircle2, Bookmark, Award, AlertCircle, RefreshCw, User, FileText, Scale, Lightbulb, Trash2, Edit3 } from 'lucide-react';
 import api, { submitToServer } from '../../lib/api';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
+import { checkIsJefatura } from '../../App';
 
 export const TabInvestigaciones: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'explorar' | 'subir'>('explorar');
@@ -27,8 +28,7 @@ export const TabInvestigaciones: React.FC = () => {
     opinion_rd: ''
   });
   const currentUserName = localStorage.getItem('rd_user_name') || '';
-  const adminUsers = ['victor', 'luis', 'romanydelgado', 'admin'];
-  const isAdmin = localStorage.getItem('rd_is_admin') === 'true' || adminUsers.some(u => currentUserName.toLowerCase().includes(u));
+  const isAdmin = checkIsJefatura(currentUserName, localStorage.getItem('rd_is_admin') === 'true');
 
   const fetchInvestigaciones = async () => {
     setLoading(true);

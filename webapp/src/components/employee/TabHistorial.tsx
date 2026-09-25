@@ -25,10 +25,46 @@ interface BitacoraHistorial {
 }
 
 export default function TabHistorial() {
+  const currentLoggedUser = localStorage.getItem('rd_user_name') || '';
+  const userKey = currentLoggedUser.toLowerCase().replace(/[^a-z0-9]/g, '_');
+  const userCacheKey = `rd_cached_user_history_${userKey}`;
+
+  // Helper para verificar que la bitácora pertenece estrictamente al usuario logueado
+  const isBitacoraOfCurrentUser = (item: any): boolean => {
+    if (!currentLoggedUser) return true;
+    const author = (item.user || item.author_name || item.author || '').toLowerCase();
+    const cleanCurrent = currentLoggedUser.toLowerCase();
+
+    if (cleanCurrent.includes('mariela')) {
+      return author.includes('mariela');
+    }
+    if (cleanCurrent.includes('carmen')) {
+      return author.includes('carmen');
+    }
+    if (cleanCurrent.includes('hector')) {
+      return author.includes('hector');
+    }
+    if (cleanCurrent.includes('luis')) {
+      return author.includes('luis') && !author.includes('carmen');
+    }
+    if (cleanCurrent.includes('victor')) {
+      return author.includes('victor');
+    }
+    return author.includes(cleanCurrent);
+  };
+
   const [historial, setHistorial] = useState<BitacoraHistorial[]>(() => {
     try {
-      const cached = localStorage.getItem('rd_cached_user_history');
-      return cached ? JSON.parse(cached) : [];
+      // Limpiar caché legacy compartida si existía
+      localStorage.removeItem('rd_cached_user_history');
+      const cached = localStorage.getItem(userCacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(isBitacoraOfCurrentUser);
+        }
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -47,7 +83,9 @@ export default function TabHistorial() {
   useEffect(() => {
     const fetchHistory = async () => {
       try {
-        const response = await api.get('/rd-intranet/v1/my-history');
+        const response = await api.get('/rd-intranet/v1/my-history', {
+          params: { user: currentLoggedUser }
+        });
         if (response.data && Array.isArray(response.data)) {
           const parsedData = response.data.map((r: any) => {
             const parseJson = (val: any) => {
@@ -65,14 +103,15 @@ export default function TabHistorial() {
               evidences: parseJson(r.evidences)
             };
           });
-          if (parsedData.length > 0) {
-            setHistorial(parsedData);
-            try {
-              localStorage.setItem('rd_cached_user_history', JSON.stringify(parsedData));
-            } catch (e) {}
-          } else if (historial.length === 0) {
-            setHistorial(parsedData);
-          }
+
+          // Filtrar rigurosamente que solo pertenezcan al usuario logueado
+          const strictlyMyData = parsedData.filter(isBitacoraOfCurrentUser);
+          setHistorial(strictlyMyData);
+          try {
+            localStorage.setItem(userCacheKey, JSON.stringify(strictlyMyData));
+          } catch (e) {}
+        } else {
+          setHistorial([]);
         }
       } catch (error) {
         console.error('Error cargando el historial', error);
@@ -81,7 +120,7 @@ export default function TabHistorial() {
       }
     };
     fetchHistory();
-  }, []);
+  }, [currentLoggedUser]);
 
   const toggleExpand = (id: number) => {
     setExpandedId(expandedId === id ? null : id);

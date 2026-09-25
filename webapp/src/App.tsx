@@ -7,15 +7,25 @@ import { submitToServer } from './lib/api';
 import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
 
 export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
-  if (flag === true) return true;
+  if (!nameOrEmail && flag === true) return true;
   if (!nameOrEmail) return false;
   const lower = nameOrEmail.toLowerCase().trim();
+
+  // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector'];
+  if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
+    return false;
+  }
+
+  if (flag === true) return true;
+
+  // Jefatura confirmada
   const bosses = [
-    'victor', 'víctor', 'victor roman', 'víctor román',
-    'luis', 'luis delgado', 'delgado', 'roman', 'román',
-    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com'
+    'victor', 'víctor', 'victor roman', 'víctor román', 'victorroman',
+    'luis', 'luis delgado', 'luisdelgado',
+    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com', 'info@romanydelgado.com'
   ];
-  return bosses.some(b => lower === b || lower.includes(b));
+  return bosses.some(b => lower === b || lower === `${b}@romanydelgado.com` || lower.startsWith(b));
 };
 
 function App() {
@@ -53,6 +63,14 @@ function App() {
     localStorage.removeItem('rd_user_name');
     localStorage.removeItem('rd_user_email');
     localStorage.removeItem('rd_is_admin');
+    localStorage.removeItem('rd_cached_user_history');
+    try {
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('rd_cached_user_history')) {
+          localStorage.removeItem(key);
+        }
+      });
+    } catch (e) {}
     sessionStorage.removeItem('rd_emp_active_tab');
     sessionStorage.removeItem('rd_admin_active_view');
     setAuthToken(null);

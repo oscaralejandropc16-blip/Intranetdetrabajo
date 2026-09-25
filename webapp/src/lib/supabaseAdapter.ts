@@ -10,15 +10,123 @@ export interface UserSession {
 
 // Helper para detectar si es administrador / directivo
 export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
-  if (flag === true) return true;
+  if (!nameOrEmail && flag === true) return true;
   if (!nameOrEmail) return false;
   const lower = nameOrEmail.toLowerCase().trim();
+
+  // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector'];
+  if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
+    return false;
+  }
+
+  if (flag === true) return true;
+
+  // Jefatura confirmada
   const bosses = [
-    'victor', 'víctor', 'victor roman', 'víctor román',
-    'luis', 'luis delgado', 'delgado', 'roman', 'román',
-    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com'
+    'victor', 'víctor', 'victor roman', 'víctor román', 'victorroman',
+    'luis', 'luis delgado', 'luisdelgado',
+    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com', 'info@romanydelgado.com'
   ];
-  return bosses.some(b => lower === b || lower.includes(b));
+  return bosses.some(b => lower === b || lower === `${b}@romanydelgado.com` || lower.startsWith(b));
+};
+
+export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: string; role: 'jefatura' | 'empleado' }> = {
+  'luis': {
+    email: 'luisdelgado@romanydelgado.com',
+    displayName: 'Luis Delgado',
+    role: 'jefatura'
+  },
+  'luis delgado': {
+    email: 'luisdelgado@romanydelgado.com',
+    displayName: 'Luis Delgado',
+    role: 'jefatura'
+  },
+  'luisdelgado@romanydelgado.com': {
+    email: 'luisdelgado@romanydelgado.com',
+    displayName: 'Luis Delgado',
+    role: 'jefatura'
+  },
+  'info@romanydelgado.com': {
+    email: 'info@romanydelgado.com',
+    displayName: 'Luis Delgado',
+    role: 'jefatura'
+  },
+  'victor': {
+    email: 'victorroman@romanydelgado.com',
+    displayName: 'Victor Román',
+    role: 'jefatura'
+  },
+  'victor roman': {
+    email: 'victorroman@romanydelgado.com',
+    displayName: 'Victor Román',
+    role: 'jefatura'
+  },
+  'victorroman@romanydelgado.com': {
+    email: 'victorroman@romanydelgado.com',
+    displayName: 'Victor Román',
+    role: 'jefatura'
+  },
+  'victor@romanydelgado.com': {
+    email: 'victorroman@romanydelgado.com',
+    displayName: 'Victor Román',
+    role: 'jefatura'
+  },
+  'carmen': {
+    email: 'abgcarmendelgado.990@gmail.com',
+    displayName: 'Carmen Luisa',
+    role: 'empleado'
+  },
+  'carmen luisa': {
+    email: 'abgcarmendelgado.990@gmail.com',
+    displayName: 'Carmen Luisa',
+    role: 'empleado'
+  },
+  'abgcarmendelgado.990@gmail.com': {
+    email: 'abgcarmendelgado.990@gmail.com',
+    displayName: 'Carmen Luisa',
+    role: 'empleado'
+  },
+  'carmen@romanydelgado.com': {
+    email: 'abgcarmendelgado.990@gmail.com',
+    displayName: 'Carmen Luisa',
+    role: 'empleado'
+  },
+  'mariela': {
+    email: 'marielaisabel2030@gmail.com',
+    displayName: 'Mariela Isabel',
+    role: 'empleado'
+  },
+  'mariela isabel': {
+    email: 'marielaisabel2030@gmail.com',
+    displayName: 'Mariela Isabel',
+    role: 'empleado'
+  },
+  'marielaisabel2030@gmail.com': {
+    email: 'marielaisabel2030@gmail.com',
+    displayName: 'Mariela Isabel',
+    role: 'empleado'
+  },
+  'mariela@romanydelgado.com': {
+    email: 'marielaisabel2030@gmail.com',
+    displayName: 'Mariela Isabel',
+    role: 'empleado'
+  },
+  'hector': {
+    email: 'hectorbann@gmail.com',
+    displayName: 'Hector',
+    role: 'empleado'
+  },
+  'hectorbann@gmail.com': {
+    email: 'hectorbann@gmail.com',
+    displayName: 'Hector',
+    role: 'empleado'
+  },
+  'hector@romanydelgado.com': {
+    email: 'hectorbann@gmail.com',
+    displayName: 'Hector',
+    role: 'empleado'
+  },
 };
 
 // -------------------------------------------------------------
@@ -26,13 +134,15 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
 // -------------------------------------------------------------
 export async function supabaseLogin(username: string, password?: string): Promise<any> {
   const cleanUser = username.trim().toLowerCase();
-  const email = cleanUser.includes('@') ? cleanUser : `${cleanUser}@romanydelgado.com`;
-  const isBoss = checkIsJefatura(cleanUser);
+  const known = KNOWN_USERS_DIR[cleanUser];
+
+  const email = known ? known.email : (cleanUser.includes('@') ? cleanUser : `${cleanUser}@romanydelgado.com`);
+  const isBoss = known ? (known.role === 'jefatura') : checkIsJefatura(cleanUser);
+  let displayName = known ? known.displayName : username.trim();
 
   try {
     let sessionToken = '';
     let userEmail = email;
-    let displayName = username.trim();
 
     // 1. Intentar inicio de sesión directo en Supabase Auth
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
@@ -91,16 +201,18 @@ export async function supabaseLogin(username: string, password?: string): Promis
       sessionToken = authData.session.access_token;
     }
 
-    // Asegurar que exista en la tabla profiles
-    const { data: existingProfile } = await supabase
-      .from('profiles')
-      .select('*')
-      .or(`email.eq.${userEmail},full_name.ilike.%${cleanUser}%`)
-      .limit(1)
-      .maybeSingle();
+    // Si no es un usuario del directorio conocido, buscar en tabla profiles por email exacto o nombre exacto
+    if (!known) {
+      const { data: existingProfile } = await supabase
+        .from('profiles')
+        .select('*')
+        .or(`email.eq.${userEmail},full_name.eq.${cleanUser}`)
+        .limit(1)
+        .maybeSingle();
 
-    if (existingProfile) {
-      displayName = existingProfile.full_name || displayName;
+      if (existingProfile) {
+        displayName = existingProfile.full_name || displayName;
+      }
     }
 
     const token = sessionToken || `rd_session_${Date.now()}_${cleanUser}`;
@@ -119,7 +231,7 @@ export async function supabaseLogin(username: string, password?: string): Promis
       success: true,
       token: `rd_session_${Date.now()}_${cleanUser}`,
       user_email: email,
-      user_display_name: username,
+      user_display_name: displayName,
       user_nicename: cleanUser,
       is_admin: isBoss
     };
@@ -146,12 +258,31 @@ export async function supabaseClockIn(_data?: any): Promise<any> {
 // -------------------------------------------------------------
 // 3. BITÁCORAS
 // -------------------------------------------------------------
-export async function supabaseGetBitacoras(): Promise<any[]> {
-  const { data, error } = await supabase
+export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> {
+  let query = supabase
     .from('bitacoras')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(150);
+
+  if (userFilter && userFilter.trim()) {
+    const clean = userFilter.trim().toLowerCase();
+    if (clean.includes('mariela')) {
+      query = query.ilike('user_name', '%mariela%');
+    } else if (clean.includes('carmen')) {
+      query = query.ilike('user_name', '%carmen%');
+    } else if (clean.includes('hector')) {
+      query = query.ilike('user_name', '%hector%');
+    } else if (clean.includes('luis')) {
+      query = query.ilike('user_name', '%luis%').not('user_name', 'ilike', '%carmen%');
+    } else if (clean.includes('victor') || clean.includes('víctor')) {
+      query = query.ilike('user_name', '%victor%');
+    } else {
+      query = query.ilike('user_name', `%${clean}%`);
+    }
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error supabaseGetBitacoras:', error);
@@ -682,15 +813,36 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
   const currentLower = currentUser.toLowerCase();
   const isBossU = checkIsJefatura(currentUser);
 
-  // 1. Obtener perfiles de usuarios de Supabase
-  const { data: profiles } = await supabase.from('profiles').select('*');
-  const contactsList = profiles && profiles.length > 0 ? profiles : [
+  // Lista canónica de contactos del bufete (deduplicada y con roles exactos)
+  const canonicalContacts = [
     { full_name: 'Luis Delgado', role: 'jefatura' },
     { full_name: 'Victor Roman', role: 'jefatura' },
     { full_name: 'Carmen Luisa', role: 'empleado' },
-    { full_name: 'Hector', role: 'empleado' },
-    { full_name: 'Mariela Isabel', role: 'empleado' }
+    { full_name: 'Mariela Isabel', role: 'empleado' },
+    { full_name: 'Hector', role: 'empleado' }
   ];
+
+  // 1. Obtener perfiles de usuarios de Supabase
+  const { data: profiles } = await supabase.from('profiles').select('*');
+  
+  // Unificar contactos canónicos con perfiles de BD sin duplicados
+  const contactsMap = new Map<string, { full_name: string; role: string }>();
+  canonicalContacts.forEach(c => contactsMap.set(c.full_name.toLowerCase(), c));
+  
+  if (profiles && profiles.length > 0) {
+    for (const p of profiles) {
+      const name = (p.full_name || p.email || '').trim();
+      const nLower = name.toLowerCase();
+      // Mapear nombres duplicados a la versión canónica
+      if (nLower.includes('luis')) contactsMap.set('luis delgado', { full_name: 'Luis Delgado', role: 'jefatura' });
+      else if (nLower.includes('victor')) contactsMap.set('victor roman', { full_name: 'Victor Roman', role: 'jefatura' });
+      else if (nLower.includes('carmen')) contactsMap.set('carmen luisa', { full_name: 'Carmen Luisa', role: 'empleado' });
+      else if (nLower.includes('mariela')) contactsMap.set('mariela isabel', { full_name: 'Mariela Isabel', role: 'empleado' });
+      else if (nLower.includes('hector')) contactsMap.set('hector', { full_name: 'Hector', role: 'empleado' });
+    }
+  }
+
+  const contactsList = Array.from(contactsMap.values());
 
   // 2. Obtener mensajes recientes
   const { data: messages } = await supabase
@@ -703,7 +855,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
   const conversations: any[] = [];
 
   for (const c of contactsList) {
-    const contactName = c.full_name || c.email || 'Usuario';
+    const contactName = c.full_name;
     const cLower = contactName.toLowerCase();
     const isBossC = c.role === 'jefatura' || checkIsJefatura(contactName);
 
@@ -733,7 +885,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
 
     conversations.push({
       employee: contactName,
-      role: isBossC ? 'Socio Director / Jefatura' : 'Asistente Legal / Empleado',
+      role: isBossC ? 'Socio Director / Jefatura' : 'Abogado / Empleado',
       unreadCountJefe: !isBossC ? unreadCount : 0,
       unreadCountEmpleado: isBossC ? unreadCount : 0,
       lastMessage: lastMsg ? lastMsg.mensaje : 'Sin mensajes aún',
