@@ -518,8 +518,6 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const filteredMessages = useMemo(() => {
     const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
     const cleanActive = (activeEmployee || '').toLowerCase().trim();
-    const isMeBoss = isUserBoss(cleanCurrent);
-    const isActiveBoss = isUserBoss(cleanActive);
 
     return messages
       .filter(m => {
@@ -534,12 +532,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         // 1. Mensaje de mí para el contacto activo
         const isFromCurrentToActive = 
           (author.includes(cleanCurrent) || cleanCurrent.includes(author)) &&
-          (!recipient || recipient.includes(cleanActive) || cleanActive.includes(recipient) || (isActiveBoss && recipient === 'jefatura'));
+          (recipient.includes(cleanActive) || cleanActive.includes(recipient));
 
         // 2. Mensaje del contacto activo para mí
         const isFromActiveToCurrent = 
           (author.includes(cleanActive) || cleanActive.includes(author)) &&
-          (!recipient || recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient) || (isMeBoss && recipient === 'jefatura'));
+          (recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient));
 
         if (!isFromCurrentToActive && !isFromActiveToCurrent) {
           return false;

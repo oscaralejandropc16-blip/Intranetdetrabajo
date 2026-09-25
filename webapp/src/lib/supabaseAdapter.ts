@@ -864,13 +864,15 @@ export async function supabaseGetChatMessages(contact?: string): Promise<any[]> 
 
   if (!targetContact) return msgs;
 
-  // Filtrar para el chat entre currentUser y targetContact
+  // Filtrar estrictamente para el chat entre currentUser y targetContact
   return msgs.filter((m: any) => {
-    const a = (m.author || '').toLowerCase();
-    const r = (m.recipient || '').toLowerCase();
-    return (a.includes(currentUser) && r.includes(targetContact)) ||
-           (a.includes(targetContact) && r.includes(currentUser)) ||
-           (r === 'jefatura' && (a.includes(targetContact) || a.includes(currentUser)));
+    const a = (m.author || '').toLowerCase().trim();
+    const r = (m.recipient || '').toLowerCase().trim();
+    const cur = currentUser.toLowerCase().trim();
+    const tgt = targetContact.toLowerCase().trim();
+
+    return (a.includes(cur) && (r.includes(tgt) || tgt.includes(r))) ||
+           (a.includes(tgt) && (r.includes(cur) || cur.includes(r)));
   });
 }
 
@@ -937,10 +939,10 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
 
     // Filtrar mensajes entre currentUser y este contacto
     const relMsgs = allMsgs.filter((m: any) => {
-      const a = (m.sender_name || '').toLowerCase();
-      const r = (m.recipient_name || '').toLowerCase();
-      return (a.includes(currentLower) && (r.includes(cLower) || (isBossC && r === 'jefatura'))) ||
-             (a.includes(cLower) && (r.includes(currentLower) || (isBossU && r === 'jefatura')));
+      const a = (m.sender_name || '').toLowerCase().trim();
+      const r = (m.recipient_name || '').toLowerCase().trim();
+      return (a.includes(currentLower) && (r.includes(cLower) || cLower.includes(r))) ||
+             (a.includes(cLower) && (r.includes(currentLower) || currentLower.includes(r)));
     });
 
     const lastMsg = relMsgs[0];

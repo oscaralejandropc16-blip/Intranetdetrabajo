@@ -249,7 +249,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         author: newMsg.author,
         author_role: newMsg.author_role,
         is_jefatura: isJefatura,
-        recipient: isJefatura ? targetUser : 'Jefatura',
+        recipient: targetUser || 'Luis Delgado',
         date: newMsg.fecha_bitacora
       });
     } catch (err) {
