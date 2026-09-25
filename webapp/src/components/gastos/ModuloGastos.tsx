@@ -436,15 +436,15 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                           </span>
                         </div>
 
-                        {/* Botón Editar si está en borrador o devuelto */}
-                        {(rel.estatus === 'Borrador' || rel.estatus === 'Rechazado') && (
+                        {/* Botón Editar / Anexar Comprobantes: permitido mientras NO esté Pagado */}
+                        {rel.estatus !== 'Pagado' && (
                           <button
                             onClick={() => {
                               setSelectedRelacion(rel);
                               setViewMode('editar');
                             }}
-                            className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-all cursor-pointer"
-                            title="Editar / Corregir"
+                            className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-all cursor-pointer border border-amber-200 shadow-2xs"
+                            title="Editar / Anexar comprobantes o corregir montos"
                           >
                             <Edit3 className="w-4 h-4" />
                           </button>

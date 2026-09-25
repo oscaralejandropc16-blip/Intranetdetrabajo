@@ -275,7 +275,9 @@ export default function AdminDashboard() {
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial'>(() => {
-    return (sessionStorage.getItem('rd_admin_active_view') as any) || 'bitacoras';
+    const saved = sessionStorage.getItem('rd_admin_active_view');
+    if (saved === 'agenda') return 'bitacoras';
+    return (saved as any) || 'bitacoras';
   });
   const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [allGastos, setAllGastos] = useState<any[]>([]);
@@ -1811,19 +1813,7 @@ export default function AdminDashboard() {
           )}
         </button>
 
-        {/* 4. AGENDA GLOBAL */}
-        <button
-          onClick={() => setActiveView('agenda')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
-            activeView === 'agenda' 
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
-          }`}
-        >
-          <CalendarIcon className={`w-4 h-4 ${activeView === 'agenda' ? 'text-slate-900' : 'text-slate-400'}`} /> Agenda Global
-        </button>
-
-        {/* 5. EXPEDIENTES & CASOS */}
+        {/* 4. EXPEDIENTES & CASOS */}
         <button
           onClick={() => setActiveView('expedientes')}
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
