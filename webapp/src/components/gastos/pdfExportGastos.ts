@@ -53,42 +53,100 @@ export async function exportarRelacionGastosPDF(relacion: RelacionGastos, logoBa
   doc.setLineWidth(0.5);
   doc.line(margin, 31, pageWidth - margin, 31);
 
+  // Funciones auxiliares de formateo limpio
+  const formatPeriodDate = (d?: string) => {
+    if (!d) return 'N/A';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      const [y, m, day] = d.split('-');
+      return `${day}/${m}/${y}`;
+    }
+    return d;
+  };
+
+  const capitalizeWords = (str?: string) => {
+    if (!str) return 'No especificado';
+    return str.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  };
+
   // 2. Información del Empleado y Período
   doc.setFillColor(248, 250, 252); // slate-50
   doc.roundedRect(margin, 34, pageWidth - (margin * 2), 22, 2, 2, 'F');
   doc.setDrawColor(226, 232, 240);
   doc.roundedRect(margin, 34, pageWidth - (margin * 2), 22, 2, 2, 'S');
 
-  doc.setFontSize(8);
+  // Columna 1: Solicitante (X: margin + 5)
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'bold');
-  doc.text('RESPONSABLE / SOLICITANTE:', margin + 4, 39);
-  doc.text('PERÍODO REPORTADO:', margin + 80, 39);
-  doc.text('ESTATUS / LIQUIDACIÓN:', margin + 130, 39);
+  doc.text('RESPONSABLE / SOLICITANTE:', margin + 5, 39);
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(9);
   doc.setTextColor(15, 23, 42);
   doc.setFont('helvetica', 'bold');
-  doc.text(relacion.empleado || 'No especificado', margin + 4, 45);
-  doc.text(`${relacion.periodo} (${relacion.fechaInicio || 'N/A'} al ${relacion.fechaFin || 'N/A'})`, margin + 80, 45);
-  
-  const estatusColor = relacion.estatus === 'Pagado' ? [16, 185, 129] : relacion.estatus === 'Pendiente' ? [245, 158, 11] : [100, 116, 139];
-  doc.setTextColor(estatusColor[0], estatusColor[1], estatusColor[2]);
-  doc.text(relacion.estatus.toUpperCase(), margin + 130, 45);
+  doc.text(capitalizeWords(relacion.empleado), margin + 5, 45, { maxWidth: 48 });
 
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.setFont('helvetica', 'normal');
-  doc.text(`Tasa BCV Aplicada: Bs ${Number(relacion.tasaBcv || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, margin + 4, 51);
+  doc.text(`Tasa BCV: Bs ${Number(relacion.tasaBcv || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`, margin + 5, 51);
+
+  // Columna 2: Período Reportado (X: margin + 56)
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'bold');
+  doc.text('PERÍODO REPORTADO:', margin + 56, 39);
+
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.setFont('helvetica', 'bold');
+  const periodoTexto = `${relacion.periodo} (${formatPeriodDate(relacion.fechaInicio)} al ${formatPeriodDate(relacion.fechaFin)})`;
+  doc.text(periodoTexto, margin + 56, 45, { maxWidth: 80 });
+
   if (relacion.estatus === 'Pagado') {
-    doc.text(`Pagado el ${relacion.fechaPago || ''} vía ${relacion.metodoPago || ''} (Ref: ${relacion.referenciaPago || 'S/R'})`, margin + 80, 51);
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Liquidado el ${relacion.fechaPago || ''} vía ${relacion.metodoPago || ''} (Ref: ${relacion.referenciaPago || 'S/R'})`, margin + 56, 51, { maxWidth: 80 });
   }
+
+  // Columna 3: Estatus / Liquidación (Alineada a la derecha)
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ESTATUS / LIQUIDACIÓN:', pageWidth - margin - 5, 39, { align: 'right' });
+
+  // Badge pill de estatus con espacio dedicado a la derecha
+  const estatusRaw = (relacion.estatus || 'Pendiente').trim();
+  const estatusUpper = estatusRaw.toUpperCase();
+  const badgeW = 28;
+  const badgeH = 6;
+  const badgeX = pageWidth - margin - 5 - badgeW;
+  const badgeY = 41;
+
+  if (estatusUpper === 'PAGADO') {
+    doc.setFillColor(220, 252, 231); // emerald-100
+    doc.setDrawColor(134, 239, 172); // emerald-300
+    doc.setTextColor(21, 128, 61);   // emerald-700
+  } else if (estatusUpper === 'PENDIENTE') {
+    doc.setFillColor(254, 243, 199); // amber-100
+    doc.setDrawColor(252, 211, 77);   // amber-300
+    doc.setTextColor(180, 83, 9);     // amber-700
+  } else {
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setDrawColor(203, 213, 225); // slate-300
+    doc.setTextColor(71, 85, 105);   // slate-600
+  }
+
+  doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 1.5, 1.5, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text(estatusUpper, badgeX + (badgeW / 2), badgeY + 4.2, { align: 'center' });
 
   // 3. Tabla Desglosada de Gastos
   const tableData = (relacion.items || []).map((item, index) => {
     return [
       (index + 1).toString(),
-      item.fechaGasto || 'N/A',
+      item.fechaGasto ? formatPeriodDate(item.fechaGasto) : 'N/A',
       item.tramiteExpediente || 'General',
       item.categoria || 'Otro',
       item.descripcion || 'Sin descripción adicional',
@@ -133,49 +191,50 @@ export async function exportarRelacionGastosPDF(relacion: RelacionGastos, logoBa
   const finalY = (doc as any).lastAutoTable?.finalY || 120;
 
   // 4. Cuadro de Totales y Liquidación
-  const totalBoxY = finalY + 6;
-  if (totalBoxY + 45 < pageHeight) {
-    doc.setFillColor(241, 245, 249); // slate-100
-    doc.roundedRect(pageWidth - margin - 75, totalBoxY, 75, 26, 2, 2, 'F');
-    doc.setDrawColor(203, 213, 225);
-    doc.roundedRect(pageWidth - margin - 75, totalBoxY, 75, 26, 2, 2, 'S');
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(71, 85, 105);
-    doc.text('TOTAL GENERAL A REEMBOLSAR:', pageWidth - margin - 70, totalBoxY + 6);
-
-    doc.setFontSize(11);
-    doc.setTextColor(15, 23, 42);
-    doc.text(`$ ${Number(relacion.totalUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`, pageWidth - margin - 5, totalBoxY + 14, { align: 'right' });
-
-    doc.setFontSize(9.5);
-    doc.setTextColor(51, 65, 85);
-    doc.text(`Bs ${Number(relacion.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`, pageWidth - margin - 5, totalBoxY + 21, { align: 'right' });
-
-    // Firmas de Conformidad
-    const signatureY = totalBoxY + 38;
-    if (signatureY + 20 < pageHeight) {
-      doc.setDrawColor(148, 163, 184);
-      doc.setLineWidth(0.5);
-      
-      // Firma Empleado
-      doc.line(margin + 10, signatureY, margin + 65, signatureY);
-      doc.setFontSize(7.5);
-      doc.setTextColor(100, 116, 139);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Firma del Solicitante', margin + 37.5, signatureY + 4, { align: 'center' });
-      doc.setFont('helvetica', 'bold');
-      doc.text(relacion.empleado || '', margin + 37.5, signatureY + 8, { align: 'center' });
-
-      // Firma Jefatura
-      doc.line(pageWidth - margin - 65, signatureY, pageWidth - margin - 10, signatureY);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Aprobado por Jefatura', pageWidth - margin - 37.5, signatureY + 4, { align: 'center' });
-      doc.setFont('helvetica', 'bold');
-      doc.text(relacion.pagadoPor || 'Román & Delgado Abogados', pageWidth - margin - 37.5, signatureY + 8, { align: 'center' });
-    }
+  let totalBoxY = finalY + 6;
+  if (totalBoxY + 55 > pageHeight - 15) {
+    doc.addPage();
+    totalBoxY = margin + 10;
   }
+
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.roundedRect(pageWidth - margin - 75, totalBoxY, 75, 26, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225);
+  doc.roundedRect(pageWidth - margin - 75, totalBoxY, 75, 26, 2, 2, 'S');
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(71, 85, 105);
+  doc.text('TOTAL GENERAL A REEMBOLSAR:', pageWidth - margin - 70, totalBoxY + 6);
+
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`$ ${Number(relacion.totalUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD`, pageWidth - margin - 5, totalBoxY + 14, { align: 'right' });
+
+  doc.setFontSize(9.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text(`Bs ${Number(relacion.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} VES`, pageWidth - margin - 5, totalBoxY + 21, { align: 'right' });
+
+  // Firmas de Conformidad
+  const signatureY = totalBoxY + 38;
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.5);
+  
+  // Firma Empleado
+  doc.line(margin + 10, signatureY, margin + 65, signatureY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Firma del Solicitante', margin + 37.5, signatureY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(capitalizeWords(relacion.empleado), margin + 37.5, signatureY + 8, { align: 'center' });
+
+  // Firma Jefatura
+  doc.line(pageWidth - margin - 65, signatureY, pageWidth - margin - 10, signatureY);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Aprobado por Jefatura', pageWidth - margin - 37.5, signatureY + 4, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(relacion.pagadoPor || 'Román & Delgado Abogados', pageWidth - margin - 37.5, signatureY + 8, { align: 'center' });
 
   // 5. Pie de Página en todas las hojas
   const totalPages = (doc.internal as any).getNumberOfPages();
