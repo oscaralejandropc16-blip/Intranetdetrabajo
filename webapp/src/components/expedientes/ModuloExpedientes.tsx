@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, Scale, Download } from 'lucide-react';
+import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, Scale, Download, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ExpedienteJudicial, AudienciaSemanal, AsuntoNuevo, SeguimientoPendiente } from '../../types/expedientes';
 import {
+  getStoredExpedientes,
   getStoredAudiencias,
   saveStoredAudiencias,
   getStoredAsuntosNuevos,
@@ -19,15 +20,26 @@ export default function ModuloExpedientes() {
   const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>(() => {
     try {
       const cached = localStorage.getItem('rd_cached_expedientes');
-      return cached ? JSON.parse(cached) : [];
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch (e) {
-      return [];
+      console.warn('Error al leer caché de expedientes:', e);
     }
+    return getStoredExpedientes();
   });
   const [audiencias, setAudiencias] = useState<AudienciaSemanal[]>(() => getStoredAudiencias());
   const [asuntosNuevos, setAsuntosNuevos] = useState<AsuntoNuevo[]>(() => getStoredAsuntosNuevos());
   const [seguimientos, setSeguimientos] = useState<SeguimientoPendiente[]>(() => getStoredSeguimientos());
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState<boolean>(() => {
+    try {
+      const cached = localStorage.getItem('rd_cached_expedientes');
+      return !cached || JSON.parse(cached).length === 0;
+    } catch {
+      return false;
+    }
+  });
 
   const [activeTab, setActiveTab] = useState<'expedientes' | 'planificacion'>('expedientes');
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +60,9 @@ export default function ModuloExpedientes() {
   // Cargar desde API y Sincronizar datos locales
   useEffect(() => {
     const fetchAndSync = async () => {
+      if (expedientes.length === 0) {
+        setIsLoading(true);
+      }
       try {
         const response = await api.get('/rd-intranet/v1/expedientes');
         let serverExpedientes: ExpedienteJudicial[] = [];
@@ -60,58 +75,67 @@ export default function ModuloExpedientes() {
         // Sincronización silenciosa de datos locales al servidor
         const localData = localStorage.getItem('rd_expedientes');
         if (localData) {
-          const localExpedientes: ExpedienteJudicial[] = JSON.parse(localData);
-          // Verificar si hay expedientes locales que no están en el servidor
-          const missingOnServer = localExpedientes.filter(
-            local => !serverExpedientes.some(server => server.numeroExpediente === local.numeroExpediente)
-          );
+          try {
+            const localExpedientes: ExpedienteJudicial[] = JSON.parse(localData);
+            // Verificar si hay expedientes locales que no están en el servidor
+            const missingOnServer = localExpedientes.filter(
+              local => !serverExpedientes.some(server => server.numeroExpediente === local.numeroExpediente)
+            );
 
-          if (missingOnServer.length > 0) {
-            console.log(`Sincronizando ${missingOnServer.length} expedientes locales al servidor...`);
-            await submitToServer('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
-            
-            // Refetch after sync
-            const newRes = await api.get('/rd-intranet/v1/expedientes');
-            if (Array.isArray(newRes.data)) serverExpedientes = newRes.data;
-            else if (Array.isArray(newRes)) serverExpedientes = newRes as any;
+            if (missingOnServer.length > 0) {
+              console.log(`Sincronizando ${missingOnServer.length} expedientes locales al servidor...`);
+              await submitToServer('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
+              
+              // Refetch after sync
+              const newRes = await api.get('/rd-intranet/v1/expedientes');
+              if (Array.isArray(newRes.data)) serverExpedientes = newRes.data;
+              else if (Array.isArray(newRes)) serverExpedientes = newRes as any;
+            }
+          } catch (e) {
+            console.error('Error sincronizando expedientes locales:', e);
           }
           // Limpiar local storage de expedientes ya que ahora usamos el servidor
           localStorage.removeItem('rd_expedientes');
         }
 
-        // Merge: if any server expedientes are simple bitacora ones, map them properly.
-        // We do this by ensuring the shape matches ExpedienteJudicial
-        const formatted = serverExpedientes.map(exp => {
-          const userStr = (exp as any).usuario || (exp as any).registradoPor || exp.responsableAsignado;
-          let acts = exp.actuaciones || [];
-          
-          // Si no tiene actuaciones estructuradas, generamos una inicial usando el resumen o la bitácora
-          if (acts.length === 0) {
-            const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Ingreso inicial de expediente';
-            acts = [{
-              id: 'act-init-' + Math.random(),
-              fecha: exp.ultimaActualizacion || exp.fechaRegistro || new Date().toISOString().split('T')[0],
-              actuacion: txt,
-              estatusResultante: exp.estatusActual || 'EN TRÁMITE',
-              registradoPor: userStr || 'Sistema'
-            }];
+        if (serverExpedientes.length > 0) {
+          const formatted = serverExpedientes.map(exp => {
+            const userStr = (exp as any).usuario || (exp as any).registradoPor || exp.responsableAsignado;
+            let acts = exp.actuaciones || [];
+            
+            // Si no tiene actuaciones estructuradas, generamos una inicial usando el resumen o la bitácora
+            if (acts.length === 0) {
+              const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Ingreso inicial de expediente';
+              acts = [{
+                id: 'act-init-' + Math.random(),
+                fecha: exp.ultimaActualizacion || exp.fechaRegistro || new Date().toISOString().split('T')[0],
+                actuacion: txt,
+                estatusResultante: exp.estatusActual || 'EN TRÁMITE',
+                registradoPor: userStr || 'Sistema'
+              }];
+            }
+
+            return {
+              ...exp,
+              id: exp.id || 'exp-' + Math.random(),
+              juzgado: exp.juzgado || 'Desconocido',
+              procedimiento: exp.procedimiento || (exp as any).tipo || 'General',
+              estatusActual: exp.estatusActual || 'EN TRÁMITE',
+              sede: exp.sede || 'Desconocida',
+              fechaRegistro: exp.fechaRegistro || (acts[0] ? acts[0].fecha : new Date().toISOString().split('T')[0]),
+              ultimaActualizacion: acts[0] ? acts[0].fecha : (exp.ultimaActualizacion || new Date().toISOString().split('T')[0]),
+              responsableAsignado: userStr || exp.responsableAsignado || 'Sistema',
+              actuaciones: acts
+            };
+          }) as ExpedienteJudicial[];
+
+          setExpedientes(formatted);
+          try {
+            localStorage.setItem('rd_cached_expedientes', JSON.stringify(formatted));
+          } catch (err) {
+            console.warn('Error al guardar expedientes en caché:', err);
           }
-
-          return {
-            ...exp,
-            id: exp.id || 'exp-' + Math.random(),
-            juzgado: exp.juzgado || 'Desconocido',
-            procedimiento: exp.procedimiento || (exp as any).tipo || 'General',
-            estatusActual: exp.estatusActual || 'EN TRÁMITE',
-            sede: exp.sede || 'Desconocida',
-            fechaRegistro: exp.fechaRegistro || (acts[0] ? acts[0].fecha : new Date().toISOString().split('T')[0]),
-            ultimaActualizacion: acts[0] ? acts[0].fecha : (exp.ultimaActualizacion || new Date().toISOString().split('T')[0]),
-            responsableAsignado: userStr || exp.responsableAsignado || 'Sistema',
-            actuaciones: acts
-          };
-        }) as ExpedienteJudicial[];
-
-        setExpedientes(formatted);
+        }
       } catch (err) {
         console.error('Error fetching expedientes:', err);
       } finally {
@@ -140,6 +164,11 @@ export default function ModuloExpedientes() {
     const newArr = expedientes.map(e => e.id === updated.id ? updated : e);
     setExpedientes(newArr);
     setSelectedExpediente(updated);
+    try {
+      localStorage.setItem('rd_cached_expedientes', JSON.stringify(newArr));
+    } catch (e) {
+      console.warn('Error guardando en caché:', e);
+    }
     
     // Guardar en el servidor
     try {
@@ -181,7 +210,13 @@ export default function ModuloExpedientes() {
       ]
     };
 
-    setExpedientes([newExp, ...expedientes]);
+    const updatedList = [newExp, ...expedientes];
+    setExpedientes(updatedList);
+    try {
+      localStorage.setItem('rd_cached_expedientes', JSON.stringify(updatedList));
+    } catch (e) {
+      console.warn('Error guardando en caché:', e);
+    }
     setShowNuevoExpedienteModal(false);
     setNumExp('');
     
@@ -356,7 +391,7 @@ export default function ModuloExpedientes() {
               }`}
             >
               <FolderSearch className="w-4 h-4" />
-              Expedientes ({expedientes.length})
+              Expedientes ({isLoading && expedientes.length === 0 ? '...' : expedientes.length})
             </button>
 
             <button
@@ -454,22 +489,36 @@ export default function ModuloExpedientes() {
         <div className="space-y-4">
           
           <div className="flex justify-between items-center px-1">
-            <p className="text-xs text-slate-400 font-semibold">
-              Mostrando <strong className="text-amber-400">{filteredExpedientes.length}</strong> de {expedientes.length} expedientes registrados
-            </p>
+            {isLoading && expedientes.length === 0 ? (
+              <p className="text-xs text-amber-400/90 font-medium flex items-center gap-2 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping inline-block" />
+                Conectando con la base de datos de expedientes...
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400 font-semibold">
+                Mostrando <strong className="text-amber-400">{filteredExpedientes.length}</strong> de {expedientes.length} expedientes registrados
+              </p>
+            )}
           </div>
 
-          {isLoading ? (
-            <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
+          {isLoading && expedientes.length === 0 ? (
+            <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-4 animate-in fade-in duration-300">
               <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
-              <p className="text-sm font-semibold text-white">Sincronizando con el servidor...</p>
+              <div className="space-y-1">
+                <h4 className="text-base font-bold text-white">Sincronizando Expedientes Judiciales...</h4>
+                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                  Conectando con la base de datos central en tiempo real. Un momento por favor.
+                </p>
+              </div>
             </div>
           ) : filteredExpedientes.length === 0 ? (
             <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
               <AlertCircle className="w-10 h-10 text-amber-500/50 mx-auto" />
               <h4 className="text-base font-bold text-white">No se encontraron expedientes</h4>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                No hay ningún expediente que coincida con el término "{searchTerm}". Intenta buscar por otro número de expediente o parte procesal.
+                {searchTerm
+                  ? `No hay ningún expediente que coincida con el término "${searchTerm}". Intenta buscar por otro número de expediente o parte procesal.`
+                  : 'No hay expedientes con los filtros seleccionados.'}
               </p>
             </div>
           ) : (
@@ -598,7 +647,7 @@ export default function ModuloExpedientes() {
                 onClick={() => setShowNuevoExpedienteModal(false)}
                 className="text-slate-400 hover:text-white p-1 rounded-lg"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 

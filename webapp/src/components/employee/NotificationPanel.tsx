@@ -12,7 +12,8 @@ import {
   RotateCcw, 
   Calendar, 
   CornerDownRight,
-  ShieldCheck
+  ShieldCheck,
+  X
 } from 'lucide-react';
 import { WhatsAppStyleChat, checkIsFromBoss } from '../chat/WhatsAppStyleChat';
 
@@ -253,9 +254,9 @@ export default function NotificationPanel({ notifications, setNotifications }: N
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
               >
-                ✕
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>

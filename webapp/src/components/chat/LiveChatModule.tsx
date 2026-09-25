@@ -16,7 +16,19 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import api, { submitToServer } from '../../lib/api';
+import { supabase } from '../../lib/supabase';
 import SystemAlertModal from '../common/SystemAlertModal';
+
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
 
 export interface LiveChatMessage {
   id: string;
@@ -141,8 +153,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const [conversations, setConversations] = useState<ConversationItem[]>(DEFAULT_CONTACTS);
 
   const [activeEmployee, setActiveEmployee] = useState<string>(() => {
-    const curClean = effectiveCurrentUser.toLowerCase();
-    if (initialEmployee && !curClean.includes(initialEmployee.toLowerCase())) {
+    const curClean = (effectiveCurrentUser || '').toLowerCase();
+    if (initialEmployee && !curClean.includes((initialEmployee || '').toLowerCase())) {
       return initialEmployee;
     }
     if (curClean.includes('victor')) return 'Luis Delgado';
@@ -205,23 +217,29 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         serverMsgs = response.data;
       }
 
-      // 2. Combinar con cola local para resiliencia offline/inmediata
+      // 2. Limpiar y combinar con cola local offline
+      const deletedList: string[] = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
       const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
       let localQ: LiveChatMessage[] = [];
       if (qRaw) {
         try {
           const parsed = JSON.parse(qRaw);
-          if (Array.isArray(parsed)) localQ = parsed;
+          if (Array.isArray(parsed)) {
+            // Solo retener mensajes que aún no están en el servidor y no estén eliminados
+            localQ = parsed.filter(m => 
+              m && m.id && 
+              !deletedList.includes(m.id) && 
+              !serverMsgs.some(s => s.id === m.id || (s.mensaje === m.mensaje && s.author === m.author))
+            );
+            localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(localQ));
+          }
         } catch (e) {}
       }
 
-      // 3. Filtrar eliminados
-      const deletedList: string[] = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
-
+      // 3. Filtrar eliminados y deduplicar estrictamente por ID único
       const combined = [...serverMsgs, ...localQ]
         .filter(m => m && m.id && !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje.trim())))
-        // Deduplicar por ID único o contenido+fecha exacta
-        .filter((msg, idx, self) => idx === self.findIndex(t => (t.id && t.id === msg.id) || (t.mensaje === msg.mensaje && t.fecha === msg.fecha)));
+        .filter((msg, idx, self) => idx === self.findIndex(t => t.id === msg.id));
 
       // Detectar si hay mensajes nuevos de la otra persona para reproducir sonido
       if (initialFetchDoneRef.current && combined.length > prevMessagesCountRef.current) {
@@ -326,15 +344,45 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }
   }, [activeEmployee, effectiveCurrentUser, isJefatura]);
 
-  // Polling periódico cada 10 segundos (pausado si la pestaña está en segundo plano para no saturar servidor)
+  // Suscripción Realtime a Supabase + polling de respaldo
   useEffect(() => {
     fetchMessages(true);
     fetchConversations();
 
+    // Canal Realtime para recibir mensajes nuevos y eliminaciones al instante en todas las ventanas
+    const channel = supabase
+      .channel('chat_messages_live')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            fetchMessages(true);
+            fetchConversations();
+          } else if (payload.eventType === 'DELETE') {
+            const delId = payload.old?.id;
+            if (delId) {
+              setMessages(prev => prev.filter(m => m.id !== delId));
+              try {
+                const delList: string[] = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+                if (!delList.includes(delId)) {
+                  delList.push(delId);
+                  localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
+                }
+              } catch (e) {}
+              fetchConversations();
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            fetchMessages(true);
+          }
+        }
+      )
+      .subscribe();
+
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-    }, 10000);
+    }, 12000);
 
     const convInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
@@ -342,6 +390,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }, 30000);
 
     return () => {
+      supabase.removeChannel(channel);
       clearInterval(interval);
       clearInterval(convInterval);
     };
@@ -362,8 +411,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     const dateStr = new Date().toLocaleDateString('es-VE', { day: 'numeric', month: 'short' });
     const fullDate = `${dateStr}, ${nowStr}`;
 
+    const newMsgId = generateUUID();
     const newMsg: LiveChatMessage = {
-      id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      id: newMsgId,
       author: effectiveCurrentUser,
       author_role: isJefatura ? 'jefatura' : 'empleado',
       recipient: activeEmployee,
@@ -383,16 +433,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     setInputText('');
     setTimeout(() => scrollToBottom(true), 40);
 
-    // Guardar en cola local
+    // Enviar al backend (Supabase)
     try {
-      const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
-      const qList = qRaw ? JSON.parse(qRaw) : [];
-      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify([newMsg, ...qList].slice(0, 200)));
-    } catch (e) {}
-
-    // Enviar al backend de WordPress
-    try {
-      await submitToServer('/rd-intranet/v1/chat/send', {
+      const res = await submitToServer('/rd-intranet/v1/chat/send', {
         id: newMsg.id,
         mensaje: newMsg.mensaje,
         author: newMsg.author,
@@ -401,7 +444,10 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         recipient: newMsg.recipient,
         date: newMsg.fecha_bitacora
       });
-      // Refrescar conversaciones si es jefe
+
+      if (res?.msg?.id && res.msg.id !== newMsg.id) {
+        setMessages(prev => prev.map(m => m.id === newMsg.id ? { ...m, id: res.msg.id } : m));
+      }
       fetchConversations();
     } catch (err) {
       console.warn('Mensaje guardado localmente (offline):', err);
@@ -440,10 +486,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
       }
 
-      // 3. Notificar al backend
+      // 3. Notificar y borrar de la base de datos Supabase
       await submitToServer('/rd-intranet/v1/chat/delete', { id: msgId, mensaje: msgText });
       fetchConversations();
-    } catch (e) {}
+    } catch (e) {
+      console.error('Error al eliminar mensaje:', e);
+    }
   };
 
   // Filtrado y ordenamiento cronológico (más antiguos arriba, más recientes abajo)
@@ -508,17 +556,17 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   // Presets de respuestas rápidas
   const quickPresets = isJefatura ? [
-    '👍 Entendido y revisado.',
-    '⚡ Por favor envíame el soporte.',
-    '✍️ Revisa las correcciones indicadas.',
-    '✅ Aprobado, excelente trabajo.',
-    '❓ ¿En qué estatus quedó este caso?'
+    'Entendido y revisado.',
+    'Por favor envíame el soporte.',
+    'Revisa las correcciones indicadas.',
+    'Aprobado, excelente trabajo.',
+    '¿En qué estatus quedó este caso?'
   ] : [
-    '⚡ Listo jefe, ya corregí este punto.',
-    '📎 Ya adjunté el comprobante en la bitácora.',
-    '❓ Tengo una duda con respecto a este expediente.',
-    '⏱️ En proceso, finalizo en la tarde.',
-    '👍 Entendido perfectamente.'
+    'Listo jefe, ya corregí este punto.',
+    'Ya adjunté el comprobante en la bitácora.',
+    'Tengo una duda con respecto a este expediente.',
+    'En proceso, finalizo en la tarde.',
+    'Entendido perfectamente.'
   ];
 
   const pendingCount = messages.filter(m => {
@@ -530,13 +578,15 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   const attendedCount = messages.filter(m => m.atendido).length;
 
   // Filtrado de contactos excluyendo al usuario actualmente logueado
-  const filteredConversations = conversations.filter(c => {
-    const isSelf = c.employee.toLowerCase().includes(effectiveCurrentUser.toLowerCase()) || 
-                   effectiveCurrentUser.toLowerCase().includes(c.employee.toLowerCase());
+  const filteredConversations = (conversations || []).filter(c => {
+    if (!c || !c.employee) return false;
+    const empLower = (c.employee || '').toLowerCase();
+    const currLower = (effectiveCurrentUser || '').toLowerCase();
+    const isSelf = (empLower && currLower) ? (empLower.includes(currLower) || currLower.includes(empLower)) : false;
     if (isSelf) return false;
     if (!searchConversation) return true;
-    return c.employee.toLowerCase().includes(searchConversation.toLowerCase()) || 
-           c.lastMessage.toLowerCase().includes(searchConversation.toLowerCase());
+    const searchLow = (searchConversation || '').toLowerCase();
+    return empLower.includes(searchLow) || ((c.lastMessage || '').toLowerCase().includes(searchLow));
   });
 
   return (
@@ -584,8 +634,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               className="w-full pl-9 pr-3 py-1.5 bg-[#202c33] rounded-xl text-xs text-white placeholder-slate-400 outline-none border border-transparent focus:border-emerald-500/40 transition-all font-normal"
             />
             {searchConversation && (
-              <button onClick={() => setSearchConversation('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs">
-                ✕
+              <button onClick={() => setSearchConversation('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
@@ -594,7 +644,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         {/* Lista de Chats / Empleados */}
         <div className="flex-1 overflow-y-auto divide-y divide-white/5">
           {filteredConversations.map((conv, cIdx) => {
-            const isActive = activeEmployee.toLowerCase() === conv.employee.toLowerCase();
+            const isActive = (activeEmployee || '').toLowerCase() === (conv.employee || '').toLowerCase();
             return (
               <button
                 key={cIdx}
@@ -606,7 +656,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               >
                 <div className="relative shrink-0">
                   <div className="w-10 h-10 rounded-full bg-[#202c33] border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs">
-                    {conv.employee.charAt(0).toUpperCase()}
+                    {(conv.employee || 'U').charAt(0).toUpperCase()}
                   </div>
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#111b21] rounded-full"></span>
                 </div>
@@ -819,7 +869,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               );
 
               const headerLabel = isSystemNotification
-                ? '⚡ Notificación del Sistema (Gastos)'
+                ? 'Notificación del Sistema (Gastos)'
                 : (isMe ? 'Tú' : (msg.author || activeEmployee));
 
               const canDelete = isMe || isJefatura || isSystemNotification;
@@ -872,9 +922,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                             });
                           }}
                           title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
-                          className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
+                          className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 p-1 hover:bg-white/10 rounded transition-all cursor-pointer mr-1"
                         >
-                          <Trash2 className="w-3 h-3" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
 

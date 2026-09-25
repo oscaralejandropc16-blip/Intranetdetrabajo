@@ -122,7 +122,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
           <form onSubmit={handleLogin} className="space-y-6 relative z-10">
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/50 text-rose-400 p-4 rounded-xl text-sm font-medium flex items-start gap-3 animate-in slide-in-from-top-2">
-                <div className="mt-0.5">⚠️</div>
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5 text-rose-400" />
                 <p>{error}</p>
               </div>
             )}
@@ -273,7 +273,7 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
 
                   <div className="pt-3 border-t border-slate-800/80 text-center">
                     <p className="text-[11px] text-slate-400 leading-normal">
-                      💡 <span className="font-semibold text-slate-300">¿Necesitas acceso inmediato?</span> Si tu correo no está accesible, tu <span className="text-amber-400/90 font-medium">Jefatura / Administrador</span> puede restablecer tu clave instantáneamente desde el Panel de Control.
+                      <span className="font-semibold text-slate-300">¿Necesitas acceso inmediato?</span> Si tu correo no está accesible, tu <span className="text-amber-400/90 font-medium">Jefatura / Administrador</span> puede restablecer tu clave instantáneamente desde el Panel de Control.
                     </p>
                   </div>
                 </form>

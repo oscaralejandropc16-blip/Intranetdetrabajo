@@ -14,11 +14,13 @@ interface PanelJefaturaGastosProps {
   relaciones: RelacionGastos[];
   onRefresh: () => void;
   onEditRelacion?: (relacion: RelacionGastos) => void;
+  loading?: boolean;
 }
 
 export default function PanelJefaturaGastos({
   relaciones,
-  onRefresh
+  onRefresh,
+  loading = false
 }: PanelJefaturaGastosProps) {
   const currentLoggedUser = localStorage.getItem('rd_user_name') || 'Jefatura';
 
@@ -554,7 +556,7 @@ export default function PanelJefaturaGastos({
               onChange={(e) => setFilterPeriodo(e.target.value as any)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
-              <option value="todas">📅 Todos los Períodos</option>
+              <option value="todas">Todos los Períodos</option>
               <option value="esta_semana">Esta Semana</option>
               <option value="semana_anterior">Semana Anterior</option>
               <option value="primera_quincena">1era Quincena (1-15)</option>
@@ -568,7 +570,7 @@ export default function PanelJefaturaGastos({
               onChange={(e) => setFilterEmpleado(e.target.value)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
-              <option value="todos">👤 Todos los Empleados</option>
+              <option value="todos">Todos los Empleados</option>
               {empleadosUnicos.map(emp => (
                 <option key={emp} value={emp}>{emp}</option>
               ))}
@@ -580,11 +582,11 @@ export default function PanelJefaturaGastos({
               onChange={(e) => setFilterEstatus(e.target.value)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
-              <option value="todos">📋 Todos los Estados</option>
-              <option value="Pendiente">🟡 Pendientes por Pagar</option>
-              <option value="Pagado">🟢 Pagados / Liquidados</option>
-              <option value="Borrador">⚪ Borradores</option>
-              <option value="Rechazado">🔴 Devueltos / Rechazados</option>
+              <option value="todos">Todos los Estados</option>
+              <option value="Pendiente">Pendientes por Pagar</option>
+              <option value="Pagado">Pagados / Liquidados</option>
+              <option value="Borrador">Borradores</option>
+              <option value="Rechazado">Devueltos / Rechazados</option>
             </select>
           </div>
         </div>
@@ -592,7 +594,13 @@ export default function PanelJefaturaGastos({
 
       {/* 3. LISTADO DE RELACIONES DE GASTOS */}
       <div className="space-y-4">
-        {filteredRelaciones.length === 0 ? (
+        {loading && relaciones.length === 0 ? (
+          <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs animate-in fade-in">
+            <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+            <h4 className="text-sm font-bold text-slate-700">Sincronizando relaciones de gastos...</h4>
+            <p className="text-xs text-slate-400">Consultando la base de datos central en tiempo real.</p>
+          </div>
+        ) : filteredRelaciones.length === 0 ? (
           <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
             <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Receipt className="w-6 h-6" />
@@ -646,7 +654,7 @@ export default function PanelJefaturaGastos({
                             ? 'bg-rose-100 text-rose-800 border border-rose-200'
                             : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
-                          {rel.estatus === 'Pendiente' ? '🟡 Por Pagar' : rel.estatus === 'Pagado' ? '🟢 Pagado' : rel.estatus}
+                          {rel.estatus === 'Pendiente' ? 'Por Pagar' : rel.estatus === 'Pagado' ? 'Pagado' : rel.estatus}
                         </span>
 
                         <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold">

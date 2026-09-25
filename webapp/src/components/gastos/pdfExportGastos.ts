@@ -94,7 +94,7 @@ export async function exportarRelacionGastosPDF(relacion: RelacionGastos, logoBa
       item.descripcion || 'Sin descripción adicional',
       `$ ${Number(item.montoUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       `Bs ${Number(item.montoVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-      item.comprobanteUrl || item.comprobanteBase64 ? 'Adjunto ✓' : 'Sin Soporte'
+      item.comprobanteUrl || item.comprobanteBase64 ? 'Adjunto' : 'Sin Soporte'
     ];
   });
 

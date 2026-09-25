@@ -1,5 +1,6 @@
 import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { AlertCircle, RefreshCw } from 'lucide-react'
 import './index.css'
 import App from './App.tsx'
 
@@ -31,8 +32,8 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
       return (
         <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white text-center">
           <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-md shadow-2xl space-y-4">
-            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500 text-3xl">
-              ⚠️
+            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500">
+              <AlertCircle className="w-8 h-8" />
             </div>
             <h2 className="text-2xl font-bold">¡Nueva versión disponible o error temporal!</h2>
             <p className="text-slate-400 text-sm">
@@ -48,9 +49,10 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
                 sessionStorage.removeItem('rd_chunk_reload');
                 window.location.reload();
               }}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition-colors shadow-lg cursor-pointer"
+              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2"
             >
-              🔄 Recargar Página Ahora
+              <RefreshCw className="w-4 h-4" />
+              Recargar Página Ahora
             </button>
           </div>
         </div>

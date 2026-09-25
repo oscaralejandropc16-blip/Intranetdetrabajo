@@ -14,6 +14,17 @@ import {
 import { submitToServer } from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
 
+const generateUUID = (): string => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
 export interface ChatMessage {
   id: string;
   notif_id?: string;
@@ -174,17 +185,17 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   if (!isOpen) return null;
 
   const quickPresets = isJefatura ? [
-    '👍 Entendido y revisado.',
-    '⚡ Por favor envíame el soporte.',
-    '✍️ Revisa las correcciones indicadas.',
-    '✅ Aprobado, excelente trabajo.',
-    '❓ ¿En qué estatus quedó esta diligencia?'
+    'Entendido y revisado.',
+    'Por favor envíame el soporte.',
+    'Revisa las correcciones indicadas.',
+    'Aprobado, excelente trabajo.',
+    '¿En qué estatus quedó esta diligencia?'
   ] : [
-    '⚡ Listo jefe, ya corregí este punto.',
-    '📎 Ya adjunté el comprobante en la bitácora.',
-    '❓ Tengo una duda con respecto a este expediente.',
-    '⏱️ En proceso, finalizo en la tarde.',
-    '👍 Entendido perfectamente.'
+    'Listo jefe, ya corregí este punto.',
+    'Ya adjunté el comprobante en la bitácora.',
+    'Tengo una duda con respecto a este expediente.',
+    'En proceso, finalizo en la tarde.',
+    'Entendido perfectamente.'
   ];
 
   const handleSend = async (customText?: string) => {
@@ -197,7 +208,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     const fullDate = `${dateStr}, ${nowStr}`;
 
     const newMsg: ChatMessage = {
-      id: `chat_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: generateUUID(),
       notif_id: activeThreadId || (reportContext ? `thread_${reportContext.id || reportContext.date}` : undefined),
       post_id: reportContext?.id || 0,
       author: isJefatura ? (currentUser || 'Luis Delgado') : (currentUser || 'Carmen Luisa'),

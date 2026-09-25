@@ -276,6 +276,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
           {isJefe && activeTabJefe === 'supervision' ? (
             <PanelJefaturaGastos
               relaciones={relaciones}
+              loading={loading}
               onRefresh={fetchGastos}
               onEditRelacion={(rel) => {
                 setSelectedRelacion(rel);
@@ -347,7 +348,13 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                   </h3>
                 </div>
 
-                {misRelaciones.length === 0 ? (
+                {loading && misRelaciones.length === 0 ? (
+                  <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs animate-in fade-in">
+                    <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <h4 className="text-sm font-bold text-slate-700">Cargando tus relaciones de gastos...</h4>
+                    <p className="text-xs text-slate-400">Consultando la base de datos central en tiempo real.</p>
+                  </div>
+                ) : misRelaciones.length === 0 ? (
                   <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
                     <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto">
                       <Receipt className="w-6 h-6" />
@@ -394,7 +401,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                                 ? 'bg-rose-100 text-rose-800 border border-rose-200'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200'
                             }`}>
-                              {rel.estatus === 'Pendiente' ? '🟡 En Revisión por Jefatura' : rel.estatus === 'Pagado' ? '🟢 Pagado' : rel.estatus}
+                              {rel.estatus === 'Pendiente' ? 'En Revisión por Jefatura' : rel.estatus === 'Pagado' ? 'Pagado' : rel.estatus}
                             </span>
                           </div>
 

@@ -611,7 +611,7 @@ export default function EmployeeDashboard() {
       setSystemAlert({
         isOpen: true,
         type: 'warning',
-        title: '⚠️ Bitácora Totalmente Vacía',
+        title: 'Bitácora Totalmente Vacía',
         message: 'No has registrado ninguna Actuación, Ingreso o Programación. Debes agregar al menos una gestión completada antes de cerrar tu jornada.'
       });
       return;
@@ -630,8 +630,8 @@ export default function EmployeeDashboard() {
       setSystemAlert({
         isOpen: true,
         type: 'error',
-        title: '⚠️ Fila de Actuación Incompleta',
-        message: `La fila #${invalidActuacionIndex + 1} en el Libro de Actuaciones está abierta e incompleta. Debes rellenar obligatoriamente el N° de Asunto y la descripción de la Actuación, o borrar la fila usando el botón de la papelera (🗑️).`
+        title: 'Fila de Actuación Incompleta',
+        message: `La fila #${invalidActuacionIndex + 1} en el Libro de Actuaciones está abierta e incompleta. Debes rellenar obligatoriamente el N° de Asunto y la descripción de la Actuación, o borrar la fila usando el botón de papelera.`
       });
       return;
     }
@@ -649,8 +649,8 @@ export default function EmployeeDashboard() {
       setSystemAlert({
         isOpen: true,
         type: 'error',
-        title: '⚠️ Fila de Ingreso Incompleta',
-        message: `La fila #${invalidIngresoIndex + 1} en el Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con la papelera (🗑️).`
+        title: 'Fila de Ingreso Incompleta',
+        message: `La fila #${invalidIngresoIndex + 1} en el Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con el botón de papelera.`
       });
       return;
     }
@@ -668,8 +668,8 @@ export default function EmployeeDashboard() {
       setSystemAlert({
         isOpen: true,
         type: 'error',
-        title: '⚠️ Fila de Programación Incompleta',
-        message: `La fila #${invalidProgIndex + 1} en el Libro de Programación está abierta e incompleta. Debes colocar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o borrar la fila usando el botón de la papelera (🗑️).`
+        title: 'Fila de Programación Incompleta',
+        message: `La fila #${invalidProgIndex + 1} en el Libro de Programación está abierta e incompleta. Debes colocar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o borrar la fila usando el botón de papelera.`
       });
       return;
     }
@@ -1401,16 +1401,18 @@ export default function EmployeeDashboard() {
                   
                   <div className="flex flex-wrap items-center gap-3 mt-1">
                     {clockIn ? (
-                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1">
-                        🟢 Entrada: <span className="text-blue-600">{format(clockIn, 'hh:mm a')}</span>
+                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                        Entrada: <span className="text-blue-600">{format(clockIn, 'hh:mm a')}</span>
                       </span>
                     ) : (
                       <span className="text-sm font-semibold text-slate-400">Sin marcar entrada</span>
                     )}
 
                     {clockOut && (
-                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1">
-                        🔴 Salida: <span className="text-rose-600">{format(clockOut, 'hh:mm a')}</span>
+                      <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                        Salida: <span className="text-rose-600">{format(clockOut, 'hh:mm a')}</span>
                       </span>
                     )}
 

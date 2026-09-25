@@ -705,19 +705,23 @@ export default function AdminDashboard() {
       formData.append('ingresos', JSON.stringify(adminIngresos));
       formData.append('cambios_realizados', JSON.stringify(cambios));
 
-      const token = localStorage.getItem('rd_jwt_token');
       const urlPath = selectedReport.isDraft ? '/rd-intranet/v1/admin-update-draft' : '/rd-intranet/v1/admin-update';
-      const response = await fetch(`https://romanydelgado.com/wp-json${urlPath}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
+      await submitToServer(urlPath, {
+        id: selectedReport.id,
+        post_id: selectedReport.id,
+        target_user: selectedReport.user,
+        target_user_id: selectedReport.user_id,
+        user: selectedReport.user,
+        user_name: selectedReport.user,
+        estado: 'aprobado',
+        status: 'aprobado',
+        comentario_admin: adminComment,
+        supervisado_por: reviewerName,
+        programaciones: adminProgramaciones,
+        actuaciones: adminActuaciones,
+        ingresos: adminIngresos,
+        cambios_realizados: cambios
       });
-
-      if (!response.ok) {
-        throw new Error('Error al enviar datos (admin-update failed)');
-      }
 
       if (!selectedReport.isDraft) {
 
@@ -1476,7 +1480,7 @@ export default function AdminDashboard() {
                             repliesFilter === 'pendientes' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          🔴 Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
+                          Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
                         </button>
                         <button
                           onClick={() => setRepliesFilter('atendidos')}
@@ -1484,7 +1488,7 @@ export default function AdminDashboard() {
                             repliesFilter === 'atendidos' ? 'bg-teal-700 text-white' : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          ✅ Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
+                          Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
                         </button>
                         <button
                           onClick={() => setRepliesFilter('todos')}
@@ -1691,7 +1695,7 @@ export default function AdminDashboard() {
               : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'
           }`}
         >
-          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> 📝 Mi Bitácora Diaria
+          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> Mi Bitácora Diaria
         </button>
 
         {/* 2. REVISIÓN DE BITÁCORAS DEL EQUIPO */}
@@ -1720,7 +1724,7 @@ export default function AdminDashboard() {
               : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'
           }`}
         >
-          <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} /> 💬 Chat en Vivo (WhatsApp)
+          <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} /> Chat en Vivo (WhatsApp)
           {unreadChatLive > 0 && (
             <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 animate-pulse ${activeView === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-slate-950'}`}>
               {unreadChatLive}
@@ -2080,7 +2084,7 @@ export default function AdminDashboard() {
                   repliesFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                🔴 Pendientes ({pendingChatGroups.length})
+                Pendientes ({pendingChatGroups.length})
               </button>
               <button
                 type="button"
@@ -2089,7 +2093,7 @@ export default function AdminDashboard() {
                   repliesFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                ✅ Atendidos ({attendedChatGroups.length})
+                Atendidos ({attendedChatGroups.length})
               </button>
               <button
                 type="button"
@@ -2153,11 +2157,11 @@ export default function AdminDashboard() {
                               <CalendarIcon className="w-3 h-3 text-amber-500" /> Bitácora {group.fecha_bitacora}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
-                              💬 {group.totalCount} {group.totalCount === 1 ? 'mensaje' : 'mensajes'}
+                              {group.totalCount} {group.totalCount === 1 ? 'mensaje' : 'mensajes'}
                             </span>
                             {group.hasPending ? (
                               <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
-                                🔴 Pendiente
+                                Pendiente
                               </span>
                             ) : (
                               <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-teal-100 text-teal-800 border border-teal-200 flex items-center gap-1">
@@ -2543,8 +2547,8 @@ export default function AdminDashboard() {
                       setSystemAlert({
                         isOpen: true,
                         type: 'error',
-                        title: '⚠️ Fila de Actuación Incompleta',
-                        message: `La fila #${invalidActuacionIndex + 1} en tu Libro de Actuaciones está abierta e incompleta. Debes rellenar obligatoriamente el N° de Asunto y la descripción de la Actuación, o eliminar la fila con la papelera (🗑️).`
+                        title: 'Fila de Actuación Incompleta',
+                        message: `La fila #${invalidActuacionIndex + 1} en tu Libro de Actuaciones está abierta e incompleta. Debes rellenar obligatoriamente el N° de Asunto y la descripción de la Actuación, o eliminar la fila con el botón de papelera.`
                       });
                       return;
                     }
@@ -2561,8 +2565,8 @@ export default function AdminDashboard() {
                       setSystemAlert({
                         isOpen: true,
                         type: 'error',
-                        title: '⚠️ Fila de Ingreso Incompleta',
-                        message: `La fila #${invalidIngresoIndex + 1} en tu Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con la papelera (🗑️).`
+                        title: 'Fila de Ingreso Incompleta',
+                        message: `La fila #${invalidIngresoIndex + 1} en tu Libro de Ingresos está abierta e incompleta. Debes colocar el N° de Expediente completo y las Partes involucradas, o eliminar la fila con el botón de papelera.`
                       });
                       return;
                     }
@@ -2579,8 +2583,8 @@ export default function AdminDashboard() {
                       setSystemAlert({
                         isOpen: true,
                         type: 'error',
-                        title: '⚠️ Fila de Programación Incompleta',
-                        message: `La fila #${invalidProgIndex + 1} en tu Libro de Programación está abierta e incompleta. Debes indicar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o eliminar la fila con la papelera (🗑️).`
+                        title: 'Fila de Programación Incompleta',
+                        message: `La fila #${invalidProgIndex + 1} en tu Libro de Programación está abierta e incompleta. Debes indicar obligatoriamente el Organismo / Tribunal y el Tipo de Actuación, o eliminar la fila con el botón de papelera.`
                       });
                       return;
                     }
@@ -3327,116 +3331,141 @@ export default function AdminDashboard() {
                     </div>
                   );
                 })()}
+                {/* ZONA DE ADMINISTRACIÓN PROTEGIDA (OCULTA POR DEFECTO PARA EVITAR CLICKS ACCIDENTALES) */}
+                <div className="pt-6 border-t border-slate-200/80">
+                  <details className="group border border-slate-200 rounded-2xl bg-white p-4 transition-all">
+                    <summary className="cursor-pointer text-xs font-bold text-slate-500 hover:text-slate-700 flex items-center justify-between select-none list-none">
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-slate-400 group-open:text-rose-500" />
+                        <span>Opciones avanzadas de administración (Zona Protegida)</span>
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-slate-400 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-4 pt-4 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-rose-50/50 p-4 rounded-xl border border-rose-100">
+                      <div>
+                        <p className="text-xs font-bold text-rose-800 mb-0.5">
+                          {selectedReport.isDraft ? 'Descartar este avance borrador' : 'Reapertura de jornada'}
+                        </p>
+                        <p className="text-[11px] text-slate-500 max-w-md">
+                          {selectedReport.isDraft 
+                            ? 'Elimina únicamente este borrador de avance en caso de que el empleado lo haya enviado por error.' 
+                            : 'Elimina esta bitácora del sistema y permite al empleado marcar entrada nuevamente para este día.'}
+                        </p>
+                      </div>
+                      {!selectedReport.isDraft ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSystemAlert({
+                              isOpen: true,
+                              type: 'warning',
+                              title: '¿Confirmar Reapertura?',
+                              message: `¿Estás seguro de reabrir y reiniciar la jornada de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`,
+                              showCancel: true,
+                              confirmText: 'Sí, Reabrir Jornada',
+                              cancelText: 'Cancelar',
+                              onConfirm: async () => {
+                                setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                                try {
+                                  await submitToServer('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'success',
+                                    title: 'Jornada Reabierta',
+                                    message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
+                                    onConfirm: () => {
+                                      setSelectedReport(null);
+                                      window.location.reload();
+                                    }
+                                  });
+                                } catch (e) {
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'error',
+                                    title: 'Error de Servidor',
+                                    message: 'No se pudo reabrir la jornada. Intenta de nuevo más tarde.'
+                                  });
+                                }
+                              }
+                            });
+                          }}
+                          className="px-4 py-2.5 rounded-xl font-bold text-rose-700 bg-white hover:bg-rose-100 border border-rose-300 transition-colors text-xs flex items-center gap-2 shadow-xs cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Reabrir Jornada / Eliminar
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSystemAlert({
+                              isOpen: true,
+                              type: 'warning',
+                              title: '¿Descartar Avance?',
+                              message: `¿Estás seguro de que deseas descartar el avance de ${selectedReport.user}? Se borrarán las tareas que envió como prueba, pero NO se cerrará su sesión ni se afectará su asistencia.`,
+                              showCancel: true,
+                              confirmText: 'Sí, Descartar',
+                              cancelText: 'Cancelar',
+                              onConfirm: async () => {
+                                setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                                try {
+                                  await submitToServer('/rd-intranet/v1/admin-update-draft', {
+                                    target_user_id: selectedReport.user_id,
+                                    target_user: selectedReport.user,
+                                    user: selectedReport.user,
+                                    comentario_admin: '',
+                                    programaciones: []
+                                  });
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'success',
+                                    title: 'Avance Descartado',
+                                    message: 'Las tareas de avance han sido borradas correctamente de tu panel.',
+                                    showCancel: false,
+                                    onConfirm: () => {
+                                      setAllDrafts(allDrafts.filter(d => d.user_id !== selectedReport.user_id));
+                                      setSelectedReport(null);
+                                      setSystemAlert(prev => ({ ...prev, isOpen: false }));
+                                    }
+                                  });
+                                } catch (e) {
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'error',
+                                    title: 'Error al Descartar',
+                                    message: 'No se pudo descartar el avance en este momento. Inténtalo de nuevo.'
+                                  });
+                                }
+                              }
+                            });
+                          }}
+                          className="px-4 py-2.5 rounded-xl font-bold text-rose-700 bg-white hover:bg-rose-100 border border-rose-300 transition-colors text-xs flex items-center gap-2 shadow-xs cursor-pointer shrink-0"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Descartar Avance
+                        </button>
+                      )}
+                    </div>
+                  </details>
+                </div>
               </div>
 
             </div>
 
-            {/* Modal Footer */}
-            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4 rounded-b-3xl">
-              {!selectedReport.isDraft ? (
-                <button
-                  onClick={() => {
-                    setSystemAlert({
-                      isOpen: true,
-                      type: 'warning',
-                      title: '¿Confirmar Reapertura?',
-                      message: `¿Estás seguro de reabrir y reiniciar la jornada exclusiva de ${selectedReport.user} para el día ${selectedReport.date}? Esto eliminará su bitácora de ese día y le permitirá marcar entrada nuevamente.`,
-                      showCancel: true,
-                      confirmText: 'Sí, Reabrir Jornada',
-                      cancelText: 'Cancelar',
-                      onConfirm: async () => {
-                        setSystemAlert(prev => ({ ...prev, isOpen: false }));
-                        try {
-                          await submitToServer('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
-                          setSystemAlert({
-                            isOpen: true,
-                            type: 'success',
-                            title: 'Jornada Reabierta',
-                            message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
-                            onConfirm: () => {
-                              setSelectedReport(null);
-                              window.location.reload();
-                            }
-                          });
-                        } catch (e) {
-                          setSystemAlert({
-                            isOpen: true,
-                            type: 'error',
-                            title: 'Error de Servidor',
-                            message: 'No se pudo reabrir la jornada. Intenta de nuevo más tarde.'
-                          });
-                        }
-                      }
-                    });
-                  }}
-                  className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
-                >
-                  ⚙️ Eliminar Bitácora / Reiniciar Día
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setSystemAlert({
-                      isOpen: true,
-                      type: 'warning',
-                      title: '¿Descartar Avance?',
-                      message: `¿Estás seguro de que deseas descartar el avance de ${selectedReport.user}? Se borrarán las tareas que envió como prueba, pero NO se cerrará su sesión ni se afectará su asistencia.`,
-                      showCancel: true,
-                      confirmText: 'Sí, Descartar',
-                      cancelText: 'Cancelar',
-                      onConfirm: async () => {
-                        setSystemAlert(prev => ({ ...prev, isOpen: false }));
-                        try {
-                          const formData = new FormData();
-                          formData.append('target_user_id', selectedReport.user_id);
-                          formData.append('comentario_admin', '');
-                          formData.append('programaciones', '[]');
-                          const token = localStorage.getItem('rd_jwt_token');
-                          const response = await fetch(`https://romanydelgado.com/wp-json/rd-intranet/v1/admin-update-draft`, {
-                            method: 'POST',
-                            headers: {
-                              'Authorization': `Bearer ${token}`
-                            },
-                            body: formData
-                          });
-                          if (!response.ok) throw new Error('Failed to discard draft');
-                          setSystemAlert({
-                            isOpen: true,
-                            type: 'success',
-                            title: 'Avance Descartado',
-                            message: 'Las tareas de avance han sido borradas correctamente de tu panel.',
-                            showCancel: false,
-                            onConfirm: () => {
-                              setAllDrafts(allDrafts.filter(d => d.user_id !== selectedReport.user_id));
-                              setSelectedReport(null);
-                              setSystemAlert(prev => ({ ...prev, isOpen: false }));
-                            }
-                          });
-                        } catch (e) {
-                          setSystemAlert({
-                            isOpen: true,
-                            type: 'error',
-                            title: 'Error al Descartar',
-                            message: 'No se pudo descartar el avance en este momento. Inténtalo de nuevo.'
-                          });
-                        }
-                      }
-                    });
-                  }}
-                  className="w-full sm:w-auto px-6 py-4 rounded-xl font-bold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-colors text-sm flex items-center justify-center gap-2 shadow-sm"
-                >
-                  🗑️ Descartar Avance
-                </button>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-                <button onClick={() => setSelectedReport(null)} className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-lg">
-                  Cerrar
-                </button>
-                <button onClick={handleSaveComment} className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-lg hover:-translate-y-1">
-                  <CheckCircle2 className="w-6 h-6" /> Aprobar y Notificar
-                </button>
-              </div>
+            {/* Modal Footer (Limpio y seguro sin botones destructivos expuestos) */}
+            <div className="bg-white p-6 sm:p-8 border-t border-slate-200 flex flex-col sm:flex-row justify-end items-center gap-4 rounded-b-3xl">
+              <button 
+                type="button"
+                onClick={() => setSelectedReport(null)} 
+                className="w-full sm:w-auto px-8 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors text-base cursor-pointer"
+              >
+                Cerrar
+              </button>
+              <button 
+                type="button"
+                onClick={handleSaveComment} 
+                className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-8 py-4 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-3 text-base hover:-translate-y-0.5 cursor-pointer"
+              >
+                <CheckCircle2 className="w-5 h-5 text-emerald-400" /> Aprobar y Notificar
+              </button>
             </div>
           </div>
         </div>
