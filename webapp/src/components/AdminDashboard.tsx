@@ -16,6 +16,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 import LiveChatModule from './chat/LiveChatModule';
+import { normalizeSupervisorName } from '../lib/supabaseAdapter';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -638,7 +639,7 @@ export default function AdminDashboard() {
                   user: loggedName,
                   date: myTasksRes.data.fecha_bitacora || 'Reciente',
                   comentario_admin: myTasksRes.data.comentario_admin,
-                  supervisado_por: myTasksRes.data.supervisado_por || 'Jefatura / Dirección',
+                  supervisado_por: normalizeSupervisorName(myTasksRes.data.supervisado_por, myTasksRes.data.fecha_bitacora) || 'Luis Delgado',
                   clockIn: 'N/A (Jefatura)',
                   clockOut: 'Registrada',
                   status: 'Revisado',
@@ -767,7 +768,8 @@ export default function AdminDashboard() {
         cambios.push('Revisión y aprobación de bitácora completada.');
       }
 
-      const reviewerName = localStorage.getItem('rd_user_name') || 'Jefatura';
+      const rawBoss = (localStorage.getItem('rd_user_name') || '').toLowerCase();
+      const reviewerName = rawBoss.includes('victor') ? 'Víctor Román' : 'Luis Delgado';
       const formData = new FormData();
       if (selectedReport.isDraft) {
         formData.append('target_user_id', selectedReport.user_id);
@@ -1696,7 +1698,7 @@ export default function AdminDashboard() {
                           >
                             <div className="flex justify-between items-start gap-2 mb-1">
                               <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${f.supervisado_por}` : 'Observaciones de Jefatura'}
+                                <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${normalizeSupervisorName(f.supervisado_por, f.date)}` : 'Observaciones de Jefatura'}
                               </span>
                               <span className="text-[10px] text-slate-400">{f.date}</span>
                             </div>
@@ -3549,7 +3551,7 @@ export default function AdminDashboard() {
               {isReportApproved ? (
                 <div className="flex items-center gap-2 text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm w-full sm:w-auto shadow-2xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Bitácora ya revisada y aprobada{selectedReport.supervisado_por ? ` por ${selectedReport.supervisado_por}` : ''}.</span>
+                  <span>Bitácora ya revisada y aprobada{selectedReport.supervisado_por ? ` por ${normalizeSupervisorName(selectedReport.supervisado_por, selectedReport.date)}` : ''}.</span>
                 </div>
               ) : (
                 <div className="text-xs text-slate-400 font-medium hidden sm:block">

@@ -17,6 +17,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import LiveChatModule from './chat/LiveChatModule';
+import { normalizeSupervisorName } from '../lib/supabaseAdapter';
 
 const getStorageKey = () => {
   const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
@@ -267,7 +268,7 @@ export default function EmployeeDashboard() {
         if (Array.isArray(tasksRes.data.feedbacks_historial)) {
           tasksRes.data.feedbacks_historial.forEach((fb: any) => {
             const hasCambios = Array.isArray(fb.cambios_realizados) && fb.cambios_realizados.length > 0;
-            const supervisorName = fb.supervisado_por || '';
+            const supervisorName = normalizeSupervisorName(fb.supervisado_por, fb.date);
             const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
             if (!isSelf && ((fb.comentario_admin && fb.comentario_admin.trim() !== '') || hasCambios)) {
               const notifId = `feedback-bitacora-${fb.id}`;
@@ -279,14 +280,14 @@ export default function EmployeeDashboard() {
                 title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${fb.date}` : `Feedback Jefatura sobre Bitácora del ${fb.date}`,
                 message: msg,
                 detalles: hasCambios ? fb.cambios_realizados : undefined,
-                sender: supervisorName || 'Luis Delgado / Jefatura',
+                sender: supervisorName,
                 read: isRead,
                 date: fb.date
               });
             }
           });
         } else if (tasksRes.data.comentario_admin && tasksRes.data.comentario_admin.trim() !== '') {
-          const supervisorName = tasksRes.data.supervisado_por || '';
+          const supervisorName = normalizeSupervisorName(tasksRes.data.supervisado_por, tasksRes.data.fecha_bitacora);
           const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
           if (!isSelf) {
             const notifId = `feedback-bitacora-${tasksRes.data.fecha_bitacora || 'reciente'}`;
@@ -296,7 +297,7 @@ export default function EmployeeDashboard() {
               type: 'feedback',
               title: `Feedback Jefatura sobre Bitácora del ${tasksRes.data.fecha_bitacora || 'reciente'}`,
               message: tasksRes.data.comentario_admin,
-              sender: supervisorName || 'Luis Delgado / Jefatura',
+              sender: supervisorName,
               read: isRead,
               date: tasksRes.data.fecha_bitacora
             });
@@ -304,63 +305,42 @@ export default function EmployeeDashboard() {
         }
       }
 
-      // 2. Feedback, cambios y notas unificadas por Bitácora
+      // 2. Feedback y modificaciones reales unificadas por Bitácora (sin duplicar notas del empleado)
       if (histRes.data && Array.isArray(histRes.data)) {
         const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
-        const isCurrentUserJefe = isJefaturaUser(currentLoggedUser);
+        const nowMs = Date.now();
 
         histRes.data.forEach((b: any) => {
           const hasCambios = Array.isArray(b.cambios_realizados) && b.cambios_realizados.length > 0;
           const hasComment = b.comentario_admin && b.comentario_admin.trim() !== '';
-          const supervisorName = b.supervisado_por || 'Luis Delgado / Jefatura';
+          const supervisorName = normalizeSupervisorName(b.supervisado_por, b.date);
           const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
 
           if (isSelf) return; // No auto-notificar al jefe sobre sus propias notas
 
-          // Recopilar notas en actuaciones
-          const actNotas: string[] = [];
-          if (!isCurrentUserJefe && Array.isArray(b.actuaciones)) {
-            b.actuaciones.forEach((act: any) => {
-              const obs = (act.observaciones || '').trim();
-              if (obs && obs.toUpperCase() !== 'SIN OBSERVACIONES') {
-                actNotas.push(`Actuación ${act.actuacion || 'Judicial'}${act.numeroExpediente ? ` (Exp. ${act.numeroExpediente})` : ''}: "${obs}"`);
-              }
-            });
-          }
-
-          // Recopilar notas en programaciones
-          const progNotas: string[] = [];
-          if (!isCurrentUserJefe && Array.isArray(b.programaciones)) {
-            b.programaciones.forEach((prog: any) => {
-              const obs = (prog.observaciones || '').trim();
-              if (obs && obs.toUpperCase() !== 'SIN OBSERVACIONES') {
-                progNotas.push(`Tarea ${prog.tipoActuacion || 'Programada'}: "${obs}"`);
-              }
-            });
-          }
-
-          // Si hay algún feedback, cambio o nota de supervisión en esta bitácora:
-          if (hasComment || hasCambios || actNotas.length > 0 || progNotas.length > 0) {
+          // Solo generar notificación si Jefatura dejó un comentario o modificaciones directas
+          if (hasComment || hasCambios) {
             const notifId = `bitacora-chat-${b.id || b.date}`;
-            const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
-            const exists = allNotifs.some(n => String(n.id) === String(notifId));
+            
+            // Para bitácoras con más de 7 días, ya son históricas y su revisión está en la tabla de historial
+            const bTime = b.date ? new Date(b.date).getTime() : 0;
+            const isRecent = bTime > 0 && (nowMs - bTime) <= 7 * 24 * 60 * 60 * 1000;
+            const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true' || !isRecent;
+            
+            // Evitar duplicar si ya se agregó
+            const exists = allNotifs.some(n => String(n.id) === String(notifId) || (n.date && n.date === b.date));
             
             if (!exists) {
-              const detallesList = [
-                ...(hasCambios ? b.cambios_realizados.map((c: string) => `Modificación: ${c}`) : []),
-                ...actNotas,
-                ...progNotas
-              ];
-
-              const mainMsg = b.comentario_admin || (detallesList.length > 0 ? detallesList[0] : 'Observaciones de Jefatura');
+              const detallesList = hasCambios ? b.cambios_realizados.map((c: string) => `Modificación: ${c}`) : undefined;
+              const mainMsg = b.comentario_admin || (detallesList && detallesList.length > 0 ? detallesList[0] : 'Observaciones de Jefatura');
 
               allNotifs.push({
                 id: notifId,
                 post_id: b.id,
-                type: hasCambios ? 'changes' : (actNotas.length > 0 || progNotas.length > 0 ? 'instruction' : 'feedback'),
+                type: hasCambios ? 'changes' : 'feedback',
                 title: `Bitácora del ${b.date}`,
                 message: mainMsg,
-                detalles: detallesList.length > 0 ? detallesList : undefined,
+                detalles: detallesList,
                 sender: supervisorName,
                 read: isRead,
                 date: b.date
@@ -444,7 +424,7 @@ export default function EmployeeDashboard() {
             title: draftHasCambios ? `Modificaciones de Jefatura en tu Jornada de Hoy` : `Observaciones de Jefatura sobre tu Avance de Hoy`,
             message: msg,
             detalles: draftHasCambios ? draftRes.data.cambios_realizados : undefined,
-            sender: draftRes.data.supervisado_por || 'Luis Delgado / Jefatura',
+            sender: normalizeSupervisorName(draftRes.data.supervisado_por, hoy),
             read: isRead,
             date: hoy
           });

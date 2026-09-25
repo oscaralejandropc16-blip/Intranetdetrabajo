@@ -16,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { WhatsAppStyleChat, checkIsFromBoss } from '../chat/WhatsAppStyleChat';
+import { normalizeSupervisorName } from '../../lib/supabaseAdapter';
 
 export interface Notification {
   id: string | number;
@@ -430,7 +431,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                       )}
 
                       <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider pt-0.5">
-                        Emisor: <span className="text-slate-800 font-extrabold">{notif.sender || 'Luis Delgado / Jefatura'}</span>
+                        Emisor: <span className="text-slate-800 font-extrabold">{normalizeSupervisorName(notif.sender, notif.date) || 'Luis Delgado'} (Jefatura)</span>
                       </p>
                     </div>
                   </div>
@@ -590,14 +591,14 @@ export default function NotificationPanel({ notifications, setNotifications }: N
           onClose={() => setActiveChatNotif(null)}
           currentUser={localStorage.getItem('rd_user_name') || 'Carmen Luisa'}
           isJefatura={false}
-          targetUser={activeChatNotif.sender || 'Luis Delgado / Jefatura'}
+          targetUser={normalizeSupervisorName(activeChatNotif.sender, activeChatNotif.date) || 'Luis Delgado'}
           reportContext={{ date: activeChatNotif.date || new Date().toISOString().split('T')[0], id: activeChatNotif.post_id }}
           activeThreadId={String(activeChatNotif.id)}
           initialMessages={[
             // 1. Mensaje original de Jefatura como primera burbuja
             ...(activeChatNotif.message ? [{
               id: `orig_${activeChatNotif.id}`,
-              author: activeChatNotif.sender || 'Luis Delgado / Jefatura',
+              author: normalizeSupervisorName(activeChatNotif.sender, activeChatNotif.date) || 'Luis Delgado',
               author_role: 'jefatura' as const,
               mensaje: activeChatNotif.message,
               fecha: activeChatNotif.date || 'Instrucción Original',

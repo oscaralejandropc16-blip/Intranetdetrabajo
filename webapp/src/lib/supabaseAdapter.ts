@@ -258,6 +258,28 @@ export async function supabaseClockIn(_data?: any): Promise<any> {
 // -------------------------------------------------------------
 // 3. BITÁCORAS
 // -------------------------------------------------------------
+export function normalizeSupervisorName(supervisor?: string, date?: string): string {
+  const s = (supervisor || '').trim().toLowerCase();
+  if (s.includes('victor') || s.includes('román') || s.includes('roman')) return 'Víctor Román';
+  if (s.includes('luis') || s.includes('delgado')) return 'Luis Delgado';
+
+  // Si dice Jefatura o viene genérico, identificar con precisión por fecha histórica:
+  if (date) {
+    // 9 de agosto, 2 y 3 de agosto, y 20 de septiembre fueron supervisadas o registradas por Víctor Román
+    if (date === '2026-08-09' || date === '2026-08-02' || date === '2026-08-03' || date === '2026-09-20') {
+      return 'Víctor Román';
+    }
+    // Todas las de julio (20, 21, 26, 30, etc.) y agosto (8, 10, 12, 15, 16, 23) fueron Luis Delgado
+    if (date.startsWith('2026-07') || date.startsWith('2026-08')) {
+      return 'Luis Delgado';
+    }
+  }
+
+  // Fallback si tiene marca de supervisión
+  if (s) return 'Luis Delgado';
+  return '';
+}
+
 export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> {
   let query = supabase
     .from('bitacoras')
@@ -305,6 +327,8 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
       ? b.actuaciones 
       : (Array.isArray(b.tareas) ? b.tareas : []);
 
+    const supervisor = normalizeSupervisorName(b.supervisado_por, b.fecha);
+
     return {
       id: b.id,
       author_id: b.author_id || b.user_id,
@@ -313,8 +337,8 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
       clockIn: b.hora_entrada ? b.hora_entrada.substring(0, 5) : 'N/A',
       clockOut: b.hora_salida ? b.hora_salida.substring(0, 5) : 'N/A',
       status: displayStatus,
-      comentario_admin: b.comentario_admin || b.observaciones || '',
-      supervisado_por: b.supervisado_por || '',
+      comentario_admin: b.comentario_admin || '',
+      supervisado_por: supervisor,
       ubicacionEntrada: b.ubicacion_entrada,
       ubicacionSalida: b.ubicacion_salida,
       content: b.resumen || '',
@@ -441,7 +465,7 @@ export async function supabaseAdminUpdateBitacora(params: Record<string, any>): 
 
   updatePayload.estado = normState;
   if (comentario_admin !== undefined) updatePayload.comentario_admin = comentario_admin;
-  if (supervisado_por !== undefined) updatePayload.supervisado_por = supervisado_por;
+  if (supervisado_por !== undefined) updatePayload.supervisado_por = normalizeSupervisorName(supervisado_por);
   if (respuestas_hilo !== undefined) updatePayload.respuestas_hilo = respuestas_hilo;
   
   if (actuaciones !== undefined) {
@@ -486,7 +510,7 @@ export async function supabaseAdminUpdateDraft(params: Record<string, any>): Pro
     const updatedDraftData = {
       ...(existingDraft.draft_data || {}),
       comentario_admin: params.comentario_admin || '',
-      supervisado_por: params.supervisado_por || '',
+      supervisado_por: normalizeSupervisorName(params.supervisado_por),
       programaciones: params.programaciones || existingDraft.draft_data?.programaciones || [],
       actuaciones: params.actuaciones || existingDraft.draft_data?.actuaciones || [],
       estado: 'Aprobado',

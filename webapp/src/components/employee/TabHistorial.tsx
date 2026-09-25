@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
+import { normalizeSupervisorName } from '../../lib/supabaseAdapter';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -507,7 +508,10 @@ export default function TabHistorial() {
                             <div className="p-3 bg-blue-50/95 border border-blue-300/80 rounded-2xl text-xs text-blue-950 shadow-sm max-w-sm sm:max-w-md mt-1.5 transition-all">
                               <span className="font-black text-blue-950 flex items-center gap-1.5 text-[10px] uppercase tracking-wider mb-1">
                                 <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                {bitacora.supervisado_por ? `Supervisado por: ${bitacora.supervisado_por}` : 'Observaciones de Jefatura'}:
+                                {(() => {
+                                  const sup = normalizeSupervisorName(bitacora.supervisado_por, bitacora.date);
+                                  return sup ? `Supervisado por: ${sup} (Jefatura)` : 'Observaciones de Jefatura';
+                                })()}:
                               </span>
                               <p className="italic text-blue-900 text-xs leading-relaxed whitespace-pre-wrap break-words font-medium">
                                 "{bitacora.comentario_admin}"
