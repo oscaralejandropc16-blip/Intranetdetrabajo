@@ -1504,6 +1504,15 @@ function rd_intranet_get_bitacoras() {
         }
     }
 
+    usort($deduped, function($a, $b) {
+        $dateA = $a['date'] ?? '';
+        $dateB = $b['date'] ?? '';
+        if ($dateA !== $dateB) {
+            return strcmp($dateB, $dateA);
+        }
+        return ($b['id'] ?? 0) - ($a['id'] ?? 0);
+    });
+
     return rest_ensure_response(rd_intranet_fix_unicode_escapes(array_values($deduped)));
 }
 
@@ -1962,6 +1971,14 @@ function rd_intranet_get_my_history() {
                     'evidences' => rd_intranet_decode_meta_json($post_id, 'evidencias_adjuntas_json')
                 );
             }
+            usort($raw_resultados, function($a, $b) {
+                $dateA = $a['date'] ?? '';
+                $dateB = $b['date'] ?? '';
+                if ($dateA !== $dateB) {
+                    return strcmp($dateB, $dateA);
+                }
+                return ($b['id'] ?? 0) - ($a['id'] ?? 0);
+            });
             return rest_ensure_response($raw_resultados);
         }
     }
@@ -2035,6 +2052,15 @@ function rd_intranet_get_my_history() {
         }
     }
     
+    usort($deduped, function($a, $b) {
+        $dateA = $a['date'] ?? '';
+        $dateB = $b['date'] ?? '';
+        if ($dateA !== $dateB) {
+            return strcmp($dateB, $dateA);
+        }
+        return ($b['id'] ?? 0) - ($a['id'] ?? 0);
+    });
+
     return rest_ensure_response(rd_intranet_fix_unicode_escapes(array_values($deduped)));
 }
 

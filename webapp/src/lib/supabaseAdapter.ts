@@ -284,6 +284,7 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
   let query = supabase
     .from('bitacoras')
     .select('*')
+    .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(150);
 
@@ -311,48 +312,55 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
     return [];
   }
 
-  return (data || []).map((b: any) => {
-    // Normalizar estado para la visualización del dashboard
-    const rawStatus = (b.estado || '').toLowerCase();
-    let displayStatus = 'Enviado';
-    if (rawStatus.includes('aprob') || rawStatus.includes('revis') || (b.supervisado_por && b.supervisado_por.trim())) {
-      displayStatus = 'Revisado';
-    } else if (rawStatus.includes('observ')) {
-      displayStatus = 'Con observaciones';
-    } else if (rawStatus.includes('curs') || rawStatus.includes('inici')) {
-      displayStatus = 'En Curso';
-    }
+  return (data || [])
+    .map((b: any) => {
+      // Normalizar estado para la visualización del dashboard
+      const rawStatus = (b.estado || '').toLowerCase();
+      let displayStatus = 'Enviado';
+      if (rawStatus.includes('aprob') || rawStatus.includes('revis') || (b.supervisado_por && b.supervisado_por.trim())) {
+        displayStatus = 'Revisado';
+      } else if (rawStatus.includes('observ')) {
+        displayStatus = 'Con observaciones';
+      } else if (rawStatus.includes('curs') || rawStatus.includes('inici')) {
+        displayStatus = 'En Curso';
+      }
 
-    const acts = (Array.isArray(b.actuaciones) && b.actuaciones.length > 0) 
-      ? b.actuaciones 
-      : (Array.isArray(b.tareas) ? b.tareas : []);
+      const acts = (Array.isArray(b.actuaciones) && b.actuaciones.length > 0) 
+        ? b.actuaciones 
+        : (Array.isArray(b.tareas) ? b.tareas : []);
 
-    const supervisor = normalizeSupervisorName(b.supervisado_por, b.fecha);
+      const supervisor = normalizeSupervisorName(b.supervisado_por, b.fecha);
 
-    return {
-      id: b.id,
-      author_id: b.author_id || b.user_id,
-      user: b.user_name,
-      date: b.fecha,
-      clockIn: b.hora_entrada ? b.hora_entrada.substring(0, 5) : 'N/A',
-      clockOut: b.hora_salida ? b.hora_salida.substring(0, 5) : 'N/A',
-      status: displayStatus,
-      comentario_admin: b.comentario_admin || '',
-      supervisado_por: supervisor,
-      ubicacionEntrada: b.ubicacion_entrada,
-      ubicacionSalida: b.ubicacion_salida,
-      content: b.resumen || '',
-      pdfBase64: b.pdf_url || b.pdf_base64 || '',
-      pdf_url: b.pdf_url || '',
-      cierreRetrasado: b.cierre_retrasado === true,
-      actuaciones: acts,
-      ingresos: b.ingresos || [],
-      programaciones: b.programaciones || [],
-      evidences: b.evidences || [],
-      cambios_realizados: b.cambios_realizados || [],
-      respuestas_hilo: b.respuestas_hilo || []
-    };
-  });
+      return {
+        id: b.id,
+        author_id: b.author_id || b.user_id,
+        user: b.user_name,
+        date: b.fecha,
+        clockIn: b.hora_entrada ? b.hora_entrada.substring(0, 5) : 'N/A',
+        clockOut: b.hora_salida ? b.hora_salida.substring(0, 5) : 'N/A',
+        status: displayStatus,
+        comentario_admin: b.comentario_admin || '',
+        supervisado_por: supervisor,
+        ubicacionEntrada: b.ubicacion_entrada,
+        ubicacionSalida: b.ubicacion_salida,
+        content: b.resumen || '',
+        pdfBase64: b.pdf_url || b.pdf_base64 || '',
+        pdf_url: b.pdf_url || '',
+        cierreRetrasado: b.cierre_retrasado === true,
+        actuaciones: acts,
+        ingresos: b.ingresos || [],
+        programaciones: b.programaciones || [],
+        evidences: b.evidences || [],
+        cambios_realizados: b.cambios_realizados || [],
+        respuestas_hilo: b.respuestas_hilo || []
+      };
+    })
+    .sort((a: any, b: any) => {
+      const dateA = a.date || a.fecha || '';
+      const dateB = b.date || b.fecha || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
+      return (Number(b.id) || 0) - (Number(a.id) || 0);
+    });
 }
 
 export async function supabaseSubmitBitacora(params: Record<string, any>): Promise<any> {

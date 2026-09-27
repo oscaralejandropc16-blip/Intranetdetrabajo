@@ -47,7 +47,18 @@ export default function AdminDashboard() {
   const [reports, setReports] = useState<any[]>(() => {
     try {
       const cached = localStorage.getItem('rd_cached_admin_reports');
-      return cached ? JSON.parse(cached) : [];
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed)) {
+          return parsed.sort((a: any, b: any) => {
+            const dateA = a.date || a.fecha || '';
+            const dateB = b.date || b.fecha || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            return (Number(b.id) || 0) - (Number(a.id) || 0);
+          });
+        }
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -546,6 +557,15 @@ export default function AdminDashboard() {
             const key = ((item.user || item.author_name || item.usuario || '').toLowerCase().trim()) + '_' + item.date;
             return index === self.findIndex(t => (((t.user || t.author_name || t.usuario || '').toLowerCase().trim()) + '_' + t.date) === key);
           });
+          
+          // Ordenar siempre del más reciente al más viejo (DESC)
+          dedupedData.sort((a: any, b: any) => {
+            const dateA = a.date || a.fecha || '';
+            const dateB = b.date || b.fecha || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            return (Number(b.id) || 0) - (Number(a.id) || 0);
+          });
+
           if (dedupedData.length > 0) {
             setReports(dedupedData);
             try {
@@ -1141,6 +1161,14 @@ export default function AdminDashboard() {
     }
   }
 
+  // Ordenar siempre del más reciente al más viejo (DESC)
+  filteredReports.sort((a, b) => {
+    const dateA = a.date || a.fecha || '';
+    const dateB = b.date || b.fecha || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    return (Number(b.id) || 0) - (Number(a.id) || 0);
+  });
+
   const totalPages = Math.max(1, Math.ceil(filteredReports.length / itemsPerPage));
   const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
   const paginatedReports = filteredReports.slice((validCurrentPage - 1) * itemsPerPage, validCurrentPage * itemsPerPage);
@@ -1225,7 +1253,13 @@ export default function AdminDashboard() {
       const comment = (f.comentario_admin || '').trim();
       return comment && comment.toLowerCase() !== 'prueba' && comment.toLowerCase() !== 'probando';
     })
-  ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
+  ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)))
+   .sort((a: any, b: any) => {
+     const dateA = a.date || a.fecha || '';
+     const dateB = b.date || b.fecha || '';
+     if (dateA !== dateB) return dateB.localeCompare(dateA);
+     return (Number(b.id) || 0) - (Number(a.id) || 0);
+   });
 
   const unreadFeedbacks = mySupervisorFeedbacks.filter(f => {
     const idStr = String(f.id || '');

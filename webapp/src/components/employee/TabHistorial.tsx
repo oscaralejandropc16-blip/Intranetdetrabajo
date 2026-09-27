@@ -62,7 +62,12 @@ export default function TabHistorial() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          return parsed.filter(isBitacoraOfCurrentUser);
+          return parsed.filter(isBitacoraOfCurrentUser).sort((a: any, b: any) => {
+            const dateA = a.date || a.fecha || '';
+            const dateB = b.date || b.fecha || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            return (Number(b.id) || 0) - (Number(a.id) || 0);
+          });
         }
       }
       return [];
@@ -105,8 +110,13 @@ export default function TabHistorial() {
             };
           });
 
-          // Filtrar rigurosamente que solo pertenezcan al usuario logueado
-          const strictlyMyData = parsedData.filter(isBitacoraOfCurrentUser);
+          // Filtrar rigurosamente que solo pertenezcan al usuario logueado y ordenar del más reciente al más viejo (DESC)
+          const strictlyMyData = parsedData.filter(isBitacoraOfCurrentUser).sort((a: any, b: any) => {
+            const dateA = a.date || a.fecha || '';
+            const dateB = b.date || b.fecha || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            return (Number(b.id) || 0) - (Number(a.id) || 0);
+          });
           setHistorial(strictlyMyData);
           try {
             localStorage.setItem(userCacheKey, JSON.stringify(strictlyMyData));
@@ -396,6 +406,13 @@ export default function TabHistorial() {
     }
   };
 
+  const sortedHistorial = [...historial].sort((a: any, b: any) => {
+    const dateA = a.date || a.fecha || '';
+    const dateB = b.date || b.fecha || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    return (Number(b.id) || 0) - (Number(a.id) || 0);
+  });
+
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
       <SystemAlertModal
@@ -432,14 +449,14 @@ export default function TabHistorial() {
                   Cargando tu historial...
                 </td>
               </tr>
-            ) : historial.length === 0 ? (
+            ) : sortedHistorial.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-12 text-center text-slate-500 font-medium">
                   Aún no tienes bitácoras registradas en el historial.
                 </td>
               </tr>
             ) : (
-              historial
+              sortedHistorial
                 .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
                 .map((bitacora) => {
                 const hasEvidences = Array.isArray(bitacora.evidences) && bitacora.evidences.length > 0;
@@ -591,10 +608,10 @@ export default function TabHistorial() {
       </div>
 
       {/* Controles de Paginación de Historial */}
-      {Math.ceil(historial.length / itemsPerPage) > 1 && (
+      {Math.ceil(sortedHistorial.length / itemsPerPage) > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
           <span className="text-xs font-bold text-slate-500">
-            Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, historial.length)} de {historial.length} bitácoras registradas
+            Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, sortedHistorial.length)} de {sortedHistorial.length} bitácoras registradas
           </span>
           <div className="flex items-center gap-1.5">
             <button
@@ -606,7 +623,7 @@ export default function TabHistorial() {
               <ChevronLeft className="w-4 h-4" /> Anterior
             </button>
             
-            {Array.from({ length: Math.ceil(historial.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
+            {Array.from({ length: Math.ceil(sortedHistorial.length / itemsPerPage) }, (_, i) => i + 1).map(page => (
               <button
                 key={page}
                 type="button"
@@ -623,8 +640,8 @@ export default function TabHistorial() {
 
             <button
               type="button"
-              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(historial.length / itemsPerPage), prev + 1))}
-              disabled={currentPage === Math.ceil(historial.length / itemsPerPage)}
+              onClick={() => setCurrentPage(prev => Math.min(Math.ceil(sortedHistorial.length / itemsPerPage), prev + 1))}
+              disabled={currentPage === Math.ceil(sortedHistorial.length / itemsPerPage)}
               className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed text-slate-700 font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer"
             >
               Siguiente <ChevronRight className="w-4 h-4" />
