@@ -411,7 +411,7 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     programaciones,
     evidences,
     pdf_base64: params.pdf_base64 || '',
-    estado: 'Enviado'
+    estado: 'pendiente'
   };
 
   const { data, error } = await supabase
