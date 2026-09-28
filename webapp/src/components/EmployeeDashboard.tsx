@@ -17,7 +17,20 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import LiveChatModule from './chat/LiveChatModule';
-import { normalizeSupervisorName, getServerDate, formatTime12h } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, getServerDate, formatTime12h, parseDateAndTime } from '../lib/supabaseAdapter';
+
+const safeFormatTime = (dateInput: Date | string | null | undefined, fallback = 'N/A'): string => {
+  if (!dateInput) return fallback;
+  try {
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) {
+      return typeof dateInput === 'string' ? formatTime12h(dateInput) : fallback;
+    }
+    return format(d, 'hh:mm a');
+  } catch (e) {
+    return typeof dateInput === 'string' ? formatTime12h(dateInput) : fallback;
+  }
+};
 
 const getStorageKey = () => {
   const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
@@ -451,9 +464,13 @@ export default function EmployeeDashboard() {
         if (response.data && typeof response.data === 'object') {
           if (response.data.dayClosed) {
             setReportSubmitted(true);
-            setClockOut(response.data.clockOut ? new Date(response.data.clockOut) : null);
+            const parsedOut = response.data.clockOut 
+              ? (parseDateAndTime(todayStr, response.data.clockOut) || new Date())
+              : null;
+            setClockOut(parsedOut);
             if (response.data.clockIn) {
-              setClockIn(new Date(response.data.clockIn));
+              const parsedIn = parseDateAndTime(todayStr, response.data.clockIn);
+              if (parsedIn) setClockIn(parsedIn);
             }
             setActuaciones([]);
             setIngresos([]);
@@ -747,8 +764,8 @@ export default function EmployeeDashboard() {
       doc.text('HORARIO:', 18, 51);
       doc.setFont('helvetica', 'normal');
       const serverNowForPdf = await getServerDate();
-      const inStr = clockIn ? formatTime12h(format(clockIn, 'hh:mm a')) : 'N/A';
-      const outStr = formatTime12h(format(serverNowForPdf, 'hh:mm a'));
+      const inStr = safeFormatTime(clockIn);
+      const outStr = safeFormatTime(serverNowForPdf);
       doc.text(`Entrada: ${inStr}   —   Salida: ${outStr}`, 45, 51);
 
       doc.setFont('helvetica', 'bold');
@@ -1395,7 +1412,7 @@ export default function EmployeeDashboard() {
                     {clockIn ? (
                       <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-                        Entrada: <span className="text-blue-600">{format(clockIn, 'hh:mm a')}</span>
+                        Entrada: <span className="text-blue-600">{safeFormatTime(clockIn)}</span>
                       </span>
                     ) : (
                       <span className="text-sm font-semibold text-slate-400">Sin marcar entrada</span>
@@ -1404,7 +1421,7 @@ export default function EmployeeDashboard() {
                     {clockOut && (
                       <span className="text-sm font-extrabold text-slate-800 flex items-center gap-1.5">
                         <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-                        Salida: <span className="text-rose-600">{format(clockOut, 'hh:mm a')}</span>
+                        Salida: <span className="text-rose-600">{safeFormatTime(clockOut)}</span>
                       </span>
                     )}
 

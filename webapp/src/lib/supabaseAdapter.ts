@@ -308,6 +308,43 @@ export function formatTime12h(timeStr?: string | null): string {
 }
 
 /**
+ * Parsea con seguridad una combinación de fecha (YYYY-MM-DD) y hora (12h AM/PM o 24h) a un objeto Date válido.
+ */
+export function parseDateAndTime(dateStr?: string | null, timeStr?: string | null): Date | null {
+  if (!dateStr) return null;
+  const cleanDate = dateStr.split('T')[0];
+  if (!timeStr || timeStr === 'N/A' || timeStr === 'N/A (Jefatura)' || timeStr === '00:00') {
+    return new Date(`${cleanDate}T00:00:00`);
+  }
+
+  // Si ya es un ISO string válido
+  if (timeStr.includes('T')) {
+    const d = new Date(timeStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  // Parsear formato 12h (e.g. "08:14 PM", "8:14 pm")
+  const match12 = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*([ap]m)?/i);
+  if (match12) {
+    let h = parseInt(match12[1], 10);
+    const m = String(match12[2]).padStart(2, '0');
+    const s = String(match12[3] || '00').padStart(2, '0');
+    const ampm = match12[4]?.toUpperCase();
+
+    if (ampm === 'PM' && h < 12) h += 12;
+    if (ampm === 'AM' && h === 12) h = 0;
+
+    const hStr = String(h).padStart(2, '0');
+    const isoLike = `${cleanDate}T${hStr}:${m}:${s}`;
+    const d = new Date(isoLike);
+    if (!isNaN(d.getTime())) return d;
+  }
+
+  const fallback = new Date(cleanDate);
+  return isNaN(fallback.getTime()) ? null : fallback;
+}
+
+/**
  * Obtiene la fecha y hora oficial del servidor en zona horaria de Venezuela (America/Caracas)
  * en formato 12 Horas (AM / PM).
  */
@@ -674,10 +711,13 @@ export async function supabaseGetDraft(): Promise<any> {
   });
 
   if (existingBitacora) {
+    const inDate = parseDateAndTime(existingBitacora.fecha, existingBitacora.hora_entrada);
+    const outDate = parseDateAndTime(existingBitacora.fecha, existingBitacora.hora_salida);
+
     return {
       dayClosed: true,
-      clockIn: existingBitacora.hora_entrada ? `${existingBitacora.fecha}T${existingBitacora.hora_entrada}:00` : null,
-      clockOut: existingBitacora.hora_salida ? `${existingBitacora.fecha}T${existingBitacora.hora_salida}:00` : new Date().toISOString(),
+      clockIn: inDate ? inDate.toISOString() : null,
+      clockOut: outDate ? outDate.toISOString() : new Date().toISOString(),
       draft: null
     };
   }
