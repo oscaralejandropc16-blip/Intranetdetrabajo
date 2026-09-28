@@ -838,6 +838,20 @@ export async function supabaseGetGastos(): Promise<any[]> {
       createdAt: g.created_at,
       updatedAt: g.updated_at || g.created_at
     };
+  })
+  .sort((a: any, b: any) => {
+    // 1. Fecha del período o comprobante más reciente primero
+    const dateA = a.fechaFin || a.fechaInicio || a.fechaCreacion || '';
+    const dateB = b.fechaFin || b.fechaInicio || b.fechaCreacion || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+
+    // 2. Si tienen la misma fecha de fin/período, desempatar por fecha de creación ISO
+    const createdA = a.createdAt || '';
+    const createdB = b.createdAt || '';
+    if (createdA !== createdB) return createdB.localeCompare(createdA);
+
+    // 3. Desempate final por ID descendente
+    return String(b.id || '').localeCompare(String(a.id || ''));
   });
 }
 

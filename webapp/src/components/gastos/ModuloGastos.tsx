@@ -84,8 +84,18 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
         }
       } catch (e) {}
 
-      // Excluir relaciones vacías o en $0
-      const validRelaciones = serverGastos.filter(g => Number(g.totalUsd || 0) > 0);
+      // Excluir relaciones vacías o en $0 y ordenar de la más nueva a la más vieja
+      const validRelaciones = serverGastos
+        .filter(g => Number(g.totalUsd || 0) > 0)
+        .sort((a, b) => {
+          const dateA = a.fechaFin || a.fechaInicio || a.fechaCreacion || '';
+          const dateB = b.fechaFin || b.fechaInicio || b.fechaCreacion || '';
+          if (dateA !== dateB) return dateB.localeCompare(dateA);
+          const createdA = a.createdAt || '';
+          const createdB = b.createdAt || '';
+          if (createdA !== createdB) return createdB.localeCompare(createdA);
+          return String(b.id || '').localeCompare(String(a.id || ''));
+        });
       setRelaciones(validRelaciones);
       
       // Expedientes con respaldo sólido

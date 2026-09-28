@@ -136,6 +136,14 @@ export default function PanelJefaturaGastos({
     }
 
     return true;
+  }).sort((a, b) => {
+    const dateA = a.fechaFin || a.fechaInicio || a.fechaCreacion || '';
+    const dateB = b.fechaFin || b.fechaInicio || b.fechaCreacion || '';
+    if (dateA !== dateB) return dateB.localeCompare(dateA);
+    const createdA = a.createdAt || '';
+    const createdB = b.createdAt || '';
+    if (createdA !== createdB) return createdB.localeCompare(createdA);
+    return String(b.id || '').localeCompare(String(a.id || ''));
   });
 
   // Métricas acumuladas
