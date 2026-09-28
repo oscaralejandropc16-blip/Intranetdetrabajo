@@ -12,6 +12,7 @@ import {
   ChevronDown, 
   RefreshCw
 } from 'lucide-react';
+import { syncServerTime, getServerDateSync } from '../../lib/supabaseAdapter';
 
 interface CityWeather {
   name: string;
@@ -54,10 +55,11 @@ export default function LiveStatusBar() {
   const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>({});
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
 
-  // Efecto Reloj en Vivo (cada 1 segundo)
+  // Efecto Reloj en Vivo sincronizado con la hora oficial del servidor (cada 1 segundo)
   useEffect(() => {
+    syncServerTime().then(d => setCurrentTime(d));
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(getServerDateSync());
     }, 1000);
     return () => clearInterval(timer);
   }, []);

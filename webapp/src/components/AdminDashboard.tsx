@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 import LiveChatModule from './chat/LiveChatModule';
-import { normalizeSupervisorName } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, formatTime12h } from '../lib/supabaseAdapter';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -977,7 +977,7 @@ export default function AdminDashboard() {
         body: [[
           report.user || 'Empleado',
           report.date || 'N/A',
-          `${report.clockIn || 'N/A'} — ${report.clockOut || 'N/A'}`,
+          `${formatTime12h(report.clockIn)} — ${formatTime12h(report.clockOut)}`,
           report.status || 'Enviado'
         ]],
         theme: 'grid',
@@ -2017,17 +2017,17 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex items-center gap-1.5 text-sm font-bold text-slate-800">
                             <Clock className="w-4 h-4 text-rose-500" />
-                            Salida: {report.clockOut && report.clockOut !== '00:00' && report.clockOut !== 'N/A (Jefatura)' ? report.clockOut : 'Registrada'}
+                            Salida: {report.clockOut && report.clockOut !== '00:00' && report.clockOut !== 'N/A (Jefatura)' ? formatTime12h(report.clockOut) : 'Registrada'}
                           </div>
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
-                            <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {report.clockIn}
+                            <Clock className="w-4 h-4 text-emerald-500" /> Entrada: {formatTime12h(report.clockIn)}
                           </div>
                           <div className="flex items-center gap-2 text-sm font-bold text-slate-500">
                             <Clock className="w-4 h-4 text-rose-400" />
-                            Salida: {report.clockOut || 'Pendiente'}
+                            Salida: {report.clockOut ? formatTime12h(report.clockOut) : 'Pendiente'}
                             {report.cierreRetrasado && (
                               <span className="ml-1 text-[10px] bg-rose-100 text-rose-600 px-2 py-0.5 rounded-full uppercase tracking-widest font-black">
                                 Cerrada con Retraso
@@ -3073,7 +3073,7 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-emerald-500" /> Entrada</p>
-                  <p className="text-xl font-bold text-slate-800">{selectedReport.clockIn}</p>
+                  <p className="text-xl font-bold text-slate-800">{formatTime12h(selectedReport.clockIn)}</p>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
@@ -3092,7 +3092,7 @@ export default function AdminDashboard() {
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
                   <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-rose-500" /> Salida</p>
-                  <p className="text-xl font-bold text-slate-800">{selectedReport.clockOut || 'Activa'}</p>
+                  <p className="text-xl font-bold text-slate-800">{selectedReport.clockOut ? formatTime12h(selectedReport.clockOut) : 'Activa'}</p>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">

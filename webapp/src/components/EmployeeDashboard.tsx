@@ -17,7 +17,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import LiveChatModule from './chat/LiveChatModule';
-import { normalizeSupervisorName } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, getServerDate, formatTime12h } from '../lib/supabaseAdapter';
 
 const getStorageKey = () => {
   const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
@@ -746,8 +746,9 @@ export default function EmployeeDashboard() {
       doc.setFont('helvetica', 'bold');
       doc.text('HORARIO:', 18, 51);
       doc.setFont('helvetica', 'normal');
-      const inStr = clockIn ? format(clockIn, 'hh:mm a') : 'N/A';
-      const outStr = format(new Date(), 'hh:mm a');
+      const serverNowForPdf = await getServerDate();
+      const inStr = clockIn ? formatTime12h(format(clockIn, 'hh:mm a')) : 'N/A';
+      const outStr = formatTime12h(format(serverNowForPdf, 'hh:mm a'));
       doc.text(`Entrada: ${inStr}   —   Salida: ${outStr}`, 45, 51);
 
       doc.setFont('helvetica', 'bold');
@@ -953,16 +954,16 @@ export default function EmployeeDashboard() {
         ? programaciones.map(p => `[${p.fecha} ${p.hora}] ${p.organismoTribunal} - ${p.tipoActuacion}`).join('\n')
         : 'Sin programación futura.';
 
-      // Lógica de retraso
-      const isLateClosure = clockIn && format(clockIn, 'yyyy-MM-dd') < format(new Date(), 'yyyy-MM-dd');
-      const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd');
+      const serverNow = await getServerDate();
+      // Lógica de retraso basada en reloj oficial del servidor
+      const isLateClosure = clockIn && format(clockIn, 'yyyy-MM-dd') < format(serverNow, 'yyyy-MM-dd');
+      const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : format(serverNow, 'yyyy-MM-dd');
 
-      const now = new Date();
       const payload = {
         reporte_hoy: reportText,
         programacion_manana: progText,
-        hora_entrada: clockIn ? format(clockIn, 'HH:mm') : format(now, 'HH:mm'),
-        hora_salida: format(now, 'HH:mm'),
+        hora_entrada: clockIn ? formatTime12h(format(clockIn, 'hh:mm a')) : formatTime12h(format(serverNow, 'hh:mm a')),
+        hora_salida: formatTime12h(format(serverNow, 'hh:mm a')),
         ubicacion_entrada: ubicacionEntrada || 'N/A',
         ubicacion_salida: locSalida,
         ingresos,
@@ -1005,8 +1006,8 @@ export default function EmployeeDashboard() {
         localStorage.removeItem(getStorageKey()); // Limpiar el borrador al enviar con éxito
         localStorage.removeItem(`rd_actuaciones_backup_${userName}`);
         
-        // Confirmar en UI solo si todo salió exitoso
-        setClockOut(new Date());
+        // Confirmar en UI solo si todo salió exitoso con la hora oficial del servidor
+        setClockOut(serverNow);
         setReportSubmitted(true);
         setActuaciones([]);
         setIngresos([]);
@@ -1115,16 +1116,15 @@ export default function EmployeeDashboard() {
 
     try {
       const resp = await submitToServer('/rd-intranet/v1/clock-in', {
-        clockIn: nowIso,
-        ubicacionEntrada: 'Detectando satélite...',
-        fecha: format(now, 'yyyy-MM-dd')
+        ubicacionEntrada: 'Detectando satélite...'
       });
       
       if (resp && resp.success === false) {
         throw new Error(resp.message || 'No se pudo marcar la entrada. Verifica si ya cerraste tu jornada hoy.');
       }
       
-      const finalClockIn = resp?.clockIn ? new Date(resp.clockIn) : now;
+      const serverDate = await getServerDate();
+      const finalClockIn = resp?.clockIn ? new Date(resp.clockIn) : serverDate;
       setClockIn(finalClockIn);
       setReportSubmitted(false);
       setClockOut(null);

@@ -238,20 +238,119 @@ export async function supabaseLogin(username: string, password?: string): Promis
   }
 }
 
+// =============================================================
+// SERVICIO DE HORA OFICIAL DEL SERVIDOR (ANTIFRAUDE) Y FORMATO 12H
+// =============================================================
+let cachedServerOffsetMs = 0;
+let lastServerSyncTimestamp = 0;
+
+/**
+ * Sincroniza y obtiene la hora real y autoritativa del servidor (NTP/HTTP Date)
+ * Evita que un empleado altere su asistencia modificando la hora de su PC o teléfono.
+ */
+export async function syncServerTime(): Promise<Date> {
+  const start = Date.now();
+  try {
+    const envUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bkvoxpydoxeuzbpxxkyr.supabase.co';
+    const res = await fetch(`${envUrl}/rest/v1/`, { method: 'HEAD' });
+    const dateHeader = res.headers.get('date');
+    if (dateHeader) {
+      const serverMs = new Date(dateHeader).getTime();
+      const end = Date.now();
+      const latency = Math.round((end - start) / 2);
+      cachedServerOffsetMs = (serverMs + latency) - end;
+      lastServerSyncTimestamp = end;
+      return new Date(Date.now() + cachedServerOffsetMs);
+    }
+  } catch (err) {
+    console.warn('Error al sincronizar con reloj del servidor:', err);
+  }
+  return new Date(Date.now() + cachedServerOffsetMs);
+}
+
+export async function getServerDate(): Promise<Date> {
+  const now = Date.now();
+  if (lastServerSyncTimestamp === 0 || now - lastServerSyncTimestamp > 180000) {
+    return await syncServerTime();
+  }
+  return new Date(Date.now() + cachedServerOffsetMs);
+}
+
+export function getServerDateSync(): Date {
+  return new Date(Date.now() + cachedServerOffsetMs);
+}
+
+/**
+ * Convierte cualquier hora militar (24h) o timestamp a formato civil de 12 horas con AM / PM
+ * Ejemplo: "20:14" -> "08:14 PM", "22:54" -> "10:54 PM", "08:35" -> "08:35 AM"
+ */
+export function formatTime12h(timeStr?: string | null): string {
+  if (!timeStr || timeStr === 'N/A' || timeStr === 'N/A (Jefatura)' || timeStr === '00:00') {
+    return timeStr === '00:00' ? 'N/A (Jefatura)' : (timeStr || 'N/A');
+  }
+
+  // Si ya contiene AM o PM, devolver estandarizado en mayúsculas
+  if (/am|pm/i.test(timeStr)) {
+    return timeStr.replace(/([ap]m)/i, (m) => m.toUpperCase()).trim();
+  }
+
+  // Extraer horas y minutos
+  const match = timeStr.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return timeStr;
+
+  let h = parseInt(match[1], 10);
+  const m = match[2];
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  const hStr = String(h).padStart(2, '0');
+  return `${hStr}:${m} ${ampm}`;
+}
+
+/**
+ * Obtiene la fecha y hora oficial del servidor en zona horaria de Venezuela (America/Caracas)
+ * en formato 12 Horas (AM / PM).
+ */
+export function getVenezuelaDateTime(date: Date = getServerDateSync()): { dateStr: string; time12: string; fullDate: Date } {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Caracas',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+  const parts = fmt.formatToParts(date);
+  const getPart = (type: string) => parts.find(p => p.type === type)?.value || '';
+
+  const year = getPart('year');
+  const month = getPart('month');
+  const day = getPart('day');
+  const hour = getPart('hour');
+  const minute = getPart('minute');
+  const dayPeriod = (getPart('dayPeriod') || 'AM').toUpperCase();
+
+  const dateStr = `${year}-${month}-${day}`;
+  const time12 = `${hour}:${minute} ${dayPeriod}`;
+
+  return { dateStr, time12, fullDate: date };
+}
+
 // -------------------------------------------------------------
-// 2. CLOCK-IN (MARCAJE OFICIAL)
+// 2. CLOCK-IN (MARCAJE OFICIAL BASADO EN EL SERVIDOR)
 // -------------------------------------------------------------
 export async function supabaseClockIn(_data?: any): Promise<any> {
-  const now = new Date();
-  const hours = String(now.getHours()).padStart(2, '0');
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const serverTime = `${hours}:${minutes}`;
+  const serverNow = await getServerDate();
+  const venezuela = getVenezuelaDateTime(serverNow);
 
   return {
     success: true,
-    server_time: serverTime,
-    timestamp: now.toISOString(),
-    message: `Entrada registrada a las ${serverTime}`
+    server_time: venezuela.time12,
+    timestamp: serverNow.toISOString(),
+    clockIn: serverNow.toISOString(),
+    fecha: venezuela.dateStr,
+    message: `Entrada registrada a las ${venezuela.time12} (Hora Servidor)`
   };
 }
 
@@ -336,8 +435,8 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
         author_id: b.author_id || b.user_id,
         user: b.user_name,
         date: b.fecha,
-        clockIn: b.hora_entrada ? b.hora_entrada.substring(0, 5) : 'N/A',
-        clockOut: b.hora_salida ? b.hora_salida.substring(0, 5) : 'N/A',
+        clockIn: formatTime12h(b.hora_entrada),
+        clockOut: formatTime12h(b.hora_salida),
         status: displayStatus,
         comentario_admin: b.comentario_admin || '',
         supervisado_por: supervisor,
@@ -364,16 +463,11 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
 }
 
 export function getLocalTodayString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return getVenezuelaDateTime(getServerDateSync()).dateStr;
 }
 
 export async function supabaseSubmitBitacora(params: Record<string, any>): Promise<any> {
   const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
-  const fecha = params.fecha_reporte || getLocalTodayString();
 
   const parseJsonField = (val: any) => {
     if (!val) return [];
@@ -405,11 +499,19 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     }
   }
 
+  const serverNow = await getServerDate();
+  const venezuela = getVenezuelaDateTime(serverNow);
+  const fecha = params.fecha_reporte || venezuela.dateStr;
+  
+  // Hora de salida sellada de manera inviolable con el reloj del servidor en formato 12 Horas AM/PM
+  const horaSalidaOficial = venezuela.time12;
+  const horaEntradaOficial = formatTime12h(params.hora_entrada) || venezuela.time12;
+
   const newBitacora = {
     user_name: currentUser,
     fecha,
-    hora_entrada: params.hora_entrada || '',
-    hora_salida: params.hora_salida || '',
+    hora_entrada: horaEntradaOficial,
+    hora_salida: horaSalidaOficial,
     resumen: params.reporte_hoy || '',
     ubicacion_entrada: params.ubicacion_entrada || '',
     ubicacion_salida: params.ubicacion_salida || '',
