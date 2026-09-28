@@ -144,8 +144,8 @@ export default function EmployeeDashboard() {
 
   // Autoguardado (Local y Nube)
   useEffect(() => {
-    // Protección multi-dispositivo: No autoguardar ni sobrescribir en la nube mientras descargamos el borrador del servidor
-    if (loadingDraft) return;
+    // Protección multi-dispositivo: No autoguardar ni sobrescribir en la nube mientras descargamos el borrador o si la jornada ya concluyó
+    if (loadingDraft || reportSubmitted) return;
 
     const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
     if (actuaciones.length > 0) {
@@ -196,7 +196,7 @@ export default function EmployeeDashboard() {
     }, 800);
 
     return () => clearTimeout(handler);
-  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, attachedFiles, loadingDraft, draftComment, draftSupervisor]);
+  }, [clockIn, ubicacionEntrada, actuaciones, ingresos, programaciones, attachedFiles, loadingDraft, reportSubmitted, draftComment, draftSupervisor]);
 
   const refreshTasksAndNotifications = async () => {
     try {
@@ -452,10 +452,16 @@ export default function EmployeeDashboard() {
           if (response.data.dayClosed) {
             setReportSubmitted(true);
             setClockOut(response.data.clockOut ? new Date(response.data.clockOut) : null);
+            if (response.data.clockIn) {
+              setClockIn(new Date(response.data.clockIn));
+            }
             setActuaciones([]);
             setIngresos([]);
             setProgramaciones([]);
+            setAttachedFiles([]);
+            const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
             localStorage.removeItem(getStorageKey());
+            localStorage.removeItem(`rd_actuaciones_backup_${userName}`);
             return;
           } else {
             setReportSubmitted(false);
@@ -995,11 +1001,17 @@ export default function EmployeeDashboard() {
           }
         }
 
+        const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
         localStorage.removeItem(getStorageKey()); // Limpiar el borrador al enviar con éxito
+        localStorage.removeItem(`rd_actuaciones_backup_${userName}`);
         
         // Confirmar en UI solo si todo salió exitoso
         setClockOut(new Date());
         setReportSubmitted(true);
+        setActuaciones([]);
+        setIngresos([]);
+        setProgramaciones([]);
+        setAttachedFiles([]);
         
         setSystemAlert({
           isOpen: true,
