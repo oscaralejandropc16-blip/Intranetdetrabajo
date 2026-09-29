@@ -1,14 +1,20 @@
 import React, { useState } from 'react';
-import { X, Calendar, Clock, User, Building, FileText, Plus, CheckCircle2, History, Send, BadgeCheck } from 'lucide-react';
+import { X, Calendar, Clock, User, Building, FileText, Plus, CheckCircle2, History, Send, BadgeCheck, Trash2 } from 'lucide-react';
 import type { ExpedienteJudicial, ActuacionHistorial } from '../../types/expedientes';
 
 interface DetalleExpedienteModalProps {
   expediente: ExpedienteJudicial;
   onClose: () => void;
   onUpdateExpediente: (updated: ExpedienteJudicial) => void;
+  onDeleteExpediente?: (expediente: ExpedienteJudicial) => void;
 }
 
-export default function DetalleExpedienteModal({ expediente, onClose, onUpdateExpediente }: DetalleExpedienteModalProps) {
+export default function DetalleExpedienteModal({ 
+  expediente, 
+  onClose, 
+  onUpdateExpediente,
+  onDeleteExpediente
+}: DetalleExpedienteModalProps) {
   const [nuevaActuacion, setNuevaActuacion] = useState('');
   const [nuevoEstatus, setNuevoEstatus] = useState(expediente.estatusActual);
   const [observaciones, setObservaciones] = useState('');
@@ -273,7 +279,22 @@ export default function DetalleExpedienteModal({ expediente, onClose, onUpdateEx
         </div>
 
         {/* Pie del Modal */}
-        <div className="bg-slate-950 p-4 border-t border-slate-800 flex justify-end">
+        <div className="bg-slate-950 p-4 border-t border-slate-800 flex items-center justify-between gap-3">
+          {onDeleteExpediente ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el expediente #${expediente.numeroExpediente}?`)) {
+                  onDeleteExpediente(expediente);
+                  onClose();
+                }
+              }}
+              className="bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 font-bold px-3.5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-4 h-4" /> Eliminar Expediente
+            </button>
+          ) : <div />}
+
           <button
             onClick={onClose}
             className="bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold px-5 py-2 rounded-xl text-xs transition-colors cursor-pointer"

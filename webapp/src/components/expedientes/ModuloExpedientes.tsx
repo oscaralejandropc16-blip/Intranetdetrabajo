@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, Scale, Download, X } from 'lucide-react';
+import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Scale, Download, X, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ExpedienteJudicial, AudienciaSemanal, AsuntoNuevo, SeguimientoPendiente } from '../../types/expedientes';
@@ -22,12 +22,25 @@ export default function ModuloExpedientes() {
       const cached = localStorage.getItem('rd_cached_expedientes');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          parsed.sort((a: any, b: any) => {
+            const dateA = a.actuaciones?.[0]?.fecha || a.ultimaActualizacion || a.fechaRegistro || '';
+            const dateB = b.actuaciones?.[0]?.fecha || b.ultimaActualizacion || b.fechaRegistro || '';
+            return dateB.localeCompare(dateA);
+          });
+          return parsed;
+        }
       }
     } catch (e) {
       console.warn('Error al leer caché de expedientes:', e);
     }
-    return getStoredExpedientes();
+    const initial = getStoredExpedientes();
+    initial.sort((a: any, b: any) => {
+      const dateA = a.actuaciones?.[0]?.fecha || a.ultimaActualizacion || a.fechaRegistro || '';
+      const dateB = b.actuaciones?.[0]?.fecha || b.ultimaActualizacion || b.fechaRegistro || '';
+      return dateB.localeCompare(dateA);
+    });
+    return initial;
   });
   const [audiencias, setAudiencias] = useState<AudienciaSemanal[]>(() => getStoredAudiencias());
   const [asuntosNuevos, setAsuntosNuevos] = useState<AsuntoNuevo[]>(() => getStoredAsuntosNuevos());
@@ -45,6 +58,10 @@ export default function ModuloExpedientes() {
   const [searchTerm, setSearchTerm] = useState('');
   const [juzgadoFilter, setJuzgadoFilter] = useState('Todos');
   const [estatusFilter, setEstatusFilter] = useState('Todos');
+
+  // Estados de Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   
   const [selectedExpediente, setSelectedExpediente] = useState<ExpedienteJudicial | null>(null);
   const [showNuevoExpedienteModal, setShowNuevoExpedienteModal] = useState(false);
@@ -129,6 +146,13 @@ export default function ModuloExpedientes() {
             };
           }) as ExpedienteJudicial[];
 
+          // Ordenar del más nuevo al más viejo
+          formatted.sort((a, b) => {
+            const dateA = a.actuaciones[0]?.fecha || a.ultimaActualizacion || a.fechaRegistro || '';
+            const dateB = b.actuaciones[0]?.fecha || b.ultimaActualizacion || b.fechaRegistro || '';
+            return dateB.localeCompare(dateA);
+          });
+
           setExpedientes(formatted);
           try {
             localStorage.setItem('rd_cached_expedientes', JSON.stringify(formatted));
@@ -143,6 +167,9 @@ export default function ModuloExpedientes() {
       }
     };
     fetchAndSync();
+    const handleRemoteUpdate = () => fetchAndSync();
+    window.addEventListener('rd_expedientes_updated', handleRemoteUpdate);
+    return () => window.removeEventListener('rd_expedientes_updated', handleRemoteUpdate);
   }, []);
 
   // Persistir audiencias y seguimientos locales (fase futura para conectarlos al servidor)
@@ -176,6 +203,36 @@ export default function ModuloExpedientes() {
     } catch (e) {
       console.error('Error al actualizar expediente:', e);
     }
+  };
+
+  // Manejar eliminación de expediente (por duplicado o error)
+  const handleDeleteExpediente = async (exp: ExpedienteJudicial) => {
+    // 1. Actualización optimista local
+    const filtered = expedientes.filter(e => e.id !== exp.id && e.numeroExpediente !== exp.numeroExpediente);
+    setExpedientes(filtered);
+    if (selectedExpediente?.id === exp.id || selectedExpediente?.numeroExpediente === exp.numeroExpediente) {
+      setSelectedExpediente(null);
+    }
+
+    try {
+      localStorage.setItem('rd_cached_expedientes', JSON.stringify(filtered));
+      const stored = localStorage.getItem('rd_expedientes_list_v1');
+      if (stored) {
+        const parsed = JSON.parse(stored).filter((e: any) => e.id !== exp.id && e.numeroExpediente !== exp.numeroExpediente);
+        localStorage.setItem('rd_expedientes_list_v1', JSON.stringify(parsed));
+      }
+    } catch (e) {
+      console.warn('Error actualizando caché al eliminar:', e);
+    }
+
+    // 2. Eliminar en Supabase
+    try {
+      await submitToServer('/rd-intranet/v1/delete-expediente', { id: exp.id, numero: exp.numeroExpediente });
+    } catch (e) {
+      console.error('Error eliminando expediente en servidor:', e);
+    }
+
+    window.dispatchEvent(new CustomEvent('rd_expedientes_updated'));
   };
 
   // Agregar nuevo expediente
@@ -271,6 +328,25 @@ export default function ModuloExpedientes() {
 
     return matchSearch && matchJuzgado && matchEstatus;
   });
+
+  // Resetear a la primera página si cambian los filtros o la búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, juzgadoFilter, estatusFilter]);
+
+  // Orden estricto del más nuevo al más viejo
+  const sortedExpedientes = [...filteredExpedientes].sort((a, b) => {
+    const dateA = a.actuaciones[0]?.fecha || a.ultimaActualizacion || a.fechaRegistro || '';
+    const dateB = b.actuaciones[0]?.fecha || b.ultimaActualizacion || b.fechaRegistro || '';
+    return dateB.localeCompare(dateA);
+  });
+
+  // Cálculos de paginación
+  const totalPages = Math.max(1, Math.ceil(sortedExpedientes.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedExpedientes = itemsPerPage >= 9999 ? sortedExpedientes : sortedExpedientes.slice(startIndex, endIndex);
 
   const getStatusBadgeStyle = (status: string) => {
     const s = status.toUpperCase();
@@ -495,9 +571,16 @@ export default function ModuloExpedientes() {
                 Conectando con la base de datos de expedientes...
               </p>
             ) : (
-              <p className="text-xs text-slate-400 font-semibold">
-                Mostrando <strong className="text-amber-400">{filteredExpedientes.length}</strong> de {expedientes.length} expedientes registrados
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-slate-400 font-semibold">
+                  Mostrando <strong className="text-amber-400">{sortedExpedientes.length > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, sortedExpedientes.length)}</strong> de {sortedExpedientes.length} expedientes {sortedExpedientes.length !== expedientes.length ? `(filtrados de ${expedientes.length})` : 'registrados'}
+                </p>
+                {totalPages > 1 && (
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-amber-400 font-semibold">
+                    Página {safeCurrentPage} de {totalPages}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -511,7 +594,7 @@ export default function ModuloExpedientes() {
                 </p>
               </div>
             </div>
-          ) : filteredExpedientes.length === 0 ? (
+          ) : sortedExpedientes.length === 0 ? (
             <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
               <AlertCircle className="w-10 h-10 text-amber-500/50 mx-auto" />
               <h4 className="text-base font-bold text-white">No se encontraron expedientes</h4>
@@ -523,7 +606,7 @@ export default function ModuloExpedientes() {
             </div>
           ) : (
             <div className="grid grid-cols-1 gap-4">
-              {filteredExpedientes.map((exp) => {
+              {paginatedExpedientes.map((exp) => {
                 const ultimaAct = exp.actuaciones[0];
                 const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
                 const correlativoBadge = exp.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
@@ -572,7 +655,7 @@ export default function ModuloExpedientes() {
                       <div className="md:col-span-5 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-400 font-bold uppercase tracking-wider">Última Actuación</span>
-                          <span className="text-slate-500 font-normal">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>
+                          <span className="text-amber-400 font-semibold">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>
                         </div>
                         <p className="text-xs text-slate-200 font-medium line-clamp-2">
                           {ultimaAct ? ultimaAct.actuacion : 'Sin actuaciones registradas'}
@@ -583,17 +666,30 @@ export default function ModuloExpedientes() {
                         </div>
                       </div>
 
-                      {/* Botón Ver Ficha */}
-                      <div className="md:col-span-2 flex items-center justify-end">
+                      {/* Botón Ver Ficha y Eliminar */}
+                      <div className="md:col-span-2 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm(`¿Estás seguro de eliminar el expediente #${exp.numeroExpediente} definitivamente?`)) {
+                              handleDeleteExpediente(exp);
+                            }
+                          }}
+                          className="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-500/30"
+                          title="Eliminar este expediente del sistema"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedExpediente(exp);
                           }}
-                          className="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 font-bold px-4 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700/80 group-hover:border-amber-500/40"
+                          className="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700/80 group-hover:border-amber-500/40 cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
-                          <span>Ver Ficha</span>
+                          <span>Ficha</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -601,6 +697,109 @@ export default function ModuloExpedientes() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Barra de Navegación y Paginación */}
+          {sortedExpedientes.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-slate-800/80 bg-slate-950/50 p-4 rounded-2xl shadow-inner">
+              {/* Selector de cantidad por página y resumen */}
+              <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap justify-center sm:justify-start">
+                <div className="flex items-center gap-1.5">
+                  <span>Mostrar:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-slate-900 border border-slate-700/80 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-amber-500/50 transition-colors"
+                  >
+                    <option value={5}>5 expedientes</option>
+                    <option value={10}>10 expedientes</option>
+                    <option value={20}>20 expedientes</option>
+                    <option value={50}>50 expedientes</option>
+                    <option value={9999}>Ver todos ({sortedExpedientes.length})</option>
+                  </select>
+                </div>
+                <span className="text-slate-600">|</span>
+                <span className="text-slate-300 font-medium">
+                  Expedientes <strong className="text-white">{startIndex + 1}</strong> a <strong className="text-white">{Math.min(endIndex, sortedExpedientes.length)}</strong> de <strong className="text-amber-400">{sortedExpedientes.length}</strong>
+                </span>
+              </div>
+
+              {/* Controles de navegación */}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                  <button
+                    onClick={() => setCurrentPage(1)}
+                    disabled={safeCurrentPage === 1}
+                    title="Primera página"
+                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={safeCurrentPage === 1}
+                    title="Página anterior"
+                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Anterior</span>
+                  </button>
+
+                  {/* Botones numéricos de página */}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      return (
+                        page === 1 ||
+                        page === totalPages ||
+                        Math.abs(page - safeCurrentPage) <= 1
+                      );
+                    })
+                    .map((page, idx, array) => {
+                      const prevPage = array[idx - 1];
+                      const showEllipsis = prevPage && page - prevPage > 1;
+
+                      return (
+                        <React.Fragment key={page}>
+                          {showEllipsis && (
+                            <span className="px-1.5 text-slate-600 text-xs font-bold">...</span>
+                          )}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${
+                              safeCurrentPage === page
+                                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </React.Fragment>
+                      );
+                    })}
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    title="Página siguiente"
+                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                  >
+                    <span className="hidden sm:inline">Siguiente</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={safeCurrentPage === totalPages}
+                    title="Última página"
+                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -631,6 +830,7 @@ export default function ModuloExpedientes() {
           expediente={selectedExpediente}
           onClose={() => setSelectedExpediente(null)}
           onUpdateExpediente={handleUpdateExpediente}
+          onDeleteExpediente={handleDeleteExpediente}
         />
       )}
 

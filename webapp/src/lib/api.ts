@@ -11,6 +11,7 @@ import {
   supabaseGetAllDrafts,
   supabaseGetExpedientes,
   supabaseSaveExpedientes,
+  supabaseDeleteExpediente,
   supabaseGetGastos,
   supabaseSaveGasto,
   supabasePagarGasto,
@@ -161,6 +162,10 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
     // 5. Expedientes
     if (cleanEndpoint.endsWith('/expedientes')) {
       return await supabaseSaveExpedientes(data);
+    }
+    if (cleanEndpoint.endsWith('/delete-expediente')) {
+      const target = data.id || data.numeroExpediente || data.numero;
+      return await supabaseDeleteExpediente(target);
     }
 
     // 6. Investigaciones KANT

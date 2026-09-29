@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save, AlertCircle, RotateCw } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save, AlertCircle, RotateCw, FolderSearch } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
+import ExpedienteSelectorModal from '../common/ExpedienteSelectorModal';
 
 interface TabRegistroDiarioProps {
   reportSubmitted: boolean;
@@ -25,6 +26,7 @@ export default function TabRegistroDiario({
 }: TabRegistroDiarioProps) {
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [activeSelectorRowId, setActiveSelectorRowId] = useState<string | null>(null);
 
   const handlePreguardarBorrador = () => {
     try {
@@ -129,11 +131,64 @@ export default function TabRegistroDiario({
     }));
   };
 
-  // Combinar expedientes globales con los ingresos de esta misma sesión
-  const allCombinedExpedientes = [
-    ...globalExpedientes,
-    ...ingresosActivos
-  ].filter((v, i, a) => a.findIndex(t => t.numeroExpediente === v.numeroExpediente) === i); // Deduplicar
+  // Combinar expedientes globales con los ingresos de esta misma sesión (deduplicación inteligente)
+  const allCombinedExpedientes = useMemo(() => {
+    const list: any[] = [];
+    const seen = new Set<string>();
+
+    const normalize = (val: string) => (val || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    // 1. Ingresos registrados en esta sesión / día (prioridad máxima con distintivo)
+    (ingresosActivos || []).forEach(ing => {
+      const num = (ing.numeroExpediente || '').trim();
+      const norm = normalize(num);
+      if (num && norm.length >= 2 && !seen.has(norm)) {
+        seen.add(norm);
+        list.push({
+          id: ing.id,
+          numeroExpediente: num,
+          partes: ing.partes || '',
+          organismoTribunal: ing.organismoTribunal || '',
+          tipo: ing.tipo || 'Judicial',
+          isNewToday: true
+        });
+      }
+    });
+
+    // 2. Expedientes globales del sistema
+    (globalExpedientes || []).forEach(exp => {
+      const num = (exp.numeroExpediente || exp.numero || exp.codigoCorrelativo || '').trim();
+      const norm = normalize(num);
+      if (num && norm.length >= 2 && !seen.has(norm)) {
+        seen.add(norm);
+        list.push({
+          id: exp.id,
+          numeroExpediente: num,
+          partes: exp.partes || exp.titulo || '',
+          organismoTribunal: exp.organismoTribunal || exp.tribunal || exp.juzgado || '',
+          tipo: exp.tipo || exp.materia || 'Judicial',
+          isNewToday: false
+        });
+      }
+    });
+
+    return list;
+  }, [globalExpedientes, ingresosActivos]);
+
+  const handleSelectExpedienteForActuacion = (exp: any) => {
+    if (!activeSelectorRowId) return;
+    setActuaciones(prev => prev.map(a => {
+      if (a.id === activeSelectorRowId) {
+        return {
+          ...a,
+          numeroAsunto: exp.numeroExpediente,
+          partes: exp.partes || a.partes
+        };
+      }
+      return a;
+    }));
+    setActiveSelectorRowId(null);
+  };
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-300">
@@ -268,25 +323,40 @@ export default function TabRegistroDiario({
                           />
                         </td>
                         <td className="px-3 py-3 align-top">
-                          <input 
-                            type="text" 
-                            list="expedientes-list"
-                            value={actuacion.numeroAsunto}
-                            disabled={reportSubmitted}
-                            required
-                            onChange={(e) => updateActuacionField(actuacion.id, 'numeroAsunto', e.target.value)}
-                            className={`w-full p-2 border rounded-lg focus:ring-2 outline-none font-semibold text-slate-800 transition-colors ${
-                              !actuacion.numeroAsunto || actuacion.numeroAsunto.trim() === ''
-                                ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
-                                : 'border-slate-200 focus:ring-blue-500/50 bg-white'
-                            }`}
-                            placeholder="Ej. RD-J-2026..."
-                          />
-                          <datalist id="expedientes-list">
-                            {allCombinedExpedientes.map((exp, idx) => (
-                              <option key={idx} value={exp.numeroExpediente}>{exp.partes}</option>
-                            ))}
-                          </datalist>
+                          <div className="flex items-center relative">
+                            <input 
+                              type="text" 
+                              value={actuacion.numeroAsunto}
+                              disabled={reportSubmitted}
+                              required
+                              onChange={(e) => updateActuacionField(actuacion.id, 'numeroAsunto', e.target.value)}
+                              className={`w-full p-2 border rounded-l-lg focus:ring-2 outline-none font-semibold text-slate-800 transition-colors ${
+                                !actuacion.numeroAsunto || actuacion.numeroAsunto.trim() === ''
+                                  ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                                  : 'border-slate-200 focus:ring-blue-500/50 bg-white'
+                              }`}
+                              placeholder="Ej. RD-J-2026..."
+                            />
+                            {!reportSubmitted && (
+                              <button
+                                type="button"
+                                onClick={() => setActiveSelectorRowId(actuacion.id)}
+                                className="px-2.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-r-lg border border-l-0 border-slate-200 transition-all flex items-center justify-center cursor-pointer shrink-0 hover:scale-105 active:scale-95 group/bicho"
+                                title="Abrir catálogo de expedientes registrados para seleccionar (El bichito de expedientes)"
+                              >
+                                <FolderSearch className="w-4 h-4 text-blue-600 group-hover/bicho:text-blue-700" />
+                              </button>
+                            )}
+                          </div>
+                          {!reportSubmitted && (
+                            <button
+                              type="button"
+                              onClick={() => setActiveSelectorRowId(actuacion.id)}
+                              className="text-[10px] text-blue-600 hover:text-blue-800 font-bold mt-1 flex items-center gap-1 cursor-pointer transition-colors"
+                            >
+                              <FolderSearch className="w-3 h-3" /> Seleccionar ({allCombinedExpedientes.length} disponibles)
+                            </button>
+                          )}
                         </td>
                         <td className="px-3 py-3 align-top">
                           <textarea 
@@ -440,6 +510,15 @@ export default function TabRegistroDiario({
           </section>
 
       </div>
+
+      {/* Modal Interactivo de Selección de Expediente (El bichito de expedientes) */}
+      <ExpedienteSelectorModal
+        isOpen={!!activeSelectorRowId}
+        onClose={() => setActiveSelectorRowId(null)}
+        onSelect={handleSelectExpedienteForActuacion}
+        expedientes={allCombinedExpedientes}
+        currentValue={actuaciones.find(a => a.id === activeSelectorRowId)?.numeroAsunto || ''}
+      />
     </div>
   );
 }

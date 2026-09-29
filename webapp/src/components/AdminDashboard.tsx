@@ -302,9 +302,26 @@ export default function AdminDashboard() {
   });
   const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [allGastos, setAllGastos] = useState<any[]>([]);
+  const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
     return (sessionStorage.getItem('rd_admin_boss_sub_tab') as any) || 'actuaciones';
   });
+
+  useEffect(() => {
+    const fetchGlobalExpedientes = async () => {
+      try {
+        const res = await api.get('/rd-intranet/v1/expedientes');
+        if (res.data && Array.isArray(res.data)) {
+          setGlobalExpedientes(res.data);
+        }
+      } catch (e) {
+        console.warn('Error fetching expedientes in AdminDashboard:', e);
+      }
+    };
+    fetchGlobalExpedientes();
+    window.addEventListener('rd_expedientes_updated', fetchGlobalExpedientes);
+    return () => window.removeEventListener('rd_expedientes_updated', fetchGlobalExpedientes);
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem('rd_admin_active_view', activeView);
@@ -2608,7 +2625,7 @@ export default function AdminDashboard() {
               setAttachedFiles={setAttachedFilesJefe}
               pendingTasks={pendingTasksJefe}
               setPendingTasks={setPendingTasksJefe}
-              globalExpedientes={[]}
+              globalExpedientes={globalExpedientes}
               ingresosActivos={ingresosJefe}
             />
           )}

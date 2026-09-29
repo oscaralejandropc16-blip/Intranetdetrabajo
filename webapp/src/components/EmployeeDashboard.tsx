@@ -150,6 +150,22 @@ export default function EmployeeDashboard() {
   const [draftSupervisor, setDraftSupervisor] = useState<string | null>(null);
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>(() => getStoredExpedientes());
 
+  useEffect(() => {
+    const fetchExp = async () => {
+      try {
+        const res = await api.get('/rd-intranet/v1/expedientes');
+        if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+          setGlobalExpedientes(res.data);
+        }
+      } catch (e) {
+        console.warn('Error fetching expedientes in EmployeeDashboard:', e);
+      }
+    };
+    fetchExp();
+    window.addEventListener('rd_expedientes_updated', fetchExp);
+    return () => window.removeEventListener('rd_expedientes_updated', fetchExp);
+  }, []);
+
   const markFeedbackRead = (id: string | number) => {
     localStorage.setItem(`rd_notif_read_${id}`, 'true');
     setNotifications(prev => prev.map(n => String(n.id) === String(id) ? { ...n, read: true } : n));

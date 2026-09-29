@@ -1,8 +1,8 @@
-import { Plus, X, FileDigit } from 'lucide-react';
+import { Plus, X, FileDigit, CheckCircle2 } from 'lucide-react';
 import type { Ingreso } from '../../types/libros';
 import { format } from 'date-fns';
-import React, { useState, useEffect } from 'react';
-import api from '../../lib/api';
+import React, { useState, useEffect, useMemo } from 'react';
+import api, { submitToServer } from '../../lib/api';
 
 interface TabLibroIngresosProps {
   ingresos: Ingreso[];
@@ -25,6 +25,7 @@ export default function TabLibroIngresos({
 
 
   const [globalExpedientesInfo, setGlobalExpedientesInfo] = useState<any[]>([]);
+  const [syncStatus, setSyncStatus] = useState<string | null>(null);
 
   useEffect(() => {
     // Cargar correlativos usados globales
@@ -32,7 +33,7 @@ export default function TabLibroIngresos({
       try {
         const [, expRes, reservedRes] = await Promise.all([
           api.get('/rd-intranet/v1/correlatives').catch(() => ({ data: [] })),
-          api.get('/rd-intranet/v1/expedientes'),
+          api.get('/rd-intranet/v1/expedientes').catch(() => ({ data: [] })),
           api.get('/rd-intranet/v1/reserved-expedientes').catch(() => ({ data: [] }))
         ]);
         const closed = expRes.data && Array.isArray(expRes.data) ? expRes.data : [];
@@ -45,16 +46,104 @@ export default function TabLibroIngresos({
     
     fetchCorrelatives();
     
+    const handleRemoteUpdate = () => fetchCorrelatives();
+    window.addEventListener('rd_expedientes_updated', handleRemoteUpdate);
+    
     // Polling cada 60 segundos para evitar saturación de peticiones (Rate Limit 429)
     const interval = setInterval(fetchCorrelatives, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('rd_expedientes_updated', handleRemoteUpdate);
+    };
   }, []);
 
-  const handleAddRow = () => {
+  // Cálculo inteligente del siguiente correlativo por tipo
+  const getNextSequential = (tipo: string, currentList: Ingreso[]) => {
     const year = new Date().getFullYear();
+    const nomenclatura = NOMENCLATURAS.find(n => n.tipo === tipo);
+    const prefix = (nomenclatura?.prefix || 'RD-J-{year}-').replace('{year}', year.toString());
+    
+    let max = 0;
+
+    // Buscar en ingresos locales
+    currentList.forEach(i => {
+      if (i.tipo === tipo && i.numeroExpediente) {
+        const parts = i.numeroExpediente.split('-');
+        const last = parts[parts.length - 1];
+        const num = parseInt(last, 10);
+        if (!isNaN(num) && num < 10000 && num > max) max = num;
+      }
+    });
+
+    // Buscar en expedientes globales
+    globalExpedientesInfo.forEach(g => {
+      const gTipo = g.tipo || g.materia;
+      const gNum = g.numeroExpediente || g.numero;
+      if (gNum) {
+        const matchesTipo = gTipo === tipo || 
+          (tipo === 'Judicial' && gNum.startsWith(`RD-J-${year}-`)) ||
+          (tipo === 'Administrativo' && gNum.startsWith(`RD-AD-${year}-`));
+        if (matchesTipo) {
+          const parts = gNum.split('-');
+          const last = parts[parts.length - 1];
+          const num = parseInt(last, 10);
+          if (!isNaN(num) && num < 10000 && num > max) max = num;
+        }
+      }
+    });
+
+    const nextNum = (max + 1).toString().padStart(3, '0');
+    return { prefix, nextNum, full: prefix + nextNum, max };
+  };
+
+  const judicialSeq = useMemo(() => getNextSequential('Judicial', ingresos), [ingresos, globalExpedientesInfo]);
+  const adminSeq = useMemo(() => getNextSequential('Administrativo', ingresos), [ingresos, globalExpedientesInfo]);
+
+  // Auto-sincronización en segundo plano hacia Supabase (Expedientes y Casos)
+  useEffect(() => {
+    if (reportSubmitted) return;
+
+    const timer = setTimeout(async () => {
+      const year = new Date().getFullYear();
+      const validIngresosToSync = ingresos.filter(ing => {
+        const num = (ing.numeroExpediente || '').trim();
+        const hasNumber = num.length > `RD-X-${year}-`.length || /\d{2,}/.test(num);
+        return hasNumber && (ing.partes?.trim() || ing.organismoTribunal?.trim());
+      });
+
+      if (validIngresosToSync.length === 0) return;
+
+      try {
+        const currentUserName = localStorage.getItem('rd_user_name') || 'Usuario';
+        const payload = validIngresosToSync.map(ing => ({
+          numeroExpediente: ing.numeroExpediente.trim(),
+          partes: ing.partes?.trim() || 'Nuevo ingreso',
+          organismoTribunal: ing.organismoTribunal?.trim() || '',
+          tribunal: ing.organismoTribunal?.trim() || '',
+          tipo: ing.tipo || 'Judicial',
+          materia: ing.tipo || 'Judicial',
+          resumen: ing.resumen || '',
+          observaciones: ing.observaciones || '',
+          usuario: currentUserName
+        }));
+
+        await submitToServer('/rd-intranet/v1/expedientes', { expedientes: payload });
+        setSyncStatus('Sincronizado automáticamente con Expedientes & Casos');
+        window.dispatchEvent(new CustomEvent('rd_expedientes_updated'));
+        setTimeout(() => setSyncStatus(null), 3500);
+      } catch (err) {
+        console.warn('Error auto-sincronizando ingresos a expedientes:', err);
+      }
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [ingresos, reportSubmitted]);
+
+  const handleAddRow = () => {
+    const seq = getNextSequential('Judicial', ingresos);
     const newIngreso: Ingreso = {
       id: Math.random().toString(36).substring(7),
-      numeroExpediente: `RD-J-${year}-`,
+      numeroExpediente: seq.full,
       fechaIngreso: format(new Date(), 'yyyy-MM-dd'),
       horaIngreso: format(new Date(), 'HH:mm'),
       tipo: 'Judicial',
@@ -75,54 +164,14 @@ export default function TabLibroIngresos({
   };
 
   const handleTipoChange = (id: string, nuevoTipo: string) => {
-    const year = new Date().getFullYear();
-    const nomenclatura = NOMENCLATURAS.find(n => n.tipo === nuevoTipo);
-    
-    setIngresos(currentIngresos => {
-      // Find the specific record
-      const record = currentIngresos.find(i => i.id === id);
-      if (!record || !nomenclatura) return currentIngresos;
-
-      const expectedPrefix = nomenclatura.prefix.replace('{year}', year.toString());
-      let finalExpediente = expectedPrefix;
-
-      if (nuevoTipo !== 'Judicial') {
-        // Auto-generate for non-Judicial combining local and global state
-        const sameTypeLocal = currentIngresos.filter(i => i.tipo === nuevoTipo && i.id !== id);
-        let max = 0;
-        
-        // Check local
-        sameTypeLocal.forEach(i => {
-          const parts = i.numeroExpediente.split('-');
-          const num = parseInt(parts[parts.length - 1], 10);
-          if (!isNaN(num) && num > max) max = num;
-        });
-
-        // Check global (includes reserved and closed)
-        globalExpedientesInfo.forEach(g => {
-          if (g.tipo === nuevoTipo && g.numeroExpediente) {
-            const parts = g.numeroExpediente.split('-');
-            const num = parseInt(parts[parts.length - 1], 10);
-            if (!isNaN(num) && num > max) max = num;
-          }
-        });
-
-        const nextNum = (max + 1).toString().padStart(3, '0');
-        finalExpediente = expectedPrefix + nextNum;
-      } else {
-        // Keep existing sequential for Judicial if it exists
-        const parts = record.numeroExpediente.split('-');
-        const lastPart = parts[parts.length - 1];
-        const hasSequential = lastPart && !isNaN(Number(lastPart));
-        finalExpediente = expectedPrefix + (hasSequential ? lastPart : '');
-      }
-
-      return currentIngresos.map(ingreso => 
-        ingreso.id === id 
-          ? { ...ingreso, tipo: nuevoTipo, numeroExpediente: finalExpediente }
+    const seq = getNextSequential(nuevoTipo, ingresos.filter(i => i.id !== id));
+    setIngresos(currentIngresos =>
+      currentIngresos.map(ingreso =>
+        ingreso.id === id
+          ? { ...ingreso, tipo: nuevoTipo, numeroExpediente: seq.full }
           : ingreso
-      );
-    });
+      )
+    );
   };
 
   return (
@@ -143,6 +192,43 @@ export default function TabLibroIngresos({
             <Plus className="w-5 h-5" /> Nuevo Ingreso
           </button>
         )}
+      </div>
+
+      {/* Banner de Correlativos Oficiales en Tiempo Real */}
+      <div className="bg-gradient-to-r from-blue-50/70 via-indigo-50/50 to-slate-50 border border-blue-100 rounded-2xl p-4 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shadow-sm shrink-0">
+            <FileDigit className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-extrabold text-slate-800">Control de Correlativos en Tiempo Real</span>
+              {syncStatus && (
+                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md flex items-center gap-1 border border-emerald-300 animate-in fade-in">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" /> {syncStatus}
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 font-medium mt-0.5">
+              Al guardar un expediente aquí, se registra automáticamente en Expedientes & Casos y en Actuaciones Diarias.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 flex-wrap self-stretch md:self-auto">
+          <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-2">
+            <span className="text-slate-400 font-bold text-xs">Siguiente Judicial:</span>
+            <span className="font-mono font-black text-blue-700 text-xs">
+              {judicialSeq.full}
+            </span>
+          </div>
+          <div className="bg-white border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs flex items-center gap-2">
+            <span className="text-slate-400 font-bold text-xs">Siguiente Admin:</span>
+            <span className="font-mono font-black text-indigo-700 text-xs">
+              {adminSeq.full}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
