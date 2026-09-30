@@ -1300,7 +1300,7 @@ export default function AdminDashboard() {
   const pendingGastosCount = pendingGastosList.length;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
+    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500 pb-24 sm:pb-16">
       <SystemAlertModal
         isOpen={systemAlert.isOpen}
         type={systemAlert.type}

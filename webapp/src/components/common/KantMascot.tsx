@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react';
-import { Sparkles, X, ShieldCheck, Heart } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Sparkles, X, ShieldCheck, Heart, ChevronRight, EyeOff } from 'lucide-react';
 
 interface KantMascotProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -80,6 +80,23 @@ export default function KantMascot({
   const [currentQuoteIndex, setCurrentQuoteIndex] = useState(0);
   const [showHearts, setShowHearts] = useState(false);
   const clickCount = useRef(0);
+  const mascotRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar el globo de diálogo al hacer clic afuera
+  useEffect(() => {
+    if (!showSpeech) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (mascotRef.current && !mascotRef.current.contains(e.target as Node)) {
+        setShowSpeech(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showSpeech]);
 
   const handleClick = () => {
     // Activa salto alegre
@@ -118,7 +135,7 @@ export default function KantMascot({
   }[size];
 
   return (
-    <div className={`relative inline-flex items-center justify-center select-none ${className}`}>
+    <div ref={mascotRef} className={`relative inline-flex items-center justify-center select-none ${className}`}>
       {/* Halo y Aura de Glow Dinámico Dorado/Ámbar */}
       <div 
         className={`absolute rounded-full bg-gradient-to-r from-amber-400/30 via-yellow-300/25 to-amber-500/30 blur-md pointer-events-none transition-all duration-500 ${auraSize} ${
@@ -143,7 +160,7 @@ export default function KantMascot({
       <button
         type="button"
         onClick={handleClick}
-        title="¡Hola! Soy Kant 🐾 Haz clic para interactuar"
+        aria-label="Kant Mascota"
         className={`relative cursor-pointer transition-transform duration-300 active:scale-95 group focus:outline-none flex items-center justify-center ${
           isExcited ? 'dog-excited' : 'dog-idle'
         }`}
@@ -236,13 +253,97 @@ export function KantFloatingCompanion({
   onNavigate?: (tab: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(() => {
+    return localStorage.getItem('rd_kant_guardian_minimized') === 'true';
+  });
+  const [isDismissed, setIsDismissed] = useState(() => {
+    return sessionStorage.getItem('rd_kant_guardian_dismissed') === 'true';
+  });
+
+  const containerRef = useRef<HTMLDivElement>(null);
   const totalAlerts = pendingReviews + pendingGastos + unreadReplies;
 
-  if (isDismissed) return null;
+  // Cerrar al hacer clic o tocar afuera ("dar a un lado")
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const handleToggleMinimize = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const next = !isMinimized;
+    setIsMinimized(next);
+    localStorage.setItem('rd_kant_guardian_minimized', String(next));
+    if (next) setIsOpen(false);
+  };
+
+  const handleDismiss = (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsDismissed(true);
+    sessionStorage.setItem('rd_kant_guardian_dismissed', 'true');
+    setIsOpen(false);
+  };
+
+  if (isDismissed) {
+    // Mini botón discreto en la esquina inferior para restaurar
+    return (
+      <button
+        onClick={() => {
+          setIsDismissed(false);
+          sessionStorage.removeItem('rd_kant_guardian_dismissed');
+        }}
+        className="fixed bottom-2 right-2 z-40 bg-slate-900/60 hover:bg-slate-900 text-amber-400 p-1.5 rounded-full border border-amber-400/30 text-[10px] font-bold shadow-lg backdrop-blur-md opacity-40 hover:opacity-100 transition-all cursor-pointer flex items-center gap-1"
+        aria-label="Restaurar Kant Guardián"
+      >
+        <span>🐾</span>
+        {totalAlerts > 0 && (
+          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+        )}
+      </button>
+    );
+  }
+
+  // Estado Minimizado (A un lado, estilo pestaña en el borde derecho para no estorbar)
+  if (isMinimized) {
+    return (
+      <div 
+        ref={containerRef}
+        className="fixed bottom-4 right-0 z-40 flex items-center transition-all duration-300"
+      >
+        <button
+          onClick={handleToggleMinimize}
+          className="bg-slate-900/95 hover:bg-slate-900 border-l border-y border-amber-400/60 pl-2.5 pr-1.5 py-1.5 rounded-l-2xl shadow-xl backdrop-blur-xl flex items-center gap-1.5 text-amber-300 cursor-pointer hover:pl-3.5 transition-all group"
+          aria-label="Expandir KANT Guardián"
+        >
+          <span className="text-sm">🐾</span>
+          {totalAlerts > 0 && (
+            <span className="min-w-[16px] h-[16px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+              {totalAlerts}
+            </span>
+          )}
+          <span className="text-[10px] font-black hidden group-hover:inline transition-all text-amber-400">
+            KANT
+          </span>
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex flex-col items-end gap-2 font-sans select-none max-w-[calc(100vw-1.5rem)]">
+    <div 
+      ref={containerRef}
+      className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex flex-col items-end gap-2 font-sans select-none max-w-[calc(100vw-1.5rem)]"
+    >
       {/* Menú Desplegable de Resumen KANT Guardián */}
       {isOpen && (
         <div className="w-[calc(100vw-2rem)] sm:w-72 max-w-xs bg-slate-900/95 backdrop-blur-2xl border border-amber-400/40 rounded-3xl p-3.5 sm:p-4 shadow-2xl text-white animate-in fade-in slide-in-from-bottom-3 duration-200 glow-amber-sm">
@@ -258,12 +359,24 @@ export function KantFloatingCompanion({
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={handleToggleMinimize}
+                title="Poner a un lado (minimizar al borde)"
+                className="p-1 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Minimizar al borde"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                title="Cerrar menú"
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                aria-label="Cerrar"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <div className="py-3 space-y-2 text-xs">
@@ -311,40 +424,57 @@ export function KantFloatingCompanion({
           </div>
 
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-            <span className="text-amber-400 font-bold">🐾 Siempre a tu lado</span>
             <button
-              onClick={() => setIsDismissed(true)}
-              className="hover:text-rose-400 transition-colors cursor-pointer"
+              onClick={handleToggleMinimize}
+              className="text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
             >
-              Ocultar guardián
+              <ChevronRight className="w-3 h-3" /> Poner a un lado
+            </button>
+            <button
+              onClick={handleDismiss}
+              className="hover:text-rose-400 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <EyeOff className="w-3 h-3" /> Ocultar guardián
             </button>
           </div>
         </div>
       )}
 
-      {/* Botón Flotante con Perrito Animado */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="group relative flex items-center gap-2.5 bg-slate-900/90 hover:bg-slate-900 border border-amber-400/40 hover:border-amber-400 p-2 pr-3.5 rounded-full shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 glow-pulse-amber cursor-pointer"
-        title="KANT Guardián - Clic para ver estado"
-      >
-        <div className="relative">
-          <KantMascot size="sm" showSpeechOnClick={false} soundEnabled={false} />
-          {totalAlerts > 0 && (
-            <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-slate-900 shadow-md animate-pulse">
-              {totalAlerts}
-            </span>
-          )}
-        </div>
-        <div className="text-left hidden sm:block">
-          <p className="text-[11px] font-black text-amber-300 leading-tight flex items-center gap-1">
-            KANT Guardián <Sparkles className="w-3 h-3 text-amber-400" />
-          </p>
-          <p className="text-[9px] text-slate-400 font-medium">
-            {totalAlerts > 0 ? `${totalAlerts} pendientes` : 'Todo al día'}
-          </p>
-        </div>
-      </button>
+      {/* Botón Flotante con Perrito Animado y Acciones de Ocultar/Minimizar */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="group relative flex items-center gap-2.5 bg-slate-900/90 hover:bg-slate-900 border border-amber-400/40 hover:border-amber-400 p-2 pr-3.5 rounded-full shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 glow-pulse-amber cursor-pointer"
+          aria-label="KANT Guardián"
+        >
+          <div className="relative">
+            <KantMascot size="sm" showSpeechOnClick={false} soundEnabled={false} />
+            {totalAlerts > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-slate-900 shadow-md animate-pulse">
+                {totalAlerts}
+              </span>
+            )}
+          </div>
+          <div className="text-left hidden sm:block">
+            <p className="text-[11px] font-black text-amber-300 leading-tight flex items-center gap-1">
+              KANT Guardián <Sparkles className="w-3 h-3 text-amber-400" />
+            </p>
+            <p className="text-[9px] text-slate-400 font-medium">
+              {totalAlerts > 0 ? `${totalAlerts} pendientes` : 'Todo al día'}
+            </p>
+          </div>
+        </button>
+
+        {/* Botón rápido para poner a un lado sin abrir menú */}
+        <button
+          onClick={handleToggleMinimize}
+          className="w-6 h-6 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-amber-300 border border-slate-700/80 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-70 hover:opacity-100"
+          title="Poner a un lado"
+          aria-label="Poner a un lado"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
     </div>
   );
 }

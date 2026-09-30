@@ -1218,7 +1218,7 @@ export default function EmployeeDashboard() {
   const isLateClosure = clockInDateStr && clockInDateStr < todayStr;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-300">
+    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-300 pb-24 sm:pb-16">
       <SystemAlertModal
         isOpen={systemAlert.isOpen}
         type={systemAlert.type}
