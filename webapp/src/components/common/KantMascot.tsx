@@ -1,5 +1,6 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, X, ShieldCheck, Heart, ChevronRight, EyeOff } from 'lucide-react';
+import { getEfemerideDelDia } from '../../lib/efemeridesVenezuela';
 
 interface KantMascotProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -82,6 +83,21 @@ export default function KantMascot({
   const clickCount = useRef(0);
   const mascotRef = useRef<HTMLDivElement>(null);
 
+  // Efeméride de hoy para personalizar frases de Kant
+  const todayEfemeride = useMemo(() => {
+    return getEfemerideDelDia(new Date());
+  }, []);
+
+  const activeQuotes = useMemo(() => {
+    if (todayEfemeride && todayEfemeride.mensajeKant) {
+      return [
+        todayEfemeride.mensajeKant,
+        ...KANT_QUOTES
+      ];
+    }
+    return KANT_QUOTES;
+  }, [todayEfemeride]);
+
   // Cerrar el globo de diálogo al hacer clic afuera
   useEffect(() => {
     if (!showSpeech) return;
@@ -114,7 +130,7 @@ export default function KantMascot({
 
     if (showSpeechOnClick) {
       clickCount.current += 1;
-      setCurrentQuoteIndex((prev) => (prev + 1) % KANT_QUOTES.length);
+      setCurrentQuoteIndex((prev) => (prev + 1) % activeQuotes.length);
       setShowSpeech(true);
     }
   };
@@ -207,7 +223,7 @@ export default function KantMascot({
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Kant dice:</span>
+              <span>{todayEfemeride && currentQuoteIndex === 0 ? 'Kant celebra:' : 'Kant dice:'}</span>
             </div>
             <button
               type="button"
@@ -222,8 +238,15 @@ export default function KantMascot({
           </div>
 
           <p className="text-xs text-slate-200 font-medium leading-relaxed">
-            {KANT_QUOTES[currentQuoteIndex]}
+            {activeQuotes[currentQuoteIndex]}
           </p>
+
+          {todayEfemeride && currentQuoteIndex === 0 && (
+            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
+              <span className="text-xs">{todayEfemeride.icono}</span>
+              <span className="truncate">{todayEfemeride.titulo}</span>
+            </div>
+          )}
 
           <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
             <span className="flex items-center gap-1">

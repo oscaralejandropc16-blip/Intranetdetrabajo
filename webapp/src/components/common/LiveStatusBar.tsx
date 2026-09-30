@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Clock, 
   DollarSign, 
@@ -10,9 +10,15 @@ import {
   Cloud, 
   MapPin, 
   ChevronDown, 
-  RefreshCw
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 import { syncServerTime, getServerDateSync } from '../../lib/supabaseAdapter';
+import { 
+  getEfemerideDelDia, 
+  getProximasEfemerides 
+} from '../../lib/efemeridesVenezuela';
+import EfemeridesModal from './EfemeridesModal';
 
 interface CityWeather {
   name: string;
@@ -54,6 +60,19 @@ export default function LiveStatusBar() {
   const [selectedCityIndex, setSelectedCityIndex] = useState<number>(0);
   const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>({});
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+
+  // 4. Estado de Efemérides de Venezuela
+  const [isEfemeridesModalOpen, setIsEfemeridesModalOpen] = useState(false);
+
+  const todayEfemeride = useMemo(() => {
+    return getEfemerideDelDia(currentTime);
+  }, [currentTime]);
+
+  const proximaEfemeride = useMemo(() => {
+    if (todayEfemeride) return null;
+    const proximas = getProximasEfemerides(currentTime, 30);
+    return proximas.length > 0 ? proximas[0] : null;
+  }, [currentTime, todayEfemeride]);
 
   // Efecto Reloj en Vivo sincronizado con la hora oficial del servidor (cada 1 segundo)
   useEffect(() => {
@@ -225,6 +244,45 @@ export default function LiveStatusBar() {
           </div>
         </div>
 
+        {/* SECCIÓN EFEMÉRIDES DE VENEZUELA (INTERACTIVA) */}
+        <button
+          type="button"
+          onClick={() => setIsEfemeridesModalOpen(true)}
+          className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-all duration-300 cursor-pointer text-left group shrink-0 ${
+            todayEfemeride 
+              ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-400/60 shadow-[0_0_15px_rgba(245,158,11,0.25)] ring-1 ring-amber-400/30' 
+              : 'bg-slate-950/80 hover:bg-slate-950 border-white/10 hover:border-amber-400/50 shadow-inner'
+          }`}
+          title="Ver Efemérides de Venezuela y Feriados Legales"
+        >
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform ${
+            todayEfemeride 
+              ? 'bg-amber-500/30 border border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.3)]' 
+              : 'bg-slate-800/80 border border-slate-700'
+          }`}>
+            {todayEfemeride ? todayEfemeride.icono : '🇻🇪'}
+          </div>
+          <div className="min-w-0 max-w-[190px] sm:max-w-[220px]">
+            <div className="flex items-center gap-1.5">
+              <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded border ${
+                todayEfemeride 
+                  ? 'bg-amber-400 text-slate-950 border-amber-300' 
+                  : 'bg-slate-800 text-amber-300 border-amber-500/30'
+              }`}>
+                {todayEfemeride ? 'HOY EN VENEZUELA' : 'EFEMÉRIDES VZLA'}
+              </span>
+              <Sparkles className="w-3 h-3 text-amber-400 shrink-0 opacity-80 group-hover:opacity-100" />
+            </div>
+            <p className="text-[11px] font-bold text-white leading-tight truncate mt-0.5">
+              {todayEfemeride 
+                ? todayEfemeride.titulo 
+                : proximaEfemeride 
+                  ? `${proximaEfemeride.icono} ${proximaEfemeride.titulo}` 
+                  : 'Explorar Fechas Patrias & Legales'}
+            </p>
+          </div>
+        </button>
+
         {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) CON GLOW NEÓN RESPONSIVE */}
         <div className="flex items-center gap-1.5 sm:gap-2 justify-between md:justify-center w-full md:w-auto">
           {/* Tarjeta USD BCV Neón */}
@@ -347,6 +405,13 @@ export default function LiveStatusBar() {
         </div>
 
       </div>
+      
+      {/* Modal Interactivo de Efemérides & Feriados de Venezuela */}
+      <EfemeridesModal
+        isOpen={isEfemeridesModalOpen}
+        onClose={() => setIsEfemeridesModalOpen(false)}
+        currentDate={currentTime}
+      />
     </div>
   );
 }
