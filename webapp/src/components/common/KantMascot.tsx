@@ -163,11 +163,11 @@ export default function KantMascot({
         </div>
       </button>
 
-      {/* Globo de Diálogo Interactivo (Speech Bubble) */}
+      {/* Globo de Diálogo Interactivo (Speech Bubble) Responsive */}
       {showSpeech && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2.5 z-50 w-64 sm:w-72 bg-slate-900/95 backdrop-blur-xl border border-amber-400/40 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2.5 z-50 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] bg-slate-900/95 backdrop-blur-xl border border-amber-400/40 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200">
           {/* Triángulo indicador hacia el perrito */}
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-slate-900 border-t border-l border-amber-400/40 rotate-45"></div>
+          <div className="absolute -top-1.5 left-5 sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 bg-slate-900 border-t border-l border-amber-400/40 rotate-45"></div>
 
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
@@ -205,7 +205,7 @@ export default function KantMascot({
   );
 }
 
-// Widget Flotante Opcional: Kant Companion / Asistente Guardián
+// Widget Flotante Opcional: Kant Companion / Asistente Guardián Responsive
 export function KantFloatingCompanion({ 
   pendingReviews = 0, 
   pendingGastos = 0,
@@ -222,10 +222,10 @@ export function KantFloatingCompanion({
   if (isDismissed) return null;
 
   return (
-    <div className="fixed bottom-5 right-5 z-40 flex flex-col items-end gap-2 font-sans select-none">
+    <div className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex flex-col items-end gap-2 font-sans select-none max-w-[calc(100vw-1.5rem)]">
       {/* Menú Desplegable de Resumen KANT Guardián */}
       {isOpen && (
-        <div className="w-72 bg-slate-900/95 backdrop-blur-2xl border border-amber-400/40 rounded-3xl p-4 shadow-2xl text-white animate-in fade-in slide-in-from-bottom-3 duration-200 glow-amber-sm">
+        <div className="w-[calc(100vw-2rem)] sm:w-72 max-w-xs bg-slate-900/95 backdrop-blur-2xl border border-amber-400/40 rounded-3xl p-3.5 sm:p-4 shadow-2xl text-white animate-in fade-in slide-in-from-bottom-3 duration-200 glow-amber-sm">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm">

@@ -12,6 +12,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import LiveStatusBar from './common/LiveStatusBar';
+import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1292,29 +1293,29 @@ export default function EmployeeDashboard() {
         </div>
       )}
 
-      {/* 5 PESTAÑAS PRINCIPALES: COMPACTAS, ELEGANTES Y NÍTIDAS */}
-      <div className="flex overflow-x-auto gap-1.5 p-1 bg-slate-200/80 rounded-2xl border border-slate-300/80 scrollbar-none">
+      {/* PESTAÑAS PRINCIPALES: COMPACTAS, ELEGANTES, RESPONSIVE Y GLOW */}
+      <div className="flex overflow-x-auto gap-1.5 p-1.5 bg-slate-200/90 backdrop-blur-xl rounded-2xl border border-slate-300/80 scrollbar-none shadow-xs">
         <button 
           onClick={() => setActiveTab('jornada')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'jornada' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Clock className="w-3.5 h-3.5 text-amber-500" />
+          <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>Mi Jornada & Libros</span>
         </button>
         
         <button 
           onClick={() => setActiveTab('chat')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'chat' 
-              ? 'bg-[#00a884] text-white shadow-md shadow-emerald-600/30' 
-              : 'text-emerald-700 hover:text-emerald-950 hover:bg-emerald-50'
+              ? 'bg-gradient-to-r from-[#00a884] to-emerald-600 text-white font-black shadow-md shadow-emerald-600/30' 
+              : 'text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50/80'
           }`}
         >
-          <MessageSquare className={`w-3.5 h-3.5 ${activeTab === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
+          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
           <span>Chat con Jefatura</span>
           {unreadChatLive > 0 && (
             <span className={`px-1.5 py-0.2 font-black text-[10px] rounded-full animate-pulse ${activeTab === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-white'}`}>
@@ -1325,39 +1326,39 @@ export default function EmployeeDashboard() {
 
         <button 
           onClick={() => setActiveTab('expedientes')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'expedientes' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Scale className="w-3.5 h-3.5 text-blue-500" />
+          <Scale className="w-3.5 h-3.5 text-blue-500 shrink-0" />
           <span>Expedientes & Casos</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('gastos')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'gastos' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Receipt className="w-3.5 h-3.5 text-amber-500" />
+          <Receipt className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <span>Gastos & Reembolsos</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('notificaciones')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'notificaciones' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <div className="relative">
+          <div className="relative shrink-0">
             <MessageSquare className="w-3.5 h-3.5 text-emerald-500" />
-            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full"></span>}
+            {unreadCount > 0 && <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping"></span>}
           </div>
           <span>Buzón</span>
           {unreadCount > 0 && (
@@ -1369,25 +1370,25 @@ export default function EmployeeDashboard() {
 
         <button 
           onClick={() => setActiveTab('historial')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'historial' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-purple-500/10 ring-1 ring-purple-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <History className="w-3.5 h-3.5 text-purple-500" />
+          <History className="w-3.5 h-3.5 text-purple-500 shrink-0" />
           <span>Mi Historial</span>
         </button>
 
         <button 
           onClick={() => setActiveTab('investigaciones')}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer ${
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'investigaciones' 
-              ? 'bg-white text-slate-900 shadow-sm' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-indigo-500/10 ring-1 ring-indigo-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <BookOpen className="w-3.5 h-3.5 text-indigo-500" />
+          <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
           <span>Biblioteca & Sentencias</span>
         </button>
       </div>
@@ -1646,6 +1647,9 @@ export default function EmployeeDashboard() {
         )}
 
       </div>
+
+      {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE RESPONSIVE */}
+      <KantFloatingCompanion unreadReplies={unreadCount} />
     </div>
   );
 }

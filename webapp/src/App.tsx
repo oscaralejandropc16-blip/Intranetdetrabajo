@@ -135,34 +135,34 @@ function App() {
     <Router>
       <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
         {/* Navbar Corporativo Responsive con Glow y Mascota Animada */}
-        <nav className="bg-slate-900/95 backdrop-blur-xl border-b border-amber-500/30 px-4 sm:px-8 py-3.5 flex justify-between items-center shadow-xl sticky top-0 z-50">
-          <div className="flex items-center gap-2.5 sm:gap-3.5">
+        <nav className="bg-slate-900/95 backdrop-blur-xl border-b border-amber-500/30 px-3 sm:px-8 py-3 flex justify-between items-center shadow-xl sticky top-0 z-50">
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
             <KantMascot size="sm" userName={userName} />
-            <div className="flex items-center gap-1.5">
-              <h1 className="text-lg sm:text-xl font-bold text-white tracking-wide flex items-center gap-1.5">
-                Plataforma <span className="text-amber-400 font-black tracking-wider text-glow-amber">KANT</span>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <h1 className="text-base sm:text-xl font-bold text-white tracking-wide flex items-center gap-1 truncate">
+                <span className="hidden sm:inline">Plataforma</span> <span className="text-amber-400 font-black tracking-wider text-glow-amber">KANT</span>
               </h1>
-              <span className="relative flex h-2 w-2 ml-1" title="Sistema KANT en línea">
+              <span className="relative flex h-2 w-2 shrink-0" title="Sistema KANT en línea">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
             </div>
           </div>
-          <div className="flex gap-2.5 sm:gap-4 items-center">
+          <div className="flex gap-2 sm:gap-4 items-center shrink-0">
             {isAdmin ? (
-              <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-yellow-500/15 border border-amber-500/40 px-3 sm:px-3.5 py-1.5 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] glow-amber-sm">
-                <Shield className="w-4 h-4 text-amber-400" />
-                <span className="text-xs font-black text-amber-300 tracking-wider uppercase">Jefatura</span>
+              <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-yellow-500/15 border border-amber-500/40 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] glow-amber-sm">
+                <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wider uppercase">Jefatura</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 bg-slate-800/90 border border-slate-700/80 px-3 py-1.5 rounded-xl shadow-xs">
-                <Briefcase className="w-4 h-4 text-blue-400" />
-                <span className="text-xs font-bold text-slate-300">Abogado / Empleado</span>
+              <div className="flex items-center gap-1 bg-slate-800/90 border border-slate-700/80 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl shadow-xs">
+                <Briefcase className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-bold text-slate-300 hidden sm:inline">Personal</span>
               </div>
             )}
-            <div className="hidden sm:block w-px h-6 bg-slate-700/80 mx-1 sm:mx-2"></div>
+            <div className="hidden sm:block w-px h-6 bg-slate-700/80 mx-1"></div>
             <span className="hidden md:block text-slate-300 font-semibold text-sm">Bienvenido, {userName || 'Usuario'}</span>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border border-amber-400/60 shadow-[0_0_10px_rgba(245,158,11,0.3)] flex items-center justify-center text-xs font-black text-white uppercase flex-shrink-0">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-br from-slate-700 to-slate-800 border border-amber-400/60 shadow-[0_0_10px_rgba(245,158,11,0.3)] flex items-center justify-center text-[10px] sm:text-xs font-black text-white uppercase flex-shrink-0">
               {String(userName || 'US').substring(0, 2)}
             </div>
             
@@ -176,13 +176,13 @@ function App() {
                 setConfirmPassword('');
               }}
               title="Cambiar Contraseña"
-              className="text-slate-400 hover:text-amber-400 text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer sm:ml-2 sm:border-l border-slate-700/80 sm:pl-3"
+              className="text-slate-400 hover:text-amber-400 text-xs sm:text-sm font-medium transition-colors flex items-center gap-1 cursor-pointer sm:ml-1 sm:border-l border-slate-700/80 sm:pl-3 p-1"
             >
-              <KeyRound className="w-4 h-4" />
+              <KeyRound className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">Clave</span>
             </button>
 
-            <button onClick={handleLogout} className="text-slate-400 hover:text-rose-400 text-sm font-semibold transition-colors cursor-pointer px-1 py-0.5">Salir</button>
+            <button onClick={handleLogout} className="text-slate-400 hover:text-rose-400 text-xs sm:text-sm font-semibold transition-colors cursor-pointer px-1 py-1">Salir</button>
           </div>
         </nav>
 

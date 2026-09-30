@@ -225,41 +225,41 @@ export default function LiveStatusBar() {
           </div>
         </div>
 
-        {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) CON GLOW NEÓN */}
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between md:justify-center">
+        {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) CON GLOW NEÓN RESPONSIVE */}
+        <div className="flex items-center gap-1.5 sm:gap-2 justify-between md:justify-center w-full md:w-auto">
           {/* Tarjeta USD BCV Neón */}
-          <div className="flex items-center gap-2 bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-500/40 hover:border-emerald-400 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(16,185,129,0.3)] hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] min-w-[120px] transition-all duration-300 group cursor-default">
-            <div className="w-6 h-6 rounded-md bg-emerald-500/25 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(16,185,129,0.4)] group-hover:scale-110 transition-transform">
-              <DollarSign className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-500/40 hover:border-emerald-400 px-2.5 sm:px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(16,185,129,0.3)] hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] min-w-0 transition-all duration-300 group cursor-default">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-emerald-500/25 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(16,185,129,0.4)] group-hover:scale-110 transition-transform">
+              <DollarSign className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400">USD BCV</span>
-                <span className="relative flex h-1.5 w-1.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider text-emerald-400 truncate">USD BCV</span>
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white leading-tight font-mono tracking-tight">
+              <p className="text-[11px] sm:text-sm font-black text-white leading-tight font-mono tracking-tight truncate">
                 {dolarRate ? `Bs. ${dolarRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
           </div>
 
           {/* Tarjeta EUR BCV Neón */}
-          <div className="flex items-center gap-2 bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(59,130,246,0.3)] hover:shadow-[0_0_24px_rgba(59,130,246,0.5)] min-w-[120px] transition-all duration-300 group cursor-default">
-            <div className="w-6 h-6 rounded-md bg-blue-500/25 border border-blue-400/50 flex items-center justify-center text-blue-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(59,130,246,0.4)] group-hover:scale-110 transition-transform">
-              <Euro className="w-3.5 h-3.5" />
+          <div className="flex items-center gap-1.5 sm:gap-2 bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 px-2.5 sm:px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(59,130,246,0.3)] hover:shadow-[0_0_24px_rgba(59,130,246,0.5)] min-w-0 transition-all duration-300 group cursor-default">
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-blue-500/25 border border-blue-400/50 flex items-center justify-center text-blue-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(59,130,246,0.4)] group-hover:scale-110 transition-transform">
+              <Euro className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[8px] font-black uppercase tracking-wider text-blue-400">EUR BCV</span>
-                <span className="relative flex h-1.5 w-1.5">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1">
+                <span className="text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider text-blue-400 truncate">EUR BCV</span>
+                <span className="relative flex h-1.5 w-1.5 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
                 </span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white leading-tight font-mono tracking-tight">
+              <p className="text-[11px] sm:text-sm font-black text-white leading-tight font-mono tracking-tight truncate">
                 {euroRate ? `Bs. ${euroRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
@@ -270,7 +270,7 @@ export default function LiveStatusBar() {
             onClick={fetchRates}
             disabled={loadingRates}
             title="Actualizar Cotizaciones BCV"
-            className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all cursor-pointer shrink-0 active:scale-95"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all cursor-pointer shrink-0 active:scale-95"
           >
             <RefreshCw className={`w-3.5 h-3.5 transition-transform ${loadingRates ? 'animate-spin text-amber-400' : 'group-hover:rotate-180'}`} />
           </button>

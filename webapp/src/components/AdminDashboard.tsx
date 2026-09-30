@@ -136,7 +136,7 @@ export default function AdminDashboard() {
   };
 
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationTab, setNotificationTab] = useState<'respuestas' | 'supervision' | 'equipo'>('respuestas');
+  const [notificationTab, setNotificationTab] = useState<'gastos' | 'respuestas' | 'supervision' | 'equipo'>('gastos');
   const [repliesFilter, setRepliesFilter] = useState<'pendientes' | 'atendidos' | 'todos'>('pendientes');
   const [chatConfig, setChatConfig] = useState<{
     isOpen: boolean;
@@ -1399,124 +1399,6 @@ export default function AdminDashboard() {
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
 
-      {/* BANNER NOTIFICACIÓN DE GASTOS POR LIQUIDAR CON GLOW */}
-      {pendingGastosCount > 0 && (
-        <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/20 backdrop-blur-xl border border-amber-400/40 hover:border-amber-400/70 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(245,158,11,0.25)] glow-amber-sm animate-in slide-in-from-top-2 transition-all duration-300">
-          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black ring-2 ring-amber-400/60">
-              <Receipt className="w-5 h-5 animate-pulse" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]">
-                  Gastos por Liquidar
-                </span>
-                <span className="text-xs font-black text-amber-950">
-                  {pendingGastosCount} relación(es) de gastos pendientes de revisión y pago
-                </span>
-              </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
-                Última de: <span className="text-amber-900 underline">{pendingGastosList[0]?.empleado}</span> ({pendingGastosList[0]?.periodo}) — Total: <strong className="text-slate-950">${Number(pendingGastosList[0]?.totalUsd || 0).toFixed(2)} USD / Bs {Number(pendingGastosList[0]?.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveView('gastos')}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white font-black text-xs rounded-xl border border-amber-400/40 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.45)] transition-all cursor-pointer shrink-0 self-end sm:self-center shimmer-sweep active:scale-95 flex items-center gap-1.5"
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> Ir a Liquidar Gastos
-          </button>
-        </div>
-      )}
-
-      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO CON GLOW */}
-      {unreadEmployeeReplies.length > 0 && (
-        <div className="bg-gradient-to-r from-emerald-500/15 via-emerald-400/10 to-teal-500/15 backdrop-blur-xl border border-emerald-400/40 hover:border-emerald-400/70 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(16,185,129,0.25)] glow-emerald-sm animate-in slide-in-from-top-2 transition-all duration-300">
-          <div className="flex items-center gap-3.5 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-400/50">
-              <MessageSquare className="w-5 h-5 animate-bounce" style={{ animationDuration: '3s' }} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.3)]">
-                  Respuesta de Empleado
-                </span>
-                <span className="text-xs font-black text-emerald-950 capitalize">{unreadEmployeeReplies[0].author}</span>
-                <span className="text-[11px] text-slate-600 font-medium">({unreadEmployeeReplies[0].fecha_bitacora})</span>
-              </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-1 italic">
-                "{unreadEmployeeReplies[0].lastMessage?.mensaje || 'Nuevo mensaje'}"
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            <button
-              onClick={() => handleOpenChatForReply(unreadEmployeeReplies[0].lastMessage, unreadEmployeeReplies[0].messages)}
-              className="px-3.5 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all shadow-[0_0_12px_rgba(7,94,84,0.3)] hover:shadow-[0_0_18px_rgba(18,140,126,0.5)] flex items-center gap-1.5 cursor-pointer active:scale-95"
-              title="Abrir chat interactivo tipo WhatsApp"
-            >
-              <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat ({unreadEmployeeReplies[0].totalCount})
-            </button>
-            <button
-              onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0].lastMessage)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <FileText className="w-3.5 h-3.5" /> Ver Bitácora
-            </button>
-            <button
-              onClick={() => {
-                unreadEmployeeReplies[0].messages.forEach(m => markEmployeeReplyRead(m.id));
-              }}
-              className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Atendido
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* BANNER DESTACADO DE SUPERVISIÓN RECIBIDA ENTRE JEFES (COMPACTO) */}
-      {unreadFeedbacks.length > 0 && (
-        <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-blue-500/20 backdrop-blur-xl border border-blue-400/40 hover:border-blue-400/70 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(59,130,246,0.25)] glow-blue-sm animate-in slide-in-from-top-2 transition-all">
-          <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.4)]">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-xs">
-                  Supervisión de Jefatura
-                </span>
-                <span className="text-xs font-black text-blue-950">{unreadFeedbacks[0].supervisado_por || 'Jefatura'}</span>
-                <span className="text-[11px] text-slate-500 font-medium">({unreadFeedbacks[0].date})</span>
-              </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
-                "{unreadFeedbacks[0].comentario_admin}"
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-            <button
-              onClick={() => {
-                setSelectedReport(unreadFeedbacks[0]);
-                setAdminComment(unreadFeedbacks[0].comentario_admin || '');
-                setAdminProgramaciones(ensureArray(unreadFeedbacks[0].programaciones));
-                setAdminActuaciones(ensureArray(unreadFeedbacks[0].actuaciones));
-                setAdminIngresos(ensureArray(unreadFeedbacks[0].ingresos));
-              }}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            >
-              <FileText className="w-3.5 h-3.5" /> Ver Detalles
-            </button>
-            <button
-              onClick={() => markFeedbackAsRead(unreadFeedbacks[0].id, unreadFeedbacks[0])}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Leído
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Header Ejecutivo Compacto, Moderno y con Glow KANT */}
       <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-4 sm:p-5 text-white shadow-xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden transition-all glow-amber-sm">
@@ -1576,20 +1458,31 @@ export default function AdminDashboard() {
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/10 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
+              <div className="absolute right-0 mt-2 w-84 sm:w-[440px] max-w-[calc(100vw-1.5rem)] bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-amber-500/20 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
                 <div className="bg-slate-950 p-3.5 border-b border-white/5">
                   <div className="flex justify-between items-center text-white mb-2.5">
-                    <span className="font-bold text-xs tracking-widest uppercase text-amber-500 flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5" /> Centro de Alertas
+                    <span className="font-bold text-xs tracking-widest uppercase text-amber-400 flex items-center gap-1.5">
+                      <Bell className="w-3.5 h-3.5 text-amber-400" /> Centro de Notificaciones y Supervisión
                     </span>
                     <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                   </div>
 
-                  {/* Selector de Pestañas en la Campana */}
-                  <div className="flex gap-1 p-1 bg-slate-900 rounded-xl border border-white/5">
+                  {/* Selector de Pestañas en la Campana (4 categorías completas) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-900 rounded-xl border border-white/5 text-[11px]">
+                    <button
+                      onClick={() => setNotificationTab('gastos')}
+                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                        notificationTab === 'gastos' 
+                          ? 'bg-amber-500 text-slate-950 shadow-xs font-black' 
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      <Receipt className="w-3 h-3" />
+                      <span>Gastos ({pendingGastosCount})</span>
+                    </button>
                     <button
                       onClick={() => setNotificationTab('respuestas')}
-                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         notificationTab === 'respuestas' 
                           ? 'bg-emerald-600 text-white shadow-xs' 
                           : 'text-slate-400 hover:text-white'
@@ -1600,7 +1493,7 @@ export default function AdminDashboard() {
                     </button>
                     <button
                       onClick={() => setNotificationTab('supervision')}
-                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         notificationTab === 'supervision' 
                           ? 'bg-blue-600 text-white shadow-xs' 
                           : 'text-slate-400 hover:text-white'
@@ -1611,9 +1504,9 @@ export default function AdminDashboard() {
                     </button>
                     <button
                       onClick={() => setNotificationTab('equipo')}
-                      className={`flex-1 py-1 px-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                         notificationTab === 'equipo' 
-                          ? 'bg-amber-500 text-slate-950 shadow-xs' 
+                          ? 'bg-indigo-600 text-white shadow-xs' 
                           : 'text-slate-400 hover:text-white'
                       }`}
                     >
@@ -1624,6 +1517,59 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                  {/* CONTENIDO PESTAÑA: GASTOS POR LIQUIDAR */}
+                  {notificationTab === 'gastos' && (
+                    pendingGastosCount === 0 ? (
+                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
+                        ¡Todo al día! No hay relaciones de gastos pendientes por liquidar.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center px-1">
+                          <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">
+                            {pendingGastosCount} pendientes de pago
+                          </span>
+                          <button
+                            onClick={() => {
+                              setActiveView('gastos');
+                              setShowNotifications(false);
+                            }}
+                            className="text-[10px] font-bold text-amber-300 hover:text-white underline cursor-pointer"
+                          >
+                            Ir a Módulo Gastos →
+                          </button>
+                        </div>
+                        {pendingGastosList.map((g, idx) => (
+                          <div
+                            key={g.id || idx}
+                            className="p-3 bg-amber-950/40 rounded-xl border border-amber-500/30 hover:border-amber-400/60 transition-all"
+                          >
+                            <div className="flex justify-between items-start gap-2 mb-1">
+                              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
+                                <Receipt className="w-3 h-3 text-amber-400" /> {g.empleado || 'Empleado'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">{g.periodo}</span>
+                            </div>
+                            <p className="text-xs text-slate-200 font-semibold mb-2">
+                              Total: <strong className="text-white">${Number(g.totalUsd || 0).toFixed(2)} USD</strong> / <span className="text-amber-200">Bs {Number(g.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                            </p>
+                            <div className="flex justify-end gap-2 pt-1 border-t border-white/5">
+                              <button
+                                onClick={() => {
+                                  setActiveView('gastos');
+                                  setShowNotifications(false);
+                                }}
+                                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-slate-950" /> Ir a Liquidar
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  )}
+
                   {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
                   {notificationTab === 'respuestas' && (
                     <div className="space-y-2">
@@ -1995,8 +1941,127 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Tabla de Registros */}
-          <div className="overflow-x-auto">
+          {/* Vista Móvil (Tarjetas Responsivas para Teléfonos) */}
+          <div className="md:hidden p-3.5 space-y-3">
+            {loading ? (
+              <div className="text-center p-12 bg-slate-50/50 rounded-2xl border border-slate-100">
+                <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-2" />
+                <p className="text-slate-500 text-xs font-medium animate-pulse">Cargando bitácoras...</p>
+              </div>
+            ) : paginatedReports.length === 0 ? (
+              <div className="text-center p-8 bg-slate-50/50 rounded-2xl border border-slate-100 text-slate-500 text-xs font-medium">
+                No hay bitácoras para los filtros seleccionados.
+              </div>
+            ) : (
+              paginatedReports.map((report) => (
+                <div 
+                  key={report.id}
+                  className={`bg-white rounded-2xl p-4 border transition-all shadow-xs ${
+                    report.unread ? 'border-amber-400/60 bg-amber-50/10' : 'border-slate-200'
+                  }`}
+                >
+                  {/* Fila Superior: Empleado, Fecha y Estado */}
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="relative shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-black text-xs uppercase border-2 border-white shadow-xs">
+                          {String(report?.user || 'US').substring(0, 2)}
+                        </div>
+                        {report.unread && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white"></span>}
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-black text-slate-900 capitalize text-sm truncate">{report.user}</h4>
+                        <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3 text-slate-400" /> {report.date}
+                        </p>
+                      </div>
+                    </div>
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                      report.status === 'En Curso' ? 'bg-blue-100 text-blue-700' :
+                      report.status === 'Enviado' ? 'bg-amber-100 text-amber-700' :
+                      'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {report.status === 'En Curso' && <Activity className="w-3 h-3" />}
+                      {report.status === 'Enviado' && <AlertCircle className="w-3 h-3" />}
+                      {report.status === 'Revisado' && <CheckCircle2 className="w-3 h-3" />}
+                      {report.status}
+                    </span>
+                  </div>
+
+                  {/* Horas de Jornada */}
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3 text-xs">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Entrada</span>
+                      <span className="font-bold text-slate-700 flex items-center gap-1 mt-0.5 text-[11px]">
+                        <Clock className="w-3 h-3 text-emerald-500" />
+                        {isJefaturaUser(report.user) ? 'N/A (Jefatura)' : formatTime12h(report.clockIn)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Salida</span>
+                      <span className="font-bold text-slate-700 flex items-center gap-1 mt-0.5 text-[11px]">
+                        <Clock className="w-3 h-3 text-rose-500" />
+                        {report.clockOut && report.clockOut !== '00:00' ? formatTime12h(report.clockOut) : 'Registrada'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Progreso */}
+                  {report.progress !== undefined && (
+                    <div className="mb-3">
+                      <div className="flex justify-between items-center text-[10px] font-bold mb-1">
+                        <span className="text-slate-400 uppercase tracking-wider">Progreso Tareas</span>
+                        <span className="text-slate-700">{report.progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className={`h-1.5 rounded-full ${report.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                          style={{ width: `${report.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botones de Acción Móviles */}
+                  <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedReport(report);
+                        setAdminComment(report.comentario_admin || '');
+                        setAdminProgramaciones(ensureArray(report.programaciones));
+                        setAdminActuaciones(ensureArray(report.actuaciones));
+                        setAdminIngresos(ensureArray(report.ingresos));
+                      }}
+                      className="flex-1 py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-amber-400" /> Inspeccionar
+                    </button>
+                    {report.pdfBase64 ? (
+                      <a
+                        href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
+                        download={`Bitacora_${report.user}_${report.date}.pdf`}
+                        className="py-2 px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-black transition-colors border border-emerald-300 shadow-xs flex items-center justify-center gap-1"
+                      >
+                        <Download className="w-3.5 h-3.5" /> PDF
+                      </a>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => generateFallbackReportPdf(report)}
+                        className="py-2 px-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-black transition-colors border border-amber-300 shadow-xs flex items-center justify-center gap-1"
+                      >
+                        <FileText className="w-3.5 h-3.5" /> PDF
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Tabla de Registros (Vista Escritorio / Tablets) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
@@ -3037,36 +3102,36 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Modal de Revisión y Edición con Glassmorphism */}
+      {/* Modal de Revisión y Edición con Glassmorphism Responsive */}
       {selectedReport && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
 
             {/* Modal Header */}
-            <div className="bg-slate-900 p-6 sm:p-8 flex justify-between items-start text-white relative overflow-hidden">
+            <div className="bg-slate-900 p-4 sm:p-8 flex justify-between items-start text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
               <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-xl font-bold border border-white/20 uppercase tracking-widest">
+                <div className="flex items-center gap-3 sm:gap-4 mb-2">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-sm sm:text-xl font-bold border border-white/20 uppercase tracking-widest shrink-0">
                     {String(selectedReport?.user || 'Usuario').substring(0, 2)}
                   </div>
                   <div>
-                    <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2.5 flex-wrap">
+                    <h3 className="text-base sm:text-2xl font-black flex items-center gap-2 flex-wrap">
                       <span className="capitalize">Bitácora de {selectedReport.user || 'Empleado'}</span>
                       {isReportApproved ? (
-                        <span className="bg-emerald-500/20 text-emerald-400 text-xs px-2.5 py-1 rounded-lg border border-emerald-500/30 uppercase tracking-widest font-black flex items-center gap-1.5 shadow-2xs">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Aprobada & Supervisada
+                        <span className="bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-emerald-500/30 uppercase tracking-widest font-black flex items-center gap-1 shadow-2xs">
+                          <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" /> Aprobada
                         </span>
                       ) : (
-                        <span className="bg-amber-500/20 text-amber-400 text-xs px-2.5 py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black shadow-2xs">
-                          Modo Revisión
+                        <span className="bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black shadow-2xs">
+                          Revisión
                         </span>
                       )}
                     </h3>
-                    <div className="flex items-center gap-2.5 mt-2 flex-wrap">
-                      <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl text-xs sm:text-sm font-black flex items-center gap-1.5 shadow-2xs">
-                        <CalendarIcon className="w-4 h-4 text-amber-400" />
-                        Fecha: {selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha || format(new Date(), 'yyyy-MM-dd')}
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="px-2.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs">
+                        <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                        {selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha || format(new Date(), 'yyyy-MM-dd')}
                       </span>
                       <button
                         type="button"
@@ -3079,29 +3144,29 @@ export default function AdminDashboard() {
                           };
                           handleOpenChatForReply(msg);
                         }}
-                        className="px-3 py-1 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                        className="px-2.5 py-0.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                         title="Abrir chat tipo WhatsApp vinculado a esta bitácora"
                       >
                         <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
-                        <span>Abrir Chat de esta Bitácora</span>
+                        <span>Chat Bitácora</span>
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="relative z-10 p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors">
-                <X className="w-6 h-6" />
+              <button onClick={() => setSelectedReport(null)} className="relative z-10 p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer">
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 sm:p-8 overflow-y-auto flex-1 space-y-8 bg-slate-50/50">
+            <div className="p-3.5 sm:p-8 overflow-y-auto flex-1 space-y-4 sm:space-y-8 bg-slate-50/50">
 
               {/* Info General (Cards) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><Clock className="w-4 h-4 text-emerald-500" /> Entrada</p>
-                  <p className="text-xl font-bold text-slate-800">{formatTime12h(selectedReport.clockIn)}</p>
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-center">
+                  <p className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3.5 h-3.5 text-emerald-500" /> Entrada</p>
+                  <p className="text-base sm:text-xl font-bold text-slate-800">{formatTime12h(selectedReport.clockIn)}</p>
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">

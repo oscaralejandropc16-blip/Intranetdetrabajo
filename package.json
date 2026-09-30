@@ -1,0 +1,8 @@
+{
+  "name": "intranet-root",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix webapp run dev",
+    "build": "npm --prefix webapp run build"
+  }
+}
