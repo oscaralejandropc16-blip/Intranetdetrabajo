@@ -196,77 +196,83 @@ export default function LiveStatusBar() {
   });
 
   return (
-    <div className="w-full bg-slate-900/95 backdrop-blur-xl border border-slate-800 rounded-2xl p-2.5 sm:p-3 text-white shadow-md mb-4 relative z-30 transition-all">
-      {/* Luz ambiental de fondo */}
+    <div className="w-full bg-slate-900/90 backdrop-blur-2xl border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 text-white shadow-xl mb-4 relative z-30 transition-all overflow-hidden">
+      {/* Luz ambiental de fondo (Aurora Glow) */}
       <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
-        <div className="absolute top-0 right-1/4 w-72 h-12 bg-amber-500/10 blur-3xl"></div>
-        <div className="absolute bottom-0 left-1/4 w-72 h-12 bg-blue-500/10 blur-3xl"></div>
+        <div className="absolute -top-10 right-1/4 w-80 h-24 bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '6s' }}></div>
+        <div className="absolute -bottom-10 left-1/4 w-80 h-24 bg-gradient-to-r from-emerald-500/10 via-blue-500/15 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '8s' }}></div>
       </div>
 
       <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
         
-        {/* SECCIÓN 1: RELOJ DIGITAL & FECHA EN VIVO */}
-        <div className="flex items-center gap-3 bg-slate-950/80 border border-white/5 px-3.5 py-1.5 rounded-xl shadow-inner flex-1 min-w-[200px]">
-          <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
-            <Clock className="w-4 h-4" />
+        {/* SECCIÓN 1: RELOJ DIGITAL & FECHA EN VIVO CON GLOW */}
+        <div className="flex items-center gap-3 bg-slate-950/80 border border-amber-500/20 hover:border-amber-500/40 px-3.5 py-1.5 rounded-xl shadow-inner flex-1 min-w-[200px] transition-all duration-300 group">
+          <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.25)] shrink-0 group-hover:scale-105 transition-transform">
+            <Clock className="w-4 h-4 animate-spin" style={{ animationDuration: '60s' }} />
           </div>
           <div className="min-w-0">
             <div className="flex items-baseline gap-1.5">
-              <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none truncate">
+              <span className="text-base sm:text-lg font-black text-white tracking-tight leading-none truncate font-mono">
                 {formattedTime}
               </span>
-              <span translate="no" className="text-[8px] font-bold uppercase tracking-wider text-amber-400 bg-amber-500/20 px-1 py-0.2 rounded border border-amber-500/30 shrink-0 notranslate">
+              <span translate="no" className="text-[8px] font-bold uppercase tracking-wider text-amber-300 bg-amber-500/20 px-1 py-0.2 rounded border border-amber-500/40 shrink-0 notranslate shadow-[0_0_8px_rgba(245,158,11,0.3)]">
                 VEN
               </span>
             </div>
-            <p className="text-[10px] text-slate-400 capitalize font-medium truncate">
+            <p className="text-[10px] text-slate-400 capitalize font-medium truncate mt-0.5">
               {formattedDate}
             </p>
           </div>
         </div>
 
-        {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) */}
+        {/* SECCIÓN 2: COTIZACIÓN OFICIAL DEL DÓLAR ($) Y EURO (€) CON GLOW NEÓN */}
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap justify-between md:justify-center">
-          {/* Tarjeta USD */}
-          <div className="flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/30 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-sm min-w-[115px]">
-            <div className="w-6 h-6 rounded-md bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 font-bold text-xs">
+          {/* Tarjeta USD BCV Neón */}
+          <div className="flex items-center gap-2 bg-emerald-950/50 hover:bg-emerald-950/70 border border-emerald-500/40 hover:border-emerald-400 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(16,185,129,0.3)] hover:shadow-[0_0_24px_rgba(16,185,129,0.5)] min-w-[120px] transition-all duration-300 group cursor-default">
+            <div className="w-6 h-6 rounded-md bg-emerald-500/25 border border-emerald-400/50 flex items-center justify-center text-emerald-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(16,185,129,0.4)] group-hover:scale-110 transition-transform">
               <DollarSign className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[8px] font-black uppercase tracking-wider text-emerald-400">USD BCV</span>
-                <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                </span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white leading-tight">
+              <p className="text-xs sm:text-sm font-black text-white leading-tight font-mono tracking-tight">
                 {dolarRate ? `Bs. ${dolarRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
           </div>
 
-          {/* Tarjeta EUR */}
-          <div className="flex items-center gap-2 bg-blue-950/40 border border-blue-500/30 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-sm min-w-[115px]">
-            <div className="w-6 h-6 rounded-md bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 shrink-0 font-bold text-xs">
+          {/* Tarjeta EUR BCV Neón */}
+          <div className="flex items-center gap-2 bg-blue-950/50 hover:bg-blue-950/70 border border-blue-500/40 hover:border-blue-400 px-3 py-1.5 rounded-xl flex-1 sm:flex-none shadow-[0_0_15px_-2px_rgba(59,130,246,0.3)] hover:shadow-[0_0_24px_rgba(59,130,246,0.5)] min-w-[120px] transition-all duration-300 group cursor-default">
+            <div className="w-6 h-6 rounded-md bg-blue-500/25 border border-blue-400/50 flex items-center justify-center text-blue-300 shrink-0 font-bold text-xs shadow-[0_0_8px_rgba(59,130,246,0.4)] group-hover:scale-110 transition-transform">
               <Euro className="w-3.5 h-3.5" />
             </div>
             <div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[8px] font-black uppercase tracking-wider text-blue-400">EUR BCV</span>
-                <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse"></span>
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                </span>
               </div>
-              <p className="text-xs sm:text-sm font-black text-white leading-tight">
+              <p className="text-xs sm:text-sm font-black text-white leading-tight font-mono tracking-tight">
                 {euroRate ? `Bs. ${euroRate.toFixed(2)}` : 'Bs. --'}
               </p>
             </div>
           </div>
 
-          {/* Botón Refrescar Tasas */}
+          {/* Botón Refrescar Tasas con Glow en Hover */}
           <button
             onClick={fetchRates}
             disabled={loadingRates}
             title="Actualizar Cotizaciones BCV"
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer shrink-0 shadow-sm"
+            className="p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all cursor-pointer shrink-0 active:scale-95"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loadingRates ? 'animate-spin text-amber-400' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 transition-transform ${loadingRates ? 'animate-spin text-amber-400' : 'group-hover:rotate-180'}`} />
           </button>
         </div>
 
@@ -274,10 +280,10 @@ export default function LiveStatusBar() {
         <div className="relative city-dropdown-container">
           <button
             onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
-            className="flex items-center gap-2.5 bg-slate-950/80 hover:bg-slate-950 border border-white/5 hover:border-amber-500/40 px-3 py-1.5 rounded-xl transition-all cursor-pointer text-left w-full shadow-sm"
+            className="flex items-center gap-2.5 bg-slate-950/80 hover:bg-slate-950 border border-white/10 hover:border-amber-400/50 px-3 py-1.5 rounded-xl transition-all duration-300 cursor-pointer text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] group"
             title="Haz clic para cambiar de ciudad"
           >
-            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform shadow-[0_0_8px_rgba(245,158,11,0.2)]">
               {weatherIconInfo.icon}
             </div>
             <div className="min-w-0 flex-1">

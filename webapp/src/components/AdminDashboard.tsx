@@ -12,6 +12,7 @@ import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import LiveStatusBar from './common/LiveStatusBar';
+import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
@@ -1398,52 +1399,52 @@ export default function AdminDashboard() {
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
 
-      {/* BANNER NOTIFICACIÓN DE GASTOS POR LIQUIDAR */}
+      {/* BANNER NOTIFICACIÓN DE GASTOS POR LIQUIDAR CON GLOW */}
       {pendingGastosCount > 0 && (
-        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-sm animate-in slide-in-from-top-2">
+        <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/20 backdrop-blur-xl border border-amber-400/40 hover:border-amber-400/70 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(245,158,11,0.25)] glow-amber-sm animate-in slide-in-from-top-2 transition-all duration-300">
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-sm font-black ring-2 ring-amber-400/40">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.4)] font-black ring-2 ring-amber-400/60">
               <Receipt className="w-5 h-5 animate-pulse" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-2xs">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-[0_0_8px_rgba(245,158,11,0.3)]">
                   Gastos por Liquidar
                 </span>
                 <span className="text-xs font-black text-amber-950">
                   {pendingGastosCount} relación(es) de gastos pendientes de revisión y pago
                 </span>
               </div>
-              <p className="text-xs font-bold text-slate-700 truncate mt-0.5">
-                Última de: {pendingGastosList[0]?.empleado} ({pendingGastosList[0]?.periodo}) — Total: ${Number(pendingGastosList[0]?.totalUsd || 0).toFixed(2)} USD / Bs {Number(pendingGastosList[0]?.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+              <p className="text-xs font-bold text-slate-800 truncate mt-0.5">
+                Última de: <span className="text-amber-900 underline">{pendingGastosList[0]?.empleado}</span> ({pendingGastosList[0]?.periodo}) — Total: <strong className="text-slate-950">${Number(pendingGastosList[0]?.totalUsd || 0).toFixed(2)} USD / Bs {Number(pendingGastosList[0]?.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</strong>
               </p>
             </div>
           </div>
           <button
             onClick={() => setActiveView('gastos')}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-amber-300 hover:text-white font-black text-xs rounded-xl border border-amber-400/40 hover:border-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:shadow-[0_0_20px_rgba(245,158,11,0.45)] transition-all cursor-pointer shrink-0 self-end sm:self-center shimmer-sweep active:scale-95 flex items-center gap-1.5"
           >
             <CheckCircle2 className="w-3.5 h-3.5 text-amber-400" /> Ir a Liquidar Gastos
           </button>
         </div>
       )}
 
-      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO (COMPACTO) */}
+      {/* BANNER DESTACADO DE RESPUESTA DE EMPLEADO CON GLOW */}
       {unreadEmployeeReplies.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-sm animate-in slide-in-from-top-2">
+        <div className="bg-gradient-to-r from-emerald-500/15 via-emerald-400/10 to-teal-500/15 backdrop-blur-xl border border-emerald-400/40 hover:border-emerald-400/70 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(16,185,129,0.25)] glow-emerald-sm animate-in slide-in-from-top-2 transition-all duration-300">
           <div className="flex items-center gap-3.5 min-w-0 flex-1">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shrink-0 shadow-sm ring-2 ring-emerald-400/30">
-              <MessageSquare className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.4)] ring-2 ring-emerald-400/50">
+              <MessageSquare className="w-5 h-5 animate-bounce" style={{ animationDuration: '3s' }} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-2xs">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white shadow-[0_0_8px_rgba(16,185,129,0.3)]">
                   Respuesta de Empleado
                 </span>
                 <span className="text-xs font-black text-emerald-950 capitalize">{unreadEmployeeReplies[0].author}</span>
-                <span className="text-[11px] text-slate-500 font-medium">({unreadEmployeeReplies[0].fecha_bitacora})</span>
+                <span className="text-[11px] text-slate-600 font-medium">({unreadEmployeeReplies[0].fecha_bitacora})</span>
               </div>
-              <p className="text-xs font-bold text-slate-800 truncate mt-1">
+              <p className="text-xs font-bold text-slate-800 truncate mt-1 italic">
                 "{unreadEmployeeReplies[0].lastMessage?.mensaje || 'Nuevo mensaje'}"
               </p>
             </div>
@@ -1451,14 +1452,14 @@ export default function AdminDashboard() {
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             <button
               onClick={() => handleOpenChatForReply(unreadEmployeeReplies[0].lastMessage, unreadEmployeeReplies[0].messages)}
-              className="px-3.5 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all shadow-[0_0_12px_rgba(7,94,84,0.3)] hover:shadow-[0_0_18px_rgba(18,140,126,0.5)] flex items-center gap-1.5 cursor-pointer active:scale-95"
               title="Abrir chat interactivo tipo WhatsApp"
             >
               <MessageSquare className="w-3.5 h-3.5 text-emerald-300" /> Abrir Chat ({unreadEmployeeReplies[0].totalCount})
             </button>
             <button
               onClick={() => handleOpenReportForReply(unreadEmployeeReplies[0].lastMessage)}
-              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <FileText className="w-3.5 h-3.5" /> Ver Bitácora
             </button>
@@ -1466,7 +1467,7 @@ export default function AdminDashboard() {
               onClick={() => {
                 unreadEmployeeReplies[0].messages.forEach(m => markEmployeeReplyRead(m.id));
               }}
-              className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+              className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Atendido
             </button>
@@ -1476,14 +1477,14 @@ export default function AdminDashboard() {
 
       {/* BANNER DESTACADO DE SUPERVISIÓN RECIBIDA ENTRE JEFES (COMPACTO) */}
       {unreadFeedbacks.length > 0 && (
-        <div className="bg-blue-50 border border-blue-300 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-xs animate-in slide-in-from-top-2">
+        <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-blue-500/20 backdrop-blur-xl border border-blue-400/40 hover:border-blue-400/70 rounded-2xl p-2.5 sm:p-3.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-slate-900 shadow-[0_4px_25px_-5px_rgba(59,130,246,0.25)] glow-blue-sm animate-in slide-in-from-top-2 transition-all">
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(59,130,246,0.4)]">
               <ShieldCheck className="w-4 h-4" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-blue-600 text-white">
+                <span className="px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-xs">
                   Supervisión de Jefatura
                 </span>
                 <span className="text-xs font-black text-blue-950">{unreadFeedbacks[0].supervisado_por || 'Jefatura'}</span>
@@ -1503,13 +1504,13 @@ export default function AdminDashboard() {
                 setAdminActuaciones(ensureArray(unreadFeedbacks[0].actuaciones));
                 setAdminIngresos(ensureArray(unreadFeedbacks[0].ingresos));
               }}
-              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
             >
               <FileText className="w-3.5 h-3.5" /> Ver Detalles
             </button>
             <button
               onClick={() => markFeedbackAsRead(unreadFeedbacks[0].id, unreadFeedbacks[0])}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs active:scale-95"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Leído
             </button>
@@ -1517,48 +1518,58 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Header Ejecutivo Compacto y Moderno */}
-      <div className="bg-slate-900 rounded-2xl p-4 sm:p-5 text-white shadow-md border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-inner">
-            <ShieldCheck className="w-5 h-5" />
+      {/* Header Ejecutivo Compacto, Moderno y con Glow KANT */}
+      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-4 sm:p-5 text-white shadow-xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden transition-all glow-amber-sm">
+        {/* Línea de luz superior dorada neón */}
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+        {/* Luz ambiental difusa */}
+        <div className="absolute -top-12 -right-12 w-64 h-24 bg-amber-500/10 blur-3xl pointer-events-none"></div>
+
+        <div className="flex items-center gap-3.5 relative z-10">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-600/30 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+            <ShieldCheck className="w-5 h-5 text-amber-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white">Centro de Mando KANT</h2>
-              <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
+              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-1.5">
+                Centro de Mando <span className="text-amber-400 font-black text-glow-amber">KANT</span>
+              </h2>
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
                 Jefatura
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.</p>
+            <p className="text-xs text-slate-300/80 font-medium mt-0.5">Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.</p>
           </div>
         </div>
 
-        {/* Badges de Estado y Notificaciones Compactas */}
-        <div className="flex items-center gap-2.5 self-end md:self-center shrink-0 flex-wrap">
-          <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        {/* Badges de Estado y Notificaciones Compactas con Glow */}
+        <div className="flex items-center gap-2.5 self-end md:self-center shrink-0 flex-wrap relative z-10">
+          <div className="px-3 py-1.5 bg-emerald-950/40 border border-emerald-500/40 hover:border-emerald-400 rounded-xl flex items-center gap-2 text-xs shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-all">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
             <span className="text-slate-400 font-bold text-[11px]">Activos:</span>
-            <span className="font-black text-white">{inProgress}</span>
+            <span className="font-black text-white font-mono">{inProgress}</span>
           </div>
 
-          <div className="px-3 py-1.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center gap-2 text-xs">
-            <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+          <div className="px-3 py-1.5 bg-amber-950/40 border border-amber-500/40 hover:border-amber-400 rounded-xl flex items-center gap-2 text-xs shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
             <span className="text-amber-300 font-bold text-[11px]">Por Revisar:</span>
-            <span className="font-black text-amber-400">{pendingReview}</span>
+            <span className="font-black text-amber-300 font-mono">{pendingReview}</span>
           </div>
 
-          {/* Campana Compacta */}
+          {/* Campana Compacta con Glow */}
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 px-3 bg-white/10 hover:bg-white/20 border border-white/10 rounded-xl text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 relative cursor-pointer"
+              className="p-2 px-3 bg-slate-800/80 hover:bg-slate-800 border border-white/10 hover:border-amber-400/50 hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] rounded-xl text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 relative cursor-pointer active:scale-95"
               title="Centro de Notificaciones y Supervisión"
             >
               <Bell className="w-4 h-4" />
               <span className="text-xs font-bold text-slate-300">Alertas</span>
               {totalNotifsCount > 0 && (
-                <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse">
                   {totalNotifsCount}
                 </span>
               )}
@@ -1828,14 +1839,14 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Tabs Vistas con Segmented Control Moderno y Compacto */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/80 shadow-sm scrollbar-none relative z-10 mx-auto w-full">
+      {/* Tabs Vistas con Segmented Control Moderno, Compacto y Glow */}
+      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-md scrollbar-none relative z-10 mx-auto w-full">
         {/* 1. MI BITÁCORA PERSONAL (JEFATURA) */}
         <button
           onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'mis_libros' 
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-md shadow-blue-500/25 ring-1 ring-blue-400' 
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(59,130,246,0.5)] ring-1 ring-blue-400 scale-[1.02]' 
               : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'
           }`}
         >
@@ -1845,15 +1856,15 @@ export default function AdminDashboard() {
         {/* 2. REVISIÓN DE BITÁCORAS DEL EQUIPO */}
         <button
           onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'bitacoras' 
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
+              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
           }`}
         >
-          <FileText className={`w-4 h-4 ${activeView === 'bitacoras' ? 'text-slate-900' : 'text-slate-400'}`} /> Revisión de Equipo
+          <FileText className={`w-4 h-4 ${activeView === 'bitacoras' ? 'text-slate-950' : 'text-slate-400'}`} /> Revisión de Equipo
           {pendingReview > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'bitacoras' ? 'bg-slate-900 text-amber-400' : 'bg-amber-500 text-slate-900'}`}>
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'bitacoras' ? 'bg-slate-950 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 'bg-amber-500 text-slate-900'}`}>
               {pendingReview}
             </span>
           )}
@@ -1862,9 +1873,9 @@ export default function AdminDashboard() {
         {/* 3. CHAT EN VIVO */}
         <button
           onClick={() => setActiveView('chat')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'chat' 
-              ? 'bg-[#00a884] text-white font-black shadow-md shadow-emerald-600/30 ring-1 ring-emerald-400' 
+              ? 'bg-gradient-to-r from-[#00a884] to-emerald-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(0,168,132,0.5)] ring-1 ring-emerald-400 scale-[1.02]' 
               : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'
           }`}
         >
@@ -1879,27 +1890,27 @@ export default function AdminDashboard() {
         {/* 4. EXPEDIENTES & CASOS */}
         <button
           onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'expedientes' 
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
+              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
           }`}
         >
-          <Scale className={`w-4 h-4 ${activeView === 'expedientes' ? 'text-slate-900' : 'text-slate-400'}`} /> Expedientes & Casos
+          <Scale className={`w-4 h-4 ${activeView === 'expedientes' ? 'text-slate-950' : 'text-slate-400'}`} /> Expedientes & Casos
         </button>
 
         {/* 6. GASTOS & REEMBOLSOS */}
         <button
           onClick={() => setActiveView('gastos')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'gastos' 
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
+              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
           }`}
         >
-          <Receipt className={`w-4 h-4 ${activeView === 'gastos' ? 'text-slate-900' : 'text-slate-400'}`} /> Gastos & Reembolsos
+          <Receipt className={`w-4 h-4 ${activeView === 'gastos' ? 'text-slate-950' : 'text-slate-400'}`} /> Gastos & Reembolsos
           {pendingGastosCount > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'gastos' ? 'bg-slate-900 text-white' : 'bg-red-500 text-white animate-pulse'}`}>
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-[0_0_10px_rgba(239,68,68,0.5)] ml-1 ${activeView === 'gastos' ? 'bg-slate-900 text-rose-300' : 'bg-red-500 text-white animate-pulse'}`}>
               {pendingGastosCount}
             </span>
           )}
@@ -1908,13 +1919,13 @@ export default function AdminDashboard() {
         {/* 7. MI HISTORIAL DE JEFATURA */}
         <button
           onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer ${
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'historial' 
-              ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-900 font-black shadow-md shadow-amber-500/20 ring-1 ring-amber-400' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/80 font-bold'
+              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
           }`}
         >
-          <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-900' : 'text-slate-400'}`} /> Mi Historial de Jefatura
+          <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-950' : 'text-slate-400'}`} /> Mi Historial de Jefatura
         </button>
       </div>
 
@@ -3689,6 +3700,13 @@ export default function AdminDashboard() {
         onMarkAtendido={(msgId) => {
           markEmployeeReplyRead(msgId);
         }}
+      />
+
+      {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE */}
+      <KantFloatingCompanion 
+        pendingReviews={pendingReview} 
+        pendingGastos={pendingGastosCount} 
+        unreadReplies={unreadEmployeeReplies.length} 
       />
     </div>
   );

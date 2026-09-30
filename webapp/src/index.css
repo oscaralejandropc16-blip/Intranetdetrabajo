@@ -56,3 +56,193 @@
     transform: translateX(100%);
   }
 }
+
+/* Keyframes para el Perrito Animado (KANT) */
+@keyframes dog-breathe {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) rotate(1.5deg) scale(1.02);
+  }
+}
+
+@keyframes dog-wag {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(3.5deg) scale(1.04) translateY(-1px);
+  }
+  75% {
+    transform: rotate(-3.5deg) scale(1.04) translateY(-1px);
+  }
+}
+
+@keyframes dog-happy-jump {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  30% {
+    transform: translateY(-8px) scale(1.12) rotate(-4deg);
+  }
+  60% {
+    transform: translateY(-2px) scale(1.08) rotate(4deg);
+  }
+  80% {
+    transform: translateY(-4px) scale(1.04) rotate(-2deg);
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}
+
+@keyframes sparkle-float {
+  0% {
+    opacity: 0;
+    transform: translateY(0px) scale(0.6) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-10px) scale(1.1) rotate(15deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.4) rotate(30deg);
+  }
+}
+
+/* Keyframes de Glow Ambiental y Neón */
+@keyframes pulse-glow-amber {
+  0%, 100% {
+    box-shadow: 0 0 14px -2px rgba(245, 158, 11, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 26px 2px rgba(245, 158, 11, 0.65);
+  }
+}
+
+@keyframes pulse-glow-emerald {
+  0%, 100% {
+    box-shadow: 0 0 14px -2px rgba(16, 185, 129, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 26px 2px rgba(16, 185, 129, 0.65);
+  }
+}
+
+@keyframes pulse-glow-blue {
+  0%, 100% {
+    box-shadow: 0 0 14px -2px rgba(59, 130, 246, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 26px 2px rgba(59, 130, 246, 0.65);
+  }
+}
+
+@keyframes aura-flow {
+  0% {
+    opacity: 0.4;
+    transform: scale(1) translate(0%, 0%);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.1) translate(3%, 2%);
+  }
+  100% {
+    opacity: 0.4;
+    transform: scale(1) translate(-2%, -1%);
+  }
+}
+
+@keyframes sweep-light {
+  0% {
+    transform: translateX(-150%) skewX(-20deg);
+  }
+  100% {
+    transform: translateX(250%) skewX(-20deg);
+  }
+}
+
+/* Clases de Utilidad de Animación y Glow */
+.dog-idle {
+  animation: dog-breathe 3.5s ease-in-out infinite;
+  transform-origin: bottom center;
+}
+
+.dog-idle:hover {
+  animation: dog-wag 0.8s ease-in-out infinite;
+}
+
+.dog-excited {
+  animation: dog-happy-jump 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.glow-amber-sm {
+  box-shadow: 0 0 12px -1px rgba(245, 158, 11, 0.35);
+}
+
+.glow-amber {
+  box-shadow: 0 0 20px -2px rgba(245, 158, 11, 0.45);
+}
+
+.glow-amber-lg {
+  box-shadow: 0 0 30px -2px rgba(245, 158, 11, 0.6);
+}
+
+.glow-emerald-sm {
+  box-shadow: 0 0 12px -1px rgba(16, 185, 129, 0.35);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 20px -2px rgba(16, 185, 129, 0.45);
+}
+
+.glow-blue-sm {
+  box-shadow: 0 0 12px -1px rgba(59, 130, 246, 0.35);
+}
+
+.glow-blue {
+  box-shadow: 0 0 20px -2px rgba(59, 130, 246, 0.45);
+}
+
+.glow-pulse-amber {
+  animation: pulse-glow-amber 3s ease-in-out infinite;
+}
+
+.glow-pulse-emerald {
+  animation: pulse-glow-emerald 3s ease-in-out infinite;
+}
+
+.glow-pulse-blue {
+  animation: pulse-glow-blue 3s ease-in-out infinite;
+}
+
+.text-glow-amber {
+  text-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
+}
+
+.text-glow-emerald {
+  text-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
+}
+
+.shimmer-sweep {
+  position: relative;
+  overflow: hidden;
+}
+
+.shimmer-sweep::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: translateX(-150%) skewX(-20deg);
+  pointer-events: none;
+}
+
+.shimmer-sweep:hover::after {
+  animation: sweep-light 1s cubic-bezier(0.4, 0, 0.2, 1);
+}

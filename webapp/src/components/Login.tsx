@@ -3,6 +3,7 @@ import { submitToServer } from '../lib/api';
 import { checkIsJefatura } from '../App';
 import { Lock, User, ArrowRight, ShieldCheck, HelpCircle, Mail, CheckCircle2, X, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import KantMascot from './common/KantMascot';
 
 export default function Login({ setAuthToken }: { setAuthToken: (token: string) => void }) {
   const [username, setUsername] = useState('');
@@ -103,20 +104,26 @@ export default function Login({ setAuthToken }: { setAuthToken: (token: string) 
 
       <div className="w-full max-w-md z-10 animate-in fade-in zoom-in duration-700">
         
-        {/* Header Section */}
-        <div className="text-center mb-8">
-          <img src="/dog_logo.png" alt="Román & Delgado Logo" className="h-40 sm:h-48 md:h-56 mx-auto object-contain hover:scale-105 transition-transform duration-500 mb-4 drop-shadow-2xl" onError={(e) => { e.currentTarget.style.display='none'; e.currentTarget.nextElementSibling!.classList.remove('hidden'); }} />
-          <div className="hidden w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-lg shadow-amber-500/30 mb-6 rotate-3 hover:rotate-0 transition-transform duration-500">
-            <span className="text-3xl font-black text-slate-900 tracking-tighter">R&D</span>
+        {/* Header Section con Perrito Animado y Glow */}
+        <div className="text-center mb-6 flex flex-col items-center">
+          <div className="mb-2">
+            <KantMascot size="lg" userName={username} />
           </div>
-          <p className="text-amber-400/90 font-medium tracking-[0.2em] uppercase text-xs sm:text-sm flex items-center justify-center gap-2 mt-4">
-            <ShieldCheck className="w-4 h-4" />
-            Plataforma KANT
-          </p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            <p className="text-amber-400 font-black tracking-[0.25em] uppercase text-xs sm:text-sm flex items-center gap-2 text-glow-amber">
+              <ShieldCheck className="w-4 h-4 text-amber-400" />
+              Plataforma KANT
+            </p>
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+          </div>
+          <p className="text-xs text-slate-400 mt-1 font-medium">Román & Delgado LLC • Acceso Seguro</p>
         </div>
 
-        {/* Login Card */}
-        <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 p-8 sm:p-10 rounded-[2rem] shadow-2xl relative overflow-hidden group">
+        {/* Login Card con Glow Neón */}
+        <div className="bg-slate-900/70 backdrop-blur-2xl border border-amber-500/30 hover:border-amber-500/50 p-8 sm:p-10 rounded-[2rem] shadow-[0_10px_40px_-10px_rgba(245,158,11,0.25)] relative overflow-hidden group transition-all duration-500 glow-amber-sm">
           <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
           
           <form onSubmit={handleLogin} className="space-y-6 relative z-10">
