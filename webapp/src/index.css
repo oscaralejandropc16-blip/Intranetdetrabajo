@@ -362,3 +362,34 @@
   box-shadow: 0 0 16px -2px rgba(250, 204, 21, 0.5) !important;
 }
 
+/* 🍫 TEMA DÍA DEL CACAO Y CHOCOLATE VENEZOLANO */
+.theme-chocolate {
+  --theme-accent: #d97706;
+  --theme-accent-hover: #b45309;
+  --theme-glow: rgba(217, 119, 6, 0.45);
+}
+
+.theme-chocolate nav {
+  border-bottom-color: rgba(217, 119, 6, 0.5) !important;
+  background: linear-gradient(180deg, rgba(32, 16, 8, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%) !important;
+}
+
+.theme-chocolate .text-amber-400 {
+  color: #f59e0b !important;
+}
+
+.theme-chocolate .text-amber-300 {
+  color: #fcd34d !important;
+}
+
+.theme-chocolate .border-amber-500\/30,
+.theme-chocolate .border-amber-500\/20,
+.theme-chocolate .border-amber-400\/40 {
+  border-color: rgba(217, 119, 6, 0.45) !important;
+}
+
+.theme-chocolate .glow-amber-sm,
+.theme-chocolate .glow-amber {
+  box-shadow: 0 0 16px -2px rgba(217, 119, 6, 0.45) !important;
+}
+

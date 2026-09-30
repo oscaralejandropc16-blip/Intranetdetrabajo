@@ -5,7 +5,7 @@
 
 import { getActiveDate } from './efemeridesVenezuela';
 
-export type FestiveThemeId = 'default' | 'halloween' | 'abogado' | 'navidad' | 'patria';
+export type FestiveThemeId = 'default' | 'halloween' | 'abogado' | 'navidad' | 'patria' | 'chocolate';
 export type ThemeMode = 'auto' | FestiveThemeId;
 
 export interface ThemeConfig {
@@ -105,6 +105,22 @@ export const THEMES: Record<FestiveThemeId, ThemeConfig> = {
     badgeText: 'text-yellow-300',
     badgeBorder: 'border-yellow-500/40',
     description: 'Tricolor patrio con azul republicano, amarillo oro y rojo independencia.'
+  },
+  chocolate: {
+    id: 'chocolate',
+    name: 'Día Nacional del Cacao y Chocolate',
+    shortName: 'Cacao & Chocolate',
+    badge: '🍫 Cacao & Chocolate',
+    themeClass: 'theme-chocolate',
+    accentPrimary: '#d97706',
+    accentSecondary: '#78350f',
+    glowColor: 'rgba(217, 119, 6, 0.45)',
+    navbarTopLine: 'from-amber-800 via-amber-500 to-yellow-500',
+    cardBorderHover: 'hover:border-amber-600/60',
+    badgeBg: 'bg-amber-950/70',
+    badgeText: 'text-amber-300',
+    badgeBorder: 'border-amber-600/50',
+    description: 'Paleta cálida de chocolate artesanal, grano de cacao fino venezolano y acentos dorados.'
   }
 };
 
@@ -138,6 +154,11 @@ export function determineAutoTheme(targetDate: Date = getActiveDate()): FestiveT
     (month === 10 && day === 12)
   ) {
     return 'patria';
+  }
+
+  // 5. Día Nacional del Cacao y Chocolate Venezolano (1 de Octubre) & Día Internacional del Chocolate (13 de Septiembre)
+  if ((month === 10 && day === 1) || (month === 9 && day === 13)) {
+    return 'chocolate';
   }
 
   return 'default';
@@ -181,9 +202,9 @@ export function applyThemeToDOM(): FestiveThemeId {
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
     // Remover clases temáticas anteriores
-    root.classList.remove('theme-default', 'theme-halloween', 'theme-abogado', 'theme-navidad', 'theme-patria');
+    root.classList.remove('theme-default', 'theme-halloween', 'theme-abogado', 'theme-navidad', 'theme-patria', 'theme-chocolate');
     // Agregar la clase activa
-    root.classList.add(THEMES[activeTheme].themeClass);
+    root.classList.add(THEMES[activeTheme]?.themeClass || 'theme-default');
   }
 
   return activeTheme;

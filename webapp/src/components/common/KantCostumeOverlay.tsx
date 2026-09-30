@@ -1,17 +1,28 @@
 import type { FestiveThemeId } from '../../lib/themeManager';
+import type { TipoDisfrazKant } from '../../lib/efemeridesVenezuela';
 
 interface KantCostumeOverlayProps {
   theme: FestiveThemeId;
+  costumeType?: TipoDisfrazKant;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   isExcited?: boolean;
 }
 
 export default function KantCostumeOverlay({
   theme,
+  costumeType,
   size = 'sm',
   isExcited = false
 }: KantCostumeOverlayProps) {
-  if (theme === 'default') return null;
+  const isChocolate = theme === 'chocolate' || costumeType === 'chocolate';
+  const isHalloween = theme === 'halloween' || costumeType === 'halloween';
+  const isAbogado = theme === 'abogado' || costumeType === 'abogado';
+  const isNavidad = theme === 'navidad' || costumeType === 'navidad';
+  const isPatria = theme === 'patria' || costumeType === 'patria';
+
+  if (!isChocolate && !isHalloween && !isAbogado && !isNavidad && !isPatria) {
+    return null;
+  }
 
   // Escala según tamaño
   const scaleClass = {
@@ -24,7 +35,7 @@ export default function KantCostumeOverlay({
   return (
     <div className={`absolute inset-0 pointer-events-none select-none z-20 ${scaleClass}`}>
       {/* 🎃 1. ATUENDO PROFESIONAL DE HALLOWEEN */}
-      {theme === 'halloween' && (
+      {isHalloween && (
         <>
           {/* Sombrero de Bruja Elegante (sobre la oreja derecha de Kant) */}
           <div 
@@ -127,7 +138,7 @@ export default function KantCostumeOverlay({
       )}
 
       {/* ⚖️ 2. ATUENDO DE ALTA CORTE - DÍA DEL ABOGADO */}
-      {theme === 'abogado' && (
+      {isAbogado && (
         <>
           {/* Birrete de Grado Académico / Abogado */}
           <div 
@@ -190,7 +201,7 @@ export default function KantCostumeOverlay({
       )}
 
       {/* 🎄 3. ATUENDO NAVIDEÑO - GORRO DE SANTA */}
-      {theme === 'navidad' && (
+      {isNavidad && (
         <>
           {/* Gorro de Santa Rojo con Pompón Blanco */}
           <div 
@@ -232,7 +243,7 @@ export default function KantCostumeOverlay({
       )}
 
       {/* 🇻🇪 4. ATUENDO PATRIO - TRICOLOR VENEZOLANO */}
-      {theme === 'patria' && (
+      {isPatria && (
         <>
           {/* Escarapela con Estrellas y Laurel en la cabeza */}
           <div className="absolute -top-3 right-0 drop-shadow-[0_2px_8px_rgba(250,204,21,0.7)] animate-pulse">
@@ -244,6 +255,133 @@ export default function KantCostumeOverlay({
           {/* Banda Presidencial Tricolor */}
           <div className="absolute -bottom-1 -left-1 drop-shadow-md">
             <span className="text-sm sm:text-base">🇻🇪</span>
+          </div>
+        </>
+      )}
+
+      {/* 🍫 5. ATUENDO Y TABLETA DE CHOCOLATE - DÍA DEL CACAO Y CHOCOLATE VENEZOLANO */}
+      {isChocolate && (
+        <>
+          {/* Gorro de Maestro Chocolatero francés / pastelero sobre la cabeza de Kant */}
+          <div 
+            className={`absolute -top-3.5 right-0 sm:-top-4 sm:right-0.5 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${
+              isExcited ? 'animate-bounce' : 'animate-float-slow'
+            }`}
+          >
+            <svg 
+              viewBox="0 0 100 80" 
+              className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Pliegues abullonados del gorro blanco de chocolatero */}
+              <path 
+                d="M 28 50 C 20 40 22 25 38 20 C 42 12 58 10 65 18 C 76 15 84 26 80 40 C 85 46 80 52 75 52 L 25 52 Z" 
+                fill="url(#toqueWhiteGrad)" 
+                stroke="#cbd5e1" 
+                strokeWidth="1.2" 
+              />
+              {/* Banda de la base marrón cacao con ribete dorado */}
+              <rect x="25" y="48" width="52" height="8" rx="2" fill="#451a03" stroke="#d97706" strokeWidth="1" />
+              {/* Grano de cacao dorado central */}
+              <ellipse cx="51" cy="52" rx="3.5" ry="2.2" fill="#fbbf24" stroke="#92400e" strokeWidth="0.8" />
+              <path d="M 48.5 52 Q 51 51 53.5 52" stroke="#78350f" strokeWidth="0.8" fill="none" />
+
+              <defs>
+                <linearGradient id="toqueWhiteGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#ffffff" />
+                  <stop offset="70%" stopColor="#f1f5f9" />
+                  <stop offset="100%" stopColor="#e2e8f0" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          {/* Tableta de Chocolate Gourmet siendo saboreada por Kant */}
+          <div 
+            className={`absolute -bottom-2 -right-1 sm:-bottom-2.5 sm:-right-1.5 transition-transform duration-300 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${
+              isExcited ? 'scale-110 rotate-6 animate-pulse' : 'hover:scale-105'
+            }`}
+          >
+            <svg 
+              viewBox="0 0 70 85" 
+              className="w-7 h-8 sm:w-8 sm:h-9 overflow-visible" 
+              fill="none" 
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              {/* Tableta de chocolate oscuro base */}
+              <rect x="12" y="10" width="46" height="65" rx="3" fill="#2d1305" />
+              
+              {/* Parte superior de chocolate al descubierto (4 cuadritos) */}
+              <g id="chocolateSquares">
+                {/* Cuadro superior izquierdo */}
+                <rect x="15" y="13" width="18" height="15" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
+                <rect x="17" y="15" width="14" height="11" rx="1" fill="#4a220c" opacity="0.6" />
+                
+                {/* Cuadro superior derecho CON MORDISCO de perrito */}
+                <path 
+                  d="M 37 13 L 52 13 C 53 13 54 14 54 15 L 54 28 L 37 28 Z" 
+                  fill="url(#chocoSquareGrad)" 
+                  stroke="#1a0a03" 
+                  strokeWidth="0.6" 
+                />
+                {/* Bocado / mordida curva en la esquina */}
+                <path 
+                  d="M 44 12 C 43 17 48 21 54 18 L 55 12 Z" 
+                  fill="#0b0f19" 
+                  opacity="0.95"
+                />
+                
+                {/* Cuadro inferior izquierdo */}
+                <rect x="15" y="30" width="18" height="14" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
+                
+                {/* Cuadro inferior derecho */}
+                <rect x="37" y="30" width="18" height="14" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
+              </g>
+
+              {/* Migajitas crujientes flotantes del mordisco */}
+              <circle cx="51" cy="9" r="1.5" fill="#78350f" />
+              <circle cx="56" cy="14" r="1.2" fill="#92400e" />
+              <circle cx="47" cy="7" r="0.9" fill="#f59e0b" />
+
+              {/* Papel de Envoltura Dorado (Golden Foil) arrugado artesanal */}
+              <path 
+                d="M 10 40 Q 22 43 35 39 Q 48 44 60 41 L 58 75 Q 35 77 12 75 Z" 
+                fill="url(#goldFoilChocoGrad)" 
+                stroke="#b45309" 
+                strokeWidth="0.8" 
+              />
+              {/* Pliegue de envoltura brillante */}
+              <path 
+                d="M 10 40 L 16 45 L 26 41 L 38 46 L 49 42 L 60 41 L 57 47 L 12 47 Z" 
+                fill="#fde68a" 
+                opacity="0.6" 
+              />
+              
+              {/* Cintillo de etiqueta venezolana: Cacao Chuao 100% */}
+              <rect x="11" y="52" width="48" height="14" fill="#78350f" stroke="#d97706" strokeWidth="0.6" />
+              <text x="35" y="60" textAnchor="middle" fill="#fef08a" fontSize="5.5" fontWeight="900" letterSpacing="0.4" fontFamily="sans-serif">
+                CACAO VE
+              </text>
+              <text x="35" y="64.5" textAnchor="middle" fill="#ffffff" fontSize="3.8" fontWeight="bold" letterSpacing="0.2" fontFamily="sans-serif">
+                CHUAO 100%
+              </text>
+
+              {/* Degradados */}
+              <defs>
+                <linearGradient id="chocoSquareGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#5c2b10" />
+                  <stop offset="50%" stopColor="#431e0a" />
+                  <stop offset="100%" stopColor="#291206" />
+                </linearGradient>
+                <linearGradient id="goldFoilChocoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#fef08a" />
+                  <stop offset="30%" stopColor="#f59e0b" />
+                  <stop offset="70%" stopColor="#d97706" />
+                  <stop offset="100%" stopColor="#92400e" />
+                </linearGradient>
+              </defs>
+            </svg>
           </div>
         </>
       )}

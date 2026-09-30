@@ -329,6 +329,17 @@ export const EFEMERIDES_VENEZUELA: Efemeride[] = [
     colorTema: 'amber'
   },
   {
+    id: 'sep-13',
+    mes: 9,
+    dia: 13,
+    titulo: 'Día Internacional del Chocolate 🍫',
+    categoria: 'festiva',
+    icono: '🍫',
+    descripcion: 'Celebración mundial del chocolate en honor al natalicio de Milton Hershey y Roald Dahl. Una pausa dulce para recargar energía en la jornada legal.',
+    mensajeKant: '¡Hoy es el Día Internacional del Chocolate! 🍫 ¡Kant ya tiene su rica tableta lista! Dulzura y mucha energía positiva para el equipo de Román & Delgado. 🐾',
+    colorTema: 'amber'
+  },
+  {
     id: 'sep-21',
     mes: 9,
     dia: 21,
@@ -367,11 +378,11 @@ export const EFEMERIDES_VENEZUELA: Efemeride[] = [
     id: 'oct-01',
     mes: 10,
     dia: 1,
-    titulo: 'Día Nacional del Cacao Venezolano',
+    titulo: 'Día Nacional del Cacao Venezolano y del Chocolate 🍫',
     categoria: 'cultural',
     icono: '🍫',
-    descripcion: 'Homenaje al cacao fino de aroma venezolano (Chuao, Carenero, Sur del Lago), reconocido entre los mejores del planeta.',
-    mensajeKant: '¡Orgullo nacional! El cacao venezolano es el mejor del mundo. Un gustito dulce para la oficina. 🍫☕',
+    descripcion: 'Homenaje oficial al grano de oro venezolano. Venezuela cosecha los cacaos más finos y aromáticos del mundo (Chuao, Porcelana, Carenero Superior) convertidos en el chocolate más premiado del planeta.',
+    mensajeKant: '¡Guau! 🐾 ¡El mejor chocolate del mundo es el venezolano! Degustando una rica tableta en honor a nuestros productores de Chuao y Sur del Lago. ¡Dulce jornada para todo el equipo! 🍫🇻🇪',
     colorTema: 'amber'
   },
   {
@@ -639,7 +650,24 @@ export function getEfemeridesPorMes(mes: number): Efemeride[] {
  * Obtiene la fecha activa del sistema (fecha real actual, o simulada para pruebas de días festivos)
  */
 export function getActiveDate(): Date {
-  const simulated = localStorage.getItem('rd_simulated_date_override');
+  // Soporte para query param en URL (?sim_date=YYYY-MM-DD) para pruebas seguras
+  if (typeof window !== 'undefined' && window.location?.search) {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const queryDate = params.get('sim_date') || params.get('rd_simulated_date_override');
+      if (queryDate) {
+        const parts = queryDate.split('-');
+        if (parts.length === 3) {
+          const y = parseInt(parts[0], 10);
+          const m = parseInt(parts[1], 10) - 1;
+          const d = parseInt(parts[2], 10);
+          return new Date(y, m, d, 10, 0, 0);
+        }
+      }
+    } catch (e) {}
+  }
+
+  const simulated = typeof localStorage !== 'undefined' ? localStorage.getItem('rd_simulated_date_override') : null;
   if (simulated) {
     const parts = simulated.split('-');
     if (parts.length === 3) {
@@ -671,7 +699,7 @@ export function getSimulatedDate(): string | null {
   return localStorage.getItem('rd_simulated_date_override');
 }
 
-export type TipoDisfrazKant = 'halloween' | 'abogado' | 'navidad' | 'patria' | 'amor' | 'general' | null;
+export type TipoDisfrazKant = 'halloween' | 'abogado' | 'navidad' | 'patria' | 'amor' | 'chocolate' | 'general' | null;
 
 export interface DisfrazKantInfo {
   tipo: TipoDisfrazKant;
@@ -742,7 +770,23 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
     };
   }
 
-  // 6. San Valentín / Día del Amor
+  // 6. Día Nacional del Cacao y del Chocolate Venezolano (1 de Octubre, 13 de Septiembre)
+  if (
+    efemeride.id === 'oct-01' ||
+    efemeride.id === 'sep-13' ||
+    efemeride.titulo.toLowerCase().includes('chocolate') ||
+    efemeride.titulo.toLowerCase().includes('cacao')
+  ) {
+    return {
+      tipo: 'chocolate',
+      sombreroEmoji: '👨‍🍳',
+      accesorioEmoji: '🍫',
+      auraClass: 'from-amber-800/60 via-amber-600/40 to-yellow-600/50',
+      badgeLabel: '🍫 KANT Chocolatero'
+    };
+  }
+
+  // 7. San Valentín / Día del Amor
   if (efemeride.id === 'feb-14') {
     return {
       tipo: 'amor',

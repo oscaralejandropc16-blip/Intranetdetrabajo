@@ -229,8 +229,8 @@ export default function KantMascot({
               }
             }}
           />
-          <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
-          {festiveTheme === 'default' && disfrazInfo && (
+          <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
+          {festiveTheme === 'default' && disfrazInfo && disfrazInfo.tipo !== 'chocolate' && (
             <>
               {disfrazInfo.sombreroEmoji && (
                 <span 
@@ -277,11 +277,11 @@ export default function KantMascot({
             }}
           />
 
-          {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo */}
-          <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
+          {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo o Efeméride Especial */}
+          <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
 
           {/* Respaldo de Accesorios Automáticos si el tema es default pero hay efeméride con emoji */}
-          {festiveTheme === 'default' && disfrazInfo && (
+          {festiveTheme === 'default' && disfrazInfo && disfrazInfo.tipo !== 'chocolate' && (
             <>
               {/* Sombrero / Adorno de cabeza */}
               {disfrazInfo.sombreroEmoji && (
