@@ -144,34 +144,32 @@ export function determineAutoTheme(targetDate: Date = getActiveDate()): FestiveT
 }
 
 /**
- * Obtiene el modo de tema guardado ('auto' por defecto)
- */
-export function getSavedThemeMode(): ThemeMode {
-  const saved = localStorage.getItem('rd_theme_mode');
-  if (saved && (saved === 'auto' || saved in THEMES)) {
-    return saved as ThemeMode;
-  }
-  return 'auto';
-}
-
-/**
- * Retorna el tema activo real (si está en 'auto', resuelve según el calendario)
+ * Retorna el tema festivo activo 100% automáticamente según el calendario y efemérides
  */
 export function getActiveFestiveTheme(): FestiveThemeId {
-  const mode = getSavedThemeMode();
-  if (mode !== 'auto') {
-    return mode;
-  }
+  // Limpiar cualquier residuo de modo manual previo si existiera
+  try {
+    if (typeof localStorage !== 'undefined' && localStorage.getItem('rd_theme_mode')) {
+      localStorage.removeItem('rd_theme_mode');
+    }
+  } catch (e) {}
+
   return determineAutoTheme();
 }
 
 /**
- * Cambia el modo de tema y notifica a todos los componentes
+ * Obtiene el modo de tema guardado (siempre 'auto' por diseño automático)
  */
-export function setFestiveThemeMode(mode: ThemeMode): void {
-  localStorage.setItem('rd_theme_mode', mode);
+export function getSavedThemeMode(): ThemeMode {
+  return 'auto';
+}
+
+/**
+ * Notifica a los componentes cuando cambia la fecha o el estado del tema
+ */
+export function setFestiveThemeMode(_mode: ThemeMode = 'auto'): void {
   applyThemeToDOM();
-  window.dispatchEvent(new CustomEvent('rd_festive_theme_changed', { detail: mode }));
+  window.dispatchEvent(new CustomEvent('rd_festive_theme_changed', { detail: 'auto' }));
 }
 
 /**

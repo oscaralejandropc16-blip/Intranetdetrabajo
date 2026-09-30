@@ -19,6 +19,7 @@ interface KantMascotProps {
   soundEnabled?: boolean;
   roleBadge?: string;
   alignSpeech?: 'left' | 'center' | 'right';
+  asDiv?: boolean;
 }
 
 const KANT_QUOTES = [
@@ -83,7 +84,8 @@ export default function KantMascot({
   className = '',
   userName = '',
   soundEnabled = true,
-  alignSpeech = size === 'sm' ? 'left' : 'center'
+  alignSpeech = size === 'sm' ? 'left' : 'center',
+  asDiv = false
 }: KantMascotProps) {
   const [isExcited, setIsExcited] = useState(false);
   const [showSpeech, setShowSpeech] = useState(false);
@@ -236,59 +238,104 @@ export default function KantMascot({
       )}
 
       {/* Contenedor Interactivo del Perrito con su Disfraz Automático */}
-      <button
-        type="button"
-        onClick={handleClick}
-        aria-label="Kant Mascota"
-        className={`relative cursor-pointer transition-transform duration-300 active:scale-95 group focus:outline-none flex items-center justify-center ${
-          isExcited ? 'dog-excited' : 'dog-idle'
-        }`}
-      >
-        <img
-          src="/dog_logo.png"
-          alt="KANT Mascota"
-          className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-[0_4px_10px_rgba(245,158,11,0.35)] group-hover:drop-shadow-[0_6px_18px_rgba(245,158,11,0.65)] group-hover:scale-105`}
-          onError={(e) => {
-            // Respaldo de iniciales si la imagen fallara
-            e.currentTarget.style.display = 'none';
-            if (e.currentTarget.nextElementSibling) {
-              e.currentTarget.nextElementSibling.classList.remove('hidden');
-            }
-          }}
-        />
-
-        {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo */}
-        <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
-
-        {/* Respaldo de Accesorios Automáticos si el tema es default pero hay efeméride con emoji */}
-        {festiveTheme === 'default' && disfrazInfo && (
-          <>
-            {/* Sombrero / Adorno de cabeza */}
-            {disfrazInfo.sombreroEmoji && (
-              <span 
-                className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
-                style={{ animationDuration: '3s' }}
-                title={disfrazInfo.badgeLabel}
-              >
-                {disfrazInfo.sombreroEmoji}
-              </span>
-            )}
-            {/* Accesorio de patas / pecho */}
-            {disfrazInfo.accesorioEmoji && (
-              <span 
-                className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
-                title={disfrazInfo.badgeLabel}
-              >
-                {disfrazInfo.accesorioEmoji}
-              </span>
-            )}
-          </>
-        )}
-
-        <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
-          🐾
+      {asDiv ? (
+        <div
+          className={`relative transition-transform duration-300 group flex items-center justify-center pointer-events-none select-none ${
+            isExcited ? 'dog-excited' : 'dog-idle'
+          }`}
+        >
+          <img
+            src="/dog_logo.png"
+            alt="KANT Mascota"
+            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-[0_4px_10px_rgba(245,158,11,0.35)]`}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.nextElementSibling) {
+                e.currentTarget.nextElementSibling.classList.remove('hidden');
+              }
+            }}
+          />
+          <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
+          {festiveTheme === 'default' && disfrazInfo && (
+            <>
+              {disfrazInfo.sombreroEmoji && (
+                <span 
+                  className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
+                  style={{ animationDuration: '3s' }}
+                  title={disfrazInfo.badgeLabel}
+                >
+                  {disfrazInfo.sombreroEmoji}
+                </span>
+              )}
+              {disfrazInfo.accesorioEmoji && (
+                <span 
+                  className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
+                  title={disfrazInfo.badgeLabel}
+                >
+                  {disfrazInfo.accesorioEmoji}
+                </span>
+              )}
+            </>
+          )}
+          <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
+            🐾
+          </div>
         </div>
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={handleClick}
+          aria-label="Kant Mascota"
+          className={`relative cursor-pointer transition-transform duration-300 active:scale-95 group focus:outline-none flex items-center justify-center ${
+            isExcited ? 'dog-excited' : 'dog-idle'
+          }`}
+        >
+          <img
+            src="/dog_logo.png"
+            alt="KANT Mascota"
+            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-[0_4px_10px_rgba(245,158,11,0.35)] group-hover:drop-shadow-[0_6px_18px_rgba(245,158,11,0.65)] group-hover:scale-105`}
+            onError={(e) => {
+              // Respaldo de iniciales si la imagen fallara
+              e.currentTarget.style.display = 'none';
+              if (e.currentTarget.nextElementSibling) {
+                e.currentTarget.nextElementSibling.classList.remove('hidden');
+              }
+            }}
+          />
+
+          {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo */}
+          <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
+
+          {/* Respaldo de Accesorios Automáticos si el tema es default pero hay efeméride con emoji */}
+          {festiveTheme === 'default' && disfrazInfo && (
+            <>
+              {/* Sombrero / Adorno de cabeza */}
+              {disfrazInfo.sombreroEmoji && (
+                <span 
+                  className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
+                  style={{ animationDuration: '3s' }}
+                  title={disfrazInfo.badgeLabel}
+                >
+                  {disfrazInfo.sombreroEmoji}
+                </span>
+              )}
+              {/* Accesorio de patas / pecho */}
+              {disfrazInfo.accesorioEmoji && (
+                <span 
+                  className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
+                  title={disfrazInfo.badgeLabel}
+                >
+                  {disfrazInfo.accesorioEmoji}
+                </span>
+              )}
+            </>
+          )}
+
+          <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
+            🐾
+          </div>
+        </button>
+      )}
 
       {/* Globo de Diálogo Interactivo (Speech Bubble) Responsive */}
       {showSpeech && (
@@ -570,7 +617,7 @@ export function KantFloatingCompanion({
           aria-label="KANT Guardián"
         >
           <div className="relative">
-            <KantMascot size="sm" showSpeechOnClick={false} soundEnabled={false} />
+            <KantMascot size="sm" showSpeechOnClick={false} soundEnabled={false} asDiv={true} />
             {totalAlerts > 0 && (
               <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-slate-900 shadow-md animate-pulse">
                 {totalAlerts}
