@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Sparkles, X, ShieldCheck, Heart, ChevronRight, EyeOff } from 'lucide-react';
-import { getEfemerideDelDia } from '../../lib/efemeridesVenezuela';
+import { 
+  getEfemerideDelDia, 
+  getActiveDate, 
+  getDisfrazParaEfemeride 
+} from '../../lib/efemeridesVenezuela';
 
 interface KantMascotProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -83,10 +87,28 @@ export default function KantMascot({
   const clickCount = useRef(0);
   const mascotRef = useRef<HTMLDivElement>(null);
 
-  // Efeméride de hoy para personalizar frases de Kant
-  const todayEfemeride = useMemo(() => {
-    return getEfemerideDelDia(new Date());
+  // Escuchar fecha activa (tiempo real del sistema o simulación en pruebas)
+  const [currentDate, setCurrentDate] = useState<Date>(() => getActiveDate());
+
+  useEffect(() => {
+    const handleDateChange = () => {
+      setCurrentDate(getActiveDate());
+    };
+    window.addEventListener('rd_simulated_date_changed', handleDateChange);
+    return () => {
+      window.removeEventListener('rd_simulated_date_changed', handleDateChange);
+    };
   }, []);
+
+  // Efeméride de hoy para personalizar atuendo y frases de Kant automáticamente
+  const todayEfemeride = useMemo(() => {
+    return getEfemerideDelDia(currentDate);
+  }, [currentDate]);
+
+  // Atuendo / Disfraz automático de Kant ("colocarse así")
+  const disfrazInfo = useMemo(() => {
+    return getDisfrazParaEfemeride(todayEfemeride);
+  }, [todayEfemeride]);
 
   const activeQuotes = useMemo(() => {
     if (todayEfemeride && todayEfemeride.mensajeKant) {
@@ -97,6 +119,37 @@ export default function KantMascot({
     }
     return KANT_QUOTES;
   }, [todayEfemeride]);
+
+  // Resetear índice de frase cuando cambia la efeméride
+  useEffect(() => {
+    setCurrentQuoteIndex(0);
+  }, [todayEfemeride]);
+
+  // Auto-saludo automático si hoy es un día especial de efeméride
+  useEffect(() => {
+    if (!todayEfemeride || !showSpeechOnClick) return;
+    
+    // Identificador único para saludar automáticamente una vez por sesión
+    const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`;
+    const sessionKey = `rd_kant_auto_greeted_${todayEfemeride.id}_${dateKey}`;
+    const alreadyGreeted = sessionStorage.getItem(sessionKey);
+
+    if (!alreadyGreeted) {
+      const timer = setTimeout(() => {
+        setIsExcited(true);
+        setTimeout(() => setIsExcited(false), 900);
+        setShowHearts(true);
+        setTimeout(() => setShowHearts(false), 1500);
+        if (soundEnabled) {
+          playPlayfulChime();
+        }
+        setShowSpeech(true);
+        sessionStorage.setItem(sessionKey, 'true');
+      }, 1200);
+
+      return () => clearTimeout(timer);
+    }
+  }, [todayEfemeride, currentDate, soundEnabled, showSpeechOnClick]);
 
   // Cerrar el globo de diálogo al hacer clic afuera
   useEffect(() => {
@@ -152,9 +205,9 @@ export default function KantMascot({
 
   return (
     <div ref={mascotRef} className={`relative inline-flex items-center justify-center select-none ${className}`}>
-      {/* Halo y Aura de Glow Dinámico Dorado/Ámbar */}
+      {/* Halo y Aura de Glow Dinámico que cambia según el disfraz/efeméride */}
       <div 
-        className={`absolute rounded-full bg-gradient-to-r from-amber-400/30 via-yellow-300/25 to-amber-500/30 blur-md pointer-events-none transition-all duration-500 ${auraSize} ${
+        className={`absolute rounded-full bg-gradient-to-r ${disfrazInfo?.auraClass || 'from-amber-400/30 via-yellow-300/25 to-amber-500/30'} blur-md pointer-events-none transition-all duration-500 ${auraSize} ${
           isExcited ? 'opacity-100 scale-125' : 'opacity-70 group-hover:opacity-100'
         }`}
       />
@@ -172,7 +225,7 @@ export default function KantMascot({
         </div>
       )}
 
-      {/* Contenedor Interactivo del Perrito */}
+      {/* Contenedor Interactivo del Perrito con su Disfraz Automático */}
       <button
         type="button"
         onClick={handleClick}
@@ -193,6 +246,32 @@ export default function KantMascot({
             }
           }}
         />
+
+        {/* Accesorios Automáticos del Disfraz ("colocarse así") */}
+        {disfrazInfo && (
+          <>
+            {/* Sombrero / Adorno de cabeza */}
+            {disfrazInfo.sombreroEmoji && (
+              <span 
+                className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
+                style={{ animationDuration: '3s' }}
+                title={disfrazInfo.badgeLabel}
+              >
+                {disfrazInfo.sombreroEmoji}
+              </span>
+            )}
+            {/* Accesorio de patas / pecho */}
+            {disfrazInfo.accesorioEmoji && (
+              <span 
+                className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
+                title={disfrazInfo.badgeLabel}
+              >
+                {disfrazInfo.accesorioEmoji}
+              </span>
+            )}
+          </>
+        )}
+
         <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
           🐾
         </div>
@@ -241,10 +320,17 @@ export default function KantMascot({
             {activeQuotes[currentQuoteIndex]}
           </p>
 
-          {todayEfemeride && currentQuoteIndex === 0 && (
-            <div className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
-              <span className="text-xs">{todayEfemeride.icono}</span>
-              <span className="truncate">{todayEfemeride.titulo}</span>
+          {todayEfemeride && (
+            <div className="mt-2 flex items-center justify-between gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
+              <span className="flex items-center gap-1.5 truncate">
+                <span className="text-xs">{todayEfemeride.icono}</span>
+                <span className="truncate">{todayEfemeride.titulo}</span>
+              </span>
+              {disfrazInfo?.badgeLabel && (
+                <span className="text-[9px] uppercase tracking-wider text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0 font-black">
+                  {disfrazInfo.badgeLabel}
+                </span>
+              )}
             </div>
           )}
 

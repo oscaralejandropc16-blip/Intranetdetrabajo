@@ -634,3 +634,131 @@ export function getEfemeridesPorMes(mes: number): Efemeride[] {
     .filter(e => e.mes === mes)
     .sort((a, b) => a.dia - b.dia);
 }
+
+/**
+ * Obtiene la fecha activa del sistema (fecha real actual, o simulada para pruebas de días festivos)
+ */
+export function getActiveDate(): Date {
+  const simulated = localStorage.getItem('rd_simulated_date_override');
+  if (simulated) {
+    const parts = simulated.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      return new Date(y, m, d, 10, 0, 0);
+    }
+  }
+  return new Date();
+}
+
+/**
+ * Establece o borra la fecha simulada para pruebas interactivas (dispara evento global)
+ */
+export function setSimulatedDate(dateStr: string | null): void {
+  if (dateStr) {
+    localStorage.setItem('rd_simulated_date_override', dateStr);
+  } else {
+    localStorage.removeItem('rd_simulated_date_override');
+  }
+  window.dispatchEvent(new CustomEvent('rd_simulated_date_changed', { detail: dateStr }));
+}
+
+/**
+ * Retorna la fecha simulada actual si está activa
+ */
+export function getSimulatedDate(): string | null {
+  return localStorage.getItem('rd_simulated_date_override');
+}
+
+export type TipoDisfrazKant = 'halloween' | 'abogado' | 'navidad' | 'patria' | 'amor' | 'general' | null;
+
+export interface DisfrazKantInfo {
+  tipo: TipoDisfrazKant;
+  sombreroEmoji: string;
+  accesorioEmoji: string;
+  auraClass: string;
+  badgeLabel: string;
+}
+
+/**
+ * Determina el atuendo / disfraz que Kant se coloca automáticamente según la efeméride del día
+ */
+export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKantInfo | null {
+  if (!efemeride) return null;
+
+  // 1. Halloween (31 de Octubre o alusivo a Halloween)
+  if (efemeride.id === 'oct-31' || efemeride.titulo.toLowerCase().includes('halloween')) {
+    return {
+      tipo: 'halloween',
+      sombreroEmoji: '🧙‍♂️',
+      accesorioEmoji: '🎃',
+      auraClass: 'from-orange-500/50 via-purple-600/40 to-amber-500/50',
+      badgeLabel: '🎃 Halloween KANT'
+    };
+  }
+
+  // 2. Día Nacional del Abogado (23 de Junio)
+  if (efemeride.id === 'jun-23' || efemeride.titulo.toLowerCase().includes('abogado')) {
+    return {
+      tipo: 'abogado',
+      sombreroEmoji: '🎓',
+      accesorioEmoji: '⚖️',
+      auraClass: 'from-amber-400/50 via-blue-500/40 to-yellow-300/50',
+      badgeLabel: '⚖️ Abogado KANT'
+    };
+  }
+
+  // 3. Efemérides Jurídicas (Día del Juez, etc.)
+  if (efemeride.categoria === 'juridica') {
+    return {
+      tipo: 'abogado',
+      sombreroEmoji: '⚖️',
+      accesorioEmoji: '📜',
+      auraClass: 'from-blue-500/40 via-amber-400/40 to-slate-900',
+      badgeLabel: '⚖️ Guardián Legal'
+    };
+  }
+
+  // 4. Navidad y Fin de Año
+  if (efemeride.mes === 12 && (efemeride.dia >= 21 || efemeride.dia === 1)) {
+    return {
+      tipo: 'navidad',
+      sombreroEmoji: '🎅',
+      accesorioEmoji: '🎄',
+      auraClass: 'from-red-600/50 via-emerald-600/40 to-amber-400/50',
+      badgeLabel: '🎄 Feliz Navidad'
+    };
+  }
+
+  // 5. Fechas Patrias (5 de Julio, 19 de Abril, Batalla de Carabobo, etc.)
+  if (efemeride.categoria === 'patria') {
+    return {
+      tipo: 'patria',
+      sombreroEmoji: '⭐',
+      accesorioEmoji: '🇻🇪',
+      auraClass: 'from-amber-400/50 via-blue-600/40 to-rose-600/50',
+      badgeLabel: '🇻🇪 ¡Viva Venezuela!'
+    };
+  }
+
+  // 6. San Valentín / Día del Amor
+  if (efemeride.id === 'feb-14') {
+    return {
+      tipo: 'amor',
+      sombreroEmoji: '💖',
+      accesorioEmoji: '🌹',
+      auraClass: 'from-rose-500/50 via-pink-400/40 to-red-500/50',
+      badgeLabel: '❤️ Amor & Amistad'
+    };
+  }
+
+  // Resto de efemérides con su respectivo emoji
+  return {
+    tipo: 'general',
+    sombreroEmoji: efemeride.icono,
+    accesorioEmoji: '🐾',
+    auraClass: 'from-amber-400/35 via-yellow-300/30 to-amber-500/35',
+    badgeLabel: efemeride.titulo
+  };
+}

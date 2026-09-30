@@ -16,7 +16,10 @@ import {
 import { syncServerTime, getServerDateSync } from '../../lib/supabaseAdapter';
 import { 
   getEfemerideDelDia, 
-  getProximasEfemerides 
+  getProximasEfemerides,
+  getActiveDate,
+  getSimulatedDate,
+  setSimulatedDate
 } from '../../lib/efemeridesVenezuela';
 import EfemeridesModal from './EfemeridesModal';
 
@@ -42,8 +45,9 @@ const CITIES: CityWeather[] = [
 ];
 
 export default function LiveStatusBar() {
-  // 1. Estado del Reloj y Fecha
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  // 1. Estado del Reloj y Fecha (tiempo real oficial o fecha de prueba)
+  const [simulatedDate, setSimulatedDateState] = useState<string | null>(() => getSimulatedDate());
+  const [currentTime, setCurrentTime] = useState<Date>(() => getActiveDate());
 
   // 2. Estado de Divisas ($ y €)
   const [dolarRate, setDolarRate] = useState<number | null>(() => {
@@ -74,14 +78,36 @@ export default function LiveStatusBar() {
     return proximas.length > 0 ? proximas[0] : null;
   }, [currentTime, todayEfemeride]);
 
-  // Efecto Reloj en Vivo sincronizado con la hora oficial del servidor (cada 1 segundo)
+  // Efecto Reloj en Vivo sincronizado con la hora oficial del servidor o simulador
   useEffect(() => {
-    syncServerTime().then(d => setCurrentTime(d));
+    const handleSimChange = () => {
+      const sim = getSimulatedDate();
+      setSimulatedDateState(sim);
+      if (sim) {
+        setCurrentTime(getActiveDate());
+      } else {
+        setCurrentTime(getServerDateSync());
+      }
+    };
+
+    window.addEventListener('rd_simulated_date_changed', handleSimChange);
+
+    if (!simulatedDate) {
+      syncServerTime().then(d => setCurrentTime(d));
+    }
+
     const timer = setInterval(() => {
-      setCurrentTime(getServerDateSync());
+      const sim = getSimulatedDate();
+      if (!sim) {
+        setCurrentTime(getServerDateSync());
+      }
     }, 1000);
-    return () => clearInterval(timer);
-  }, []);
+
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('rd_simulated_date_changed', handleSimChange);
+    };
+  }, [simulatedDate]);
 
   // Efecto Carga de Divisas (Dólar / Euro Oficiales)
   const fetchRates = async () => {
@@ -265,12 +291,27 @@ export default function LiveStatusBar() {
           <div className="min-w-0 max-w-[190px] sm:max-w-[220px]">
             <div className="flex items-center gap-1.5">
               <span className={`text-[8px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded border ${
-                todayEfemeride 
-                  ? 'bg-amber-400 text-slate-950 border-amber-300' 
-                  : 'bg-slate-800 text-amber-300 border-amber-500/30'
+                simulatedDate
+                  ? 'bg-purple-500 text-white border-purple-400 font-black animate-pulse'
+                  : todayEfemeride 
+                    ? 'bg-amber-400 text-slate-950 border-amber-300' 
+                    : 'bg-slate-800 text-amber-300 border-amber-500/30'
               }`}>
-                {todayEfemeride ? 'HOY EN VENEZUELA' : 'EFEMÉRIDES VZLA'}
+                {simulatedDate ? '🧪 PRUEBA VZLA' : todayEfemeride ? 'HOY EN VENEZUELA' : 'EFEMÉRIDES VZLA'}
               </span>
+              {simulatedDate && (
+                <span
+                  role="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSimulatedDate(null);
+                  }}
+                  className="text-[7.5px] font-bold text-purple-200 bg-purple-900/90 hover:bg-purple-800 px-1 py-0.2 rounded border border-purple-400/40 cursor-pointer"
+                  title="Restablecer a fecha real automática"
+                >
+                  Restablecer
+                </span>
+              )}
               <Sparkles className="w-3 h-3 text-amber-400 shrink-0 opacity-80 group-hover:opacity-100" />
             </div>
             <p className="text-[11px] font-bold text-white leading-tight truncate mt-0.5">
