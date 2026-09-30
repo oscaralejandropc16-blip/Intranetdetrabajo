@@ -751,10 +751,6 @@ export default function AdminDashboard() {
         cambios.push(`Observación General de Jefatura: "${adminComment}"`);
       }
 
-      if (cambios.length === 0) {
-        cambios.push('Revisión y aprobación de bitácora completada.');
-      }
-
       const rawBoss = (localStorage.getItem('rd_user_name') || '').toLowerCase();
       const reviewerName = rawBoss.includes('victor') ? 'Víctor Román' : 'Luis Delgado';
       const formData = new FormData();

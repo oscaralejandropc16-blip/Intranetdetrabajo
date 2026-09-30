@@ -297,19 +297,27 @@ export default function EmployeeDashboard() {
         // Si vienen feedbacks o modificaciones en el historial de la API
         if (Array.isArray(tasksRes.data.feedbacks_historial)) {
           tasksRes.data.feedbacks_historial.forEach((fb: any) => {
-            const hasCambios = Array.isArray(fb.cambios_realizados) && fb.cambios_realizados.length > 0;
+            const isGenericApproval = (txt: string) => {
+              const clean = (txt || '').toLowerCase().trim();
+              return clean.includes('revisión y aprobación') || clean.includes('revision y aprobacion') || clean.includes('aprobación de bitácora completada');
+            };
+            const rawCambios: string[] = Array.isArray(fb.cambios_realizados) ? fb.cambios_realizados : [];
+            const realCambios = rawCambios.filter((c: string) => !isGenericApproval(c));
+            const hasRealCambios = realCambios.length > 0;
+            const hasComment = fb.comentario_admin && fb.comentario_admin.trim() !== '';
+            const isApproved = fb.status === 'aprobado' || fb.estado === 'aprobado' || rawCambios.some(isGenericApproval);
             const supervisorName = normalizeSupervisorName(fb.supervisado_por, fb.date);
             const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
-            if (!isSelf && ((fb.comentario_admin && fb.comentario_admin.trim() !== '') || hasCambios)) {
+            if (!isSelf && (hasComment || hasRealCambios || isApproved)) {
               const notifId = `feedback-bitacora-${fb.id}`;
               const isRead = localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
-              const msg = fb.comentario_admin || (hasCambios ? fb.cambios_realizados.join(' • ') : '');
+              const msg = fb.comentario_admin || (hasRealCambios ? realCambios.join(' • ') : 'Revisión y aprobación completada sin modificaciones.');
               allNotifs.push({
                 id: notifId,
-                type: hasCambios ? 'changes' : 'feedback',
-                title: hasCambios ? `Modificaciones de Jefatura en Bitácora del ${fb.date}` : `Feedback Jefatura sobre Bitácora del ${fb.date}`,
+                type: hasRealCambios ? 'changes' : (isApproved && !hasComment) ? 'approval' : 'feedback',
+                title: hasRealCambios ? `Modificaciones de Jefatura en Bitácora del ${fb.date}` : `Bitácora del ${fb.date}`,
                 message: msg,
-                detalles: hasCambios ? fb.cambios_realizados : undefined,
+                detalles: hasRealCambios ? realCambios : undefined,
                 sender: supervisorName,
                 read: isRead,
                 date: fb.date
@@ -341,15 +349,23 @@ export default function EmployeeDashboard() {
         const nowMs = Date.now();
 
         histRes.data.forEach((b: any) => {
-          const hasCambios = Array.isArray(b.cambios_realizados) && b.cambios_realizados.length > 0;
+          const isGenericApproval = (txt: string) => {
+            const clean = (txt || '').toLowerCase().trim();
+            return clean.includes('revisión y aprobación') || clean.includes('revision y aprobacion') || clean.includes('aprobación de bitácora completada');
+          };
+
+          const rawCambios: string[] = Array.isArray(b.cambios_realizados) ? b.cambios_realizados : [];
+          const realCambios = rawCambios.filter((c: string) => !isGenericApproval(c));
+          const hasRealCambios = realCambios.length > 0;
           const hasComment = b.comentario_admin && b.comentario_admin.trim() !== '';
+          const isApproved = b.status === 'aprobado' || b.estado === 'aprobado' || rawCambios.some(isGenericApproval);
           const supervisorName = normalizeSupervisorName(b.supervisado_por, b.date);
           const isSelf = currentLoggedUser && supervisorName.toLowerCase().includes(currentLoggedUser);
 
           if (isSelf) return; // No auto-notificar al jefe sobre sus propias notas
 
-          // Solo generar notificación si Jefatura dejó un comentario o modificaciones directas
-          if (hasComment || hasCambios) {
+          // Solo generar notificación si Jefatura dejó un comentario, hizo cambios reales, o aprobó la bitácora
+          if (hasComment || hasRealCambios || isApproved) {
             const notifId = `bitacora-chat-${b.id || b.date}`;
             
             // Para bitácoras con más de 7 días, ya son históricas y su revisión está en la tabla de historial
@@ -361,16 +377,16 @@ export default function EmployeeDashboard() {
             const exists = allNotifs.some(n => String(n.id) === String(notifId) || (n.date && n.date === b.date));
             
             if (!exists) {
-              const detallesList = hasCambios ? b.cambios_realizados.map((c: string) => `Modificación: ${c}`) : undefined;
-              const mainMsg = b.comentario_admin || (detallesList && detallesList.length > 0 ? detallesList[0] : 'Observaciones de Jefatura');
+              const notifType = hasRealCambios ? 'changes' : (isApproved && !hasComment) ? 'approval' : 'feedback';
+              const mainMsg = b.comentario_admin || (hasRealCambios ? realCambios.join(' • ') : 'Revisión y aprobación de bitácora completada sin modificaciones.');
 
               allNotifs.push({
                 id: notifId,
                 post_id: b.id,
-                type: hasCambios ? 'changes' : 'feedback',
-                title: `Bitácora del ${b.date}`,
+                type: notifType,
+                title: hasRealCambios ? `Modificaciones de Jefatura en Bitácora del ${b.date}` : `Bitácora del ${b.date}`,
                 message: mainMsg,
-                detalles: detallesList,
+                detalles: hasRealCambios ? realCambios : undefined,
                 sender: supervisorName,
                 read: isRead,
                 date: b.date

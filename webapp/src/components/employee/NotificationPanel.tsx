@@ -163,6 +163,13 @@ export default function NotificationPanel({ notifications, setNotifications }: N
 
   const getTypeBadge = (type: string) => {
     switch (type) {
+      case 'approval':
+        return (
+          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider rounded-full border border-emerald-200 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Bitácora Aprobada
+          </span>
+        );
       case 'changes':
         return (
           <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 text-[10px] font-black uppercase tracking-wider rounded-full border border-rose-200 flex items-center gap-1">
@@ -269,8 +276,9 @@ export default function NotificationPanel({ notifications, setNotifications }: N
               className="bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none cursor-pointer shadow-xs"
             >
               <option value="all">Todas las Categorías</option>
-              <option value="instruction">Instrucciones de Tarea</option>
+              <option value="approval">Bitácoras Aprobadas</option>
               <option value="changes">Modificaciones de Jefatura</option>
+              <option value="instruction">Instrucciones de Tarea</option>
               <option value="feedback">Observaciones de Bitácora</option>
             </select>
 
@@ -381,14 +389,18 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
                       isUnread
-                        ? notif.type === 'changes'
+                        ? notif.type === 'approval'
+                          ? 'bg-emerald-600 text-white'
+                          : notif.type === 'changes'
                           ? 'bg-rose-500 text-white'
                           : notif.type === 'instruction'
                             ? 'bg-amber-500 text-slate-950'
                             : 'bg-blue-600 text-white'
                         : 'bg-slate-100 text-slate-500'
                     }`}>
-                      {notif.type === 'changes' ? (
+                      {notif.type === 'approval' ? (
+                        <CheckCircle2 className="w-4 h-4" />
+                      ) : notif.type === 'changes' ? (
                         <Sparkles className="w-4 h-4" />
                       ) : notif.type === 'instruction' ? (
                         <AlertCircle className="w-4 h-4" />
@@ -415,9 +427,20 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                       </h4>
 
                       {/* Mensaje Principal o Detalles */}
-                      {Array.isArray(notif.detalles) && notif.detalles.length > 0 ? (
+                      {notif.type === 'approval' ? (
+                        <div className="mt-1.5 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-950 space-y-1">
+                          <p className="font-bold flex items-center gap-1.5 text-emerald-900">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Revisión y aprobación completada
+                          </p>
+                          <p className="text-[11px] text-emerald-800 font-medium">
+                            {notif.message && !notif.message.toLowerCase().includes('revisión y aprobación') && !notif.message.toLowerCase().includes('revision y aprobacion')
+                              ? `Observación: "${notif.message}"`
+                              : 'Tu bitácora fue supervisada y aprobada con éxito por Jefatura sin modificaciones en tus tareas.'}
+                          </p>
+                        </div>
+                      ) : Array.isArray(notif.detalles) && notif.detalles.length > 0 ? (
                         <div className="mt-1.5 space-y-1 p-2.5 rounded-xl bg-white border border-slate-200/80">
-                          <p className="text-[11px] font-bold text-slate-900">Modificaciones registradas por Jefatura:</p>
+                          <p className="text-[11px] font-bold text-slate-900">Modificaciones y asignaciones de Jefatura:</p>
                           <ul className="text-xs text-slate-700 font-medium space-y-0.5 pl-4 list-disc">
                             {notif.detalles.map((d, i) => (
                               <li key={i} className="break-words leading-relaxed">{d}</li>
