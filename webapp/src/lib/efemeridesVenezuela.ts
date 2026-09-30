@@ -753,12 +753,6 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
     };
   }
 
-  // Resto de efemérides con su respectivo emoji
-  return {
-    tipo: 'general',
-    sombreroEmoji: efemeride.icono,
-    accesorioEmoji: '🐾',
-    auraClass: 'from-amber-400/35 via-yellow-300/30 to-amber-500/35',
-    badgeLabel: efemeride.titulo
-  };
+  // Días habituales u otras efemérides estándar no llevan disfraz para mantener la sobriedad ejecutiva
+  return null;
 }

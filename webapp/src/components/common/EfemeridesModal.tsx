@@ -2,14 +2,12 @@ import { useState, useMemo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   X, Calendar, Sparkles, Scale, Flag, PartyPopper, 
-  Briefcase, Search, RotateCcw
+  Briefcase, Search
 } from 'lucide-react';
 import { 
   getEfemerideDelDia, 
   getProximasEfemerides, 
   getEfemeridesPorMes,
-  getSimulatedDate,
-  setSimulatedDate,
   getDisfrazParaEfemeride
 } from '../../lib/efemeridesVenezuela';
 
@@ -29,44 +27,11 @@ export default function EfemeridesModal({
   onClose,
   currentDate = new Date()
 }: EfemeridesModalProps) {
-  const [simulatedDate, setSimulatedDateState] = useState<string | null>(() => getSimulatedDate());
-
-  useEffect(() => {
-    const handleSimChange = () => {
-      setSimulatedDateState(getSimulatedDate());
-    };
-    window.addEventListener('rd_simulated_date_changed', handleSimChange);
-    return () => {
-      window.removeEventListener('rd_simulated_date_changed', handleSimChange);
-    };
-  }, []);
-
-  const activeModalDate = useMemo(() => {
-    if (simulatedDate) {
-      const parts = simulatedDate.split('-');
-      if (parts.length === 3) {
-        return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-      }
-    }
-    return currentDate;
-  }, [simulatedDate, currentDate]);
-
+  const activeModalDate = currentDate;
   const currentMonth = activeModalDate.getMonth() + 1; // 1-12
   const [selectedMonth, setSelectedMonth] = useState<number>(currentMonth);
   const [categoryFilter, setCategoryFilter] = useState<string>('todas');
   const [searchQuery, setSearchQuery] = useState<string>('');
-
-  const handleTestDate = (dateStr: string | null) => {
-    setSimulatedDate(dateStr);
-    if (dateStr) {
-      const parts = dateStr.split('-');
-      if (parts.length === 3) {
-        setSelectedMonth(parseInt(parts[1], 10));
-      }
-    } else {
-      setSelectedMonth(currentDate.getMonth() + 1);
-    }
-  };
 
   // Sincronizar mes inicial al abrir
   useEffect(() => {
@@ -166,89 +131,6 @@ export default function EfemeridesModal({
 
         {/* 2. Cuerpo Desplazable */}
         <div className="p-4 sm:p-6 overflow-y-auto space-y-5 flex-1 scrollbar-thin">
-          
-          {/* SECCIÓN INTERACTIVA: SIMULADOR DE EFEMÉRIDES (PRUEBA EN VIVO CÓMO SE VISTE KANT) */}
-          <div className="bg-slate-950/90 border border-amber-500/30 rounded-2xl p-3.5 space-y-2.5 shadow-lg">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="flex items-center gap-2">
-                <span className="text-base">🧪</span>
-                <div>
-                  <h4 className="text-xs font-black text-white flex items-center gap-1.5">
-                    Simulador en Vivo: Prueba cómo se viste y celebra Kant
-                  </h4>
-                  <p className="text-[10.5px] text-slate-400">
-                    En producción, Kant se coloca su disfraz y saludo <strong>100% automáticamente</strong> cuando llega el día en el calendario.
-                  </p>
-                </div>
-              </div>
-              {simulatedDate && (
-                <span className="px-2.5 py-0.5 rounded-full bg-purple-500/25 text-purple-300 border border-purple-500/40 text-[9px] font-black uppercase tracking-wider animate-pulse">
-                  Modo Prueba Activo
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-1.5 flex-wrap pt-1 border-t border-slate-800">
-              <button
-                type="button"
-                onClick={() => handleTestDate('2026-10-31')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  simulatedDate === '2026-10-31'
-                    ? 'bg-orange-500 text-slate-950 font-black shadow-lg shadow-orange-500/30 ring-2 ring-orange-400'
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-orange-300 border border-orange-500/30'
-                }`}
-              >
-                <span>🎃 Probar Halloween (31 Oct)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTestDate('2026-06-23')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  simulatedDate === '2026-06-23'
-                    ? 'bg-amber-400 text-slate-950 font-black shadow-lg shadow-amber-400/30 ring-2 ring-amber-300'
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-amber-300 border border-amber-500/30'
-                }`}
-              >
-                <span>⚖️ Probar Día del Abogado (23 Jun)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTestDate('2026-12-25')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  simulatedDate === '2026-12-25'
-                    ? 'bg-red-500 text-white font-black shadow-lg shadow-red-500/30 ring-2 ring-red-400'
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-red-300 border border-red-500/30'
-                }`}
-              >
-                <span>🎄 Probar Navidad (25 Dic)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleTestDate('2026-07-05')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  simulatedDate === '2026-07-05'
-                    ? 'bg-blue-600 text-white font-black shadow-lg shadow-blue-500/30 ring-2 ring-blue-400'
-                    : 'bg-slate-800/80 hover:bg-slate-800 text-blue-300 border border-blue-500/30'
-                }`}
-              >
-                <span>🇻🇪 Probar 5 de Julio</span>
-              </button>
-
-              {simulatedDate && (
-                <button
-                  type="button"
-                  onClick={() => handleTestDate(null)}
-                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600 cursor-pointer flex items-center gap-1 ml-auto"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restablecer a Fecha Real</span>
-                </button>
-              )}
-            </div>
-          </div>
 
           {/* Tarjeta Destacada: Efeméride de Hoy (o la más próxima) */}
           {todayEfemeride ? (
@@ -259,7 +141,7 @@ export default function EfemeridesModal({
                   <div>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider">
-                        {simulatedDate ? '¡Efeméride en Prueba!' : '¡Efeméride de Hoy!'}
+                        ¡Efeméride de Hoy!
                       </span>
                       {todayDisfraz?.badgeLabel && (
                         <span className="px-2 py-0.5 bg-slate-800 text-amber-300 border border-amber-400/40 font-bold text-[9px] rounded-full uppercase tracking-wider">

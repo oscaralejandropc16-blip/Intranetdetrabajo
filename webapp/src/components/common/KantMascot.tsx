@@ -137,32 +137,6 @@ export default function KantMascot({
     setCurrentQuoteIndex(0);
   }, [todayEfemeride]);
 
-  // Auto-saludo automático si hoy es un día especial de efeméride
-  useEffect(() => {
-    if (!todayEfemeride || !showSpeechOnClick) return;
-    
-    // Identificador único para saludar automáticamente una vez por sesión
-    const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}-${currentDate.getDate()}`;
-    const sessionKey = `rd_kant_auto_greeted_${todayEfemeride.id}_${dateKey}`;
-    const alreadyGreeted = sessionStorage.getItem(sessionKey);
-
-    if (!alreadyGreeted) {
-      const timer = setTimeout(() => {
-        setIsExcited(true);
-        setTimeout(() => setIsExcited(false), 900);
-        setShowHearts(true);
-        setTimeout(() => setShowHearts(false), 1500);
-        if (soundEnabled) {
-          playPlayfulChime();
-        }
-        setShowSpeech(true);
-        sessionStorage.setItem(sessionKey, 'true');
-      }, 1200);
-
-      return () => clearTimeout(timer);
-    }
-  }, [todayEfemeride, currentDate, soundEnabled, showSpeechOnClick]);
-
   // Cerrar el globo de diálogo al hacer clic afuera
   useEffect(() => {
     if (!showSpeech) return;
@@ -340,7 +314,7 @@ export default function KantMascot({
       {/* Globo de Diálogo Interactivo (Speech Bubble) Responsive */}
       {showSpeech && (
         <div 
-          className={`absolute top-full mt-2.5 z-50 w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-xl border border-amber-400/40 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200 ${
+          className={`absolute top-full mt-2.5 z-[100] w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200 ${
             alignSpeech === 'left' 
               ? 'left-0' 
               : alignSpeech === 'right' 
@@ -350,7 +324,7 @@ export default function KantMascot({
         >
           {/* Triángulo indicador hacia el perrito */}
           <div 
-            className={`absolute -top-1.5 w-3 h-3 bg-slate-900 border-t border-l border-amber-400/40 rotate-45 ${
+            className={`absolute -top-1.5 w-3 h-3 bg-slate-900 border-t border-l border-slate-700 rotate-45 ${
               alignSpeech === 'left' 
                 ? 'left-4' 
                 : alignSpeech === 'right' 
@@ -362,7 +336,7 @@ export default function KantMascot({
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{todayEfemeride && currentQuoteIndex === 0 ? 'Kant celebra:' : 'Kant dice:'}</span>
+              <span>{disfrazInfo ? 'Kant celebra:' : 'Kant dice:'}</span>
             </div>
             <button
               type="button"
@@ -380,17 +354,12 @@ export default function KantMascot({
             {activeQuotes[currentQuoteIndex]}
           </p>
 
-          {todayEfemeride && (
-            <div className="mt-2 flex items-center justify-between gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/15 px-2.5 py-1 rounded-lg border border-amber-500/30">
+          {disfrazInfo?.badgeLabel && (
+            <div className="mt-2 flex items-center justify-between gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30">
               <span className="flex items-center gap-1.5 truncate">
-                <span className="text-xs">{todayEfemeride.icono}</span>
-                <span className="truncate">{todayEfemeride.titulo}</span>
+                <span className="text-xs">{todayEfemeride?.icono || '🐾'}</span>
+                <span className="truncate">{disfrazInfo.badgeLabel}</span>
               </span>
-              {disfrazInfo?.badgeLabel && (
-                <span className="text-[9px] uppercase tracking-wider text-amber-300 bg-slate-950/80 px-1.5 py-0.5 rounded border border-amber-400/40 shrink-0 font-black">
-                  {disfrazInfo.badgeLabel}
-                </span>
-              )}
             </div>
           )}
 
