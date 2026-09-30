@@ -8,6 +8,7 @@ interface KantMascotProps {
   userName?: string;
   soundEnabled?: boolean;
   roleBadge?: string;
+  alignSpeech?: 'left' | 'center' | 'right';
 }
 
 const KANT_QUOTES = [
@@ -71,7 +72,8 @@ export default function KantMascot({
   showSpeechOnClick = true,
   className = '',
   userName = '',
-  soundEnabled = true
+  soundEnabled = true,
+  alignSpeech = size === 'sm' ? 'left' : 'center'
 }: KantMascotProps) {
   const [isExcited, setIsExcited] = useState(false);
   const [showSpeech, setShowSpeech] = useState(false);
@@ -165,9 +167,25 @@ export default function KantMascot({
 
       {/* Globo de Diálogo Interactivo (Speech Bubble) Responsive */}
       {showSpeech && (
-        <div className="absolute left-0 sm:left-1/2 sm:-translate-x-1/2 top-full mt-2.5 z-50 w-64 sm:w-72 max-w-[calc(100vw-1.5rem)] bg-slate-900/95 backdrop-blur-xl border border-amber-400/40 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200">
+        <div 
+          className={`absolute top-full mt-2.5 z-50 w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-slate-900/95 backdrop-blur-xl border border-amber-400/40 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200 ${
+            alignSpeech === 'left' 
+              ? 'left-0' 
+              : alignSpeech === 'right' 
+                ? 'right-0' 
+                : 'left-1/2 -translate-x-1/2'
+          }`}
+        >
           {/* Triángulo indicador hacia el perrito */}
-          <div className="absolute -top-1.5 left-5 sm:left-1/2 sm:-translate-x-1/2 w-3 h-3 bg-slate-900 border-t border-l border-amber-400/40 rotate-45"></div>
+          <div 
+            className={`absolute -top-1.5 w-3 h-3 bg-slate-900 border-t border-l border-amber-400/40 rotate-45 ${
+              alignSpeech === 'left' 
+                ? 'left-4' 
+                : alignSpeech === 'right' 
+                  ? 'right-4' 
+                  : 'left-1/2 -translate-x-1/2'
+            }`}
+          />
 
           <div className="flex items-start justify-between gap-2 mb-1.5">
             <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
