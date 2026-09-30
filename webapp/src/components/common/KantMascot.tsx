@@ -227,11 +227,13 @@ export default function KantMascot({
 export function KantFloatingCompanion({ 
   pendingReviews = 0, 
   pendingGastos = 0,
-  unreadReplies = 0 
+  unreadReplies = 0,
+  onNavigate
 }: { 
   pendingReviews?: number; 
   pendingGastos?: number;
   unreadReplies?: number;
+  onNavigate?: (tab: string) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -265,26 +267,47 @@ export function KantFloatingCompanion({
           </div>
 
           <div className="py-3 space-y-2 text-xs">
-            <div className="flex items-center justify-between bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigate) onNavigate('bitacoras');
+                setIsOpen(false);
+              }}
+              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-amber-500/10 p-2 rounded-xl border border-slate-800 hover:border-amber-500/30 transition-all text-left cursor-pointer active:scale-98"
+            >
               <span className="text-slate-300 font-medium">📋 Bitácoras por revisar:</span>
               <span className="font-black text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
                 {pendingReviews}
               </span>
-            </div>
+            </button>
 
-            <div className="flex items-center justify-between bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigate) onNavigate('gastos');
+                setIsOpen(false);
+              }}
+              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-emerald-500/10 p-2 rounded-xl border border-slate-800 hover:border-emerald-500/30 transition-all text-left cursor-pointer active:scale-98"
+            >
               <span className="text-slate-300 font-medium">🧾 Gastos por liquidar:</span>
               <span className="font-black text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
                 {pendingGastos}
               </span>
-            </div>
+            </button>
 
-            <div className="flex items-center justify-between bg-slate-950/60 p-2 rounded-xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => {
+                if (onNavigate) onNavigate('chat');
+                setIsOpen(false);
+              }}
+              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-blue-500/10 p-2 rounded-xl border border-slate-800 hover:border-blue-500/30 transition-all text-left cursor-pointer active:scale-98"
+            >
               <span className="text-slate-300 font-medium">💬 Mensajes de equipo:</span>
               <span className="font-black text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-md border border-blue-500/30">
                 {unreadReplies}
               </span>
-            </div>
+            </button>
           </div>
 
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">

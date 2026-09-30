@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Bell, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -135,8 +135,6 @@ export default function AdminDashboard() {
     return list;
   };
 
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [notificationTab, setNotificationTab] = useState<'gastos' | 'respuestas' | 'supervision' | 'equipo'>('gastos');
   const [repliesFilter, setRepliesFilter] = useState<'pendientes' | 'atendidos' | 'todos'>('pendientes');
   const [chatConfig, setChatConfig] = useState<{
     isOpen: boolean;
@@ -148,23 +146,7 @@ export default function AdminDashboard() {
     targetUser: 'Empleado',
     initialMessages: []
   });
-  const [myDirectFeedbacks, setMyDirectFeedbacks] = useState<any[]>([]);
   const [employeeMessages, setEmployeeMessages] = useState<any[]>(() => getLocalEmployeeMessages());
-  const [dismissedFeedbackNotifs, setDismissedFeedbackNotifs] = useState<string[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rd_jefe_read_feedbacks') || '[]');
-    } catch (e) {
-      return [];
-    }
-  });
-
-  const markFeedbackAsRead = (id: string | number, report?: any) => {
-    const idStr = String(id || '');
-    const keyStr = report ? `${report.date}_${report.user}_${report.comentario_admin}` : '';
-    const updated = Array.from(new Set([...dismissedFeedbackNotifs, idStr, keyStr].filter(Boolean)));
-    setDismissedFeedbackNotifs(updated);
-    localStorage.setItem('rd_jefe_read_feedbacks', JSON.stringify(updated));
-  };
 
   const markEmployeeReplyRead = async (replyId: string) => {
     // 1. Guardar persistentemente en rd_jefe_attended_replies
@@ -209,7 +191,6 @@ export default function AdminDashboard() {
   };
 
   const handleOpenChatForReply = (msg: any, extraMessages?: any[]) => {
-    setShowNotifications(false);
     const targetUser = (msg.author_role === 'empleado' || (msg.author && msg.author.toLowerCase().includes('carmen'))) ? 'Carmen Luisa' : (msg.author || 'Carmen Luisa');
     const dateKey = msg.fecha_bitacora || msg.date || '';
 
@@ -285,7 +266,6 @@ export default function AdminDashboard() {
       };
     }
 
-    setShowNotifications(false);
     setSelectedReport(targetRep);
     setAdminComment(targetRep.comentario_admin || '');
     setAdminProgramaciones(ensureArray(targetRep.programaciones));
@@ -322,6 +302,29 @@ export default function AdminDashboard() {
     fetchGlobalExpedientes();
     window.addEventListener('rd_expedientes_updated', fetchGlobalExpedientes);
     return () => window.removeEventListener('rd_expedientes_updated', fetchGlobalExpedientes);
+  }, []);
+
+  // Sincronizar en tiempo real cuando se leen o atienden mensajes en el chat
+  useEffect(() => {
+    const handleSync = (e?: any) => {
+      const ids: string[] = e?.detail?.ids || [];
+      if (ids.length > 0) {
+        setEmployeeMessages(prev => prev.map(m => {
+          if (ids.includes(String(m.id))) {
+            return { ...m, leido_por_jefe: true, atendido: true };
+          }
+          return m;
+        }));
+      } else {
+        setEmployeeMessages(getLocalEmployeeMessages());
+      }
+    };
+    window.addEventListener('rd_chat_read', handleSync);
+    window.addEventListener('rd_employee_messages_updated', handleSync);
+    return () => {
+      window.removeEventListener('rd_chat_read', handleSync);
+      window.removeEventListener('rd_employee_messages_updated', handleSync);
+    };
   }, []);
 
   useEffect(() => {
@@ -490,7 +493,7 @@ export default function AdminDashboard() {
 
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [dismissedNotifs, setDismissedNotifs] = useState<number[]>([]);
+  const [dismissedNotifs] = useState<number[]>([]);
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const [systemAlert, setSystemAlert] = useState<{
     isOpen: boolean;
@@ -664,61 +667,7 @@ export default function AdminDashboard() {
           }
         } catch (e) {}
 
-        // Obtener feedback directo asignado a mis tareas
-        try {
-          const myTasksRes = await api.get('/rd-intranet/v1/my-tasks');
-          if (myTasksRes.data && myTasksRes.data.comentario_admin && myTasksRes.data.comentario_admin.trim() !== '') {
-            const loggedName = localStorage.getItem('rd_user_name') || 'Jefatura';
-            setMyDirectFeedbacks(prev => {
-              const exists = prev.some(f => f.comentario_admin === myTasksRes.data.comentario_admin);
-              if (!exists) {
-                return [{
-                  id: `task-feedback-${myTasksRes.data.fecha_bitacora || 'reciente'}`,
-                  user: loggedName,
-                  date: myTasksRes.data.fecha_bitacora || 'Reciente',
-                  comentario_admin: myTasksRes.data.comentario_admin,
-                  supervisado_por: normalizeSupervisorName(myTasksRes.data.supervisado_por, myTasksRes.data.fecha_bitacora) || 'Luis Delgado',
-                  clockIn: 'N/A (Jefatura)',
-                  clockOut: 'Registrada',
-                  status: 'Revisado',
-                  actuaciones: [],
-                  ingresos: [],
-                  programaciones: ensureArray(myTasksRes.data.programaciones),
-                  evidences: []
-                }, ...prev];
-              }
-              return prev;
-            });
-          }
-        } catch (e) {
-          // Ignorar error secundario
-        }
 
-        // Obtener bitácoras con feedback en mi historial propio
-        try {
-          const myHistRes = await api.get('/rd-intranet/v1/my-history');
-          if (myHistRes.data && Array.isArray(myHistRes.data)) {
-            const loggedName = localStorage.getItem('rd_user_name') || 'Jefatura';
-            const histFeedbacks = myHistRes.data
-              .filter((h: any) => h.comentario_admin && h.comentario_admin.trim() !== '')
-              .map((h: any) => ({
-                ...h,
-                user: h.user || loggedName,
-                actuaciones: ensureArray(h.actuaciones),
-                ingresos: ensureArray(h.ingresos),
-                programaciones: ensureArray(h.programaciones),
-                evidences: ensureArray(h.evidences)
-              }));
-            if (histFeedbacks.length > 0) {
-              setMyDirectFeedbacks(prev => {
-                const combined = [...prev, ...histFeedbacks];
-                return combined.filter((item, idx, self) => idx === self.findIndex(t => (t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)));
-              });
-            }
-          }
-        } catch (e) {
-          // Ignorar error secundario
-        }
       } catch (error) {
         console.error('Error fetching bitacoras', error);
         if (!isRetry) {
@@ -1251,39 +1200,9 @@ export default function AdminDashboard() {
     return acc;
   }, {} as Record<string, Record<string, any>>);
 
-  const currentLoggedUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
 
-  // 1. Notificaciones de Supervisión Recibida (Feedback dejado por otro jefe al jefe actual)
-  const mySupervisorFeedbacks = [
-    ...reports.filter(r => {
-      const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
-      const supervisor = (r.supervisado_por || '').toLowerCase().trim();
-      const isMine = reportUser === currentLoggedUser || (currentLoggedUser && reportUser.includes(currentLoggedUser)) || (reportUser && currentLoggedUser.includes(reportUser));
-      // No mostrar auto-supervisión
-      if (supervisor && (supervisor === currentLoggedUser || supervisor === reportUser || currentLoggedUser.includes(supervisor) || supervisor.includes(currentLoggedUser))) {
-        return false;
-      }
-      const comment = (r.comentario_admin || '').trim();
-      if (!comment || comment.toLowerCase() === 'prueba' || comment.toLowerCase() === 'probando') return false;
-      return isMine;
-    }),
-    ...myDirectFeedbacks.filter(f => {
-      const comment = (f.comentario_admin || '').trim();
-      return comment && comment.toLowerCase() !== 'prueba' && comment.toLowerCase() !== 'probando';
-    })
-  ].filter((item, index, self) => index === self.findIndex((t) => (t.id && t.id === item.id) || (t.date === item.date && t.comentario_admin === item.comentario_admin)))
-   .sort((a: any, b: any) => {
-     const dateA = a.date || a.fecha || '';
-     const dateB = b.date || b.fecha || '';
-     if (dateA !== dateB) return dateB.localeCompare(dateA);
-     return (Number(b.id) || 0) - (Number(a.id) || 0);
-   });
 
-  const unreadFeedbacks = mySupervisorFeedbacks.filter(f => {
-    const idStr = String(f.id || '');
-    const keyStr = `${f.date}_${f.user}_${f.comentario_admin}`;
-    return !dismissedFeedbackNotifs.includes(idStr) && !dismissedFeedbackNotifs.includes(keyStr);
-  });
+
 
   // Agrupar mensajes del buzón por Bitácora y Empleado (100% consistente y sin mensajes de prueba)
   const deletedMsgList: string[] = (() => {
@@ -1380,8 +1299,6 @@ export default function AdminDashboard() {
   const pendingGastosList = allGastos.filter(g => g.estatus === 'Pendiente');
   const pendingGastosCount = pendingGastosList.length;
 
-  const totalNotifsCount = unreadFeedbacks.length + activeNotifications.length + pendingChatGroups.length + pendingGastosCount;
-
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500">
       <SystemAlertModal
@@ -1439,348 +1356,6 @@ export default function AdminDashboard() {
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
             <span className="text-amber-300 font-bold text-[11px]">Por Revisar:</span>
             <span className="font-black text-amber-300 font-mono">{pendingReview}</span>
-          </div>
-
-          {/* Campana Compacta con Glow */}
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="p-2 px-3 bg-slate-800/80 hover:bg-slate-800 border border-white/10 hover:border-amber-400/50 hover:shadow-[0_0_15px_rgba(245,158,11,0.3)] rounded-xl text-amber-400 hover:text-amber-300 transition-all flex items-center gap-1.5 relative cursor-pointer active:scale-95"
-              title="Centro de Notificaciones y Supervisión"
-            >
-              <Bell className="w-4 h-4" />
-              <span className="text-xs font-bold text-slate-300">Alertas</span>
-              {totalNotifsCount > 0 && (
-                <span className="min-w-[18px] h-[18px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-[0_0_10px_rgba(239,68,68,0.6)] animate-pulse">
-                  {totalNotifsCount}
-                </span>
-              )}
-            </button>
-
-            {showNotifications && (
-              <div className="absolute right-0 mt-2 w-84 sm:w-[440px] max-w-[calc(100vw-1.5rem)] bg-slate-900/95 backdrop-blur-2xl rounded-2xl shadow-2xl border border-amber-500/20 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="bg-slate-950 p-3.5 border-b border-white/5">
-                  <div className="flex justify-between items-center text-white mb-2.5">
-                    <span className="font-bold text-xs tracking-widest uppercase text-amber-400 flex items-center gap-1.5">
-                      <Bell className="w-3.5 h-3.5 text-amber-400" /> Centro de Notificaciones y Supervisión
-                    </span>
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-white transition-colors cursor-pointer"><X className="w-3.5 h-3.5" /></button>
-                  </div>
-
-                  {/* Selector de Pestañas en la Campana (4 categorías completas) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-900 rounded-xl border border-white/5 text-[11px]">
-                    <button
-                      onClick={() => setNotificationTab('gastos')}
-                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                        notificationTab === 'gastos' 
-                          ? 'bg-amber-500 text-slate-950 shadow-xs font-black' 
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <Receipt className="w-3 h-3" />
-                      <span>Gastos ({pendingGastosCount})</span>
-                    </button>
-                    <button
-                      onClick={() => setNotificationTab('respuestas')}
-                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                        notificationTab === 'respuestas' 
-                          ? 'bg-emerald-600 text-white shadow-xs' 
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <MessageSquare className="w-3 h-3" />
-                      <span>Respuestas ({unreadEmployeeReplies.length})</span>
-                    </button>
-                    <button
-                      onClick={() => setNotificationTab('supervision')}
-                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                        notificationTab === 'supervision' 
-                          ? 'bg-blue-600 text-white shadow-xs' 
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Supervisión ({unreadFeedbacks.length})</span>
-                    </button>
-                    <button
-                      onClick={() => setNotificationTab('equipo')}
-                      className={`py-1.5 px-1.5 rounded-lg font-bold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                        notificationTab === 'equipo' 
-                          ? 'bg-indigo-600 text-white shadow-xs' 
-                          : 'text-slate-400 hover:text-white'
-                      }`}
-                    >
-                      <FileText className="w-3 h-3" />
-                      <span>Por Revisar ({activeNotifications.length})</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="max-h-80 overflow-y-auto p-3 space-y-2">
-                  {/* CONTENIDO PESTAÑA: GASTOS POR LIQUIDAR */}
-                  {notificationTab === 'gastos' && (
-                    pendingGastosCount === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                        ¡Todo al día! No hay relaciones de gastos pendientes por liquidar.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center px-1">
-                          <span className="text-[10px] uppercase font-black tracking-wider text-amber-400">
-                            {pendingGastosCount} pendientes de pago
-                          </span>
-                          <button
-                            onClick={() => {
-                              setActiveView('gastos');
-                              setShowNotifications(false);
-                            }}
-                            className="text-[10px] font-bold text-amber-300 hover:text-white underline cursor-pointer"
-                          >
-                            Ir a Módulo Gastos →
-                          </button>
-                        </div>
-                        {pendingGastosList.map((g, idx) => (
-                          <div
-                            key={g.id || idx}
-                            className="p-3 bg-amber-950/40 rounded-xl border border-amber-500/30 hover:border-amber-400/60 transition-all"
-                          >
-                            <div className="flex justify-between items-start gap-2 mb-1">
-                              <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1">
-                                <Receipt className="w-3 h-3 text-amber-400" /> {g.empleado || 'Empleado'}
-                              </span>
-                              <span className="text-[10px] text-slate-400 font-mono">{g.periodo}</span>
-                            </div>
-                            <p className="text-xs text-slate-200 font-semibold mb-2">
-                              Total: <strong className="text-white">${Number(g.totalUsd || 0).toFixed(2)} USD</strong> / <span className="text-amber-200">Bs {Number(g.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                            </p>
-                            <div className="flex justify-end gap-2 pt-1 border-t border-white/5">
-                              <button
-                                onClick={() => {
-                                  setActiveView('gastos');
-                                  setShowNotifications(false);
-                                }}
-                                className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-lg transition-all flex items-center gap-1 cursor-pointer"
-                              >
-                                <CheckCircle2 className="w-3 h-3 text-slate-950" /> Ir a Liquidar
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  )}
-
-                  {/* CONTENIDO PESTAÑA: RESPUESTAS DE EMPLEADOS */}
-                  {notificationTab === 'respuestas' && (
-                    <div className="space-y-2">
-                      {/* Subfiltros: Pendientes vs Atendidos */}
-                      <div className="flex items-center justify-between gap-1 p-1 bg-slate-950 rounded-xl border border-white/5 text-[10px]">
-                        <button
-                          onClick={() => setRepliesFilter('pendientes')}
-                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
-                            repliesFilter === 'pendientes' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          Pendientes ({employeeMessages.filter(m => !m.atendido && !m.leido_por_jefe).length})
-                        </button>
-                        <button
-                          onClick={() => setRepliesFilter('atendidos')}
-                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
-                            repliesFilter === 'atendidos' ? 'bg-teal-700 text-white' : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          Atendidos ({employeeMessages.filter(m => m.atendido || m.leido_por_jefe).length})
-                        </button>
-                        <button
-                          onClick={() => setRepliesFilter('todos')}
-                          className={`flex-1 py-1 px-2 rounded-lg font-bold transition-all cursor-pointer ${
-                            repliesFilter === 'todos' ? 'bg-emerald-700 text-white' : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          Todos ({employeeMessages.length})
-                        </button>
-                      </div>
-
-                      {(() => {
-                        const filtered = employeeMessages.filter(m => {
-                          if (repliesFilter === 'pendientes') return !m.atendido && !m.leido_por_jefe;
-                          if (repliesFilter === 'atendidos') return m.atendido || m.leido_por_jefe;
-                          return true;
-                        });
-
-                        if (filtered.length === 0) {
-                          return (
-                            <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                              {repliesFilter === 'pendientes' 
-                                ? '¡Todo al día! No tienes respuestas pendientes.'
-                                : 'No hay respuestas en este historial.'}
-                            </div>
-                          );
-                        }
-
-                        return filtered.map((m, idx) => {
-                          const isUnread = !m.leido_por_jefe && !m.atendido;
-                          return (
-                            <div 
-                              key={m.id || idx} 
-                              className={`p-3 rounded-xl border transition-all ${
-                                isUnread 
-                                  ? 'bg-emerald-950/60 border-emerald-500/40' 
-                                  : 'bg-white/5 border-white/5 opacity-90'
-                              }`}
-                            >
-                              <div className="flex justify-between items-start gap-2 mb-1">
-                                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                                  <MessageSquare className="w-3 h-3" /> {m.author}
-                                </span>
-                                <div className="flex items-center gap-1.5">
-                                  {m.atendido && (
-                                    <span className="px-1.5 py-0.2 rounded text-[8px] font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                                      Atendido
-                                    </span>
-                                  )}
-                                  <span className="text-[10px] text-slate-400">{m.fecha}</span>
-                                </div>
-                              </div>
-                              <p className="text-[11px] text-slate-300 font-bold truncate mb-1">
-                                Sobre: {m.titulo}
-                              </p>
-                              <p className="text-xs text-white italic mb-2 line-clamp-2 bg-black/20 p-2 rounded-lg">
-                                "{m.mensaje}"
-                              </p>
-                              <div className="flex justify-between items-center pt-2 border-t border-white/5 gap-2 flex-wrap">
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    onClick={() => handleOpenChatForReply(m)}
-                                    className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer bg-emerald-950/80 px-2 py-1 rounded-md border border-emerald-500/30"
-                                    title="Abrir chat tipo WhatsApp"
-                                  >
-                                    <MessageSquare className="w-3 h-3" /> Chat WhatsApp
-                                  </button>
-                                  <button
-                                    onClick={() => handleOpenReportForReply(m)}
-                                    className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                                  >
-                                    <FileText className="w-3 h-3" /> Ver Bitácora
-                                  </button>
-                                </div>
-
-                                <button
-                                  onClick={() => markEmployeeReplyRead(m.id)}
-                                  className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
-                                >
-                                  {m.atendido ? (
-                                    <>
-                                      <RotateCcw className="w-3 h-3 text-amber-400" /> Reabrir
-                                    </>
-                                  ) : (
-                                    <>
-                                      <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Marcar Atendido
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        });
-                      })()}
-                    </div>
-                  )}
-                  {/* CONTENIDO PESTAÑA: SUPERVISIÓN DE JEFATURA */}
-                  {notificationTab === 'supervision' && (
-                    mySupervisorFeedbacks.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                        No tienes observaciones de supervisión registradas.
-                      </div>
-                    ) : (
-                      mySupervisorFeedbacks.map((f, idx) => {
-                        const isUnread = !dismissedFeedbackNotifs.includes(String(f.id));
-                        return (
-                          <div 
-                            key={f.id || idx} 
-                            className={`p-3 rounded-xl border transition-all ${
-                              isUnread 
-                                ? 'bg-blue-950/60 border-blue-500/40' 
-                                : 'bg-white/5 border-white/5'
-                            }`}
-                          >
-                            <div className="flex justify-between items-start gap-2 mb-1">
-                              <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                                <MessageSquare className="w-3 h-3" /> {f.supervisado_por ? `Supervisado por: ${normalizeSupervisorName(f.supervisado_por, f.date)}` : 'Observaciones de Jefatura'}
-                              </span>
-                              <span className="text-[10px] text-slate-400">{f.date}</span>
-                            </div>
-                            <p className="text-xs text-white italic mb-2 line-clamp-2">
-                              "{f.comentario_admin}"
-                            </p>
-                            <div className="flex justify-between items-center pt-2 border-t border-white/5">
-                              <button
-                                onClick={() => {
-                                  setSelectedReport(f);
-                                  setShowNotifications(false);
-                                  setAdminComment(f.comentario_admin || '');
-                                  setAdminProgramaciones(ensureArray(f.programaciones));
-                                  setAdminActuaciones(ensureArray(f.actuaciones));
-                                  setAdminIngresos(ensureArray(f.ingresos));
-                                }}
-                                className="text-[11px] font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer"
-                              >
-                                <FileText className="w-3 h-3" /> Ver Bitácora / PDF
-                              </button>
-                              {isUnread && (
-                                <button
-                                  onClick={() => markFeedbackAsRead(f.id)}
-                                  className="text-[10px] font-bold text-slate-400 hover:text-emerald-400 flex items-center gap-1 cursor-pointer"
-                                >
-                                  <CheckCircle2 className="w-3 h-3" /> Marcar Leído
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )
-                  )}
-
-                  {/* CONTENIDO PESTAÑA: BITÁCORAS DEL EQUIPO POR REVISAR */}
-                  {notificationTab === 'equipo' && (
-                    activeNotifications.length === 0 ? (
-                      <div className="p-6 text-center text-slate-400 text-xs font-medium">
-                        No hay bitácoras pendientes por revisar.
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="flex justify-end">
-                          <button
-                            onClick={() => setDismissedNotifs([...dismissedNotifs, ...activeNotifications.map(n => n.id)])}
-                            className="text-[10px] font-bold text-slate-400 hover:text-amber-400 uppercase tracking-wider transition-colors cursor-pointer"
-                          >
-                            Limpiar Alertas
-                          </button>
-                        </div>
-                        {activeNotifications.map(r => (
-                          <div 
-                            key={r.id} 
-                            className="p-3 bg-white/5 rounded-xl border border-white/5 hover:bg-white/10 hover:border-amber-500/30 cursor-pointer transition-all group" 
-                            onClick={() => {
-                              setSelectedReport(r);
-                              setShowNotifications(false);
-                              setAdminComment(r.comentario_admin || '');
-                              setAdminProgramaciones(ensureArray(r.programaciones));
-                              setAdminActuaciones(ensureArray(r.actuaciones));
-                              setAdminIngresos(ensureArray(r.ingresos));
-                            }}
-                          >
-                            <p className="text-xs font-bold text-white capitalize">{r.user} <span className="font-medium text-slate-400 normal-case block mt-0.5">ha enviado su bitácora</span></p>
-                            <p className="text-[11px] text-amber-400 font-bold mt-1.5 flex items-center gap-1.5"><Clock className="w-3 h-3" /> Requiere revisión de Jefatura</p>
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -2456,7 +2031,7 @@ export default function AdminDashboard() {
         <div className="animate-in fade-in duration-200">
           <LiveChatModule 
             isJefatura={true}
-            currentUser={currentLoggedUser || 'Luis Delgado'}
+            currentUser={localStorage.getItem('rd_user_name') || 'Luis Delgado'}
             onUnreadCountChange={setUnreadChatLive}
           />
         </div>
@@ -3769,9 +3344,10 @@ export default function AdminDashboard() {
 
       {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE */}
       <KantFloatingCompanion 
-        pendingReviews={pendingReview} 
+        pendingReviews={activeNotifications.length} 
         pendingGastos={pendingGastosCount} 
         unreadReplies={unreadEmployeeReplies.length} 
+        onNavigate={(tab: any) => setActiveView(tab)}
       />
     </div>
   );

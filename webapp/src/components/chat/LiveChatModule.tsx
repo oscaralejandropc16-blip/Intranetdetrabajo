@@ -273,15 +273,95 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         }
       }
 
-      prevMessagesCountRef.current = combined.length;
-      initialFetchDoneRef.current = true;
-      setMessages(combined);
-
-      // Calcular no leídos
-      let unread = 0;
-      combined.forEach(m => {
+      // Auto-marcar como leídos y atendidos los mensajes de esta conversación activa
+      const unattendedIds: string[] = [];
+      const markedCombined = combined.map(m => {
         const fromBoss = isUserBoss(m.author, m.author_role);
-        if (isJefatura && !fromBoss && !m.leido_por_jefe) {
+        if (isJefatura && !fromBoss && (!m.leido_por_jefe || !m.atendido)) {
+          unattendedIds.push(String(m.id));
+          return { ...m, leido_por_jefe: true, atendido: true };
+        } else if (!isJefatura && fromBoss && !m.leido_por_empleado) {
+          unattendedIds.push(String(m.id));
+          return { ...m, leido_por_empleado: true };
+        }
+        return m;
+      });
+
+      // Si había mensajes pendientes, persistir inmediatamente como atendidos y leídos
+      if (unattendedIds.length > 0) {
+        if (isJefatura) {
+          try {
+            const existing = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
+            const updatedAtt = Array.from(new Set([...existing, ...unattendedIds]));
+            localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updatedAtt));
+          } catch (e) {}
+
+          unattendedIds.forEach(id => {
+            submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: id, atendido: true }).catch(() => {});
+          });
+        }
+
+        try {
+          const qRaw = localStorage.getItem('rd_all_employee_replies_queue');
+          if (qRaw) {
+            const qList = JSON.parse(qRaw);
+            if (Array.isArray(qList)) {
+              const updatedQ = qList.map((item: any) => {
+                if (unattendedIds.includes(String(item.id))) {
+                  return { ...item, leido_por_jefe: true, atendido: true, leido_por_empleado: true };
+                }
+                return item;
+              });
+              localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
+            }
+          }
+        } catch (e) {}
+
+        try {
+          const mapRaw = localStorage.getItem('rd_local_employee_replies');
+          if (mapRaw) {
+            const parsedMap = JSON.parse(mapRaw);
+            Object.keys(parsedMap).forEach(k => {
+              if (Array.isArray(parsedMap[k])) {
+                parsedMap[k] = parsedMap[k].map((item: any) => {
+                  if (unattendedIds.includes(String(item.id))) {
+                    return { ...item, leido_por_jefe: true, atendido: true };
+                  }
+                  return item;
+                });
+              }
+            });
+            localStorage.setItem('rd_local_employee_replies', JSON.stringify(parsedMap));
+          }
+        } catch (e) {}
+
+        submitToServer('/rd-intranet/v1/chat/mark-read', {
+          is_jefatura: isJefatura,
+          employee: activeEmployee
+        }).catch(() => {});
+
+        window.dispatchEvent(new CustomEvent('rd_chat_read', { detail: { employee: activeEmployee, ids: unattendedIds } }));
+        window.dispatchEvent(new Event('rd_employee_messages_updated'));
+
+        setConversations(prev => prev.map(c => {
+          const cName = (c.employee || '').toLowerCase().trim();
+          const aName = (activeEmployee || '').toLowerCase().trim();
+          if (cName === aName || cName.includes(aName) || aName.includes(cName)) {
+            return { ...c, unreadCountJefe: 0, unreadCountEmpleado: 0, unreadCount: 0 };
+          }
+          return c;
+        }));
+      }
+
+      prevMessagesCountRef.current = markedCombined.length;
+      initialFetchDoneRef.current = true;
+      setMessages(markedCombined);
+
+      // Calcular no leídos restantes
+      let unread = 0;
+      markedCombined.forEach(m => {
+        const fromBoss = isUserBoss(m.author, m.author_role);
+        if (isJefatura && !fromBoss && (!m.leido_por_jefe || !m.atendido)) {
           unread++;
         } else if (!isJefatura && fromBoss && !m.leido_por_empleado) {
           unread++;
@@ -478,12 +558,28 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   // Alternar estatus de Atendido (para Jefatura)
   const handleToggleAtendido = (msgId: string) => {
+    let nextState = true;
     setMessages(prev => prev.map(m => {
       if (m.id === msgId) {
-        return { ...m, atendido: !m.atendido, leido_por_jefe: true };
+        nextState = !m.atendido;
+        return { ...m, atendido: nextState, leido_por_jefe: true };
       }
       return m;
     }));
+
+    try {
+      const existing: string[] = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
+      let updated: string[];
+      if (nextState) {
+        updated = Array.from(new Set([...existing, String(msgId)]));
+      } else {
+        updated = existing.filter(id => id !== String(msgId));
+      }
+      localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
+    } catch (e) {}
+
+    submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: msgId, atendido: nextState }).catch(() => {});
+    window.dispatchEvent(new CustomEvent('rd_chat_read', { detail: { employee: activeEmployee, ids: [msgId] } }));
   };
 
   // Eliminar mensaje
@@ -667,7 +763,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               <button
                 key={cIdx}
                 type="button"
-                onClick={() => setActiveEmployee(conv.employee)}
+                onClick={() => {
+                  setActiveEmployee(conv.employee);
+                  setConversations(prev => prev.map(c => 
+                    c.employee === conv.employee ? { ...c, unreadCountJefe: 0, unreadCountEmpleado: 0, unreadCount: 0 } : c
+                  ));
+                }}
                 className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${
                   isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
                 }`}
@@ -695,7 +796,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   </p>
                 </div>
 
-                {conv.unreadCountJefe > 0 && (
+                {!isActive && conv.unreadCountJefe > 0 && (
                   <span className="px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-black rounded-full text-[10px] shadow-sm shrink-0 self-center">
                     {conv.unreadCountJefe}
                   </span>
