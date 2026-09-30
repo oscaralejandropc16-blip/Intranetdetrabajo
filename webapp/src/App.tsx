@@ -4,6 +4,12 @@ import EmployeeDashboard from './components/EmployeeDashboard';
 import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
 import KantMascot from './components/common/KantMascot';
+import ThemeSelectorDropdown from './components/common/ThemeSelectorDropdown';
+import { 
+  applyThemeToDOM, 
+  THEMES, 
+  type FestiveThemeId 
+} from './lib/themeManager';
 import { submitToServer } from './lib/api';
 import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
 
@@ -37,6 +43,25 @@ function App() {
     const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
     return checkIsJefatura(storedUser, storedAdmin);
   });
+
+  // Tema Festivo Activo (Halloween, Día del Abogado, Navidad, Fechas Patrias o Clásico)
+  const [activeTheme, setActiveTheme] = useState<FestiveThemeId>(() => applyThemeToDOM());
+
+  useEffect(() => {
+    applyThemeToDOM();
+    const handleThemeChange = () => {
+      const current = applyThemeToDOM();
+      setActiveTheme(current);
+    };
+    window.addEventListener('rd_festive_theme_changed', handleThemeChange);
+    window.addEventListener('rd_simulated_date_changed', handleThemeChange);
+    return () => {
+      window.removeEventListener('rd_festive_theme_changed', handleThemeChange);
+      window.removeEventListener('rd_simulated_date_changed', handleThemeChange);
+    };
+  }, []);
+
+  const themeConfig = THEMES[activeTheme] || THEMES.default;
 
   // Estados para Cambiar Contraseña desde el Navbar
   const [showChangeModal, setShowChangeModal] = useState(false);
@@ -133,9 +158,12 @@ function App() {
 
   return (
     <Router>
-      <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
-        {/* Navbar Corporativo Responsive con Glow y Mascota Animada */}
-        <nav className="bg-slate-900/95 backdrop-blur-xl border-b border-amber-500/30 px-3 sm:px-8 py-3 flex justify-between items-center shadow-xl sticky top-0 z-50">
+      <div className={`min-h-screen bg-slate-50 flex flex-col font-sans transition-colors duration-500 ${themeConfig.themeClass}`}>
+        {/* Navbar Corporativo Responsive con Glow, Mascota Animada y Acento Festivo */}
+        <nav className="relative bg-slate-900/95 backdrop-blur-xl border-b border-amber-500/30 px-3 sm:px-8 py-3 flex justify-between items-center shadow-xl sticky top-0 z-50">
+          {/* Línea superior luminosa adaptativa al tema festivo */}
+          <div className={`absolute top-0 left-0 right-0 h-[2.5px] bg-gradient-to-r ${themeConfig.navbarTopLine} transition-all duration-700 shadow-sm`} />
+
           <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
             <KantMascot size="sm" userName={userName} />
             <div className="flex items-center gap-1.5 min-w-0">
@@ -149,6 +177,9 @@ function App() {
             </div>
           </div>
           <div className="flex gap-2 sm:gap-4 items-center shrink-0">
+            {/* Selector de Temas Visuales / Efemérides */}
+            <ThemeSelectorDropdown />
+
             {isAdmin ? (
               <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-yellow-500/15 border border-amber-500/40 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] glow-amber-sm">
                 <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />

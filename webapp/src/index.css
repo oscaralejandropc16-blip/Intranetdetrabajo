@@ -246,3 +246,119 @@
 .shimmer-sweep:hover::after {
   animation: sweep-light 1s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* Animación de flotado suave para accesorios */
+@keyframes float-slow {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(1deg);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 3s ease-in-out infinite;
+}
+
+/* ===================================================
+   SISTEMA DE TEMATIZACIÓN EFEMÉRICA ADAPTATIVA (KANT)
+   Garantía de Alto Contraste y Legibilidad WCAG AAA
+   =================================================== */
+
+/* 🎃 TEMA HALLOWEEN PROFESIONAL */
+.theme-halloween {
+  --theme-accent: #f97316;
+  --theme-accent-hover: #ea580c;
+  --theme-glow: rgba(249, 115, 22, 0.4);
+}
+
+.theme-halloween nav {
+  border-bottom-color: rgba(249, 115, 22, 0.45) !important;
+}
+
+.theme-halloween .text-amber-400 {
+  color: #fb923c !important;
+}
+
+.theme-halloween .text-amber-300 {
+  color: #fdba74 !important;
+}
+
+.theme-halloween .border-amber-500\/30,
+.theme-halloween .border-amber-500\/20,
+.theme-halloween .border-amber-400\/40 {
+  border-color: rgba(249, 115, 22, 0.45) !important;
+}
+
+.theme-halloween .glow-amber-sm,
+.theme-halloween .glow-amber {
+  box-shadow: 0 0 16px -2px rgba(249, 115, 22, 0.45) !important;
+}
+
+/* ⚖️ TEMA DÍA DEL ABOGADO */
+.theme-abogado {
+  --theme-accent: #fbbf24;
+  --theme-accent-hover: #f59e0b;
+  --theme-glow: rgba(251, 191, 36, 0.5);
+}
+
+.theme-abogado nav {
+  border-bottom-color: rgba(251, 191, 36, 0.55) !important;
+}
+
+.theme-abogado .text-amber-400 {
+  color: #fbbf24 !important;
+}
+
+.theme-abogado .glow-amber-sm,
+.theme-abogado .glow-amber {
+  box-shadow: 0 0 16px -2px rgba(251, 191, 36, 0.55) !important;
+}
+
+/* 🎄 TEMA NAVIDEÑO */
+.theme-navidad {
+  --theme-accent: #10b981;
+  --theme-accent-hover: #059669;
+  --theme-glow: rgba(16, 185, 129, 0.45);
+}
+
+.theme-navidad nav {
+  border-bottom-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.theme-navidad .text-amber-400 {
+  color: #34d399 !important;
+}
+
+.theme-navidad .border-amber-500\/30,
+.theme-navidad .border-amber-500\/20,
+.theme-navidad .border-amber-400\/40 {
+  border-color: rgba(16, 185, 129, 0.45) !important;
+}
+
+.theme-navidad .glow-amber-sm,
+.theme-navidad .glow-amber {
+  box-shadow: 0 0 16px -2px rgba(16, 185, 129, 0.45) !important;
+}
+
+/* 🇻🇪 TEMA FECHAS PATRIAS */
+.theme-patria {
+  --theme-accent: #facc15;
+  --theme-accent-hover: #eab308;
+  --theme-glow: rgba(250, 204, 21, 0.5);
+}
+
+.theme-patria nav {
+  border-bottom-color: rgba(250, 204, 21, 0.5) !important;
+}
+
+.theme-patria .text-amber-400 {
+  color: #facc15 !important;
+}
+
+.theme-patria .glow-amber-sm,
+.theme-patria .glow-amber {
+  box-shadow: 0 0 16px -2px rgba(250, 204, 21, 0.5) !important;
+}
+

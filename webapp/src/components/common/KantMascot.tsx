@@ -5,6 +5,11 @@ import {
   getActiveDate, 
   getDisfrazParaEfemeride 
 } from '../../lib/efemeridesVenezuela';
+import KantCostumeOverlay from './KantCostumeOverlay';
+import { 
+  getActiveFestiveTheme, 
+  type FestiveThemeId 
+} from '../../lib/themeManager';
 
 interface KantMascotProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -89,18 +94,23 @@ export default function KantMascot({
 
   // Escuchar fecha activa (tiempo real del sistema o simulación en pruebas)
   const [currentDate, setCurrentDate] = useState<Date>(() => getActiveDate());
+  // Tema festivo activo (automático o seleccionado manualmente)
+  const [festiveTheme, setFestiveTheme] = useState<FestiveThemeId>(() => getActiveFestiveTheme());
 
   useEffect(() => {
     const handleDateChange = () => {
       setCurrentDate(getActiveDate());
+      setFestiveTheme(getActiveFestiveTheme());
     };
     window.addEventListener('rd_simulated_date_changed', handleDateChange);
+    window.addEventListener('rd_festive_theme_changed', handleDateChange);
     return () => {
       window.removeEventListener('rd_simulated_date_changed', handleDateChange);
+      window.removeEventListener('rd_festive_theme_changed', handleDateChange);
     };
   }, []);
 
-  // Efeméride de hoy para personalizar atuendo y frases de Kant automáticamente
+  // Efeméride de hoy para personalizar frases de Kant automáticamente
   const todayEfemeride = useMemo(() => {
     return getEfemerideDelDia(currentDate);
   }, [currentDate]);
@@ -247,8 +257,11 @@ export default function KantMascot({
           }}
         />
 
-        {/* Accesorios Automáticos del Disfraz ("colocarse así") */}
-        {disfrazInfo && (
+        {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo */}
+        <KantCostumeOverlay theme={festiveTheme} size={size} isExcited={isExcited} />
+
+        {/* Respaldo de Accesorios Automáticos si el tema es default pero hay efeméride con emoji */}
+        {festiveTheme === 'default' && disfrazInfo && (
           <>
             {/* Sombrero / Adorno de cabeza */}
             {disfrazInfo.sombreroEmoji && (
