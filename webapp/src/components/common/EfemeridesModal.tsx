@@ -134,63 +134,66 @@ export default function EfemeridesModal({
 
           {/* Tarjeta Destacada: Efeméride de Hoy (o la más próxima) */}
           {todayEfemeride ? (
-            <div className="bg-gradient-to-br from-amber-500/20 via-slate-900 to-amber-950/30 border border-amber-400/50 p-4 sm:p-5 rounded-3xl shadow-xl relative overflow-hidden glow-amber-sm">
+            <div className="bg-gradient-to-br from-amber-500/20 via-slate-900 to-amber-950/30 border-2 border-amber-400/60 p-5 rounded-3xl shadow-2xl relative overflow-hidden glow-amber-sm">
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl sm:text-4xl filter drop-shadow-md">{todayEfemeride.icono}</span>
+                <div className="flex items-center gap-3.5">
+                  <span className="text-4xl filter drop-shadow-md shrink-0">{todayEfemeride.icono}</span>
                   <div>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="px-2.5 py-0.5 bg-amber-400 text-slate-950 font-black text-[10px] rounded-full uppercase tracking-wider">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="px-3 py-1 bg-amber-400 text-slate-950 font-black text-xs rounded-full uppercase tracking-wider shadow-sm">
                         ¡Efeméride de Hoy!
                       </span>
                       {todayDisfraz?.badgeLabel && (
-                        <span className="px-2 py-0.5 bg-slate-800 text-amber-300 border border-amber-400/40 font-bold text-[9px] rounded-full uppercase tracking-wider">
+                        <span className="px-2.5 py-0.5 bg-slate-800 text-amber-300 border border-amber-400/50 font-bold text-[10px] rounded-full uppercase tracking-wider">
                           {todayDisfraz.badgeLabel}
                         </span>
                       )}
                     </div>
-                    <h4 className="text-base sm:text-lg font-black text-white mt-1">
+                    <h3 className="text-lg sm:text-xl font-black text-white mt-1.5 leading-snug">
                       {todayEfemeride.titulo}
-                    </h4>
-                    <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                    </h3>
+                    <p className="text-sm sm:text-base text-slate-100 mt-2 leading-relaxed font-normal">
                       {todayEfemeride.descripcion}
                     </p>
                   </div>
                 </div>
 
                 {todayEfemeride.esFeriado && (
-                  <span className="px-2.5 py-1 bg-red-500 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-md shrink-0">
+                  <span className="px-3 py-1 bg-red-600 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-md shrink-0">
                     Feriado Nacional
                   </span>
                 )}
               </div>
 
               {/* Mensaje de Kant */}
-              <div className="mt-3 pt-3 border-t border-amber-400/20 flex items-center gap-2 text-xs text-amber-200 bg-amber-950/40 p-2.5 rounded-xl border border-amber-400/30">
-                <span className="text-base shrink-0">🐾</span>
-                <span className="font-medium italic">{todayEfemeride.mensajeKant}</span>
+              <div className="mt-3.5 p-3 rounded-2xl bg-amber-500/15 border border-amber-400/40 flex items-start gap-2.5">
+                <span className="text-lg shrink-0">🐾</span>
+                <p className="text-sm text-amber-200 font-medium leading-relaxed">
+                  <strong className="text-amber-400 font-bold">Mensaje de Kant: </strong>
+                  "{todayEfemeride.mensajeKant}"
+                </p>
               </div>
             </div>
           ) : (
             proximas.length > 0 && (
-              <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="text-2xl sm:text-3xl shrink-0 p-2 bg-slate-800/80 rounded-2xl border border-slate-700">
+              <div className="bg-slate-900 border border-slate-700/80 p-5 rounded-3xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="text-3xl shrink-0 p-2.5 bg-slate-800 rounded-2xl border border-slate-700">
                     {proximas[0].icono}
                   </div>
                   <div className="min-w-0">
-                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+                    <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">
                       Próxima Celebración en Venezuela ({proximas[0].fechaStr})
                     </span>
-                    <h4 className="text-sm font-black text-white truncate">
+                    <h4 className="text-base font-bold text-white mt-0.5">
                       {proximas[0].titulo}
                     </h4>
-                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                    <p className="text-sm text-slate-200 mt-1 leading-relaxed">
                       {proximas[0].descripcion}
                     </p>
                   </div>
                 </div>
-                <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-black rounded-xl shrink-0 self-end sm:self-auto">
+                <span className="px-3.5 py-1.5 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-black rounded-xl shrink-0 self-end sm:self-auto">
                   {proximas[0].diasFaltantes === 1 ? '¡Mañana!' : `En ${proximas[0].diasFaltantes} días`}
                 </span>
               </div>
@@ -211,12 +214,12 @@ export default function EfemeridesModal({
                     key={name}
                     type="button"
                     onClick={() => setSelectedMonth(monthNum)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1 ${
+                    className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
                       isSelected
-                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/20'
+                        ? 'bg-amber-400 text-slate-950 font-black shadow-md shadow-amber-400/30'
                         : isCurrent
-                        ? 'bg-slate-800 text-amber-300 border border-amber-400/40 hover:bg-slate-700'
-                        : 'bg-slate-800/60 text-slate-300 hover:bg-slate-800 border border-slate-700/60'
+                        ? 'bg-slate-800 text-amber-300 border border-amber-400/50 hover:bg-slate-700'
+                        : 'bg-slate-800/80 text-slate-200 hover:bg-slate-800 border border-slate-700'
                     }`}
                   >
                     <span>{name}</span>
@@ -242,10 +245,10 @@ export default function EfemeridesModal({
                       key={cat.id}
                       type="button"
                       onClick={() => setCategoryFilter(cat.id)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                         isCat
-                          ? 'bg-slate-800 text-amber-300 border border-amber-400/50'
-                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
+                          ? 'bg-slate-800 text-amber-300 border border-amber-400/60 shadow-xs'
+                          : 'bg-slate-900/80 text-slate-300 hover:text-white border border-slate-700/60'
                       }`}
                     >
                       <span>{cat.label}</span>
@@ -255,30 +258,30 @@ export default function EfemeridesModal({
               </div>
 
               {/* Buscador */}
-              <div className="relative min-w-[180px]">
-                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <div className="relative min-w-[200px]">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   placeholder="Buscar efeméride..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-1 bg-slate-950/70 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 outline-none focus:border-amber-400 transition-colors"
+                  className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-400 outline-none focus:border-amber-400 transition-colors"
                 />
               </div>
             </div>
           </div>
 
           {/* Listado de Efemérides del Mes */}
-          <div className="space-y-2.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 font-bold border-b border-slate-800 pb-1.5">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between text-xs text-slate-300 font-bold border-b border-slate-800 pb-2">
               <span>Efemérides de {MONTH_NAMES[selectedMonth - 1]} ({filteredList.length})</span>
-              <span className="text-[10px] text-amber-400">Plataforma KANT</span>
+              <span className="text-[11px] text-amber-400">Plataforma KANT</span>
             </div>
 
             {filteredList.length === 0 ? (
-              <div className="text-center py-10 bg-slate-950/40 rounded-2xl border border-slate-800/80">
-                <span className="text-3xl block mb-2">📜</span>
-                <p className="text-xs text-slate-400 font-medium">
+              <div className="text-center py-10 bg-slate-900/60 rounded-3xl border border-slate-800">
+                <span className="text-4xl block mb-2">📜</span>
+                <p className="text-sm text-slate-300 font-medium">
                   No se encontraron efemérides registradas con los filtros actuales.
                 </p>
               </div>
@@ -289,53 +292,56 @@ export default function EfemeridesModal({
                 return (
                   <div
                     key={ef.id}
-                    className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+                    className={`p-4 sm:p-4.5 rounded-2xl border transition-all ${
                       isToday
-                        ? 'bg-amber-500/10 border-amber-400/60 shadow-md ring-1 ring-amber-400/30'
+                        ? 'bg-gradient-to-r from-amber-500/15 via-slate-900 to-amber-950/20 border-amber-400 shadow-md ring-1 ring-amber-400/40'
                         : ef.categoria === 'juridica'
-                        ? 'bg-slate-950/80 border-amber-500/30 hover:border-amber-500/50'
-                        : 'bg-slate-950/50 border-slate-800 hover:border-slate-700'
+                        ? 'bg-slate-900/90 border-blue-500/40 hover:border-blue-400/60 shadow-xs'
+                        : 'bg-slate-900/80 border-slate-700/80 hover:border-slate-600'
                     }`}
                   >
-                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="flex items-start gap-3.5">
                       {/* Badge con Día del Mes */}
-                      <div className="w-11 h-11 rounded-2xl bg-slate-800/90 border border-slate-700 flex flex-col items-center justify-center shrink-0 shadow-inner">
-                        <span className="text-xs font-black text-amber-400 leading-none">{ef.dia}</span>
-                        <span className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">
+                      <div className="w-14 h-14 rounded-2xl bg-amber-500/15 border border-amber-500/40 flex flex-col items-center justify-center shrink-0 shadow-sm">
+                        <span className="text-lg font-black text-amber-300 leading-none">{ef.dia}</span>
+                        <span className="text-[10px] font-bold text-amber-200 uppercase mt-1">
                           {MONTH_NAMES[ef.mes - 1].slice(0, 3)}
                         </span>
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-base shrink-0">{ef.icono}</span>
-                          <h5 className="text-xs sm:text-sm font-black text-white leading-tight">
+                          <span className="text-xl shrink-0">{ef.icono}</span>
+                          <h4 className="text-base sm:text-lg font-bold text-white leading-snug">
                             {ef.titulo}
-                          </h5>
+                          </h4>
 
                           {ef.esFeriado && (
-                            <span className="px-2 py-0.2 bg-red-500/20 text-red-400 border border-red-500/30 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                            <span className="px-2.5 py-0.5 bg-red-500/20 text-red-300 border border-red-500/40 rounded-lg text-xs font-bold uppercase tracking-wider">
                               Feriado
                             </span>
                           )}
 
                           {ef.categoria === 'juridica' && (
-                            <span className="px-2 py-0.2 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-md text-[9px] font-bold uppercase tracking-wider">
+                            <span className="px-2.5 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/40 rounded-lg text-xs font-bold uppercase tracking-wider">
                               Derecho & Justicia
                             </span>
                           )}
                         </div>
 
-                        <p className="text-xs text-slate-300 mt-1 leading-relaxed">
+                        <p className="text-sm text-slate-200 mt-2 leading-relaxed font-normal">
                           {ef.descripcion}
                         </p>
 
-                        {/* Mensaje de Kant */}
+                        {/* Mensaje de Kant con Alto Contraste */}
                         {ef.mensajeKant && (
-                          <p className="text-[11px] text-amber-300/90 font-medium italic mt-1.5 flex items-center gap-1">
-                            <span>🐾 Kant:</span>
-                            <span>"{ef.mensajeKant}"</span>
-                          </p>
+                          <div className="mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-2">
+                            <span className="text-base shrink-0">🐾</span>
+                            <p className="text-xs sm:text-sm text-amber-200 font-medium leading-relaxed">
+                              <strong className="text-amber-400 font-bold not-italic">Kant: </strong>
+                              "{ef.mensajeKant}"
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -346,23 +352,23 @@ export default function EfemeridesModal({
           </div>
 
           {/* 3. Próximas Fechas Destacadas del Año */}
-          <div className="bg-slate-950/80 border border-slate-800 rounded-3xl p-4 space-y-3">
-            <h4 className="text-xs font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-              <Calendar className="w-3.5 h-3.5" /> Próximas Fechas Clave para la Firma
+          <div className="bg-slate-900/90 border border-slate-700/80 rounded-3xl p-4 sm:p-5 space-y-3.5 shadow-md">
+            <h4 className="text-sm font-black uppercase tracking-wider text-amber-400 flex items-center gap-2">
+              <Calendar className="w-4 h-4" /> Próximas Fechas Clave para la Firma
             </h4>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {proximas.map(p => (
-                <div key={p.id} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="text-lg">{p.icono}</span>
-                    <div className="truncate">
-                      <p className="font-bold text-white truncate">{p.titulo}</p>
-                      <p className="text-[10px] text-slate-400">{p.fechaStr}</p>
+                <div key={p.id} className="p-3.5 rounded-2xl bg-slate-800/90 border border-slate-700 flex items-center justify-between gap-3 shadow-xs">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-2xl shrink-0 p-2 bg-slate-900 rounded-xl border border-slate-700/80">{p.icono}</span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-white text-sm leading-snug">{p.titulo}</p>
+                      <p className="text-xs text-amber-300 font-medium mt-0.5">{p.fechaStr}</p>
                     </div>
                   </div>
-                  <span className="text-[10px] font-black text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 shrink-0">
-                    {p.diasFaltantes === 0 ? '¡Hoy!' : p.diasFaltantes === 1 ? 'Mañana' : `En ${p.diasFaltantes}d`}
+                  <span className="text-xs font-black text-amber-300 bg-amber-500/20 px-3 py-1 rounded-xl border border-amber-500/40 shrink-0 shadow-xs">
+                    {p.diasFaltantes === 0 ? '¡Hoy!' : p.diasFaltantes === 1 ? 'Mañana' : `En ${p.diasFaltantes} días`}
                   </span>
                 </div>
               ))}
