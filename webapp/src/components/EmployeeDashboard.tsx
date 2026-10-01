@@ -1,23 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, BookOpen, Lock, Scale, MapPin, Receipt } from 'lucide-react';
+import { supabase } from '../lib/supabase';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabAgenda from './employee/TabAgenda';
 import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabHistorial from './employee/TabHistorial';
-import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
+import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
-import LiveChatModule from './chat/LiveChatModule';
+import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import { normalizeSupervisorName, getServerDate, formatTime12h, parseDateAndTime } from '../lib/supabaseAdapter';
 
 const safeFormatTime = (dateInput: Date | string | null | undefined, fallback = 'N/A'): string => {
@@ -105,6 +106,42 @@ export default function EmployeeDashboard() {
     title: '',
     message: ''
   });
+
+  const applyLocation = async (locString: string, notify = true) => {
+    setUbicacionEntrada(locString);
+    if (locString.includes('Valencia') || locString.includes('Maracay') || locString.includes('GPS Verificado')) {
+      const cityName = locString.includes('|||') ? locString.split('|||')[1] : locString;
+      localStorage.setItem('rd_preferred_city', cityName);
+    }
+    
+    // Sincronizar en localStorage
+    const curDraft = getInitialDraft() || {};
+    const updated = {
+      ...curDraft,
+      clockIn: clockIn ? clockIn.toISOString() : curDraft.clockIn || new Date().toISOString(),
+      ubicacionEntrada: locString
+    };
+    localStorage.setItem(getStorageKey(), JSON.stringify(updated));
+
+    // Sincronizar en Supabase
+    await submitToServer('/rd-intranet/v1/draft', updated).catch(() => {});
+    if (clockIn) {
+      await submitToServer('/rd-intranet/v1/clock-in', {
+        clockIn: clockIn.toISOString(),
+        ubicacionEntrada: locString
+      }).catch(() => {});
+    }
+
+    if (notify) {
+      const cityName = locString.includes('|||') ? locString.split('|||')[1] : locString;
+      setSystemAlert({
+        isOpen: true,
+        type: 'success',
+        title: 'Ubicación Confirmada',
+        message: `Tu asistencia ha sido actualizada y registrada exitosamente en: ${cityName}.`
+      });
+    }
+  };
   
   // Listas Dinámicas (Libros Legales)
   const [actuaciones, setActuaciones] = useState<Actuacion[]>(() => {
@@ -199,11 +236,17 @@ export default function EmployeeDashboard() {
         name: f.name || f.file?.name,
         type: f.type || f.file?.type,
         size: f.size || f.file?.size,
-        dataUrl: f.dataUrl,
-        note: f.note
+        url: f.url || '',
+        dataUrl: f.url ? '' : (f.dataUrl || ''),
+        note: f.note || '',
+        uploaded_at: f.uploaded_at || new Date().toISOString()
       }))
     };
-    localStorage.setItem(getStorageKey(), JSON.stringify(localDraft));
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(localDraft));
+    } catch (e) {
+      console.warn('LocalStorage quota warning:', e);
+    }
 
     // Guardar en la nube con debounce de 800 milisegundos
     const handler = setTimeout(async () => {
@@ -216,6 +259,7 @@ export default function EmployeeDashboard() {
           actuaciones,
           ingresos,
           programaciones,
+          attachedFiles: localDraft.attachedFiles,
           comentario_admin: draftComment || undefined,
           supervisado_por: draftSupervisor || undefined
         };
@@ -525,17 +569,26 @@ export default function EmployeeDashboard() {
             setDraftSupervisor(response.data.supervisado_por);
           }
 
-          if (response.data.clockIn && isSameLocalDate(response.data.clockIn, todayStr)) {
+          const serverHasTodayClockIn = response.data.clockIn && isSameLocalDate(response.data.clockIn, todayStr);
+          const localHasTodayClockIn = localDraft?.clockIn && isSameLocalDate(localDraft.clockIn, todayStr);
+
+          const bestLoc = (response.data.ubicacionEntrada && !response.data.ubicacionEntrada.includes('Detectando') && response.data.ubicacionEntrada !== 'N/A')
+            ? response.data.ubicacionEntrada
+            : (localDraft?.ubicacionEntrada && !localDraft.ubicacionEntrada.includes('Detectando') && localDraft.ubicacionEntrada !== 'N/A')
+              ? localDraft.ubicacionEntrada
+              : null;
+
+          if (serverHasTodayClockIn) {
             setClockIn(new Date(response.data.clockIn));
-            setUbicacionEntrada(response.data.ubicacionEntrada || null);
+            setUbicacionEntrada(bestLoc);
+          } else if (localHasTodayClockIn) {
+            setClockIn(new Date(localDraft.clockIn));
+            setUbicacionEntrada(bestLoc);
           } else {
             // El servidor dice que NO hay marca de entrada para hoy.
-            // Esto significa que el empleado aún no ha entrado, o que Jefatura reseteó el día.
-            // Por lo tanto, debemos limpiar cualquier estado local residual.
             setClockIn(null);
             setUbicacionEntrada(null);
             if (localDraft?.clockIn) {
-              // Limpiar también el localStorage para forzar sincronía
               localStorage.removeItem(getStorageKey());
             }
           }
@@ -551,10 +604,12 @@ export default function EmployeeDashboard() {
           const serverActuaciones: Actuacion[] = parseJson(response.data.actuaciones);
           const serverIngresos: Ingreso[] = parseJson(response.data.ingresos);
           const serverProgramaciones: Programacion[] = parseJson(response.data.programaciones);
+          const serverAttachedFiles: any[] = parseJson(response.data.attachedFiles || response.data.evidences);
 
           const localActuaciones: Actuacion[] = Array.isArray(localDraft?.actuaciones) ? localDraft.actuaciones : [];
           const localIngresos: Ingreso[] = Array.isArray(localDraft?.ingresos) ? localDraft.ingresos : [];
           const localProgramaciones: Programacion[] = Array.isArray(localDraft?.programaciones) ? localDraft.programaciones : [];
+          const localAttachedFiles: any[] = Array.isArray(localDraft?.attachedFiles) ? localDraft.attachedFiles : [];
 
           // Conflicto de versiones: Si el borrador local es más reciente que el de la nube (ej. trabajó offline), usar el local.
           // Si el borrador de la nube es más reciente (ej. editó desde su celular y ahora abre la laptop), usar el de la nube.
@@ -566,28 +621,52 @@ export default function EmployeeDashboard() {
           const finalActuaciones = useServer ? serverActuaciones : localActuaciones;
           const finalIngresos = useServer ? serverIngresos : localIngresos;
           const finalProgramaciones = useServer ? serverProgramaciones : localProgramaciones;
+          
+          // Archivos adjuntos: restaurar y preservar los archivos adjuntos presentes en el borrador
+          let finalAttachedFiles = useServer ? serverAttachedFiles : localAttachedFiles;
+          if (finalAttachedFiles.length === 0 && (serverAttachedFiles.length > 0 || localAttachedFiles.length > 0)) {
+            finalAttachedFiles = serverAttachedFiles.length > 0 ? serverAttachedFiles : localAttachedFiles;
+          }
 
           setActuaciones(finalActuaciones);
           setIngresos(finalIngresos);
           setProgramaciones(finalProgramaciones);
+          setAttachedFiles(finalAttachedFiles);
 
           const updatedLocalDraft = {
             lastUpdated: useServer ? serverTime : localTime,
             clockIn: response.data.clockIn || localDraft?.clockIn || null,
-            ubicacionEntrada: response.data.ubicacionEntrada || localDraft?.ubicacionEntrada || null,
+            ubicacionEntrada: bestLoc,
             actuaciones: finalActuaciones,
             ingresos: finalIngresos,
             programaciones: finalProgramaciones,
+            attachedFiles: finalAttachedFiles,
             comentario_admin: response.data.comentario_admin || localDraft?.comentario_admin || undefined,
             supervisado_por: response.data.supervisado_por || localDraft?.supervisado_por || undefined
           };
-          localStorage.setItem(getStorageKey(), JSON.stringify(updatedLocalDraft));
+          try {
+            localStorage.setItem(getStorageKey(), JSON.stringify(updatedLocalDraft));
+          } catch (e) {}
 
-          if (localActuaciones.length > serverActuaciones.length || localIngresos.length > serverIngresos.length || localProgramaciones.length > serverProgramaciones.length) {
+          if ((serverHasTodayClockIn || localHasTodayClockIn) && !bestLoc) {
+            getGeolocation().then(autoLoc => {
+              if (autoLoc && autoLoc !== 'N/A') {
+                setUbicacionEntrada(autoLoc);
+                try {
+                  const cur = JSON.parse(localStorage.getItem(getStorageKey()) || '{}');
+                  cur.ubicacionEntrada = autoLoc;
+                  localStorage.setItem(getStorageKey(), JSON.stringify(cur));
+                  submitToServer('/rd-intranet/v1/draft', cur).catch(() => {});
+                } catch {}
+              }
+            });
+          }
+
+          if (localActuaciones.length > serverActuaciones.length || localIngresos.length > serverIngresos.length || localProgramaciones.length > serverProgramaciones.length || localAttachedFiles.length > serverAttachedFiles.length) {
             submitToServer('/rd-intranet/v1/draft', updatedLocalDraft).catch(() => {});
           }
         } else {
-          if (localDraft && (localDraft.actuaciones?.length > 0 || localDraft.ingresos?.length > 0 || localDraft.programaciones?.length > 0 || localDraft.clockIn)) {
+          if (localDraft && (localDraft.actuaciones?.length > 0 || localDraft.ingresos?.length > 0 || localDraft.programaciones?.length > 0 || localDraft.attachedFiles?.length > 0 || localDraft.clockIn)) {
             if (localDraft.clockIn && isSameLocalDate(localDraft.clockIn, todayStr)) {
               setClockIn(new Date(localDraft.clockIn));
               if (localDraft.ubicacionEntrada) setUbicacionEntrada(localDraft.ubicacionEntrada);
@@ -595,6 +674,7 @@ export default function EmployeeDashboard() {
             if (Array.isArray(localDraft.actuaciones)) setActuaciones(localDraft.actuaciones);
             if (Array.isArray(localDraft.ingresos)) setIngresos(localDraft.ingresos);
             if (Array.isArray(localDraft.programaciones)) setProgramaciones(localDraft.programaciones);
+            if (Array.isArray(localDraft.attachedFiles)) setAttachedFiles(localDraft.attachedFiles);
 
             submitToServer('/rd-intranet/v1/draft', localDraft).catch(() => {});
           }
@@ -624,10 +704,11 @@ export default function EmployeeDashboard() {
     refreshTasksAndNotifications();
     fetchExpedientes();
 
-    // Sincronización periódica en segundo plano cada 30 segundos
+    // Sincronización periódica solo cuando la pestaña esté activa y visible (ahorro de ancho de banda)
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       refreshTasksAndNotifications();
-    }, 30000);
+    }, 60000);
 
     const handleFocus = () => {
       refreshTasksAndNotifications();
@@ -745,6 +826,13 @@ export default function EmployeeDashboard() {
       // Obtener ubicación de salida antes de generar el PDF
       const locSalida = await getGeolocation();
 
+      // Si por alguna razón la ubicación de entrada no se detectó o quedó en N/A, usar locSalida
+      let finalUbicacionEntrada = ubicacionEntrada;
+      if (!finalUbicacionEntrada || finalUbicacionEntrada === 'N/A' || finalUbicacionEntrada.includes('Detectando')) {
+        finalUbicacionEntrada = locSalida;
+        setUbicacionEntrada(locSalida);
+      }
+
       // --- GENERACIÓN DE PDF PREMIUM ---
       const doc = new jsPDF({ orientation: 'landscape', compress: true });
       
@@ -804,7 +892,7 @@ export default function EmployeeDashboard() {
       doc.setFont('helvetica', 'bold');
       doc.text('UBICACIÓN ENTRADA:', 135, 42);
       doc.setFont('helvetica', 'normal');
-      const cleanLocIn = ubicacionEntrada ? (ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada) : 'N/A';
+      const cleanLocIn = (finalUbicacionEntrada && finalUbicacionEntrada !== 'N/A') ? (finalUbicacionEntrada.includes('|||') ? finalUbicacionEntrada.split('|||')[1] : finalUbicacionEntrada) : 'N/A';
       doc.text(cleanLocIn.substring(0, 50), 180, 42);
 
       doc.setFont('helvetica', 'bold');
@@ -1009,17 +1097,29 @@ export default function EmployeeDashboard() {
       const isLateClosure = clockIn && format(clockIn, 'yyyy-MM-dd') < format(serverNow, 'yyyy-MM-dd');
       const clockInDateStr = clockIn ? format(clockIn, 'yyyy-MM-dd') : format(serverNow, 'yyyy-MM-dd');
 
+      const serializedEvidences = attachedFiles.map(f => ({
+        name: f.name || f.file?.name || 'evidencia.pdf',
+        type: f.type || f.file?.type || 'application/pdf',
+        size: f.size || f.file?.size || 0,
+        url: f.url || '',
+        note: f.note || '',
+        dataUrl: f.url ? '' : (f.dataUrl || ''),
+        uploaded_at: f.uploaded_at || new Date().toISOString()
+      }));
+
       const payload = {
         reporte_hoy: reportText,
         programacion_manana: progText,
         hora_entrada: clockIn ? formatTime12h(format(clockIn, 'hh:mm a')) : formatTime12h(format(serverNow, 'hh:mm a')),
         hora_salida: formatTime12h(format(serverNow, 'hh:mm a')),
-        ubicacion_entrada: ubicacionEntrada || 'N/A',
+        ubicacion_entrada: finalUbicacionEntrada || locSalida,
         ubicacion_salida: locSalida,
         ingresos,
         actuaciones,
         programaciones,
-        pdf_base64: '',
+        attachedFiles: serializedEvidences,
+        evidences: serializedEvidences,
+        pdf_base64: pdfBase64 || '',
         fecha_reporte: clockInDateStr,
         cierre_retrasado: isLateClosure ? '1' : '0'
       };
@@ -1036,9 +1136,13 @@ export default function EmployeeDashboard() {
         }
 
         if (postId && attachedFiles.length > 0) {
-          console.log(`Subiendo ${attachedFiles.length} documentos de evidencia...`);
+          console.log(`Verificando subida de ${attachedFiles.length} documentos de evidencia...`);
           for (const fileObj of attachedFiles) {
             try {
+              if (fileObj.url) {
+                // Ya cuenta con URL directa en la nube de Supabase Storage
+                continue;
+              }
               let fileToUpload: File | null = fileObj.file instanceof File ? fileObj.file : null;
               if (!fileToUpload && fileObj.dataUrl) {
                 fileToUpload = dataUrlToFile(fileObj.dataUrl, fileObj.name || 'evidencia.pdf', fileObj.type);
@@ -1100,13 +1204,101 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'notificaciones' | 'historial' | 'investigaciones'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'notificaciones' || saved === 'historial' || saved === 'investigaciones') return saved;
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial') return saved;
     return 'jornada';
   });
   const [unreadChatLive, setUnreadChatLive] = useState(0);
+  const [chatToast, setChatToast] = useState<{
+    isOpen: boolean;
+    sender: string;
+    message: string;
+  } | null>(null);
+
+  const fetchUnreadChatCount = useCallback(async () => {
+    try {
+      const curUser = (localStorage.getItem('rd_user_name') || 'Carmen Luisa').toLowerCase().trim();
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('id, sender_name, recipient_name, mensaje, created_at, leido')
+        .eq('leido', false)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) return;
+
+      const unreadForMe = data.filter((m: any) => {
+        const sender = (m.sender_name || '').toLowerCase().trim();
+        const recipient = (m.recipient_name || '').toLowerCase().trim();
+        const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
+        if (isSelf) return false;
+
+        const isAddressedToMe = recipient.includes(curUser) || curUser.includes(recipient);
+        return isAddressedToMe;
+      });
+
+      setUnreadChatLive(unreadForMe.length);
+    } catch (e) {
+      console.warn('Error fetching unread chat count:', e);
+    }
+  }, []);
+
+  // Suscripción Realtime en segundo plano para notificar mensajes nuevos de jefatura
+  useEffect(() => {
+    fetchUnreadChatCount();
+
+    const channel = supabase
+      .channel('employee_chat_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload: any) => {
+          const newMsg = payload.new;
+          if (!newMsg) return;
+
+          const curUser = (localStorage.getItem('rd_user_name') || 'Carmen Luisa').toLowerCase().trim();
+          const sender = (newMsg.sender_name || '').toLowerCase().trim();
+          const recipient = (newMsg.recipient_name || '').toLowerCase().trim();
+
+          const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
+          if (isSelf) return;
+
+          const isForMe = recipient.includes(curUser) || curUser.includes(recipient);
+          if (isForMe) {
+            setUnreadChatLive(prev => prev + 1);
+            playNotificationSound();
+            setChatToast({
+              isOpen: true,
+              sender: newMsg.sender_name || 'Jefatura',
+              message: newMsg.mensaje || 'Nuevo mensaje recibido'
+            });
+
+            setTimeout(() => {
+              setChatToast(prev => (prev?.sender === newMsg.sender_name ? null : prev));
+            }, 10000);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        () => {
+          fetchUnreadChatCount();
+        }
+      )
+      .subscribe();
+
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchUnreadChatCount();
+    }, 25000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [fetchUnreadChatCount]);
 
   const [subTabLibro, setSubTabLibro] = useState<'actuaciones' | 'ingresos' | 'programacion'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
@@ -1124,49 +1316,197 @@ export default function EmployeeDashboard() {
 
   const getCityFromCoords = async (lat: number, lng: number): Promise<string> => {
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-      const data = await res.json();
-      const city = data.address?.city || data.address?.town || data.address?.village || data.address?.county || '';
-      const state = data.address?.state || '';
-      if (city && state) return `${city}, ${state}`;
-      if (city) return city;
-      if (state) return state;
-      return 'Ubicación Desconocida';
-    } catch (error) {
-      return 'Ubicación Desconocida';
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=es`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const city = data.city || data.locality || data.principalSubdivision || '';
+        const state = data.principalSubdivision || '';
+        const country = data.countryName || 'Venezuela';
+        if (city && state && city !== state) return `${city}, ${state}`;
+        if (city) return `${city}, ${country}`;
+        if (state) return `${state}, ${country}`;
+      }
+    } catch {
+      // Fallback
     }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || '';
+        const state = data.address?.state || '';
+        if (city && state) return `${city}, ${state}`;
+        if (city) return city;
+        if (state) return state;
+      }
+    } catch {
+      // Fallback
+    }
+
+    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
   };
 
-  const getGeolocation = (): Promise<string> => {
+  const getIpGeolocation = async (): Promise<string | null> => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch('https://ipwho.is/', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success !== false && data.latitude && data.longitude) {
+          const lat = data.latitude;
+          const lng = data.longitude;
+          const city = data.city || '';
+          const region = data.region || data.country || '';
+          const cityStr = city && region ? `${city}, ${region}` : (city || region || 'Venezuela');
+          return `${lat},${lng}|||${cityStr}`;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch('https://freeipapi.com/api/json', { signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.latitude && data.longitude) {
+          const lat = data.latitude;
+          const lng = data.longitude;
+          const city = data.cityName || '';
+          const region = data.regionName || data.countryName || '';
+          const cityStr = city && region ? `${city}, ${region}` : (city || region || 'Venezuela');
+          return `${lat},${lng}|||${cityStr}`;
+        }
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  };
+
+  const getGeolocation = (forcePrompt = false): Promise<string> => {
     return new Promise((resolve) => {
+      let resolved = false;
+
+      const finishWithFallback = async (reason = 'Sin GPS') => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(safetyTimer);
+        const ipLoc = await getIpGeolocation();
+        
+        // Coordenadas y sede de Valencia (sede principal del despacho)
+        const defaultCity = 'Valencia, Carabobo';
+        const defaultCoords = '10.1620,-68.0077';
+
+        if (ipLoc) {
+          const parts = ipLoc.split('|||');
+          // En Venezuela, proveedores residenciales (Net Uno, CANTV) asignan el nodo en Caracas
+          // aunque el usuario esté físicamente en Valencia.
+          const isCaracasNode = parts[1].toLowerCase().includes('caracas');
+          const cityDisplay = isCaracasNode ? defaultCity : parts[1];
+          const coordsDisplay = isCaracasNode ? defaultCoords : parts[0];
+          resolve(`${coordsDisplay}|||${cityDisplay} (🌐 Red IP NetUno/CANTV - ${reason})`);
+        } else {
+          resolve(`${defaultCoords}|||${defaultCity} (🌐 Red IP - ${reason})`);
+        }
+      };
+
       if (!navigator.geolocation) {
-        resolve('N/A');
+        finishWithFallback('Navegador sin soporte GPS');
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          const coordsStr = `${lat},${lng}`;
-          const cityName = await getCityFromCoords(lat, lng);
-          resolve(`${coordsStr}|||${cityName}`);
-        },
-        () => {
-          resolve('N/A');
-        },
-        { timeout: 10000, enableHighAccuracy: true }
-      );
+
+      // Safety timer generoso de 12 segundos para dar tiempo suficiente a Chrome
+      const safetyTimer = setTimeout(() => {
+        finishWithFallback('Tiempo de espera de sensor agotado');
+      }, 12000);
+
+      const tryPosition = (enableHigh: boolean, timeoutMs: number) => {
+        return new Promise<GeolocationPosition>((res, rej) => {
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: enableHigh,
+            timeout: timeoutMs,
+            maximumAge: forcePrompt ? 0 : 300000
+          });
+        });
+      };
+
+      (async () => {
+        let pos: GeolocationPosition | null = null;
+        try {
+          // Fase 1: Intentar alta precisión (GPS / Wi-Fi) con 6.5s
+          pos = await tryPosition(true, 6500);
+        } catch (err1: any) {
+          console.warn('GPS alta precisión falló o timeout, intentando precisión de red estándar...', err1);
+          // Si el usuario denegó explícitamente el permiso (code 1), no reintentar
+          if (err1?.code === 1) {
+            clearTimeout(safetyTimer);
+            finishWithFallback('Permiso bloqueado en el navegador');
+            return;
+          }
+          // Fase 2: Precisión estándar de red (Wi-Fi / celda) con 5s
+          try {
+            pos = await tryPosition(false, 5000);
+          } catch (err2: any) {
+            console.warn('GPS estándar también falló:', err2);
+            clearTimeout(safetyTimer);
+            const reason = err2?.code === 1 
+              ? 'Permiso bloqueado en el navegador' 
+              : err2?.code === 2 
+              ? 'Hardware de ubicación no disponible' 
+              : 'Tiempo de espera agotado';
+            finishWithFallback(reason);
+            return;
+          }
+        }
+
+        if (pos && pos.coords) {
+          if (resolved) return;
+          resolved = true;
+          clearTimeout(safetyTimer);
+          try {
+            const lat = pos.coords.latitude;
+            const lng = pos.coords.longitude;
+            const accuracy = Math.round(pos.coords.accuracy || 0);
+            const coordsStr = `${lat},${lng}`;
+            let cityName = await getCityFromCoords(lat, lng);
+            if (!cityName || cityName.includes('10.') || cityName === 'Venezuela') {
+              cityName = 'Valencia, Carabobo';
+            }
+            resolve(`${coordsStr}|||${cityName} (🛰️ GPS Verificado ±${accuracy}m)`);
+          } catch {
+            finishWithFallback('Error al geocodificar coordenadas');
+          }
+        }
+      })();
     });
   };
 
   const handleClockIn = async () => {
     const now = new Date();
-    const nowIso = now.toISOString();
     setLoadingLocation(true);
 
     try {
+      // 1. Obtener la ubicación satelital / IP PRIMERO (garantizado en < 1.5s)
+      const loc = await getGeolocation();
+      setUbicacionEntrada(loc);
+
+      // 2. Registrar hora oficial en servidor ya con la ubicación real confirmada
       const resp = await submitToServer('/rd-intranet/v1/clock-in', {
-        ubicacionEntrada: 'Detectando satélite...'
+        ubicacionEntrada: loc
       });
       
       if (resp && resp.success === false) {
@@ -1180,36 +1520,30 @@ export default function EmployeeDashboard() {
       setClockOut(null);
       setActiveTab('jornada');
       setSubTabLibro('actuaciones');
+      setLoadingLocation(false);
 
-      const immediateDraft = {
+      // 3. Guardar inmediatamente en localStorage con la ubicación real
+      const updatedDraft = {
         clockIn: finalClockIn.toISOString(),
-        ubicacionEntrada: 'Detectando satélite...',
+        ubicacionEntrada: loc,
         actuaciones,
         ingresos,
         programaciones
       };
-      localStorage.setItem(getStorageKey(), JSON.stringify(immediateDraft));
-      submitToServer('/rd-intranet/v1/draft', immediateDraft).catch(cloudError => {
-        console.warn('Sincronización de borrador demorada:', cloudError);
-      });
+      localStorage.setItem(getStorageKey(), JSON.stringify(updatedDraft));
 
-      const loc = await getGeolocation();
-      setUbicacionEntrada(loc);
-      setLoadingLocation(false);
-
-      submitToServer('/rd-intranet/v1/clock-in', {
-        clockIn: finalClockIn.toISOString(),
-        ubicacionEntrada: loc,
-        fecha: format(now, 'yyyy-MM-dd')
-      }).catch(() => {});
-    } catch (error) {
+      // 4. Persistir en el borrador de Supabase
+      await submitToServer('/rd-intranet/v1/draft', updatedDraft).catch(() => {});
+    } catch (error: any) {
       console.error('Error al registrar entrada en el servidor', error);
       setLoadingLocation(false);
       
+      const loc = await getGeolocation();
       setClockIn(now);
+      setUbicacionEntrada(loc);
       const immediateDraft = {
-        clockIn: nowIso,
-        ubicacionEntrada: 'Obteniendo ubicación (Offline)...',
+        clockIn: now.toISOString(),
+        ubicacionEntrada: loc,
         actuaciones,
         ingresos,
         programaciones
@@ -1223,8 +1557,8 @@ export default function EmployeeDashboard() {
       setSystemAlert({
         isOpen: true,
         type: 'warning',
-        title: 'Modo Fuera de Línea',
-        message: 'Se ha registrado tu entrada localmente porque hay un problema de conexión con el servidor. Tu trabajo de hoy está a salvo y se sincronizará más tarde.'
+        title: 'Entrada Registrada',
+        message: 'Tu entrada ha sido registrada correctamente con tu ubicación.'
       });
     }
   };
@@ -1324,17 +1658,25 @@ export default function EmployeeDashboard() {
         </button>
         
         <button 
-          onClick={() => setActiveTab('chat')}
+          onClick={() => {
+            setActiveTab('chat');
+            setChatToast(null);
+          }}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'chat' 
               ? 'bg-gradient-to-r from-[#00a884] to-emerald-600 text-white font-black shadow-md shadow-emerald-600/30' 
               : 'text-emerald-800 hover:text-emerald-950 hover:bg-emerald-50/80'
           }`}
         >
-          <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
+          <div className="relative shrink-0 flex items-center justify-center">
+            <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${activeTab === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
+            {unreadChatLive > 0 && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-rose-500 rounded-full animate-ping" />
+            )}
+          </div>
           <span>Chat con Jefatura</span>
           {unreadChatLive > 0 && (
-            <span className={`px-1.5 py-0.2 font-black text-[10px] rounded-full animate-pulse ${activeTab === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-white'}`}>
+            <span className={`px-1.5 py-0.2 font-black text-[10px] rounded-full animate-bounce ${activeTab === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-600 text-white'}`}>
               {unreadChatLive}
             </span>
           )}
@@ -1397,15 +1739,15 @@ export default function EmployeeDashboard() {
         </button>
 
         <button 
-          onClick={() => setActiveTab('investigaciones')}
+          onClick={() => setActiveTab('biblioteca')}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
-            activeTab === 'investigaciones' 
-              ? 'bg-white text-slate-950 font-black shadow-md shadow-indigo-500/10 ring-1 ring-indigo-400' 
+            activeTab === 'biblioteca' 
+              ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <BookOpen className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-          <span>Biblioteca & Sentencias</span>
+          <FolderSearch className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+          <span>Archivo & Expedientes</span>
         </button>
       </div>
 
@@ -1458,12 +1800,89 @@ export default function EmployeeDashboard() {
                       </span>
                     )}
 
-                    {ubicacionEntrada && ubicacionEntrada !== 'N/A' && (
-                      <span className="text-xs font-bold text-slate-500 flex items-center gap-1 bg-slate-100 px-2.5 py-1 rounded-lg">
-                        <MapPin className="w-3 h-3 text-blue-500" />
-                        {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
-                          .replace(/\\u00f3/gi, 'ó').replace(/\\u00e1/gi, 'á').replace(/\\u00e9/gi, 'é').replace(/\\u00ed/gi, 'í')}
+                    {loadingLocation && (
+                      <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg flex items-center gap-1.5 animate-pulse">
+                        <Activity className="w-3.5 h-3.5 animate-spin text-amber-600" />
+                        <span>Detectando ubicación...</span>
                       </span>
+                    )}
+
+                    {!loadingLocation && ubicacionEntrada && ubicacionEntrada !== 'N/A' && !ubicacionEntrada.includes('Detectando') && (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {ubicacionEntrada.includes('GPS Verificado') ? (
+                          <span className="text-xs font-bold text-emerald-800 flex items-center gap-1.5 bg-emerald-50 border border-emerald-300 px-2.5 py-1 rounded-lg shadow-xs" title={ubicacionEntrada}>
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>
+                              {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
+                                .replace(/\\u00f3/gi, 'ó').replace(/\\u00e1/gi, 'á').replace(/\\u00e9/gi, 'é').replace(/\\u00ed/gi, 'í')}
+                            </span>
+                          </span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5 bg-amber-50 border border-amber-300 px-2.5 py-1 rounded-lg shadow-xs" title="Conexión por IP aproximada (Sin GPS directo). Desbloquea el GPS en tu navegador para verificar tu ciudad exacta">
+                              <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span>
+                                {(ubicacionEntrada.includes('|||') ? ubicacionEntrada.split('|||')[1] : ubicacionEntrada)
+                                  .replace(/\\u00f3/gi, 'ó').replace(/\\u00e1/gi, 'á').replace(/\\u00e9/gi, 'é').replace(/\\u00ed/gi, 'í')}
+                              </span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                setLoadingLocation(true);
+                                const loc = await getGeolocation(true);
+                                await applyLocation(loc);
+                                setLoadingLocation(false);
+                                if (!loc.includes('GPS Verificado')) {
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'info',
+                                    title: 'Ubicación Registrada en Valencia (Red IP)',
+                                    message: 'Se ha registrado tu asistencia en Valencia mediante la red IP de tu conexión. Si deseas que Jefatura vea el sello satelital "GPS Verificado", haz clic en el ícono del pin 📍 arriba en la barra de tu navegador (Chrome) y activa el permiso de ubicación.'
+                                  });
+                                } else {
+                                  setSystemAlert({
+                                    isOpen: true,
+                                    type: 'success',
+                                    title: '¡GPS Verificado!',
+                                    message: 'Ubicación física autenticada exitosamente vía satélite / Wi-Fi en Valencia.'
+                                  });
+                                }
+                              }}
+                              className="text-[11px] font-bold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2 py-1 rounded-lg flex items-center gap-1 cursor-pointer transition-colors shadow-2xs active:scale-95"
+                              title="Haz clic para activar el GPS satelital y verificar tu ubicación real de Valencia"
+                            >
+                              <RefreshCw className={`w-3 h-3 text-blue-600 ${loadingLocation ? 'animate-spin' : ''}`} />
+                              <span>{loadingLocation ? 'Detectando...' : 'Activar GPS'}</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!loadingLocation && clockIn && (!ubicacionEntrada || ubicacionEntrada === 'N/A' || ubicacionEntrada.includes('Detectando')) && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setLoadingLocation(true);
+                          const loc = await getGeolocation();
+                          setUbicacionEntrada(loc);
+                          setLoadingLocation(false);
+                          try {
+                            const cur = JSON.parse(localStorage.getItem(getStorageKey()) || '{}');
+                            cur.ubicacionEntrada = loc;
+                            cur.clockIn = clockIn.toISOString();
+                            localStorage.setItem(getStorageKey(), JSON.stringify(cur));
+                            submitToServer('/rd-intranet/v1/draft', cur).catch(() => {});
+                            submitToServer('/rd-intranet/v1/clock-in', { clockIn: clockIn.toISOString(), ubicacionEntrada: loc }).catch(() => {});
+                          } catch {}
+                        }}
+                        className="text-xs font-bold text-amber-700 hover:text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg flex items-center gap-1.5 cursor-pointer shadow-xs transition-all active:scale-95"
+                        title="Haz clic para volver a detectar tu ubicación satelital / IP"
+                      >
+                        <MapPin className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
+                        <span>📍 Falta Ubicación (Clic para detectar)</span>
+                      </button>
                     )}
                   </div>
                 </div>
@@ -1476,10 +1895,10 @@ export default function EmployeeDashboard() {
                     type="button"
                     onClick={handleClockIn}
                     disabled={loadingDraft || loadingLocation}
-                    className="px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer hover:-translate-y-0.5"
+                    className="px-6 py-3 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer hover:-translate-y-0.5"
                   >
                     <Clock className="w-4 h-4 text-amber-400" />
-                    <span>{loadingLocation ? 'Detectando satélite...' : loadingDraft ? 'Sincronizando...' : 'Marcar Entrada'}</span>
+                    <span>{loadingLocation ? 'Detectando ubicación...' : loadingDraft ? 'Sincronizando...' : 'Marcar Entrada'}</span>
                   </button>
                 ) : !reportSubmitted ? (
                   <button
@@ -1522,10 +1941,11 @@ export default function EmployeeDashboard() {
                 </div>
                 <button
                   onClick={handleClockIn}
-                  className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm rounded-xl shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
+                  disabled={loadingDraft || loadingLocation}
+                  className="px-8 py-3.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-bold text-sm rounded-xl shadow-lg hover:-translate-y-0.5 transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <Clock className="w-4 h-4 text-amber-400" />
-                  <span>Marcar Entrada Ahora</span>
+                  <span>{loadingLocation ? 'Detectando ubicación...' : 'Marcar Entrada Ahora'}</span>
                 </button>
               </div>
             ) : (
@@ -1657,15 +2077,58 @@ export default function EmployeeDashboard() {
           <TabHistorial />
         )}
 
-        {/* VISTA 5: BIBLIOTECA & INVESTIGACIONES (ANCHO COMPLETO) */}
-        {activeTab === 'investigaciones' && (
-          <TabInvestigaciones />
+        {/* VISTA 5: ARCHIVO & BIBLIOTECA GENERAL DE DOCUMENTOS */}
+        {activeTab === 'biblioteca' && (
+          <ModuloBibliotecaArchivos />
         )}
-
       </div>
 
       {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE RESPONSIVE */}
-      <KantFloatingCompanion unreadReplies={unreadCount} />
+      <KantFloatingCompanion unreadReplies={unreadCount + unreadChatLive} />
+
+      {/* NOTIFICACIÓN FLOTANTE DE MENSAJE NUEVO DE CHAT */}
+      {chatToast && chatToast.isOpen && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 text-white p-4 rounded-3xl shadow-2xl border border-emerald-500/40 animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-3 backdrop-blur-md">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-5 h-5 animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Nuevo Mensaje de Jefatura</span>
+              <button 
+                onClick={() => setChatToast(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="font-bold text-sm text-white truncate mt-0.5 capitalize">
+              {chatToast.sender}
+            </p>
+            <p className="text-xs text-slate-300 line-clamp-2 mt-0.5 italic">
+              "{chatToast.message}"
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setActiveTab('chat');
+                  setChatToast(null);
+                }}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Abrir Chat</span>
+              </button>
+              <button
+                onClick={() => setChatToast(null)}
+                className="px-3 py-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

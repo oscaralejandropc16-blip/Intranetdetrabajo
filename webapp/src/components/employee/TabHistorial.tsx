@@ -5,6 +5,7 @@ import { normalizeSupervisorName, formatTime12h } from '../../lib/supabaseAdapte
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
+import AttendanceReportModal from '../common/AttendanceReportModal';
 import type { EvidenceItem } from '../../types/libros';
 
 interface BitacoraHistorial {
@@ -45,6 +46,9 @@ export default function TabHistorial() {
     if (cleanCurrent.includes('hector')) {
       return author.includes('hector');
     }
+    if (cleanCurrent.includes('oscar')) {
+      return author.includes('oscar');
+    }
     if (cleanCurrent.includes('luis')) {
       return author.includes('luis') && !author.includes('carmen');
     }
@@ -76,6 +80,7 @@ export default function TabHistorial() {
     }
   });
   const [loading, setLoading] = useState(true);
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -422,12 +427,22 @@ export default function TabHistorial() {
         message={systemAlert.message}
         onClose={() => setSystemAlert({ ...systemAlert, isOpen: false })}
       />
-      <div className="mb-8">
-        <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-          <History className="w-7 h-7 text-amber-500" />
-          Mi Historial de Bitácoras
-        </h3>
-        <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados, revisa los archivos adjuntos y descarga los PDF de cada jornada.</p>
+      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
+            <History className="w-7 h-7 text-amber-500" />
+            Mi Historial de Bitácoras
+          </h3>
+          <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados, revisa los archivos adjuntos y descarga los PDF de cada jornada.</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowAttendanceModal(true)}
+          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+          title="Descargar reporte oficial consolidado de horas de entrada y salida"
+        >
+          <FileText className="w-4 h-4" /> Reporte de Asistencia (PDF)
+        </button>
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
@@ -649,6 +664,13 @@ export default function TabHistorial() {
           </div>
         </div>
       )}
+
+      {/* MODAL REPORTE CONSOLIDADO DE ASISTENCIA Y HORAS */}
+      <AttendanceReportModal
+        isOpen={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+        initialEmployee={currentLoggedUser || 'Carmen Luisa'}
+      />
     </div>
   );
 }

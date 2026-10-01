@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, File, MessageSquare, Trash2, FileText, Save, AlertCircle, RotateCw, FolderSearch } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, MessageSquare, Trash2, FileText, Save, AlertCircle, RotateCw, FolderSearch, ExternalLink, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
+import { supabaseUploadFile } from '../../lib/supabaseAdapter';
 import ExpedienteSelectorModal from '../common/ExpedienteSelectorModal';
 
 interface TabRegistroDiarioProps {
@@ -40,8 +41,10 @@ export default function TabRegistroDiario({
           name: f.name || f.file?.name,
           type: f.type || f.file?.type,
           size: f.size || f.file?.size,
-          dataUrl: f.dataUrl,
-          note: f.note
+          url: f.url || '',
+          dataUrl: f.url ? '' : (f.dataUrl || ''),
+          note: f.note || '',
+          uploaded_at: f.uploaded_at || new Date().toISOString()
         })),
         savedAt: new Date().toISOString()
       };
@@ -62,28 +65,45 @@ export default function TabRegistroDiario({
     setPendingTasks((tasks: any) => tasks.map((t: any) => t.id === id ? { ...t, completed: !t.completed } : t));
   };
 
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      setUploadingFiles(true);
       const selected = Array.from(e.target.files);
       const newFiles = await Promise.all(
         selected.map(async (file) => {
-          let dataUrl = '';
+          let cloudUrl = '';
           try {
-            dataUrl = await fileToDataUrl(file);
-          } catch (err) {
-            console.warn('Error convirtiendo archivo a dataUrl:', err);
+            cloudUrl = await supabaseUploadFile('evidencias', file, 'evidencias');
+          } catch (uploadErr) {
+            console.warn('Subida directa a Supabase Storage falló, usando dataUrl fallback:', uploadErr);
           }
+
+          let dataUrl = '';
+          if (!cloudUrl && file.size < 4 * 1024 * 1024) {
+            try {
+              dataUrl = await fileToDataUrl(file);
+            } catch (err) {
+              console.warn('Error convirtiendo archivo a dataUrl:', err);
+            }
+          }
+
           return {
             file,
             name: file.name,
             type: file.type,
             size: file.size,
-            dataUrl,
-            note: ''
+            url: cloudUrl || '',
+            dataUrl: dataUrl || '',
+            note: '',
+            uploaded_at: new Date().toISOString()
           };
         })
       );
       setAttachedFiles([...attachedFiles, ...newFiles]);
+      setUploadingFiles(false);
+      e.target.value = '';
     }
   };
 
@@ -120,7 +140,7 @@ export default function TabRegistroDiario({
         const updated = { ...a, [field]: value };
         // Auto-completar partes si es numeroAsunto
         if (field === 'numeroAsunto') {
-          const matchingExpediente = allCombinedExpedientes.find(e => e.numeroExpediente === value);
+          const matchingExpediente = allCombinedExpedientes.find((e: any) => e.numeroExpediente === value);
           if (matchingExpediente && !updated.partes) {
             updated.partes = matchingExpediente.partes;
           }
@@ -473,36 +493,84 @@ export default function TabRegistroDiario({
               </div>
             </div>
 
+            {/* Indicador de subida activa a la nube */}
+            {uploadingFiles && (
+              <div className="mb-4 p-3.5 bg-blue-50 border border-blue-200 rounded-xl flex items-center gap-3 text-blue-700 animate-pulse text-sm font-semibold">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                <span>Subiendo y respaldando archivo(s) en la nube de forma segura...</span>
+              </div>
+            )}
+
             {/* Lista de archivos seleccionados con input para notas */}
             {attachedFiles.length > 0 && (
               <div className="space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    {attachedFiles.length} documento{attachedFiles.length > 1 ? 's' : ''} adjunto{attachedFiles.length > 1 ? 's' : ''} a esta jornada
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold rounded-lg shadow-2xs">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    Borrador respaldado en la nube
+                  </span>
+                </div>
+
                 {attachedFiles.map((fileObj, index) => (
-                  <div key={index} className="bg-white border-2 border-slate-200 rounded-xl p-4 flex flex-col xl:flex-row gap-4 items-start xl:items-center shadow-sm">
-                    <div className="flex items-center gap-3 w-full xl:w-1/3">
-                      <div className="bg-slate-100 p-3 rounded-lg"><File className="w-6 h-6 text-slate-500"/></div>
-                      <div className="overflow-hidden">
-                        <p className="font-bold text-slate-700 truncate">{fileObj.name || fileObj.file?.name || 'Archivo adjunto'}</p>
-                        <p className="text-xs text-slate-500 font-medium">
-                          {fileObj.size ? (fileObj.size / 1024 / 1024).toFixed(2) + ' MB' : (fileObj.file?.size ? (fileObj.file.size / 1024 / 1024).toFixed(2) + ' MB' : 'Documento en borrador')}
+                  <div key={index} className="bg-white border-2 border-slate-200 hover:border-slate-300 rounded-xl p-4 flex flex-col xl:flex-row gap-4 items-start xl:items-center shadow-xs transition-colors">
+                    <div className="flex items-center gap-3 w-full xl:w-2/5 min-w-0">
+                      <div className="bg-blue-50 text-blue-600 p-3 rounded-xl shrink-0">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <div className="overflow-hidden min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-slate-800 text-sm truncate" title={fileObj.name || fileObj.file?.name}>
+                            {fileObj.name || fileObj.file?.name || 'Archivo adjunto'}
+                          </p>
+                          {fileObj.url && (
+                            <span className="shrink-0 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-md">
+                              En la nube ✓
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-400 font-mono mt-0.5">
+                          {fileObj.size ? (fileObj.size / 1024).toFixed(1) + ' KB' : (fileObj.file?.size ? (fileObj.file.size / 1024).toFixed(1) + ' KB' : 'Borrador')}
                         </p>
                       </div>
                     </div>
                     <div className="flex-1 w-full relative">
-                      <MessageSquare className="absolute left-3 top-3.5 w-5 h-5 text-slate-400" />
+                      <MessageSquare className="absolute left-3 top-3.5 w-4 h-4 text-slate-400" />
                       <input 
                         type="text" 
                         disabled={reportSubmitted}
                         placeholder="Añade una nota o descripción a este documento..." 
-                        value={fileObj.note}
+                        value={fileObj.note || ''}
                         onChange={(e) => updateFileNote(index, e.target.value)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-slate-700 text-sm"
+                        className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-medium text-slate-700 text-xs sm:text-sm"
                       />
                     </div>
-                    {!reportSubmitted && (
-                      <button type="button" onClick={() => removeFile(index)} className="text-slate-400 hover:text-red-500 bg-white border border-slate-200 p-3 rounded-lg hover:bg-red-50 transition-colors cursor-pointer w-full xl:w-auto flex justify-center">
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2 shrink-0 self-end xl:self-center">
+                      {fileObj.url && (
+                        <a
+                          href={fileObj.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-colors border border-indigo-200/80 cursor-pointer"
+                          title="Abrir y verificar documento"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Ver</span>
+                        </a>
+                      )}
+                      {!reportSubmitted && (
+                        <button 
+                          type="button" 
+                          onClick={() => removeFile(index)} 
+                          className="text-slate-400 hover:text-red-500 bg-white hover:bg-red-50 border border-slate-200 p-2 rounded-lg transition-colors cursor-pointer"
+                          title="Eliminar adjunto"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

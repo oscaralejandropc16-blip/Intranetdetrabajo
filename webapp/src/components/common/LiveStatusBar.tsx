@@ -37,9 +37,10 @@ interface CityWeather {
 }
 
 const CITIES: CityWeather[] = [
+  { name: 'Maracay', state: 'Aragua', lat: 10.2469, lon: -67.5958 },
   { name: 'Caracas', state: 'Distrito Capital', lat: 10.4806, lon: -66.9036 },
-  { name: 'Boca de Aroa', state: 'Falcón', lat: 10.7483, lon: -68.3075 },
   { name: 'Valencia', state: 'Carabobo', lat: 10.1620, lon: -68.0077 },
+  { name: 'Boca de Aroa', state: 'Falcón', lat: 10.7483, lon: -68.3075 },
   { name: 'La Guaira', state: 'Vargas', lat: 10.6014, lon: -66.9322 },
   { name: 'Maracaibo', state: 'Zulia', lat: 10.6544, lon: -71.6372 }
 ];
@@ -61,7 +62,18 @@ export default function LiveStatusBar() {
   const [loadingRates, setLoadingRates] = useState<boolean>(false);
 
   // 3. Estado del Clima
-  const [selectedCityIndex, setSelectedCityIndex] = useState<number>(0);
+  const [selectedCityIndex, setSelectedCityIndex] = useState<number>(() => {
+    const saved = localStorage.getItem('rd_weather_city_idx');
+    if (saved !== null) {
+      const idx = parseInt(saved, 10);
+      if (!isNaN(idx) && idx >= 0 && idx < 6) return idx;
+    }
+    const pref = localStorage.getItem('rd_preferred_city') || '';
+    if (pref.toLowerCase().includes('valencia')) return 2;
+    if (pref.toLowerCase().includes('maracay')) return 0;
+    if (pref.toLowerCase().includes('caracas') && !pref.includes('NetUno') && !pref.includes('Red IP')) return 1;
+    return 2; // Valencia (sede principal) por defecto
+  });
   const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>({});
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
 
@@ -410,7 +422,7 @@ export default function LiveStatusBar() {
             <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl">
               <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex justify-between items-center">
                 <span>Seleccionar Ciudad</span>
-                <span className="text-amber-500 text-[9px] font-bold">5 Disponibles</span>
+                <span className="text-amber-500 text-[9px] font-bold">{CITIES.length} Disponibles</span>
               </div>
               {CITIES.map((c, index) => {
                 const cWeather = weatherData[c.name];
@@ -420,6 +432,7 @@ export default function LiveStatusBar() {
                     key={c.name}
                     onClick={() => {
                       setSelectedCityIndex(index);
+                      localStorage.setItem('rd_weather_city_idx', String(index));
                       setIsCityDropdownOpen(false);
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer ${

@@ -1,22 +1,24 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, ExternalLink, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
+import { supabase } from '../lib/supabase';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import TabRegistroDiario from './employee/TabRegistroDiario';
 import TabLibroIngresos from './employee/TabLibroIngresos';
 import TabAgenda from './employee/TabAgenda';
 import TabHistorial from './employee/TabHistorial';
-import { TabInvestigaciones } from './employee/TabInvestigaciones';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
+import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
-import LiveChatModule from './chat/LiveChatModule';
+import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
+import AttendanceReportModal from './common/AttendanceReportModal';
 import { normalizeSupervisorName, formatTime12h } from '../lib/supabaseAdapter';
 
 const ensureArray = (val: any): any[] => {
@@ -272,20 +274,112 @@ export default function AdminDashboard() {
     setAdminActuaciones(ensureArray(targetRep.actuaciones));
     setAdminIngresos(ensureArray(targetRep.ingresos));
   };
+  const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca'>(() => {
     const saved = sessionStorage.getItem('rd_admin_active_view');
     if (saved === 'agenda') return 'bitacoras';
     return (saved as any) || 'bitacoras';
   });
   const [unreadChatLive, setUnreadChatLive] = useState(0);
+  const [chatToast, setChatToast] = useState<{
+    isOpen: boolean;
+    sender: string;
+    message: string;
+  } | null>(null);
+
+  const fetchUnreadChatCount = useCallback(async () => {
+    try {
+      const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').toLowerCase().trim();
+      const { data, error } = await supabase
+        .from('chat_messages')
+        .select('id, sender_name, recipient_name, mensaje, created_at, leido')
+        .eq('leido', false)
+        .order('created_at', { ascending: false });
+
+      if (error || !data) return;
+
+      const unreadForMe = data.filter((m: any) => {
+        const sender = (m.sender_name || '').toLowerCase().trim();
+        const recipient = (m.recipient_name || '').toLowerCase().trim();
+        const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
+        if (isSelf) return false;
+
+        const isAddressedToMe = recipient.includes(curUser) || curUser.includes(recipient) || recipient.includes('jefatura') || recipient.includes('socio') || recipient.includes('admin');
+        return isAddressedToMe;
+      });
+
+      setUnreadChatLive(unreadForMe.length);
+    } catch (e) {
+      console.warn('Error fetching unread chat count:', e);
+    }
+  }, []);
+
+  // Suscripción Realtime en segundo plano para notificar mensajes nuevos al jefe
+  useEffect(() => {
+    fetchUnreadChatCount();
+
+    const channel = supabase
+      .channel('admin_chat_notifications')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+        (payload: any) => {
+          const newMsg = payload.new;
+          if (!newMsg) return;
+
+          const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').toLowerCase().trim();
+          const sender = (newMsg.sender_name || '').toLowerCase().trim();
+          const recipient = (newMsg.recipient_name || '').toLowerCase().trim();
+
+          const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
+          if (isSelf) return;
+
+          const isForMe = recipient.includes(curUser) || curUser.includes(recipient) || recipient.includes('jefatura') || recipient.includes('socio') || recipient.includes('admin');
+          if (isForMe) {
+            setUnreadChatLive(prev => prev + 1);
+            playNotificationSound();
+            setChatToast({
+              isOpen: true,
+              sender: newMsg.sender_name || 'Empleado',
+              message: newMsg.mensaje || 'Nuevo mensaje recibido'
+            });
+
+            setTimeout(() => {
+              setChatToast(prev => (prev?.sender === newMsg.sender_name ? null : prev));
+            }, 10000);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        () => {
+          fetchUnreadChatCount();
+        }
+      )
+      .subscribe();
+
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchUnreadChatCount();
+    }, 25000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [fetchUnreadChatCount]);
+
   const [allGastos, setAllGastos] = useState<any[]>([]);
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
-  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'investigaciones' | 'cierre'>(() => {
-    return (sessionStorage.getItem('rd_admin_boss_sub_tab') as any) || 'actuaciones';
+  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>(() => {
+    const saved = sessionStorage.getItem('rd_admin_boss_sub_tab');
+    if (saved === 'investigaciones' || !saved) return 'actuaciones';
+    return (saved as any) || 'actuaciones';
   });
 
   useEffect(() => {
@@ -438,10 +532,14 @@ export default function AdminDashboard() {
       name: f.name || f.file?.name,
       type: f.type || f.file?.type,
       size: f.size || f.file?.size,
-      dataUrl: f.dataUrl,
-      note: f.note
+      url: f.url || '',
+      dataUrl: f.url ? '' : (f.dataUrl || ''),
+      note: f.note || '',
+      uploaded_at: f.uploaded_at || new Date().toISOString()
     }));
-    localStorage.setItem('rd_jefe_attachedFiles', JSON.stringify(serialized));
+    try {
+      localStorage.setItem('rd_jefe_attachedFiles', JSON.stringify(serialized));
+    } catch (e) {}
   }, [attachedFilesJefe]);
 
   // Sincronizar y cargar borrador del servidor para el Jefe (sin pisar datos locales guardados)
@@ -462,6 +560,7 @@ export default function AdminDashboard() {
           const parsedActuaciones = parseJson(response.data.actuaciones);
           const parsedIngresos = parseJson(response.data.ingresos);
           const parsedProgramaciones = parseJson(response.data.programaciones);
+          const parsedAttachedFiles = parseJson(response.data.attachedFiles || response.data.evidences);
 
           const mergeLists = <T extends { id?: string | number }>(localList: T[], serverList: T[]): T[] => {
             if (!localList || localList.length === 0) return serverList || [];
@@ -475,6 +574,12 @@ export default function AdminDashboard() {
           setActuacionesJefe(prev => mergeLists(prev, parsedActuaciones));
           setIngresosJefe(prev => mergeLists(prev, parsedIngresos));
           setProgramacionesJefe(prev => mergeLists(prev, parsedProgramaciones));
+          if (parsedAttachedFiles.length > 0) {
+            setAttachedFilesJefe(prev => {
+              if (prev.length > 0) return prev;
+              return parsedAttachedFiles;
+            });
+          }
         }
       } catch (error) {
         console.error('Error fetching admin draft:', error);
@@ -483,13 +588,37 @@ export default function AdminDashboard() {
     fetchDraft();
   }, []);
 
-  // Guardar automáticamente en el local storage (Auto-Draft) para el Jefe
+  // Guardar automáticamente en el local storage y nube (Auto-Draft) para el Jefe
   useEffect(() => {
-    // Solo guardamos en LocalStorage para no saturar el servidor con peticiones (evitar Error 429)
     localStorage.setItem('rd_admin_draft_actuaciones', JSON.stringify(actuacionesJefe));
     localStorage.setItem('rd_admin_draft_ingresos', JSON.stringify(ingresosJefe));
     localStorage.setItem('rd_admin_draft_programaciones', JSON.stringify(programacionesJefe));
-  }, [actuacionesJefe, ingresosJefe, programacionesJefe]);
+
+    const handler = setTimeout(async () => {
+      try {
+        if (actuacionesJefe.length === 0 && ingresosJefe.length === 0 && programacionesJefe.length === 0 && attachedFilesJefe.length === 0) return;
+        const bossDraft = {
+          user: currentBossName,
+          user_name: currentBossName,
+          actuaciones: actuacionesJefe,
+          ingresos: ingresosJefe,
+          programaciones: programacionesJefe,
+          attachedFiles: attachedFilesJefe.map(f => ({
+            name: f.name || f.file?.name,
+            type: f.type || f.file?.type,
+            size: f.size || f.file?.size,
+            url: f.url || '',
+            note: f.note || '',
+            uploaded_at: f.uploaded_at || new Date().toISOString()
+          }))
+        };
+        await submitToServer('/rd-intranet/v1/draft', bossDraft);
+      } catch (e) {
+        console.warn('Error saving boss draft to cloud:', e);
+      }
+    }, 800);
+    return () => clearTimeout(handler);
+  }, [actuacionesJefe, ingresosJefe, programacionesJefe, attachedFilesJefe, currentBossName]);
 
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -604,7 +733,7 @@ export default function AdminDashboard() {
             if (r.date !== todayStr) return false;
             const reportUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
             // NUNCA asignar reportes de empleados al despacho de jefatura
-            if (reportUser.includes('carmen') || reportUser.includes('mariela') || reportUser.includes('hector')) {
+            if (reportUser.includes('carmen') || reportUser.includes('mariela') || reportUser.includes('hector') || reportUser.includes('oscar')) {
               return false;
             }
             if (currentLoggedUser.includes('luis')) {
@@ -691,7 +820,10 @@ export default function AdminDashboard() {
       }
     };
     fetchBitacoras();
-    const intervalId = setInterval(() => fetchBitacoras(true), 60000); // Auto-refrescar cada 60 segundos
+    const intervalId = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchBitacoras(true);
+    }, 60000);
     return () => {
       clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);
@@ -1389,16 +1521,25 @@ export default function AdminDashboard() {
 
         {/* 3. CHAT EN VIVO */}
         <button
-          onClick={() => setActiveView('chat')}
+          onClick={() => {
+            setActiveView('chat');
+            setChatToast(null);
+          }}
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'chat' 
               ? 'bg-gradient-to-r from-[#00a884] to-emerald-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(0,168,132,0.5)] ring-1 ring-emerald-400 scale-[1.02]' 
               : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'
           }`}
         >
-          <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} /> Chat en Vivo (WhatsApp)
+          <div className="relative shrink-0 flex items-center justify-center">
+            <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
+            {unreadChatLive > 0 && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
+            )}
+          </div>
+          <span>Chat en Vivo (WhatsApp)</span>
           {unreadChatLive > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 animate-pulse ${activeView === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-slate-950'}`}>
+            <span className={`px-2 py-0.5 font-black rounded-full text-[11px] shadow-sm ml-1 animate-bounce ${activeView === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-600 text-white'}`}>
               {unreadChatLive}
             </span>
           )}
@@ -1431,6 +1572,18 @@ export default function AdminDashboard() {
               {pendingGastosCount}
             </span>
           )}
+        </button>
+
+        {/* ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
+        <button
+          onClick={() => setActiveView('biblioteca')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'biblioteca' 
+              ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-[0_4px_22px_-2px_rgba(99,102,241,0.55)] ring-1 ring-indigo-400 scale-[1.02]' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-indigo-50/60 font-bold'
+          }`}
+        >
+          <FolderSearch className={`w-4 h-4 ${activeView === 'biblioteca' ? 'text-white' : 'text-indigo-600'}`} /> Archivo & Biblioteca
         </button>
 
         {/* 7. MI HISTORIAL DE JEFATURA */}
@@ -1509,6 +1662,14 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </div>
+              <button
+                type="button"
+                onClick={() => setShowAttendanceModal(true)}
+                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                title="Generar reporte consolidado de horas de entrada y salida (PDF)"
+              >
+                <FileText className="w-4 h-4" /> Reporte Horas Asistencia (PDF)
+              </button>
             </div>
           </div>
 
@@ -2182,12 +2343,6 @@ export default function AdminDashboard() {
                 <CalendarIcon className="w-4 h-4" /> Programación
               </button>
               <button
-                onClick={() => setBossSubTab('investigaciones')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'investigaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                <BookOpen className="w-4 h-4" /> Investigaciones
-              </button>
-              <button
                 onClick={() => setBossSubTab('cierre')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
               >
@@ -2221,7 +2376,7 @@ export default function AdminDashboard() {
                   const todayReport = reports.find(r => {
                     if (r.date !== todayStr) return false;
                     const rUser = (r.user || r.usuario || r.author_name || '').toLowerCase().trim();
-                    if (rUser.includes('carmen') || rUser.includes('mariela') || rUser.includes('hector')) {
+                    if (rUser.includes('carmen') || rUser.includes('mariela') || rUser.includes('hector') || rUser.includes('oscar')) {
                       return false;
                     }
                     if (currentLoggedUser.includes('luis')) {
@@ -2292,10 +2447,6 @@ export default function AdminDashboard() {
               reportSubmitted={jefeReportSubmitted}
               isAdmin={true}
             />
-          )}
-
-          {bossSubTab === 'investigaciones' && (
-            <TabInvestigaciones />
           )}
 
           {bossSubTab === 'cierre' && (
@@ -2551,6 +2702,15 @@ export default function AdminDashboard() {
 
                       doc.save(`Bitacora_Jefatura_${jefeName.replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
                       const pdfBase64 = doc.output('datauristring');
+                      const serializedEvidencesJefe = attachedFilesJefe.map(f => ({
+                        name: f.name || f.file?.name || 'evidencia.pdf',
+                        type: f.type || f.file?.type || 'application/pdf',
+                        size: f.size || f.file?.size || 0,
+                        note: f.note || '',
+                        url: f.url || '',
+                        dataUrl: f.url ? '' : (f.dataUrl || '')
+                      }));
+
                       const payload = {
                         fecha_reporte: format(new Date(), 'yyyy-MM-dd'),
                         hora_entrada: 'N/A (Jefatura)',
@@ -2558,6 +2718,8 @@ export default function AdminDashboard() {
                         actuaciones: actuacionesJefe,
                         ingresos: ingresosJefe,
                         programaciones: programacionesJefe,
+                        attachedFiles: serializedEvidencesJefe,
+                        evidences: serializedEvidencesJefe,
                         reporte_hoy: 'Bitácora Oficial de Gestión - Régimen de Jefatura / Administración',
                         bitacora_pdf_base64: '',
                         pdf_base64: '',
@@ -2574,12 +2736,12 @@ export default function AdminDashboard() {
                         await uploadPdfInChunks(postId, pdfBase64);
                       }
 
-                      // Subir evidencias si existen (bypass WAF por FormData)
+                      // Subir evidencias si existen y no cuentan con url en la nube
                       if (attachedFilesJefe.length > 0 && postId) {
-                        setSystemAlert({ isOpen: true, type: 'info', title: 'Subiendo Evidencias', message: 'Por favor espera mientras se suben los documentos adjuntos...' });
                         for (let i = 0; i < attachedFilesJefe.length; i++) {
                           try {
                             const item = attachedFilesJefe[i];
+                            if (item.url) continue;
                             let fileToUpload: File | null = item.file instanceof File ? item.file : null;
                             if (!fileToUpload && item.dataUrl) {
                               fileToUpload = dataUrlToFile(item.dataUrl, item.name || 'evidencia.pdf', item.type);
@@ -2658,6 +2820,13 @@ export default function AdminDashboard() {
       {/* VISTA: GASTOS Y REEMBOLSOS (DESEMBOLSOS DE TRÁMITES) */}
       {activeView === 'gastos' && (
         <ModuloGastos isJefatura={true} />
+      )}
+
+      {/* VISTA: ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
+      {activeView === 'biblioteca' && (
+        <div className="animate-in fade-in duration-200">
+          <ModuloBibliotecaArchivos />
+        </div>
       )}
 
       {/* VISTA: MI HISTORIAL DE JEFATURA */}
@@ -2741,14 +2910,25 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500" /> GPS Entrada</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500" /> GPS Entrada</p>
+                    {selectedReport.ubicacionEntrada?.includes('GPS Verificado') ? (
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                        🛰️ Verificado
+                      </span>
+                    ) : selectedReport.ubicacionEntrada?.includes('Red IP') ? (
+                      <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                        ⚠️ Red IP
+                      </span>
+                    ) : null}
+                  </div>
                   {selectedReport.ubicacionEntrada && selectedReport.ubicacionEntrada !== 'N/A' ? (
                     <div className="flex flex-col items-start gap-1">
                       {selectedReport.ubicacionEntrada.includes('|||') && (
-                        <span className="text-xs font-bold text-slate-700">{selectedReport.ubicacionEntrada.split('|||')[1]}</span>
+                        <span className="text-xs font-bold text-slate-700 leading-tight">{selectedReport.ubicacionEntrada.split('|||')[1]}</span>
                       )}
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionEntrada.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
-                        Ver en Mapa
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionEntrada.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2.5 rounded-lg w-max transition-colors flex items-center gap-1 mt-0.5">
+                        Ver en Google Maps
                       </a>
                     </div>
                   ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
@@ -2760,14 +2940,25 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-center">
-                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" /> GPS Salida</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" /> GPS Salida</p>
+                    {selectedReport.ubicacionSalida?.includes('GPS Verificado') ? (
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                        🛰️ Verificado
+                      </span>
+                    ) : selectedReport.ubicacionSalida?.includes('Red IP') ? (
+                      <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                        ⚠️ Red IP
+                      </span>
+                    ) : null}
+                  </div>
                   {selectedReport.ubicacionSalida && selectedReport.ubicacionSalida !== 'N/A' ? (
                     <div className="flex flex-col items-start gap-1">
                       {selectedReport.ubicacionSalida.includes('|||') && (
-                        <span className="text-xs font-bold text-slate-700">{selectedReport.ubicacionSalida.split('|||')[1]}</span>
+                        <span className="text-xs font-bold text-slate-700 leading-tight">{selectedReport.ubicacionSalida.split('|||')[1]}</span>
                       )}
-                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionSalida.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-sm font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2 rounded w-max transition-colors">
-                        Ver en Mapa
+                      <a href={`https://www.google.com/maps/search/?api=1&query=${selectedReport.ubicacionSalida.split('|||')[0]}`} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 py-1 px-2.5 rounded-lg w-max transition-colors flex items-center gap-1 mt-0.5">
+                        Ver en Google Maps
                       </a>
                     </div>
                   ) : <p className="text-sm font-bold text-slate-400">No registrada</p>}
@@ -2827,39 +3018,67 @@ export default function AdminDashboard() {
 
               {/* ARCHIVOS Y EVIDENCIAS ADJUNTAS */}
               <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
-                  <Paperclip className="w-5 h-5 text-blue-600" /> Archivos Adjuntos a las Actuaciones
-                </h4>
-                {Array.isArray(selectedReport.evidences) && selectedReport.evidences.length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {selectedReport.evidences.map((ev: any, idx: number) => (
-                      <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 rounded-xl border border-slate-200 transition-colors">
-                        <div className="flex items-center gap-3 overflow-hidden pr-2">
-                          <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600 shrink-0">
-                            <File className="w-5 h-5" />
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
+                    <Paperclip className="w-5 h-5 text-blue-600" /> Archivos Adjuntos a las Actuaciones
+                  </h4>
+                  <button
+                    onClick={() => { setSelectedReport(null); setActiveView('biblioteca'); }}
+                    className="text-xs text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 hover:underline cursor-pointer"
+                  >
+                    <FolderSearch className="w-3.5 h-3.5" />
+                    <span>Ver en Archivo Central</span>
+                  </button>
+                </div>
+                {(() => {
+                  let evList: any[] = [];
+                  if (Array.isArray(selectedReport.evidences) && selectedReport.evidences.length > 0) {
+                    evList = selectedReport.evidences;
+                  } else if (Array.isArray(selectedReport.attachedFiles) && selectedReport.attachedFiles.length > 0) {
+                    evList = selectedReport.attachedFiles;
+                  } else if (typeof selectedReport.evidences === 'string' && selectedReport.evidences.length > 2) {
+                    try { evList = JSON.parse(selectedReport.evidences); } catch (e) {}
+                  }
+
+                  return evList.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {evList.map((ev: any, idx: number) => {
+                        const fileUrl = ev.url || ev.dataUrl || '#';
+                        const fileName = ev.name || `documento_adjunto_${idx + 1}.pdf`;
+                        return (
+                          <div key={idx} className="flex items-center justify-between p-3.5 bg-slate-50 hover:bg-slate-100/90 rounded-2xl border border-slate-200 transition-colors">
+                            <div className="flex items-center gap-3 overflow-hidden pr-2">
+                              <div className="bg-rose-100 text-rose-600 p-2.5 rounded-xl shrink-0 shadow-2xs">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div className="overflow-hidden">
+                                <p className="font-bold text-xs text-slate-900 truncate" title={fileName}>{fileName}</p>
+                                {ev.note && <p className="text-[11px] text-slate-500 truncate mt-0.5">Nota: "{ev.note}"</p>}
+                                {ev.size && <p className="text-[10px] text-slate-400 font-mono mt-0.5">{(ev.size / 1024).toFixed(1)} KB</p>}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1 shrink-0">
+                              <a
+                                href={fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={fileName}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl transition-colors shadow-2xs"
+                              >
+                                Ver / Descargar
+                                <Download className="w-3.5 h-3.5" />
+                              </a>
+                            </div>
                           </div>
-                          <div className="overflow-hidden">
-                            <p className="font-bold text-xs text-slate-800 truncate" title={ev.name}>{ev.name}</p>
-                            {ev.note && <p className="text-[11px] text-slate-500 truncate mt-0.5">Nota: "{ev.note}"</p>}
-                          </div>
-                        </div>
-                        <a
-                          href={ev.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-colors shrink-0 shadow-sm"
-                        >
-                          Ver / Descargar
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-slate-500 text-sm font-medium italic">
-                    Sin archivos adjuntos registrados por el empleado en esta jornada.
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-center text-slate-500 text-sm font-medium italic">
+                      Sin archivos adjuntos registrados por el empleado en esta jornada.
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* LIBRO DE INGRESOS (REALIZADO) */}
@@ -3161,12 +3380,18 @@ export default function AdminDashboard() {
                               onConfirm: async () => {
                                 setSystemAlert(prev => ({ ...prev, isOpen: false }));
                                 try {
-                                  await submitToServer('/rd-intranet/v1/reset-user-day', { post_id: selectedReport.id, date: selectedReport.date });
+                                  await submitToServer('/rd-intranet/v1/reset-user-day', { 
+                                    post_id: selectedReport.id, 
+                                    date: selectedReport.date,
+                                    user: selectedReport.user,
+                                    user_id: selectedReport.user_id
+                                  });
+                                  setReports(prev => prev.filter(r => r.id !== selectedReport.id));
                                   setSystemAlert({
                                     isOpen: true,
                                     type: 'success',
-                                    title: 'Jornada Reabierta',
-                                    message: 'La jornada ha sido reabierta exitosamente. La pantalla se actualizará.',
+                                    title: 'Jornada Reabierta / Eliminada',
+                                    message: 'La jornada ha sido eliminada y reabierta exitosamente en la base de datos.',
                                     onConfirm: () => {
                                       setSelectedReport(null);
                                       window.location.reload();
@@ -3338,13 +3563,64 @@ export default function AdminDashboard() {
         }}
       />
 
+      {/* MODAL REPORTE OFICIAL DE ASISTENCIA Y CONTROL HORARIO */}
+      <AttendanceReportModal
+        isOpen={showAttendanceModal}
+        onClose={() => setShowAttendanceModal(false)}
+        initialEmployee="Carmen Luisa"
+      />
+
       {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE */}
       <KantFloatingCompanion 
         pendingReviews={activeNotifications.length} 
         pendingGastos={pendingGastosCount} 
-        unreadReplies={unreadEmployeeReplies.length} 
+        unreadReplies={unreadEmployeeReplies.length + unreadChatLive} 
         onNavigate={(tab: any) => setActiveView(tab)}
       />
+
+      {/* NOTIFICACIÓN FLOTANTE DE MENSAJE NUEVO DE CHAT */}
+      {chatToast && chatToast.isOpen && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 text-white p-4 rounded-3xl shadow-2xl border border-emerald-500/40 animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-3 backdrop-blur-md">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <MessageSquare className="w-5 h-5 animate-bounce" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Nuevo Mensaje de Chat</span>
+              <button 
+                onClick={() => setChatToast(null)}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="font-bold text-sm text-white truncate mt-0.5 capitalize">
+              {chatToast.sender}
+            </p>
+            <p className="text-xs text-slate-300 line-clamp-2 mt-0.5 italic">
+              "{chatToast.message}"
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setActiveView('chat');
+                  setChatToast(null);
+                }}
+                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Abrir Chat</span>
+              </button>
+              <button
+                onClick={() => setChatToast(null)}
+                className="px-3 py-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

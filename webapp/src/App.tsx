@@ -18,7 +18,7 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
   const lower = nameOrEmail.toLowerCase().trim();
 
   // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
-  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector'];
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'oscarpc20', 'oscar'];
   if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
     return false;
   }

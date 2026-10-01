@@ -15,7 +15,7 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
   const lower = nameOrEmail.toLowerCase().trim();
 
   // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
-  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector'];
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'oscarpc20', 'oscar'];
   if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
     return false;
   }
@@ -125,6 +125,21 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
   'hector@romanydelgado.com': {
     email: 'hectorbann@gmail.com',
     displayName: 'Hector',
+    role: 'empleado'
+  },
+  'oscarpc20': {
+    email: 'oscarpc20@romanydelgado.com',
+    displayName: 'oscarpc20',
+    role: 'empleado'
+  },
+  'oscar': {
+    email: 'oscarpc20@romanydelgado.com',
+    displayName: 'oscarpc20',
+    role: 'empleado'
+  },
+  'oscarpc20@romanydelgado.com': {
+    email: 'oscarpc20@romanydelgado.com',
+    displayName: 'oscarpc20',
     role: 'empleado'
   },
 };
@@ -377,9 +392,30 @@ export function getVenezuelaDateTime(date: Date = getServerDateSync()): { dateSt
 // -------------------------------------------------------------
 // 2. CLOCK-IN (MARCAJE OFICIAL BASADO EN EL SERVIDOR)
 // -------------------------------------------------------------
-export async function supabaseClockIn(_data?: any): Promise<any> {
+export async function supabaseClockIn(data?: any): Promise<any> {
   const serverNow = await getServerDate();
   const venezuela = getVenezuelaDateTime(serverNow);
+  const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
+
+  // Si se suministró ubicación de entrada o datos de jornada, actualizar o crear el borrador en Supabase
+  if (data && (data.ubicacionEntrada || data.clockIn)) {
+    try {
+      const fecha = data.fecha || venezuela.dateStr;
+      const draftPayload = {
+        user: currentUser,
+        user_name: currentUser,
+        fecha,
+        clockIn: data.clockIn || serverNow.toISOString(),
+        ubicacionEntrada: data.ubicacionEntrada,
+        actuaciones: data.actuaciones || [],
+        ingresos: data.ingresos || [],
+        programaciones: data.programaciones || []
+      };
+      await supabaseSaveDraft(draftPayload);
+    } catch (e) {
+      console.warn('Error guardando borrador en supabaseClockIn:', e);
+    }
+  }
 
   return {
     success: true,
@@ -419,7 +455,7 @@ export function normalizeSupervisorName(supervisor?: string, date?: string): str
 export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> {
   let query = supabase
     .from('bitacoras')
-    .select('*')
+    .select('id, user_id, author_id, user_name, fecha, hora_entrada, hora_salida, total_horas, resumen, estado, pdf_url, created_at, actuaciones, ingresos, programaciones, evidences, supervisado_por, ubicacion_entrada, ubicacion_salida, cierre_retrasado, comentario_admin, respuestas_hilo, cambios_realizados')
     .order('fecha', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(150);
@@ -432,6 +468,8 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
       query = query.ilike('user_name', '%carmen%');
     } else if (clean.includes('hector')) {
       query = query.ilike('user_name', '%hector%');
+    } else if (clean.includes('oscar')) {
+      query = query.ilike('user_name', '%oscar%');
     } else if (clean.includes('luis')) {
       query = query.ilike('user_name', '%luis%').not('user_name', 'ilike', '%carmen%');
     } else if (clean.includes('victor') || clean.includes('víctor')) {
@@ -517,7 +555,30 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
   const actuaciones = parseJsonField(params.actuaciones);
   const ingresos = parseJsonField(params.ingresos);
   const programaciones = parseJsonField(params.programaciones);
-  const evidences = parseJsonField(params.attachedFiles || params.evidences);
+  let evidences = parseJsonField(params.attachedFiles || params.evidences);
+  // Salvaguarda: si alguna evidencia tiene nombre o tamaño pero le falta la URL directa, autovincular con storage
+  if (Array.isArray(evidences) && evidences.some((e: any) => !e.url && (e.name || e.size))) {
+    try {
+      const { data: storageList } = await supabase.storage.from('evidencias').list('evidencias', {
+        limit: 10,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+      if (storageList && storageList.length > 0) {
+        evidences = evidences.map((ev: any) => {
+          if (!ev.url) {
+            const matched = storageList.find(sf => (ev.size && sf.metadata?.size === ev.size)) || storageList[0];
+            if (matched) {
+              const { data: pubUrl } = supabase.storage.from('evidencias').getPublicUrl(`evidencias/${matched.name}`);
+              return { ...ev, url: pubUrl.publicUrl };
+            }
+          }
+          return ev;
+        });
+      }
+    } catch (e) {
+      console.warn('No se pudo autovincular URL de storage para evidencia:', e);
+    }
+  }
 
   // Si se incluyeron ingresos de expedientes, registrarlos en la tabla expedientes
   if (ingresos.length > 0) {
@@ -583,6 +644,7 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     if (cleanCurrent.includes('carmen')) return u.includes('carmen');
     if (cleanCurrent.includes('mariela')) return u.includes('mariela');
     if (cleanCurrent.includes('hector')) return u.includes('hector');
+    if (cleanCurrent.includes('oscar')) return u.includes('oscar');
     if (cleanCurrent.includes('luis')) return u.includes('luis') && !u.includes('carmen');
     if (cleanCurrent.includes('victor')) return u.includes('victor');
     return u === cleanCurrent;
@@ -705,6 +767,7 @@ export async function supabaseGetDraft(): Promise<any> {
     if (cleanCur.includes('carmen')) return u.includes('carmen');
     if (cleanCur.includes('mariela')) return u.includes('mariela');
     if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('oscar')) return u.includes('oscar');
     if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
     if (cleanCur.includes('victor')) return u.includes('victor');
     return u === cleanCur;
@@ -738,6 +801,7 @@ export async function supabaseGetDraft(): Promise<any> {
     if (cleanCur.includes('carmen')) return u.includes('carmen');
     if (cleanCur.includes('mariela')) return u.includes('mariela');
     if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('oscar')) return u.includes('oscar');
     if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
     if (cleanCur.includes('victor')) return u.includes('victor');
     return u === cleanCur;
@@ -768,6 +832,7 @@ export async function supabaseSaveDraft(draftData: any): Promise<any> {
     if (cleanCur.includes('carmen')) return u.includes('carmen');
     if (cleanCur.includes('mariela')) return u.includes('mariela');
     if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('oscar')) return u.includes('oscar');
     if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
     if (cleanCur.includes('victor')) return u.includes('victor');
     return u === cleanCur;
@@ -795,17 +860,29 @@ export async function supabaseSaveDraft(draftData: any): Promise<any> {
     if (cleanCur.includes('carmen')) return u.includes('carmen');
     if (cleanCur.includes('mariela')) return u.includes('mariela');
     if (cleanCur.includes('hector')) return u.includes('hector');
+    if (cleanCur.includes('oscar')) return u.includes('oscar');
     if (cleanCur.includes('luis')) return u.includes('luis') && !u.includes('carmen');
     if (cleanCur.includes('victor')) return u.includes('victor');
     return u === cleanCur;
   });
 
   if (existingRow) {
-    // 3. Si ya existe, actualizarlo con los nuevos datos
+    // 3. Si ya existe, actualizarlo con los nuevos datos preservando la ubicación si no viene en el nuevo draft
+    const isRealLoc = (l?: string | null) => l && typeof l === 'string' && !l.includes('Detectando') && l !== 'N/A' && l.trim() !== '';
+    const incomingLoc = fullDraftData.ubicacionEntrada || fullDraftData.ubicacion_entrada;
+    const existingLoc = existingRow.draft_data?.ubicacionEntrada || existingRow.draft_data?.ubicacion_entrada;
+    const preservedLoc = isRealLoc(incomingLoc) ? incomingLoc : (isRealLoc(existingLoc) ? existingLoc : incomingLoc);
+
+    const mergedDraftData = {
+      ...existingRow.draft_data,
+      ...fullDraftData,
+      ubicacionEntrada: preservedLoc
+    };
+
     const { error: updateError } = await supabase
       .from('bitacora_drafts')
       .update({
-        draft_data: fullDraftData,
+        draft_data: mergedDraftData,
         fecha: localToday,
         updated_at: new Date().toISOString()
       })
@@ -1349,6 +1426,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
       else if (nLower.includes('carmen')) contactsMap.set('carmen luisa', { full_name: 'Carmen Luisa', role: 'empleado' });
       else if (nLower.includes('mariela')) contactsMap.set('mariela isabel', { full_name: 'Mariela Isabel', role: 'empleado' });
       else if (nLower.includes('hector')) contactsMap.set('hector', { full_name: 'Hector', role: 'empleado' });
+      else if (nLower.includes('oscar')) contactsMap.set('oscarpc20', { full_name: 'oscarpc20', role: 'empleado' });
     }
   }
 
@@ -1490,4 +1568,74 @@ export async function supabaseUploadFile(bucket: string, file: File, folder = ''
 
   const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
   return urlData.publicUrl;
+}
+
+// -------------------------------------------------------------
+// 10. REAPERTURA Y ELIMINACIÓN DE JORNADAS / BITÁCORAS
+// -------------------------------------------------------------
+export async function supabaseResetUserDay(data: { post_id?: string | number; date?: string; user?: string; user_id?: string }): Promise<{ success: boolean; message: string }> {
+  try {
+    const postId = data.post_id;
+    const date = data.date;
+    const user = data.user;
+
+    // 1. Eliminar por post_id si existe
+    if (postId) {
+      const { error: delErr } = await supabase
+        .from('bitacoras')
+        .delete()
+        .eq('id', postId);
+      if (delErr) {
+        console.error('Error eliminando bitacora por ID:', delErr);
+      }
+    }
+
+    // 2. Si se suministró fecha y usuario, asegurar borrado completo de bitácora
+    if (date && user) {
+      await supabase
+        .from('bitacoras')
+        .delete()
+        .eq('user_name', user)
+        .eq('fecha', date);
+    }
+
+    // 3. Eliminar borradores asociados para que el usuario pueda empezar limpio
+    if (date) {
+      const { data: drafts } = await supabase
+        .from('bitacora_drafts')
+        .select('*')
+        .eq('fecha', date);
+
+      if (drafts && drafts.length > 0) {
+        for (const d of drafts) {
+          const dData = d.draft_data;
+          if (user && dData && (dData.user === user || dData.user_name === user)) {
+            await supabase.from('bitacora_drafts').delete().eq('id', d.id);
+          } else if (!user) {
+            await supabase.from('bitacora_drafts').delete().eq('id', d.id);
+          }
+        }
+      }
+    }
+
+    return { success: true, message: 'Jornada eliminada y reabierta exitosamente en la base de datos.' };
+  } catch (err: any) {
+    console.error('Error en supabaseResetUserDay:', err);
+    return { success: false, message: err.message || 'Error al eliminar jornada' };
+  }
+}
+
+export async function supabaseResetTestData(): Promise<{ success: boolean; message: string }> {
+  try {
+    // Eliminar bitácoras de usuarios de prueba
+    await supabase
+      .from('bitacoras')
+      .delete()
+      .or('user_name.ilike.%oscarpc%,user_name.ilike.%test%,user_name.ilike.%prueba%');
+
+    return { success: true, message: 'Datos de prueba eliminados correctamente de la base de datos.' };
+  } catch (err: any) {
+    console.error('Error en supabaseResetTestData:', err);
+    return { success: false, message: err.message };
+  }
 }

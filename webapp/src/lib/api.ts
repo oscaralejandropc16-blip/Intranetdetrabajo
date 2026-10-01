@@ -25,7 +25,9 @@ import {
   supabaseSendChatMessage,
   supabaseMarkChatRead,
   supabaseDeleteChatMessage,
-  supabaseUploadFile
+  supabaseUploadFile,
+  supabaseResetUserDay,
+  supabaseResetTestData
 } from './supabaseAdapter';
 import { supabase } from './supabase';
 
@@ -202,8 +204,11 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
     }
 
     // 9. Acciones administrativas varias
-    if (cleanEndpoint.endsWith('/reset-test-data') || cleanEndpoint.endsWith('/reset-user-day')) {
-      return { success: true, message: 'Operación realizada en Supabase.' };
+    if (cleanEndpoint.endsWith('/reset-user-day')) {
+      return await supabaseResetUserDay(data);
+    }
+    if (cleanEndpoint.endsWith('/reset-test-data')) {
+      return await supabaseResetTestData();
     }
 
     console.warn('Endpoint no interceptado en Supabase submitToServer:', endpoint);
@@ -240,17 +245,51 @@ export async function uploadPdfInChunks(postId: string | number, pdfBase64: stri
   }
 }
 
-/**
- * Subida directa de evidencias a Supabase Storage
- */
-export async function uploadEvidenceFile(_postId: string | number, file: File, note: string): Promise<any> {
+export async function uploadEvidenceFile(postId: string | number, file: File, note: string): Promise<any> {
   try {
     const publicUrl = await supabaseUploadFile('evidencias', file, 'evidencias');
+
+    // Si se suministró postId, vincular de inmediato la evidencia a la fila de la bitácora en Supabase
+    if (postId) {
+      try {
+        const { data: currentBitacora } = await supabase
+          .from('bitacoras')
+          .select('evidences')
+          .eq('id', postId)
+          .single();
+
+        let currentEvs: any[] = [];
+        if (currentBitacora && currentBitacora.evidences) {
+          currentEvs = Array.isArray(currentBitacora.evidences)
+            ? currentBitacora.evidences
+            : (typeof currentBitacora.evidences === 'string' ? JSON.parse(currentBitacora.evidences) : []);
+        }
+
+        const newEvItem = {
+          name: file.name,
+          url: publicUrl,
+          type: file.type || 'application/pdf',
+          size: file.size,
+          note: note || '',
+          uploaded_at: new Date().toISOString()
+        };
+
+        const updatedEvs = [...currentEvs.filter((e: any) => e.name !== file.name), newEvItem];
+
+        await supabase
+          .from('bitacoras')
+          .update({ evidences: updatedEvs })
+          .eq('id', postId);
+      } catch (dbErr) {
+        console.warn('Error vinculando evidencia a bitácora en Supabase:', dbErr);
+      }
+    }
+
     return {
       success: true,
       url: publicUrl,
       note,
-      message: 'Evidencia subida exitosamente.'
+      message: 'Evidencia subida y vinculada exitosamente.'
     };
   } catch (err: any) {
     console.error('Error subiendo evidencia:', err);

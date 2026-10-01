@@ -70,7 +70,7 @@ interface LiveChatModuleProps {
 // Determinar si un autor/rol corresponde a Jefatura
 export const isUserBoss = (author?: string, role?: string): boolean => {
   const clean = (author || '').toLowerCase().trim();
-  if (clean.includes('carmen') || clean.includes('mariela') || clean.includes('hector') || role === 'empleado') return false;
+  if (clean.includes('carmen') || clean.includes('mariela') || clean.includes('hector') || clean.includes('oscar') || role === 'empleado') return false;
   if (role === 'jefatura' || role === 'admin') return true;
   return clean.includes('roman') || 
          clean.includes('jefe') || 
@@ -84,7 +84,7 @@ export const isUserBoss = (author?: string, role?: string): boolean => {
 };
 
 // Reproducir un sutil tono de notificación cuando entra un nuevo mensaje
-const playNotificationSound = () => {
+export const playNotificationSound = () => {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (AudioCtx) {
@@ -158,6 +158,16 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     {
       employee: 'Hector',
       role: 'Abogado / Empleado',
+      unreadCountJefe: 0,
+      unreadCountEmpleado: 0,
+      lastMessage: 'Canal oficial disponible',
+      lastMessageTime: '',
+      lastMessageIsMe: false,
+      totalMessages: 0
+    },
+    {
+      employee: 'oscarpc20',
+      role: 'Empleado (Pruebas)',
       unreadCountJefe: 0,
       unreadCountEmpleado: 0,
       lastMessage: 'Canal oficial disponible',
@@ -479,15 +489,16 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       )
       .subscribe();
 
+    // Respaldo periódico (WebSockets ya entregan mensajes al instante en tiempo real)
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-    }, 12000);
+    }, 45000);
 
     const convInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchConversations();
-    }, 30000);
+    }, 60000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -978,7 +989,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 (cleanCurrent.includes('luis') && !cleanCurrent.includes('carmen') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
                 (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen')) ||
                 (cleanCurrent.includes('mariela') && cleanAuthor.includes('mariela')) ||
-                (cleanCurrent.includes('hector') && cleanAuthor.includes('hector'))
+                (cleanCurrent.includes('hector') && cleanAuthor.includes('hector')) ||
+                (cleanCurrent.includes('oscar') && cleanAuthor.includes('oscar'))
               );
 
               // REGLA DE DOBLE CHECK AZUL:
