@@ -2057,7 +2057,7 @@ export default function EmployeeDashboard() {
 
         {/* VISTA 2: EXPEDIENTES & CASOS (ANCHO COMPLETO) */}
         {activeTab === 'expedientes' && (
-          <ModuloExpedientes />
+          <ModuloExpedientes isAdmin={false} />
         )}
 
         {/* VISTA: GASTOS & REEMBOLSOS (ANCHO COMPLETO) */}

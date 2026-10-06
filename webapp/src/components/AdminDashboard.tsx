@@ -2814,7 +2814,7 @@ export default function AdminDashboard() {
 
       {/* VISTA: EXPEDIENTES Y PLANIFICACIÓN SEMANAL */}
       {activeView === 'expedientes' && (
-        <ModuloExpedientes />
+        <ModuloExpedientes isAdmin={true} />
       )}
 
       {/* VISTA: GASTOS Y REEMBOLSOS (DESEMBOLSOS DE TRÁMITES) */}

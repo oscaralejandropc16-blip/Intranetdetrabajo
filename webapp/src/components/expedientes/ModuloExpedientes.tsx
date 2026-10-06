@@ -15,8 +15,17 @@ import {
 import api, { submitToServer } from '../../lib/api';
 import DetalleExpedienteModal from './DetalleExpedienteModal';
 import PlanificacionSemanal from './PlanificacionSemanal';
+import { checkIsJefatura } from '../../App';
 
-export default function ModuloExpedientes() {
+interface ModuloExpedientesProps {
+  isAdmin?: boolean;
+}
+
+export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedientesProps = {}) {
+  const currentUserName = localStorage.getItem('rd_user_name') || '';
+  const isJefe = propIsAdmin !== undefined
+    ? propIsAdmin
+    : checkIsJefatura(currentUserName, localStorage.getItem('rd_is_admin') === 'true');
   const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>(() => {
     try {
       const cached = localStorage.getItem('rd_cached_expedientes');
@@ -205,8 +214,12 @@ export default function ModuloExpedientes() {
     }
   };
 
-  // Manejar eliminación de expediente (por duplicado o error)
+  // Manejar eliminación de expediente (exclusivo para jefatura)
   const handleDeleteExpediente = async (exp: ExpedienteJudicial) => {
+    if (!isJefe) {
+      alert('Acción restringida: Solo el personal de jefatura tiene permisos para eliminar expedientes del sistema.');
+      return;
+    }
     // 1. Actualización optimista local
     const filtered = expedientes.filter(e => e.id !== exp.id && e.numeroExpediente !== exp.numeroExpediente);
     setExpedientes(filtered);
@@ -666,21 +679,23 @@ export default function ModuloExpedientes() {
                         </div>
                       </div>
 
-                      {/* Botón Ver Ficha y Eliminar */}
+                      {/* Botón Ver Ficha y Eliminar (Solo Jefatura) */}
                       <div className="md:col-span-2 flex items-center justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm(`¿Estás seguro de eliminar el expediente #${exp.numeroExpediente} definitivamente?`)) {
-                              handleDeleteExpediente(exp);
-                            }
-                          }}
-                          className="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-500/30"
-                          title="Eliminar este expediente del sistema"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isJefe && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm(`¿Estás seguro de eliminar el expediente #${exp.numeroExpediente} definitivamente?`)) {
+                                handleDeleteExpediente(exp);
+                              }
+                            }}
+                            className="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-500/30"
+                            title="Eliminar este expediente del sistema (Solo Jefatura)"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -830,7 +845,7 @@ export default function ModuloExpedientes() {
           expediente={selectedExpediente}
           onClose={() => setSelectedExpediente(null)}
           onUpdateExpediente={handleUpdateExpediente}
-          onDeleteExpediente={handleDeleteExpediente}
+          onDeleteExpediente={isJefe ? handleDeleteExpediente : undefined}
         />
       )}
 

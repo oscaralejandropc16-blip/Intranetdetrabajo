@@ -27,7 +27,8 @@ import {
   supabaseDeleteChatMessage,
   supabaseUploadFile,
   supabaseResetUserDay,
-  supabaseResetTestData
+  supabaseResetTestData,
+  checkIsJefatura
 } from './supabaseAdapter';
 import { supabase } from './supabase';
 
@@ -166,6 +167,12 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
       return await supabaseSaveExpedientes(data);
     }
     if (cleanEndpoint.endsWith('/delete-expediente')) {
+      const user = localStorage.getItem('rd_user_name');
+      const isAdmin = localStorage.getItem('rd_is_admin') === 'true';
+      if (!checkIsJefatura(user, isAdmin)) {
+        console.warn('Acceso denegado: intento de eliminar expediente por usuario no jefatura:', user);
+        return { success: false, error: 'No autorizado: Solo el personal de jefatura tiene permisos para eliminar expedientes.' };
+      }
       const target = data.id || data.numeroExpediente || data.numero;
       return await supabaseDeleteExpediente(target);
     }
