@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { 
   FolderSearch, FileText, Download, ExternalLink, Search, 
   Eye, Calendar, User, Paperclip, RefreshCw, 
-  Grid, List, Scale, X, Loader2, Image as ImageIcon, Video
+  Grid, List, Scale, X, Loader2, Image as ImageIcon, Video,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
@@ -122,6 +123,10 @@ export default function ModuloBibliotecaArchivos() {
   const [selectedAuthor, setSelectedAuthor] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+  
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(9); // 9 por página (3x3 en cuadrícula)
 
   // Cargar exclusivamente los archivos adjuntos y evidencias asociadas a ASUNTOS / EXPEDIENTES
   const fetchAllDocuments = async () => {
@@ -255,6 +260,18 @@ export default function ModuloBibliotecaArchivos() {
       return true;
     });
   }, [documents, selectedCategory, selectedAuthor, searchQuery]);
+
+  // Resetear a página 1 al cambiar filtros o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedAuthor]);
+
+  // Cálculos de Paginación
+  const totalPages = Math.max(1, Math.ceil(filteredDocuments.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedDocuments = itemsPerPage >= 9999 ? filteredDocuments : filteredDocuments.slice(startIndex, endIndex);
 
   // KPIs
   const stats = useMemo(() => {
@@ -496,7 +513,7 @@ export default function ModuloBibliotecaArchivos() {
       ) : viewMode === 'grid' ? (
         /* VISTA CUADRÍCULA (CARDS MODERNAS) */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredDocuments.map((doc) => {
+          {paginatedDocuments.map((doc) => {
             const typeInfo = getDocTypeInfo(doc);
             const IconComponent = typeInfo.icon;
 
@@ -598,7 +615,7 @@ export default function ModuloBibliotecaArchivos() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredDocuments.map((doc) => {
+                {paginatedDocuments.map((doc) => {
                   const typeInfo = getDocTypeInfo(doc);
                   const IconComponent = typeInfo.icon;
 
@@ -665,6 +682,107 @@ export default function ModuloBibliotecaArchivos() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* 3.1 BARRA DE PAGINACIÓN */}
+      {!loading && filteredDocuments.length > 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          {/* Selector de cantidad y rango */}
+          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
+            <div className="flex items-center gap-1.5">
+              <span className="font-medium">Mostrar:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-slate-300 transition-colors"
+              >
+                <option value={6}>6 archivos</option>
+                <option value={9}>9 archivos (3x3)</option>
+                <option value={18}>18 archivos</option>
+                <option value={36}>36 archivos</option>
+                <option value={9999}>Ver todos ({filteredDocuments.length})</option>
+              </select>
+            </div>
+            <span className="text-slate-300">|</span>
+            <span className="font-medium">
+              Archivos <strong className="text-slate-800">{startIndex + 1}</strong> a <strong className="text-slate-800">{Math.min(endIndex, filteredDocuments.length)}</strong> de <strong className="text-indigo-600">{filteredDocuments.length}</strong>
+            </span>
+          </div>
+
+          {/* Botones de navegación */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={safeCurrentPage === 1}
+                title="Primera página"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                disabled={safeCurrentPage === 1}
+                title="Página anterior"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
+
+              {/* Botones numéricos */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - safeCurrentPage) <= 1
+                  );
+                })
+                .map((page, idx, array) => {
+                  const prevPage = array[idx - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+
+                  return (
+                    <div key={page} className="flex items-center gap-1">
+                      {showEllipsis && <span className="px-1 text-slate-400 text-xs font-bold">...</span>}
+                      <button
+                        onClick={() => setCurrentPage(page)}
+                        className={`min-w-8 h-8 px-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                          safeCurrentPage === page
+                            ? 'bg-indigo-600 text-white shadow-sm'
+                            : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </div>
+                  );
+                })}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={safeCurrentPage === totalPages}
+                title="Página siguiente"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={safeCurrentPage === totalPages}
+                title="Última página"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 
