@@ -936,6 +936,7 @@ export async function supabaseGetExpedientes(): Promise<any> {
       .from('bitacoras')
       .select('id,fecha,user_name,actuaciones,ingresos')
       .order('fecha', { ascending: false })
+      .limit(50)
   ]);
 
   if (expRes.error) {

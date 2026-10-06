@@ -366,7 +366,7 @@ export default function AdminDashboard() {
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchUnreadChatCount();
-    }, 25000);
+    }, 90000);
 
     return () => {
       supabase.removeChannel(channel);
