@@ -457,8 +457,7 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
     .from('bitacoras')
     .select('id, user_id, author_id, user_name, fecha, hora_entrada, hora_salida, total_horas, resumen, estado, pdf_url, created_at, actuaciones, ingresos, programaciones, evidences, supervisado_por, ubicacion_entrada, ubicacion_salida, cierre_retrasado, comentario_admin, respuestas_hilo, cambios_realizados')
     .order('fecha', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(150);
+    .order('created_at', { ascending: false });
 
   if (userFilter && userFilter.trim()) {
     const clean = userFilter.trim().toLowerCase();
@@ -936,7 +935,6 @@ export async function supabaseGetExpedientes(): Promise<any> {
       .from('bitacoras')
       .select('id,fecha,user_name,actuaciones,ingresos')
       .order('fecha', { ascending: false })
-      .limit(50)
   ]);
 
   if (expRes.error) {
