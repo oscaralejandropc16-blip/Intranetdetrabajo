@@ -585,11 +585,11 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     for (const ing of ingresos) {
       if (ing.numeroExpediente) {
         await supabase.from('expedientes').upsert({
-          numero: ing.numeroExpediente,
-          titulo: ing.partes || ing.titulo || '',
+          numero: (ing.numeroExpediente || '').trim(),
+          titulo: (ing.partes || ing.titulo || '').trim(),
           cliente: ing.cliente || '',
-          materia: ing.materia || '',
-          tipo: ing.tipo || '',
+          materia: ing.materia || ing.tipo || 'Judicial',
+          tribunal: (ing.organismoTribunal || ing.tribunal || '').trim(),
           abogado_responsable: currentUser,
           estado: 'activo'
         }, { onConflict: 'numero' });
@@ -943,8 +943,36 @@ export async function supabaseGetExpedientes(): Promise<any> {
     return { expedientes: [], data: [] };
   }
 
-  const data = expRes.data || [];
+  const data = [...(expRes.data || [])];
   const bitList = bitRes.data || [];
+
+  // Salvaguarda proactiva: Si alguna bitácora contiene ingresos de expedientes que no estén en la tabla expedientes, incluirlos
+  const existingNums = new Set(data.map((e: any) => (e.numero || '').toLowerCase().replace(/[^a-z0-9]/g, '')));
+  bitList.forEach((b: any) => {
+    let bIngs: any[] = [];
+    try {
+      bIngs = typeof b.ingresos === 'string' ? JSON.parse(b.ingresos) : (b.ingresos || []);
+    } catch (err) { bIngs = []; }
+
+    bIngs.forEach((ing: any) => {
+      const cleanNum = (ing.numeroExpediente || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (cleanNum && !existingNums.has(cleanNum)) {
+        existingNums.add(cleanNum);
+        data.push({
+          id: 'ing-synth-' + (ing.id || Math.random().toString(36).substring(2, 7)),
+          numero: (ing.numeroExpediente || '').trim(),
+          titulo: (ing.partes || ing.titulo || '').trim(),
+          cliente: ing.cliente || 'Román & Delgado',
+          tribunal: (ing.organismoTribunal || ing.tribunal || '').trim(),
+          materia: ing.materia || ing.tipo || 'Judicial',
+          abogado_responsable: b.user_name || 'Román & Delgado',
+          estado: 'activo',
+          created_at: ing.fechaIngreso ? `${ing.fechaIngreso}T08:00:00Z` : (b.fecha ? `${b.fecha}T08:00:00Z` : new Date().toISOString()),
+          actuaciones: []
+        });
+      }
+    });
+  });
 
   const initialMockExpedientes = [
     { numero: '57380', fecha: '2026-08-08', act: 'RECIBIDAS COPIAS CERTIFICADAS DE LA HOMOLOGACIÓN', por: 'Dra. Patricia Silva' },
@@ -1112,16 +1140,20 @@ export async function supabaseSaveExpedientes(payload: any): Promise<any> {
   
   for (const exp of list) {
     if (exp.numeroExpediente || exp.numero) {
-      await supabase.from('expedientes').upsert({
-        numero: (exp.numeroExpediente || exp.numero || '').trim(),
+      const num = (exp.numeroExpediente || exp.numero || '').trim();
+      const insertData = {
+        numero: num,
         titulo: (exp.partes || exp.titulo || '').trim(),
         cliente: exp.cliente || '',
         tribunal: (exp.organismoTribunal || exp.tribunal || exp.juzgado || '').trim(),
-        materia: exp.materia || exp.procedimiento || '',
-        tipo: exp.tipo || 'Judicial',
+        materia: exp.materia || exp.procedimiento || exp.tipo || 'Judicial',
         abogado_responsable: exp.usuario || exp.abogado_responsable || localStorage.getItem('rd_user_name') || '',
         estado: exp.estado || 'activo'
-      }, { onConflict: 'numero' });
+      };
+      const { error } = await supabase.from('expedientes').upsert(insertData, { onConflict: 'numero' });
+      if (error) {
+        console.error('Error upserting expediente:', error);
+      }
     }
   }
 
