@@ -159,6 +159,11 @@ export default function TabLibroIngresos({
   };
 
   const handleRemoveRow = (id: string) => {
+    const target = ingresos.find(i => i.id === id);
+    if (target?.numeroExpediente) {
+      submitToServer('/rd-intranet/v1/delete-expediente', { numero: target.numeroExpediente })
+        .catch(e => console.warn('Error eliminando correlativo descartado:', e));
+    }
     setIngresos(ingresos.filter(i => i.id !== id));
   };
 
@@ -167,6 +172,11 @@ export default function TabLibroIngresos({
   };
 
   const handleTipoChange = (id: string, nuevoTipo: string) => {
+    const prev = ingresos.find(i => i.id === id);
+    if (prev?.numeroExpediente && (prev.partes?.trim() || prev.organismoTribunal?.trim())) {
+      submitToServer('/rd-intranet/v1/delete-expediente', { numero: prev.numeroExpediente })
+        .catch(e => console.warn('Error eliminando correlativo anterior:', e));
+    }
     const seq = getNextSequential(nuevoTipo, ingresos.filter(i => i.id !== id));
     setIngresos(currentIngresos =>
       currentIngresos.map(ingreso =>

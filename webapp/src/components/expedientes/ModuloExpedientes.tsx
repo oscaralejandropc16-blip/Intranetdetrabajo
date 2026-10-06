@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Scale, Download, X, Trash2 } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Scale, Download, X, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { ExpedienteJudicial, AudienciaSemanal, AsuntoNuevo, SeguimientoPendiente } from '../../types/expedientes';
@@ -74,6 +74,11 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   
   const [selectedExpediente, setSelectedExpediente] = useState<ExpedienteJudicial | null>(null);
   const [showNuevoExpedienteModal, setShowNuevoExpedienteModal] = useState(false);
+
+  // Estados para detección y eliminación de duplicados (exclusivo para Jefatura)
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState<boolean>(false);
+  const [confirmDeleteExp, setConfirmDeleteExp] = useState<ExpedienteJudicial | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<string | null>(null);
 
   // Campos para Nuevo Expediente
   const [numExp, setNumExp] = useState('');
@@ -298,8 +303,101 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
     setProcedimiento('');
   };
 
+  // Detección inteligente de duplicados / casos repetidos
+  const duplicatesAnalysis = useMemo(() => {
+    const normalize = (str?: string) => {
+      if (!str) return '';
+      return str
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]/g, '')
+        .trim();
+    };
+
+    const map = new Map<string, { matches: ExpedienteJudicial[]; reason: string }>();
+
+    for (let i = 0; i < expedientes.length; i++) {
+      const a = expedientes[i];
+      const normPartesA = normalize(a.partes);
+      const normNumA = normalize(a.numeroExpediente);
+      const digitsA = (a.numeroExpediente.match(/\d+/g) || []).join('');
+      const normClientA = normalize(a.cliente && a.cliente !== 'Román & Delgado' ? a.cliente : '');
+
+      const conflictingMatches: ExpedienteJudicial[] = [];
+      let detectedReason = '';
+
+      for (let j = 0; j < expedientes.length; j++) {
+        if (i === j) continue;
+        const b = expedientes[j];
+        const normPartesB = normalize(b.partes);
+        const normNumB = normalize(b.numeroExpediente);
+        const digitsB = (b.numeroExpediente.match(/\d+/g) || []).join('');
+        const normClientB = normalize(b.cliente && b.cliente !== 'Román & Delgado' ? b.cliente : '');
+
+        let isMatch = false;
+        let reason = '';
+
+        // 1. Mismo número de expediente o correlativo
+        if (normNumA && normNumA === normNumB) {
+          isMatch = true;
+          reason = `Número de expediente idéntico (#${b.numeroExpediente})`;
+        }
+        // 2. Mismas partes procesales (mínimo 4 caracteres normalizados)
+        else if (normPartesA.length >= 4 && normPartesA === normPartesB) {
+          isMatch = true;
+          reason = `Mismas partes procesales ("${b.partes}")`;
+        }
+        // 3. Partes contenidas (una contiene a la otra si longitud >= 7)
+        else if (normPartesA.length >= 7 && normPartesB.length >= 7 && (normPartesA.includes(normPartesB) || normPartesB.includes(normPartesA))) {
+          isMatch = true;
+          reason = `Nombre de partes coincidente ("${b.partes}")`;
+        }
+        // 4. Mismo cliente específico
+        else if (normClientA.length >= 5 && normClientA === normClientB) {
+          isMatch = true;
+          reason = `Mismo cliente ("${b.cliente}")`;
+        }
+        // 5. Mismo número numérico si tiene al menos 3 dígitos
+        else if (digitsA.length >= 3 && digitsA === digitsB) {
+          isMatch = true;
+          reason = `Correlativo numérico idéntico (${digitsA})`;
+        }
+
+        if (isMatch) {
+          conflictingMatches.push(b);
+          if (!detectedReason) detectedReason = reason;
+        }
+      }
+
+      if (conflictingMatches.length > 0) {
+        map.set(a.id, { matches: conflictingMatches, reason: detectedReason });
+        if (a.numeroExpediente) {
+          map.set(a.numeroExpediente, { matches: conflictingMatches, reason: detectedReason });
+        }
+      }
+    }
+
+    const duplicatesList = expedientes.filter(exp =>
+      map.has(exp.id) || (exp.numeroExpediente ? map.has(exp.numeroExpediente) : false)
+    );
+
+    return {
+      duplicatesMap: map,
+      duplicatesList,
+      totalDuplicates: duplicatesList.length
+    };
+  }, [expedientes]);
+
   // Filtrado dinámico con búsqueda flexible inteligente (bidireccional)
   const filteredExpedientes = expedientes.filter((item) => {
+    // Si el filtro de duplicados está activo (exclusivo jefatura)
+    if (showDuplicatesOnly) {
+      const isDup = duplicatesAnalysis.duplicatesMap.has(item.id) || 
+        (item.numeroExpediente ? duplicatesAnalysis.duplicatesMap.has(item.numeroExpediente) : false);
+      if (!isDup) return false;
+    }
+
     const rawSearch = searchTerm.trim().toLowerCase();
     if (!rawSearch) {
       const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
@@ -345,7 +443,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   // Resetear a la primera página si cambian los filtros o la búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, juzgadoFilter, estatusFilter]);
+  }, [searchTerm, juzgadoFilter, estatusFilter, showDuplicatesOnly]);
 
   // Orden estricto del más nuevo al más viejo
   const sortedExpedientes = [...filteredExpedientes].sort((a, b) => {
@@ -470,11 +568,14 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
           </div>
 
           {/* Navegación por pestañas de alto nivel */}
-          <div className="flex bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full lg:w-auto flex-shrink-0">
+          <div className="flex flex-wrap items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full lg:w-auto flex-shrink-0 gap-1">
             <button
-              onClick={() => setActiveTab('expedientes')}
+              onClick={() => {
+                setActiveTab('expedientes');
+                setShowDuplicatesOnly(false);
+              }}
               className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'expedientes'
+                activeTab === 'expedientes' && !showDuplicatesOnly
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -483,8 +584,40 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               Expedientes ({isLoading && expedientes.length === 0 ? '...' : expedientes.length})
             </button>
 
+            {isJefe && (
+              <button
+                onClick={() => {
+                  setActiveTab('expedientes');
+                  if (duplicatesAnalysis.totalDuplicates === 0) {
+                    setActionFeedback('¡Excelente! No se detectaron expedientes repetidos ni duplicados.');
+                    setTimeout(() => setActionFeedback(null), 3500);
+                  } else {
+                    setShowDuplicatesOnly(prev => !prev);
+                  }
+                }}
+                className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
+                  showDuplicatesOnly
+                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25 ring-1 ring-rose-400'
+                    : duplicatesAnalysis.totalDuplicates > 0
+                    ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25 animate-pulse'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Detector de expedientes repetidos o duplicados (Exclusivo Jefatura)"
+              >
+                <AlertTriangle className={`w-4 h-4 ${duplicatesAnalysis.totalDuplicates > 0 ? 'text-rose-400' : 'text-slate-400'}`} />
+                <span>
+                  {duplicatesAnalysis.totalDuplicates > 0
+                    ? `Repetidos (${duplicatesAnalysis.totalDuplicates})`
+                    : 'Sin Repetidos'}
+                </span>
+              </button>
+            )}
+
             <button
-              onClick={() => setActiveTab('planificacion')}
+              onClick={() => {
+                setActiveTab('planificacion');
+                setShowDuplicatesOnly(false);
+              }}
               className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
                 activeTab === 'planificacion'
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
@@ -571,6 +704,37 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
             </div>
           </div>
         )}
+
+        {/* Banner Informativo cuando el filtro de duplicados está activo */}
+        {showDuplicatesOnly && (
+          <div className="bg-gradient-to-r from-rose-950/70 via-slate-900 to-rose-950/40 border border-rose-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-200 shadow-xl animate-in fade-in duration-300">
+            <div className="flex items-start gap-3">
+              <div className="p-2.5 bg-rose-500/20 text-rose-400 rounded-xl mt-0.5 border border-rose-500/30 flex-shrink-0">
+                <AlertTriangle className="w-5 h-5" />
+              </div>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-sm font-black text-white tracking-tight">
+                    Detector de Expedientes Repetidos Activo
+                  </h4>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-black shadow-sm">
+                    {duplicatesAnalysis.totalDuplicates} {duplicatesAnalysis.totalDuplicates === 1 ? 'caso repetido' : 'casos repetidos'}
+                  </span>
+                </div>
+                <p className="text-xs text-rose-200/80 max-w-2xl">
+                  Se muestran únicamente los expedientes que tienen partes procesales, clientes o números correlativos repetidos. Revisa cuál es el expediente oficial y presiona el botón rojo <strong>"Eliminar Duplicado"</strong> para descartar la copia sobrante permanentemente de Supabase.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowDuplicatesOnly(false)}
+              className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow hover:border-slate-600"
+            >
+              Ver todos los expedientes
+            </button>
+          </div>
+        )}
       </div>
 
       {/* VISTA 1: TABLA Y TARJETAS DE EXPEDIENTES */}
@@ -624,12 +788,18 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
                 const correlativoBadge = exp.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
                 const autorName = ultimaAct?.registradoPor || exp.responsableAsignado || (exp as any).usuario || 'Sistema';
+                const dupInfo = duplicatesAnalysis.duplicatesMap.get(exp.id) || 
+                  (exp.numeroExpediente ? duplicatesAnalysis.duplicatesMap.get(exp.numeroExpediente) : undefined);
 
                 return (
                   <div
                     key={exp.id}
                     onClick={() => setSelectedExpediente(exp)}
-                    className="bg-slate-950/80 border border-slate-800/80 hover:border-amber-500/50 p-5 rounded-2xl transition-all duration-200 shadow-md hover:shadow-xl group cursor-pointer space-y-4"
+                    className={`bg-slate-950/80 p-5 rounded-2xl transition-all duration-200 shadow-md hover:shadow-xl group cursor-pointer space-y-4 border ${
+                      dupInfo
+                        ? 'border-rose-500/50 hover:border-rose-400 bg-rose-950/10'
+                        : 'border-slate-800/80 hover:border-amber-500/50'
+                    }`}
                   >
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/60 pb-3">
                       <div className="flex items-center gap-2.5 flex-wrap">
@@ -645,12 +815,31 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                         <span className="text-xs font-semibold text-slate-400">
                           Sede: {exp.sede}
                         </span>
+                        {dupInfo && (
+                          <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-rose-500 text-white flex items-center gap-1 shadow-sm">
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                            DUPLICADO
+                          </span>
+                        )}
                       </div>
 
                       <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusBadgeStyle(exp.estatusActual)}`}>
                         {exp.estatusActual}
                       </span>
                     </div>
+
+                    {/* Alerta visible en la tarjeta si tiene duplicado */}
+                    {dupInfo && (
+                      <div className="bg-rose-950/40 border border-rose-500/40 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-rose-300">
+                        <div className="flex items-center gap-2 font-bold">
+                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                          <span>Expediente Repetido / Duplicado: {dupInfo.reason}</span>
+                        </div>
+                        <span className="text-[11px] text-rose-300/90 font-mono">
+                          Coincide con #{dupInfo.matches.map(m => m.numeroExpediente).join(', ')}
+                        </span>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                       {/* Partes y Procedimiento */}
@@ -680,20 +869,23 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                       </div>
 
                       {/* Botón Ver Ficha y Eliminar (Solo Jefatura) */}
-                      <div className="md:col-span-2 flex items-center justify-end gap-2">
+                      <div className="md:col-span-2 flex items-center justify-end gap-2 flex-wrap">
                         {isJefe && (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
-                              if (window.confirm(`¿Estás seguro de eliminar el expediente #${exp.numeroExpediente} definitivamente?`)) {
-                                handleDeleteExpediente(exp);
-                              }
+                              setConfirmDeleteExp(exp);
                             }}
-                            className="p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-rose-500/30"
-                            title="Eliminar este expediente del sistema (Solo Jefatura)"
+                            className={`font-bold px-3 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                              dupInfo
+                                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/40 border border-rose-500'
+                                : 'p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30'
+                            }`}
+                            title={dupInfo ? 'Eliminar este expediente duplicado definitivamente (Solo Jefatura)' : 'Eliminar este expediente del sistema (Solo Jefatura)'}
                           >
                             <Trash2 className="w-4 h-4" />
+                            {dupInfo && <span>Eliminar Duplicado</span>}
                           </button>
                         )}
                         <button
@@ -965,6 +1157,83 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Modal de Confirmación de Eliminación Definitiva (Jefatura) */}
+      {confirmDeleteExp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-rose-500/50 w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/30">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-black text-white">¿Eliminar Expediente del Sistema?</h3>
+              <p className="text-xs text-slate-400">
+                Esta acción borrará este expediente de forma permanente de Supabase y de todos los dispositivos del despacho.
+              </p>
+            </div>
+
+            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <span className="text-slate-400 font-semibold">N° Expediente:</span>
+                <span className="text-amber-400 font-black">#{confirmDeleteExp.numeroExpediente}</span>
+              </div>
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-slate-400 font-semibold flex-shrink-0">Partes Procesales:</span>
+                <span className="text-white font-medium text-right truncate max-w-[220px]">{confirmDeleteExp.partes}</span>
+              </div>
+              <div className="flex justify-between items-start gap-2">
+                <span className="text-slate-400 font-semibold flex-shrink-0">Tribunal / Sede:</span>
+                <span className="text-slate-300 text-right truncate max-w-[220px]">{confirmDeleteExp.juzgado} ({confirmDeleteExp.sede})</span>
+              </div>
+              {(() => {
+                const dup = duplicatesAnalysis.duplicatesMap.get(confirmDeleteExp.id) ||
+                  (confirmDeleteExp.numeroExpediente ? duplicatesAnalysis.duplicatesMap.get(confirmDeleteExp.numeroExpediente) : undefined);
+                if (dup) {
+                  return (
+                    <div className="pt-2 border-t border-slate-800/80 text-[11px] text-rose-300">
+                      <strong>Motivo de duplicidad:</strong> {dup.reason}. Se conservará el otro expediente correspondiente.
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteExp(null)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const toDelete = confirmDeleteExp;
+                  setConfirmDeleteExp(null);
+                  await handleDeleteExpediente(toDelete);
+                  setActionFeedback(`Expediente #${toDelete.numeroExpediente} eliminado correctamente.`);
+                  setTimeout(() => setActionFeedback(null), 3500);
+                }}
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Sí, Eliminar</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notificación Toast de Éxito */}
+      {actionFeedback && (
+        <div className="fixed bottom-6 right-6 z-50 bg-emerald-600 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2 text-xs font-bold animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{actionFeedback}</span>
         </div>
       )}
     </div>

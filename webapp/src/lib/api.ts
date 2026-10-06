@@ -173,8 +173,7 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
         console.warn('Acceso denegado: intento de eliminar expediente por usuario no jefatura:', user);
         return { success: false, error: 'No autorizado: Solo el personal de jefatura tiene permisos para eliminar expedientes.' };
       }
-      const target = data.id || data.numeroExpediente || data.numero;
-      return await supabaseDeleteExpediente(target);
+      return await supabaseDeleteExpediente(data);
     }
 
     // 6. Investigaciones KANT

@@ -1159,22 +1159,59 @@ export async function supabaseSaveExpedientes(payload: any): Promise<any> {
   return { success: true, message: 'Expedientes actualizados' };
 }
 
-export async function supabaseDeleteExpediente(idOrNumero: string): Promise<any> {
-  if (!idOrNumero) return { success: false, error: 'No identifier provided' };
-  
-  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrNumero);
-  
-  let result;
-  if (isUuid) {
-    result = await supabase.from('expedientes').delete().eq('id', idOrNumero);
-  } else {
-    result = await supabase.from('expedientes').delete().eq('numero', idOrNumero);
+export async function supabaseDeleteExpediente(targetOrData: any): Promise<any> {
+  if (!targetOrData) return { success: false, error: 'No identifier provided' };
+
+  let id: string | undefined;
+  let numero: string | undefined;
+
+  if (typeof targetOrData === 'string') {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetOrData);
+    if (isUuid) {
+      id = targetOrData;
+    } else {
+      numero = targetOrData;
+    }
+  } else if (typeof targetOrData === 'object') {
+    numero = targetOrData.numero || targetOrData.numeroExpediente || targetOrData.codigoCorrelativo;
+    if (targetOrData.id) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetOrData.id);
+      if (isUuid) {
+        id = targetOrData.id;
+      } else if (!numero) {
+        numero = targetOrData.id;
+      }
+    }
   }
 
-  if (result.error) {
-    console.error('Error eliminando expediente en Supabase:', result.error);
-    return { success: false, error: result.error };
+  let deletedCount = 0;
+  let lastError: any = null;
+
+  // 1. Eliminar por número oficial si está presente
+  if (numero) {
+    const res = await supabase.from('expedientes').delete().eq('numero', numero);
+    if (res.error) {
+      lastError = res.error;
+    } else {
+      deletedCount++;
+    }
   }
+
+  // 2. Eliminar por UUID si está presente
+  if (id) {
+    const res = await supabase.from('expedientes').delete().eq('id', id);
+    if (res.error) {
+      lastError = res.error;
+    } else {
+      deletedCount++;
+    }
+  }
+
+  if (lastError && deletedCount === 0) {
+    console.error('Error eliminando expediente en Supabase:', lastError);
+    return { success: false, error: lastError };
+  }
+
   return { success: true, message: 'Expediente eliminado con éxito' };
 }
 

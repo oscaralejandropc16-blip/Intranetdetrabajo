@@ -20,6 +20,7 @@ export interface ExpedienteJudicial {
   sede: string; // ej. Valencia, Caracas
   fechaRegistro: string;
   ultimaActualizacion: string;
+  cliente?: string;
   responsableAsignado?: string;
   actuaciones: ActuacionHistorial[];
   observacionesGenerales?: string;
