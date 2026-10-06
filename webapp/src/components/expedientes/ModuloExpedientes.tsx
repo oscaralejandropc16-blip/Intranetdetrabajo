@@ -321,8 +321,6 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       const a = expedientes[i];
       const normPartesA = normalize(a.partes);
       const normNumA = normalize(a.numeroExpediente);
-      const digitsA = (a.numeroExpediente.match(/\d+/g) || []).join('');
-      const normClientA = normalize(a.cliente && a.cliente !== 'Román & Delgado' ? a.cliente : '');
 
       const conflictingMatches: ExpedienteJudicial[] = [];
       let detectedReason = '';
@@ -332,36 +330,19 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
         const b = expedientes[j];
         const normPartesB = normalize(b.partes);
         const normNumB = normalize(b.numeroExpediente);
-        const digitsB = (b.numeroExpediente.match(/\d+/g) || []).join('');
-        const normClientB = normalize(b.cliente && b.cliente !== 'Román & Delgado' ? b.cliente : '');
 
         let isMatch = false;
         let reason = '';
 
-        // 1. Mismo número de expediente o correlativo
-        if (normNumA && normNumA === normNumB) {
+        // 1. Mismo número exacto de expediente o correlativo
+        if (normNumA.length >= 3 && normNumA === normNumB) {
           isMatch = true;
           reason = `Número de expediente idéntico (#${b.numeroExpediente})`;
         }
-        // 2. Mismas partes procesales (mínimo 4 caracteres normalizados)
+        // 2. Mismas partes procesales exactas (mínimo 4 caracteres normalizados)
         else if (normPartesA.length >= 4 && normPartesA === normPartesB) {
           isMatch = true;
-          reason = `Mismas partes procesales ("${b.partes}")`;
-        }
-        // 3. Partes contenidas (una contiene a la otra si longitud >= 7)
-        else if (normPartesA.length >= 7 && normPartesB.length >= 7 && (normPartesA.includes(normPartesB) || normPartesB.includes(normPartesA))) {
-          isMatch = true;
-          reason = `Nombre de partes coincidente ("${b.partes}")`;
-        }
-        // 4. Mismo cliente específico
-        else if (normClientA.length >= 5 && normClientA === normClientB) {
-          isMatch = true;
-          reason = `Mismo cliente ("${b.cliente}")`;
-        }
-        // 5. Mismo número numérico si tiene al menos 3 dígitos
-        else if (digitsA.length >= 3 && digitsA === digitsB) {
-          isMatch = true;
-          reason = `Correlativo numérico idéntico (${digitsA})`;
+          reason = `Mismas partes procesales exactas ("${b.partes}")`;
         }
 
         if (isMatch) {
