@@ -200,27 +200,27 @@ export default function TabHistorial() {
       doc.setFontSize(9.5);
       doc.setTextColor(15, 23, 42);
       doc.setFont('helvetica', 'bold');
-      const userName = localStorage.getItem('rd_user_name') || 'Empleado';
-      doc.text('EMPLEADO / ABOGADO:', 18, 42);
+      const userName = (bitacora as any).user || (bitacora as any).author_name || (bitacora as any).userName || localStorage.getItem('rd_user_name') || 'Empleado';
+      doc.text('EMPLEADO:', 18, 42);
       doc.setFont('helvetica', 'normal');
-      doc.text(userName, 68, 42);
+      doc.text(userName, 45, 42);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('HORARIO REGISTRADO:', 18, 51);
+      doc.text('HORARIO:', 18, 51);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Entrada: ${formatTime12h(bitacora.clockIn)}   —   Salida: ${formatTime12h(bitacora.clockOut)}`, 68, 51);
+      doc.text(`Entrada: ${formatTime12h(bitacora.clockIn)}   —   Salida: ${formatTime12h(bitacora.clockOut)}`, 45, 51);
 
       doc.setFont('helvetica', 'bold');
-      doc.text('UBICACIÓN ENTRADA:', 145, 42);
+      doc.text('UBICACIÓN ENTRADA:', 135, 42);
       doc.setFont('helvetica', 'normal');
       const cleanLocIn = cleanLocationForPdf(bitacora.ubicacionEntrada);
-      doc.text(cleanLocIn, 190, 42, { maxWidth: 88 });
+      doc.text(cleanLocIn, 180, 42, { maxWidth: 95 });
 
       doc.setFont('helvetica', 'bold');
-      doc.text('UBICACIÓN SALIDA:', 145, 51);
+      doc.text('UBICACIÓN SALIDA:', 135, 51);
       doc.setFont('helvetica', 'normal');
       const cleanLocOut = cleanLocationForPdf(bitacora.ubicacionSalida);
-      doc.text(cleanLocOut, 190, 51, { maxWidth: 88 });
+      doc.text(cleanLocOut, 180, 51, { maxWidth: 95 });
 
       const parseJsonArray = (data: any) => {
         if (!data) return [];
@@ -401,7 +401,12 @@ export default function TabHistorial() {
         doc.text(`Página ${i} de ${totalPages}`, 283, 201, { align: 'right' });
       }
 
-      doc.save(`Bitacora_${userName}_${bitacora.date}_OFICIAL.pdf`);
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const newWin = window.open(blobUrl, '_blank');
+      if (!newWin) {
+        doc.save(`Bitacora_${userName}_${bitacora.date}_OFICIAL.pdf`);
+      }
     } catch (error) {
       console.error('Error generando PDF de respaldo:', error);
       setSystemAlert({
@@ -557,25 +562,14 @@ export default function TabHistorial() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-center">
-                        {bitacora.pdfBase64 ? (
-                          <a 
-                            href={bitacora.pdfBase64.startsWith('http') || bitacora.pdfBase64.startsWith('data:') ? bitacora.pdfBase64 : `data:application/pdf;base64,${bitacora.pdfBase64}`} 
-                            download={`Bitacora_${bitacora.date}.pdf`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2 rounded-xl transition-all shadow-md text-xs"
-                          >
-                            <Download className="w-4 h-4" /> PDF
-                          </a>
-                        ) : (
-                          <button
-                            onClick={() => generateFallbackPdf(bitacora)}
-                            className="inline-flex items-center justify-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold px-3.5 py-2 rounded-xl transition-all shadow-md text-xs"
-                            title="Generar y descargar documento oficial PDF al instante con los datos registrados"
-                          >
-                            <FileText className="w-3.5 h-3.5" /> Generar PDF
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => generateFallbackPdf(bitacora)}
+                          className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-md text-xs cursor-pointer active:scale-95"
+                          title="Ver o descargar PDF oficial con formato limpio"
+                        >
+                          <Download className="w-4 h-4 text-amber-400" /> PDF
+                        </button>
                       </td>
                     </tr>
                     

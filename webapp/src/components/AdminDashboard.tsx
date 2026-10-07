@@ -1223,7 +1223,12 @@ export default function AdminDashboard() {
         return doc.output('datauristring');
       }
 
-      doc.save(`Bitacora_${report.user || 'Empleado'}_${report.date || ''}_OFICIAL.pdf`);
+      const pdfBlob = doc.output('blob');
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      const newWin = window.open(blobUrl, '_blank');
+      if (!newWin) {
+        doc.save(`Bitacora_${report.user || 'Empleado'}_${report.date || ''}_OFICIAL.pdf`);
+      }
     } catch (err) {
       console.error('Error al regenerar PDF desde datos oficiales:', err);
       if (!returnBase64) {
@@ -1771,23 +1776,14 @@ export default function AdminDashboard() {
                     >
                       <FileText className="w-3.5 h-3.5 text-amber-400" /> Inspeccionar
                     </button>
-                    {report.pdfBase64 ? (
-                      <a
-                        href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
-                        download={`Bitacora_${report.user}_${report.date}.pdf`}
-                        className="py-2 px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-black transition-colors border border-emerald-300 shadow-xs flex items-center justify-center gap-1"
-                      >
-                        <Download className="w-3.5 h-3.5" /> PDF
-                      </a>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => generateFallbackReportPdf(report)}
-                        className="py-2 px-3 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-black transition-colors border border-amber-300 shadow-xs flex items-center justify-center gap-1"
-                      >
-                        <FileText className="w-3.5 h-3.5" /> PDF
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => generateFallbackReportPdf(report)}
+                      className="py-2 px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-black transition-colors border border-emerald-300 shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                      title="Ver o descargar PDF oficial con formato limpio"
+                    >
+                      <Download className="w-3.5 h-3.5" /> PDF
+                    </button>
                   </div>
                 </div>
               ))
@@ -1900,24 +1896,14 @@ export default function AdminDashboard() {
                       </span>
                     </td>
                     <td className="p-6">
-                      {report.pdfBase64 ? (
-                        <a
-                          href={report.pdfBase64.startsWith('data:') || report.pdfBase64.startsWith('http') ? report.pdfBase64 : `data:application/pdf;base64,${report.pdfBase64}`}
-                          download={`Bitacora_${report.user}_${report.date}.pdf`}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-sm"
-                          title="Haz clic para descargar el PDF completo"
-                        >
-                          <Download className="w-4 h-4" /> PDF
-                        </a>
-                      ) : (
-                        <button
-                          onClick={() => generateFallbackReportPdf(report)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 text-xs font-extrabold transition-colors border border-amber-300 shadow-sm"
-                          title="Generar y descargar documento oficial PDF al instante con los datos registrados del empleado"
-                        >
-                          <FileText className="w-3.5 h-3.5" /> Generar PDF
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => generateFallbackReportPdf(report)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold transition-colors border border-emerald-300 shadow-xs cursor-pointer active:scale-95"
+                        title="Ver o descargar PDF oficial con formato limpio"
+                      >
+                        <Download className="w-4 h-4 text-emerald-700" /> PDF
+                      </button>
                     </td>
                     <td className="p-6 text-right">
                       <button

@@ -35,7 +35,28 @@ export function cleanLocationForPdf(rawLoc?: string | null): string {
     str = (parts[1] && parts[1].trim()) ? parts[1].trim() : parts[0].trim();
   }
 
-  // 2. Cortar en el primer paréntesis o corchete (remueve "(🌐 Red IP...", "(🛰️ GPS...", "(Ø<ß...", "(Red IP)", etc.)
+  // 2. Si detectamos la ciudad en cualquier parte de la cadena, devolver el formato oficial estricto
+  const lower = str.toLowerCase();
+  if (lower.includes('valencia')) {
+    return 'Valencia, Carabobo';
+  }
+  if (lower.includes('caracas')) {
+    return 'Caracas, Distrito Capital';
+  }
+  if (lower.includes('maracay')) {
+    return 'Maracay, Aragua';
+  }
+  if (lower.includes('barquisimeto')) {
+    return 'Barquisimeto, Lara';
+  }
+  if (lower.includes('maracaibo')) {
+    return 'Maracaibo, Zulia';
+  }
+  if (lower.includes('puerto la cruz')) {
+    return 'Puerto La Cruz, Anzoátegui';
+  }
+
+  // 3. Cortar en el primer paréntesis o corchete (remueve "(🌐 Red IP...", "(🛰️ GPS...", etc.)
   if (str.includes('(')) {
     str = str.split('(')[0].trim();
   }
@@ -43,7 +64,16 @@ export function cleanLocationForPdf(rawLoc?: string | null): string {
     str = str.split('[')[0].trim();
   }
 
-  // 3. Cortar si tiene separadores de guión largo o medio con notas añadidas (" — Red IP", " - CANTV")
+  // 4. Cortar si contiene términos técnicos de red
+  const techKeywords = ['red ip', 'netuno', 'cantv', 'permiso', 'bloqueado', 'satelital', 'verificado', 'wifi', 'wi-fi', 'wlan', 'gps'];
+  for (const kw of techKeywords) {
+    const idx = str.toLowerCase().indexOf(kw);
+    if (idx !== -1) {
+      str = str.substring(0, idx).trim();
+    }
+  }
+
+  // 5. Cortar si tiene separadores de guión largo o medio
   if (str.includes(' — ')) {
     str = str.split(' — ')[0].trim();
   }
@@ -51,19 +81,13 @@ export function cleanLocationForPdf(rawLoc?: string | null): string {
     str = str.split(' - ')[0].trim();
   }
 
-  // 4. Normalizar "Valencia, Estado Carabobo" -> "Valencia, Carabobo"
+  // 6. Normalizar y eliminar cualquier carácter no imprimible
   str = str.replace(/,\s*Estado\s+/i, ', ');
   str = str.replace(/^Estado\s+/i, '');
-
-  // 5. Eliminar cualquier carácter no imprimible o emojis que dañan fuentes Helvetica en PDF
   str = str.replace(/[^\w\s,.-áéíóúÁÉÍÓÚñÑ]/g, '').trim();
+  str = str.replace(/[,\s-]+$/, '').trim();
 
-  // 6. Si solo quedó "Valencia", agregar estado por formalidad
-  if (str.toLowerCase() === 'valencia' || str.toLowerCase() === 'valencia,') {
-    return 'Valencia, Carabobo';
-  }
-
-  // 7. Si después de limpiar quedó solo números/coordenadas, "venezuela" o vacío, fallback a sede principal
+  // 7. Si después de limpiar quedó solo números/coordenadas, "venezuela" o vacío, fallback
   if (!str || /^[\d.,\s-]+$/.test(str) || str.toLowerCase() === 'venezuela') {
     return 'Valencia, Carabobo';
   }
