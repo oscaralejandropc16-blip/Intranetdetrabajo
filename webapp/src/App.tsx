@@ -35,12 +35,20 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
 };
 
 function App() {
-  const [authToken, setAuthToken] = useState<string | null>(localStorage.getItem('rd_jwt_token'));
-  const [userName, setUserName] = useState<string>(() => localStorage.getItem('rd_user_name') || 'Usuario');
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    try { return localStorage.getItem('rd_jwt_token'); } catch { return null; }
+  });
+  const [userName, setUserName] = useState<string>(() => {
+    try { return localStorage.getItem('rd_user_name') || 'Usuario'; } catch { return 'Usuario'; }
+  });
   const [isAdmin, setIsAdmin] = useState<boolean>(() => {
-    const storedUser = localStorage.getItem('rd_user_name');
-    const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
-    return checkIsJefatura(storedUser, storedAdmin);
+    try {
+      const storedUser = localStorage.getItem('rd_user_name');
+      const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
+      return checkIsJefatura(storedUser, storedAdmin);
+    } catch {
+      return false;
+    }
   });
 
   // Tema Festivo Activo (Halloween, Día del Abogado, Navidad, Fechas Patrias o Clásico)
@@ -73,14 +81,16 @@ function App() {
 
   // Sincronizar nombre de usuario y rol de admin
   useEffect(() => {
-    const storedUser = localStorage.getItem('rd_user_name');
-    const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
-    if (storedUser) {
-      setUserName(storedUser);
-    }
-    const adminDetected = checkIsJefatura(storedUser, storedAdmin);
-    setIsAdmin(adminDetected);
-    localStorage.setItem('rd_is_admin', adminDetected ? 'true' : 'false');
+    try {
+      const storedUser = localStorage.getItem('rd_user_name');
+      const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
+      if (storedUser) {
+        setUserName(storedUser);
+      }
+      const adminDetected = checkIsJefatura(storedUser, storedAdmin);
+      setIsAdmin(adminDetected);
+      localStorage.setItem('rd_is_admin', adminDetected ? 'true' : 'false');
+    } catch {}
   }, [authToken]);
 
   const handleLogout = () => {

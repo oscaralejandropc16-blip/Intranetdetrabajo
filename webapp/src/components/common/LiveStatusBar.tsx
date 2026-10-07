@@ -110,25 +110,37 @@ export default function LiveStatusBar() {
   const fetchRates = async () => {
     setLoadingRates(true);
     try {
-      // 1. Tasa USD Oficial
-      const resUsd = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      // 1. Tasa USD Oficial con timeout
+      const ctrlUsd = new AbortController();
+      const tIdUsd = setTimeout(() => ctrlUsd.abort(), 3500);
+      const resUsd = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { signal: ctrlUsd.signal });
+      clearTimeout(tIdUsd);
+
       if (resUsd.ok) {
         const dataUsd = await resUsd.json();
         if (dataUsd && dataUsd.promedio) {
           setDolarRate(dataUsd.promedio);
-          localStorage.setItem('rd_bcv_usd', dataUsd.promedio.toString());
-          localStorage.setItem('rd_live_bcv_rate', dataUsd.promedio.toString());
+          try {
+            localStorage.setItem('rd_bcv_usd', dataUsd.promedio.toString());
+            localStorage.setItem('rd_live_bcv_rate', dataUsd.promedio.toString());
+          } catch {}
           window.dispatchEvent(new CustomEvent('rd_bcv_updated', { detail: dataUsd.promedio }));
         }
       }
 
-      // 2. Tasa EUR Oficial
-      const resEur = await fetch('https://ve.dolarapi.com/v1/euros/oficial');
+      // 2. Tasa EUR Oficial con timeout
+      const ctrlEur = new AbortController();
+      const tIdEur = setTimeout(() => ctrlEur.abort(), 3500);
+      const resEur = await fetch('https://ve.dolarapi.com/v1/euros/oficial', { signal: ctrlEur.signal });
+      clearTimeout(tIdEur);
+
       if (resEur.ok) {
         const dataEur = await resEur.json();
         if (dataEur && dataEur.promedio) {
           setEuroRate(dataEur.promedio);
-          localStorage.setItem('rd_bcv_eur', dataEur.promedio.toString());
+          try {
+            localStorage.setItem('rd_bcv_eur', dataEur.promedio.toString());
+          } catch {}
         }
       }
     } catch (error) {

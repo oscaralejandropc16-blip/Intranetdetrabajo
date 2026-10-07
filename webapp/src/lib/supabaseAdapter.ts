@@ -266,8 +266,11 @@ let lastServerSyncTimestamp = 0;
 export async function syncServerTime(): Promise<Date> {
   const start = Date.now();
   try {
-    const envUrl = import.meta.env.VITE_SUPABASE_URL || 'https://bkvoxpydoxeuzbpxxkyr.supabase.co';
-    const res = await fetch(`${envUrl}/rest/v1/`, { method: 'HEAD' });
+    const envUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uimuiqebgdettgmaebhi.supabase.co';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const res = await fetch(`${envUrl}/rest/v1/`, { method: 'HEAD', signal: controller.signal });
+    clearTimeout(timeoutId);
     const dateHeader = res.headers.get('date');
     if (dateHeader) {
       const serverMs = new Date(dateHeader).getTime();
@@ -278,7 +281,7 @@ export async function syncServerTime(): Promise<Date> {
       return new Date(Date.now() + cachedServerOffsetMs);
     }
   } catch (err) {
-    console.warn('Error al sincronizar con reloj del servidor:', err);
+    console.warn('Error o timeout al sincronizar con reloj del servidor:', err);
   }
   return new Date(Date.now() + cachedServerOffsetMs);
 }

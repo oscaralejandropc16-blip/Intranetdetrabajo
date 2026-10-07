@@ -3,11 +3,112 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/dog_logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#0b0f19" />
     <title>Plataforma KANT — Román & Delgado</title>
+
+    <script>
+      // 1. Respaldo de seguridad para LocalStorage (Safari Modo Privado / ITP estricto)
+      (function() {
+        try {
+          var t = '__rd_safari_test__';
+          window.localStorage.setItem(t, '1');
+          window.localStorage.removeItem(t);
+        } catch (e) {
+          console.warn('Almacenamiento restringido en Safari, activando memoria segura:', e);
+          var mem = {};
+          var dummy = {
+            getItem: function(k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+            setItem: function(k, v) { mem[k] = String(v); },
+            removeItem: function(k) { delete mem[k]; },
+            clear: function() { mem = {}; },
+            key: function(i) { return Object.keys(mem)[i] || null; },
+            get length() { return Object.keys(mem).length; }
+          };
+          try {
+            Object.defineProperty(window, 'localStorage', { value: dummy, configurable: true });
+            Object.defineProperty(window, 'sessionStorage', { value: dummy, configurable: true });
+          } catch (e2) {}
+        }
+      })();
+
+      // 2. Limpieza de caché forzada y recarga con parámetro de versión
+      window.rdClearCacheAndReload = function() {
+        try {
+          sessionStorage.removeItem('rd_safari_auto_reload');
+          sessionStorage.removeItem('rd_chunk_reload');
+          if ('caches' in window) {
+            caches.keys().then(function(names) {
+              names.forEach(function(name) { caches.delete(name); });
+            });
+          }
+        } catch (e) {}
+        var u = new URL(window.location.href);
+        u.searchParams.set('v', Date.now());
+        window.location.replace(u.toString());
+      };
+
+      // 3. Captura temprana de errores de empaquetado o módulos en Safari WebKit
+      window.addEventListener('error', function(e) {
+        var msg = (e && e.message) ? String(e.message).toLowerCase() : '';
+        if (
+          msg.indexOf('failed to fetch') !== -1 ||
+          msg.indexOf('importing a module script failed') !== -1 ||
+          msg.indexOf('loading chunk') !== -1 ||
+          msg.indexOf('unexpected token') !== -1 ||
+          msg.indexOf('out of memory') !== -1
+        ) {
+          var reloaded = sessionStorage.getItem('rd_safari_auto_reload');
+          if (!reloaded) {
+            sessionStorage.setItem('rd_safari_auto_reload', 'true');
+            window.rdClearCacheAndReload();
+          } else {
+            var box = document.getElementById('kant-recovery-box');
+            if (box) box.style.display = 'block';
+          }
+        }
+      });
+
+      // 4. Temporizador de auxilio si la aplicación no monta antes de 4 segundos
+      setTimeout(function() {
+        var loader = document.getElementById('kant-loading-screen');
+        if (loader) {
+          var box = document.getElementById('kant-recovery-box');
+          if (box) box.style.display = 'block';
+        }
+      }, 4000);
+    </script>
   </head>
-  <body>
-    <div id="root"></div>
+  <body style="margin: 0; background-color: #0b0f19;">
+    <div id="root">
+      <!-- Splash Screen liviano instantáneo (desaparece en milisegundos cuando React monta) -->
+      <div id="kant-loading-screen" style="position:fixed;inset:0;background-color:#0b0f19;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;color:#f8fafc;z-index:99999;padding:20px;text-align:center;">
+        <div style="position:relative;margin-bottom:16px;">
+          <div style="width:70px;height:70px;border-radius:50%;background:rgba(245,158,11,0.12);border:1.5px solid rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;box-shadow:0 0 25px rgba(245,158,11,0.25);">
+            <img src="/dog_logo.png" alt="KANT" style="width:48px;height:48px;object-fit:contain;" onerror="this.style.display='none'" />
+          </div>
+        </div>
+        <div style="font-size:15px;font-weight:900;letter-spacing:0.15em;color:#f59e0b;text-transform:uppercase;margin-bottom:6px;">
+          Plataforma KANT
+        </div>
+        <div style="font-size:12px;color:#94a3b8;font-weight:500;">
+          Iniciando sistema...
+        </div>
+        <div id="kant-recovery-box" style="display:none;margin-top:22px;max-width:300px;">
+          <p style="font-size:12px;color:#cbd5e1;margin-bottom:12px;line-height:1.4;">
+            El navegador Safari tiene una versión previa en memoria. Toca el botón para actualizarla.
+          </p>
+          <button type="button" onclick="window.rdClearCacheAndReload()" style="background:#f59e0b;color:#0f172a;border:none;padding:10px 18px;border-radius:12px;font-weight:800;font-size:13px;cursor:pointer;box-shadow:0 4px 15px rgba(245,158,11,0.35);">
+            Actualizar Pantalla Ahora
+          </button>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
