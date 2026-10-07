@@ -3,10 +3,13 @@ import {
   FolderSearch, FileText, Download, ExternalLink, Search, 
   Eye, Calendar, User, Paperclip, RefreshCw, 
   Grid, List, Scale, X, Loader2, Image as ImageIcon, Video,
-  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  Edit2, Trash2, Save
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
+import { checkIsJefatura } from '../../lib/supabaseAdapter';
+import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export interface DocumentItem {
   id: string;
@@ -116,6 +119,9 @@ const HISTORICAL_CASE_ATTACHMENTS: DocumentItem[] = [
 ];
 
 export default function ModuloBibliotecaArchivos() {
+  const currentLoggedUser = localStorage.getItem('rd_user_name') || '';
+  const isAdmin = checkIsJefatura(currentLoggedUser, localStorage.getItem('rd_is_admin') === 'true');
+
   const [documents, setDocuments] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,6 +129,30 @@ export default function ModuloBibliotecaArchivos() {
   const [selectedAuthor, setSelectedAuthor] = useState<string>('todos');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [previewDoc, setPreviewDoc] = useState<DocumentItem | null>(null);
+
+  // Estados de Edición y Eliminación (Exclusivos para Jefatura)
+  const [docToEdit, setDocToEdit] = useState<DocumentItem | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editExpediente, setEditExpediente] = useState('');
+  const [editNote, setEditNote] = useState('');
+  const [editCategory, setEditCategory] = useState<'documento' | 'evidencia'>('documento');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const [systemAlert, setSystemAlert] = useState<{
+    isOpen: boolean;
+    type: AlertType;
+    title: string;
+    message: string;
+    showCancel?: boolean;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    type: 'info',
+    title: '',
+    message: ''
+  });
   
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -197,13 +227,24 @@ export default function ModuloBibliotecaArchivos() {
         });
       }
 
-      // 3. Deduplicar por URL y nombre
+      // 3. Deduplicar por URL y nombre aplicando eliminaciones y ediciones de Jefatura
       const seen = new Set<string>();
       const deduped: DocumentItem[] = [];
+      const deletedIds: string[] = (() => {
+        try { return JSON.parse(localStorage.getItem('rd_deleted_library_docs') || '[]'); } catch { return []; }
+      })();
+      const customEdits: Record<string, any> = (() => {
+        try { return JSON.parse(localStorage.getItem('rd_custom_library_docs') || '{}'); } catch { return {}; }
+      })();
+
       for (const d of allDocs) {
+        if (deletedIds.includes(d.id)) continue;
         const key = d.url.length > 50 ? d.url.slice(-70) : `${d.name}_${d.author}`;
         if (!seen.has(key)) {
           seen.add(key);
+          if (customEdits[d.id]) {
+            Object.assign(d, customEdits[d.id]);
+          }
           deduped.push(d);
         }
       }
@@ -216,6 +257,196 @@ export default function ModuloBibliotecaArchivos() {
       console.error('Error cargando biblioteca de archivos:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // --- CONTROL DE ACCESO EXCLUSIVO: MODIFICAR Y ELIMINAR (SOLO JEFATURA) ---
+  const handleStartEdit = (doc: DocumentItem) => {
+    if (!isAdmin) return;
+    setDocToEdit(doc);
+    setEditName(doc.name);
+    setEditExpediente(doc.expediente);
+    setEditNote(doc.note || '');
+    setEditCategory(doc.category);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!docToEdit || !isAdmin) return;
+    if (!editName.trim()) {
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: 'Nombre Requerido',
+        message: 'El nombre del archivo no puede estar vacío.'
+      });
+      return;
+    }
+
+    setSavingEdit(true);
+    try {
+      // 1. Guardar en mapa de ediciones en localStorage
+      const customEdits = JSON.parse(localStorage.getItem('rd_custom_library_docs') || '{}');
+      customEdits[docToEdit.id] = {
+        name: editName.trim(),
+        expediente: editExpediente.trim() || 'General / Diligencia',
+        note: editNote.trim(),
+        category: editCategory
+      };
+      localStorage.setItem('rd_custom_library_docs', JSON.stringify(customEdits));
+
+      // 2. Si proviene de una bitácora en Supabase, actualizar en la tabla bitacoras
+      if (docToEdit.sourceId) {
+        try {
+          const { data: bitacora } = await supabase
+            .from('bitacoras')
+            .select('id, evidences, attachedFiles')
+            .eq('id', docToEdit.sourceId)
+            .maybeSingle();
+
+          if (bitacora) {
+            let evs = Array.isArray(bitacora.evidences) ? bitacora.evidences : [];
+            if (typeof bitacora.evidences === 'string') {
+              try { evs = JSON.parse(bitacora.evidences); } catch {}
+            }
+
+            let attached = Array.isArray(bitacora.attachedFiles) ? bitacora.attachedFiles : [];
+            if (typeof bitacora.attachedFiles === 'string') {
+              try { attached = JSON.parse(bitacora.attachedFiles); } catch {}
+            }
+
+            let updated = false;
+            evs = evs.map((e: any) => {
+              if (e.url === docToEdit.url || e.name === docToEdit.name) {
+                updated = true;
+                return { ...e, name: editName.trim(), note: editNote.trim(), expediente: editExpediente.trim() };
+              }
+              return e;
+            });
+
+            attached = attached.map((a: any) => {
+              if (a.url === docToEdit.url || a.name === docToEdit.name) {
+                updated = true;
+                return { ...a, name: editName.trim(), note: editNote.trim(), expediente: editExpediente.trim() };
+              }
+              return a;
+            });
+
+            if (updated) {
+              await supabase
+                .from('bitacoras')
+                .update({ evidences: evs, attachedFiles: attached })
+                .eq('id', docToEdit.sourceId);
+            }
+          }
+        } catch (dbErr) {
+          console.warn('Advertencia actualizando bitácora en Supabase:', dbErr);
+        }
+      }
+
+      // 3. Actualizar estado reactivo
+      setDocuments(prev => prev.map(d => {
+        if (d.id === docToEdit.id) {
+          return {
+            ...d,
+            name: editName.trim(),
+            expediente: editExpediente.trim() || 'General / Diligencia',
+            note: editNote.trim(),
+            category: editCategory
+          };
+        }
+        return d;
+      }));
+
+      setDocToEdit(null);
+      setSystemAlert({
+        isOpen: true,
+        type: 'success',
+        title: 'Archivo Modificado',
+        message: 'Los datos del documento fueron actualizados exitosamente en la biblioteca oficial.'
+      });
+    } catch (err) {
+      console.error('Error al modificar archivo:', err);
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al Guardar',
+        message: 'No se pudo guardar la modificación del archivo.'
+      });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
+  const handleConfirmDelete = (doc: DocumentItem) => {
+    if (!isAdmin) return;
+    setSystemAlert({
+      isOpen: true,
+      type: 'warning',
+      title: 'Eliminar Archivo (Acción de Jefatura)',
+      message: `¿Estás seguro de que deseas eliminar definitivamente el archivo "${doc.name}"? Esta acción lo removerá de la biblioteca y de los expedientes asociados.`,
+      showCancel: true,
+      confirmText: 'Sí, Eliminar Definitivamente',
+      cancelText: 'Cancelar',
+      onConfirm: () => executeDeleteDoc(doc)
+    });
+  };
+
+  const executeDeleteDoc = async (doc: DocumentItem) => {
+    try {
+      const deletedIds = JSON.parse(localStorage.getItem('rd_deleted_library_docs') || '[]');
+      if (!deletedIds.includes(doc.id)) {
+        deletedIds.push(doc.id);
+        localStorage.setItem('rd_deleted_library_docs', JSON.stringify(deletedIds));
+      }
+
+      if (doc.sourceId) {
+        try {
+          const { data: bitacora } = await supabase
+            .from('bitacoras')
+            .select('id, evidences, attachedFiles')
+            .eq('id', doc.sourceId)
+            .maybeSingle();
+
+          if (bitacora) {
+            let evs = Array.isArray(bitacora.evidences) ? bitacora.evidences : [];
+            if (typeof bitacora.evidences === 'string') {
+              try { evs = JSON.parse(bitacora.evidences); } catch {}
+            }
+
+            let attached = Array.isArray(bitacora.attachedFiles) ? bitacora.attachedFiles : [];
+            if (typeof bitacora.attachedFiles === 'string') {
+              try { attached = JSON.parse(bitacora.attachedFiles); } catch {}
+            }
+
+            const filteredEvs = evs.filter((e: any) => e.url !== doc.url && e.name !== doc.name);
+            const filteredAttached = attached.filter((a: any) => a.url !== doc.url && a.name !== doc.name);
+
+            await supabase
+              .from('bitacoras')
+              .update({ evidences: filteredEvs, attachedFiles: filteredAttached })
+              .eq('id', doc.sourceId);
+          }
+        } catch (dbErr) {
+          console.warn('Error al actualizar bitácora en Supabase:', dbErr);
+        }
+      }
+
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+
+      setSystemAlert({
+        isOpen: true,
+        type: 'success',
+        title: 'Archivo Eliminado',
+        message: `El archivo "${doc.name}" fue eliminado definitivamente de la plataforma.`
+      });
+    } catch (err) {
+      console.error('Error eliminando archivo:', err);
+      setSystemAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Error al Eliminar',
+        message: 'No se pudo eliminar el archivo. Intenta nuevamente.'
+      });
     }
   };
 
@@ -573,6 +804,28 @@ export default function ModuloBibliotecaArchivos() {
                   </span>
 
                   <div className="flex items-center gap-1.5">
+                    {/* Botones Exclusivos para Jefatura */}
+                    {isAdmin && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(doc)}
+                          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                          title="Modificar archivo (Jefatura)"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleConfirmDelete(doc)}
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                          title="Eliminar archivo definitivamente (Jefatura)"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
+
                     <button
                       onClick={() => setPreviewDoc(doc)}
                       className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
@@ -657,6 +910,28 @@ export default function ModuloBibliotecaArchivos() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
+                          {/* Botones Exclusivos para Jefatura */}
+                          {isAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => handleStartEdit(doc)}
+                                className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                title="Modificar archivo (Jefatura)"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleConfirmDelete(doc)}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                title="Eliminar archivo (Jefatura)"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+
                           <button
                             onClick={() => setPreviewDoc(doc)}
                             className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
@@ -864,6 +1139,133 @@ export default function ModuloBibliotecaArchivos() {
           </div>
         </div>
       )}
+
+      {/* 5. MODAL DE MODIFICACIÓN DE ARCHIVO (EXCLUSIVO PARA JEFATURA) */}
+      {docToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header del Modal */}
+            <div className="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-amber-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+                  <Edit2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                    Solo Jefatura
+                  </span>
+                  <h3 className="font-bold text-base text-white mt-0.5">Modificar Archivo Oficial</h3>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDocToEdit(null)}
+                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Nombre del Archivo
+                </label>
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                  placeholder="Ej: Poder Inversiones Ox.pdf"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Asunto / N° Expediente
+                </label>
+                <input
+                  type="text"
+                  value={editExpediente}
+                  onChange={(e) => setEditExpediente(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                  placeholder="Ej: RD-J-2026-57371"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Categoría
+                </label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value as any)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all cursor-pointer"
+                >
+                  <option value="documento">Documento Legal (PDF)</option>
+                  <option value="evidencia">Evidencias & Fotos</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+                  Nota / Descripción Explicativa
+                </label>
+                <textarea
+                  value={editNote}
+                  onChange={(e) => setEditNote(e.target.value)}
+                  rows={3}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none"
+                  placeholder="Indica el motivo o detalle relevante de este documento..."
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDocToEdit(null)}
+                  disabled={savingEdit}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveEdit}
+                  disabled={savingEdit}
+                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {savingEdit ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Guardando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Guardar Modificación</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DE ALERTAS Y CONFIRMACIÓN DE ACCIONES */}
+      <SystemAlertModal
+        isOpen={systemAlert.isOpen}
+        type={systemAlert.type}
+        title={systemAlert.title}
+        message={systemAlert.message}
+        showCancel={systemAlert.showCancel}
+        confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
+        onConfirm={systemAlert.onConfirm}
+        onClose={() => setSystemAlert(prev => ({ ...prev, isOpen: false }))}
+      />
     </div>
   );
 }
