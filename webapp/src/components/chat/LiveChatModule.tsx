@@ -18,6 +18,7 @@ import {
 import api, { submitToServer } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
 import SystemAlertModal from '../common/SystemAlertModal';
+import { formatChatMessageMeta } from '../../lib/chatUtils';
 
 const generateUUID = (): string => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -42,6 +43,8 @@ export interface LiveChatMessage {
   fecha: string;
   fecha_timestamp?: number;
   fecha_bitacora?: string;
+  time?: string;
+  created_at?: string;
   leido_por_jefe?: boolean;
   leido_por_empleado?: boolean;
   atendido?: boolean;
@@ -206,29 +209,31 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   });
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeEmployeeRef = useRef<string>(activeEmployee);
   const initialFetchDoneRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
   const messagesRef = useRef<LiveChatMessage[]>([]);
   messagesRef.current = messages;
 
-  const scrollToBottom = useCallback((smooth = true) => {
+  const scrollToBottom = useCallback((smooth = false) => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTo({
-        top: chatContainerRef.current.scrollHeight,
-        behavior: smooth ? 'smooth' : 'auto'
-      });
+      const el = chatContainerRef.current;
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    if (messagesEndRef.current) {
+      try {
+        messagesEndRef.current.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'auto',
+          block: 'end'
+        });
+      } catch {}
     }
   }, []);
-
-  // Scroll al final al cambiar de conversación o primer render
-  useEffect(() => {
-    activeEmployeeRef.current = activeEmployee;
-    const t = setTimeout(() => {
-      scrollToBottom(false);
-    }, 60);
-    return () => clearTimeout(t);
-  }, [activeEmployee, scrollToBottom]);
 
   // Función para obtener la lista de mensajes del backend y sincronizar localStorage
   const fetchMessages = useCallback(async (silent = true) => {
@@ -530,6 +535,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       recipient: activeEmployee,
       mensaje: textToSend,
       fecha: fullDate,
+      time: nowStr,
+      created_at: new Date().toISOString(),
       fecha_timestamp: Math.floor(Date.now() / 1000),
       fecha_bitacora: new Date().toISOString().split('T')[0],
       titulo: 'Mensaje Directo',
@@ -672,12 +679,44 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           }
           return 0;
         };
-        const tA = (a.fecha_timestamp ? a.fecha_timestamp * 1000 : 0) || parseIdTime(a.id);
-        const tB = (b.fecha_timestamp ? b.fecha_timestamp * 1000 : 0) || parseIdTime(b.id);
+        const tA = (a.created_at ? new Date(a.created_at).getTime() : 0) || (a.fecha_timestamp ? a.fecha_timestamp * 1000 : 0) || parseIdTime(a.id);
+        const tB = (b.created_at ? new Date(b.created_at).getTime() : 0) || (b.fecha_timestamp ? b.fecha_timestamp * 1000 : 0) || parseIdTime(b.id);
         if (tA && tB && tA !== tB) return tA - tB;
         return (a.fecha || '').localeCompare(b.fecha || '');
       });
   }, [activeEmployee, effectiveCurrentUser, filterMode, messages, searchQuery]);
+
+  // Scroll automático robusto al fondo (al último mensaje que llegó, tipo WhatsApp)
+  useEffect(() => {
+    activeEmployeeRef.current = activeEmployee;
+    const doScroll = () => scrollToBottom(false);
+
+    doScroll();
+    const rAF = requestAnimationFrame(doScroll);
+    const t1 = setTimeout(doScroll, 40);
+    const t2 = setTimeout(doScroll, 120);
+    const t3 = setTimeout(doScroll, 300);
+    const t4 = setTimeout(doScroll, 600);
+
+    return () => {
+      cancelAnimationFrame(rAF);
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
+    };
+  }, [activeEmployee, filteredMessages.length, scrollToBottom]);
+
+  // Asegurar scroll al fondo al montar o cuando el contenedor toma sus dimensiones reales en pantalla
+  useEffect(() => {
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      scrollToBottom(false);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollToBottom]);
 
   // Presets de respuestas rápidas
   const quickPresets = isJefatura ? [
@@ -973,7 +1012,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               <p className="text-[11px] text-slate-500">Escribe abajo o selecciona una respuesta rápida para iniciar el diálogo.</p>
             </div>
           ) : (
-            filteredMessages.map((msg) => {
+            filteredMessages.map((msg, index) => {
               const cleanAuthor = (msg.author || '').toLowerCase().trim();
               const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
               
@@ -1006,97 +1045,120 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
               const canDelete = isMe || isJefatura || isSystemNotification;
 
+              const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
+              const meta = formatChatMessageMeta(msg);
+              const prevMeta = prevMsg ? formatChatMessageMeta(prevMsg) : null;
+              const showDateDivider = !prevMeta || prevMeta.dateGroupKey !== meta.dateGroupKey;
+
               return (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${isSystemNotification ? 'items-center my-2' : (isMe ? 'items-end' : 'items-start')} group`}
-                >
-                  <div
-                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
-                      isSystemNotification
-                        ? 'bg-[#182229] border border-amber-500/30 text-amber-100 rounded-2xl text-center'
-                        : (isMe 
-                            ? 'bg-[#005c4b] text-white rounded-tr-xs' 
-                            : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
-                    } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
-                  >
-                    {/* Header de la burbuja */}
-                    <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
-                      <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                        isSystemNotification ? 'text-amber-400' : (isMe ? 'text-emerald-200' : 'text-amber-400')
-                      }`}>
-                        {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-amber-400" />}
-                        {headerLabel}
+                <React.Fragment key={msg.id}>
+                  {/* SEPARADOR DE FECHA ESTILO WHATSAPP */}
+                  {showDateDivider && (
+                    <div className="flex justify-center my-2.5 select-none pointer-events-none sticky top-1 z-10">
+                      <span className="bg-[#182229]/95 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-md backdrop-blur-md uppercase tracking-wider">
+                        {meta.dividerTitle}
                       </span>
-                      {msg.atendido && !isSystemNotification && (
-                        <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
+                    </div>
+                  )}
+
+                  <div
+                    className={`flex flex-col ${isSystemNotification ? 'items-center my-2' : (isMe ? 'items-end' : 'items-start')} group`}
+                  >
+                    <div
+                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
+                        isSystemNotification
+                          ? 'bg-[#182229] border border-amber-500/30 text-amber-100 rounded-2xl text-center'
+                          : (isMe 
+                              ? 'bg-[#005c4b] text-white rounded-tr-xs' 
+                              : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
+                      } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
+                    >
+                      {/* Header de la burbuja */}
+                      <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                          isSystemNotification ? 'text-amber-400' : (isMe ? 'text-emerald-200' : 'text-amber-400')
+                        }`}>
+                          {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-amber-400" />}
+                          {headerLabel}
                         </span>
-                      )}
-                    </div>
-
-                    {/* Texto del mensaje */}
-                    <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-amber-200/90' : ''}`}>
-                      {msg.mensaje}
-                    </p>
-
-                    {/* Footer con hora, checks de lectura y botón de eliminar */}
-                    <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({
-                              isOpen: true,
-                              msgId: msg.id,
-                              msgText: msg.mensaje
-                            });
-                          }}
-                          title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
-                          className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 p-1 hover:bg-white/10 rounded transition-all cursor-pointer mr-1"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-
-                      <span>{msg.fecha}</span>
-
-                      {/* ICONOS DE ESTADO DE LECTURA (DOBLE CHECK AZUL COMO WHATSAPP) */}
-                      {isMe && (
-                        isReadByRecipient ? (
-                          <span title="Leído por el destinatario (Doble Check Azul)">
-                            <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+                        {msg.atendido && !isSystemNotification && (
+                          <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
                           </span>
-                        ) : (
-                          <span title="Enviado / Entregado (Doble Check Gris)">
-                            <CheckCheck className="w-3.5 h-3.5 text-white/60 shrink-0" />
-                          </span>
-                        )
-                      )}
-                    </div>
-
-                    {/* Acciones de Jefatura (Marcar como Atendido) */}
-                    {isJefatura && !isMe && (
-                      <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
-                        <button
-                          onClick={() => handleToggleAtendido(msg.id)}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                            msg.atendido 
-                              ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
-                              : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
-                        </button>
+                        )}
                       </div>
-                    )}
+
+                      {/* Texto del mensaje */}
+                      <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-amber-200/90' : ''}`}>
+                        {msg.mensaje}
+                      </p>
+
+                      {/* Footer con hora estilo WhatsApp, checks de lectura y botón de eliminar */}
+                      <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm({
+                                isOpen: true,
+                                msgId: msg.id,
+                                msgText: msg.mensaje
+                              });
+                            }}
+                            title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
+                            className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 p-1 hover:bg-white/10 rounded transition-all cursor-pointer mr-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        {/* HORA Y FECHA TIPO WHATSAPP */}
+                        <span 
+                          className="font-mono text-[9.5px] text-white/70 opacity-80 whitespace-nowrap tracking-tight" 
+                          title={meta.dateFormatted ? `${meta.dateFormatted} • ${meta.timeFormatted}` : meta.timeFormatted}
+                        >
+                          {meta.fullLabel}
+                        </span>
+
+                        {/* ICONOS DE ESTADO DE LECTURA (DOBLE CHECK AZUL COMO WHATSAPP) */}
+                        {isMe && (
+                          isReadByRecipient ? (
+                            <span title="Leído por el destinatario (Doble Check Azul)">
+                              <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+                            </span>
+                          ) : (
+                            <span title="Enviado / Entregado (Doble Check Gris)">
+                              <CheckCheck className="w-3.5 h-3.5 text-white/60 shrink-0" />
+                            </span>
+                          )
+                        )}
+                      </div>
+
+                      {/* Acciones de Jefatura (Marcar como Atendido) */}
+                      {isJefatura && !isMe && (
+                        <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
+                          <button
+                            onClick={() => handleToggleAtendido(msg.id)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
+                              msg.atendido 
+                                ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
+                                : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                            }`}
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })
           )}
+          {/* Ancla para auto-scroll suave al último mensaje */}
+          <div ref={messagesEndRef} className="h-1 w-full pointer-events-none" />
         </div>
 
         {/* QUICK REPLY PRESETS */}

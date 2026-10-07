@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   Send, 
   X, 
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { submitToServer } from '../../lib/api';
 import SystemAlertModal from '../common/SystemAlertModal';
+import { formatChatMessageMeta } from '../../lib/chatUtils';
 
 const generateUUID = (): string => {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -35,6 +36,9 @@ export interface ChatMessage {
   fecha: string;
   fecha_bitacora?: string;
   titulo?: string;
+  time?: string;
+  created_at?: string;
+  fecha_timestamp?: number;
   leido_por_jefe?: boolean;
   leido_por_empleado?: boolean;
   atendido?: boolean;
@@ -107,7 +111,27 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     msgText?: string;
   }>({ isOpen: false, msgId: '', msgText: '' });
 
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = useCallback((smooth = false) => {
+    if (chatContainerRef.current) {
+      const el = chatContainerRef.current;
+      if (smooth) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+      } else {
+        el.scrollTop = el.scrollHeight;
+      }
+    }
+    if (messagesEndRef.current) {
+      try {
+        messagesEndRef.current.scrollIntoView({
+          behavior: smooth ? 'smooth' : 'auto',
+          block: 'end'
+        });
+      } catch {}
+    }
+  }, []);
 
   // Sincronizar mensajes iniciales
   useEffect(() => {
@@ -117,21 +141,37 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     }
   }, [initialMessages]);
 
-  // Scroll al final al abrir el chat o recibir mensajes
+  // Scroll robusto al fondo al abrir el chat o recibir mensajes (tipo WhatsApp)
   useEffect(() => {
     if (isOpen) {
-      const t1 = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-      }, 50);
-      const t2 = setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 200);
+      const doScroll = () => scrollToBottom(false);
+      doScroll();
+      const rAF = requestAnimationFrame(doScroll);
+      const t1 = setTimeout(doScroll, 40);
+      const t2 = setTimeout(doScroll, 120);
+      const t3 = setTimeout(doScroll, 300);
+      const t4 = setTimeout(doScroll, 600);
       return () => {
+        cancelAnimationFrame(rAF);
         clearTimeout(t1);
         clearTimeout(t2);
+        clearTimeout(t3);
+        clearTimeout(t4);
       };
     }
-  }, [isOpen, messages.length, viewFilter]);
+  }, [isOpen, messages.length, viewFilter, scrollToBottom]);
+
+  // ResizeObserver para asegurar scroll al fondo cuando se abre el modal/panel
+  useEffect(() => {
+    if (!isOpen) return;
+    const el = chatContainerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      scrollToBottom(false);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isOpen, scrollToBottom]);
 
   // Auto-marcar como leídos al abrir la conversación
   useEffect(() => {
@@ -215,6 +255,9 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
       author_role: isJefatura ? 'jefatura' : 'empleado',
       mensaje: textToSend,
       fecha: fullDate,
+      time: nowStr,
+      created_at: new Date().toISOString(),
+      fecha_timestamp: Math.floor(Date.now() / 1000),
       fecha_bitacora: reportContext?.date || new Date().toISOString().split('T')[0],
       titulo: reportContext ? `Bitácora ${reportContext.date}` : 'Mensaje Directo',
       leido_por_jefe: isJefatura,
@@ -329,8 +372,8 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
       }
       return 0;
     };
-    const tA = parseIdTime(a.id);
-    const tB = parseIdTime(b.id);
+    const tA = (a.created_at ? new Date(a.created_at).getTime() : 0) || (a.fecha_timestamp ? a.fecha_timestamp * 1000 : 0) || parseIdTime(a.id);
+    const tB = (b.created_at ? new Date(b.created_at).getTime() : 0) || (b.fecha_timestamp ? b.fecha_timestamp * 1000 : 0) || parseIdTime(b.id);
     if (tA && tB && tA !== tB) return tA - tB;
     return (a.fecha || '').localeCompare(b.fecha || '');
   });
@@ -456,6 +499,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
         {/* CHAT MESSAGES BODY */}
         <div 
+          ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 relative"
           style={{
             backgroundColor: '#0b141a',
@@ -482,7 +526,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
               <p className="text-[11px] text-slate-500">Escribe abajo o usa una respuesta rápida para iniciar el diálogo.</p>
             </div>
           ) : (
-            filteredMessages.map((msg) => {
+            filteredMessages.map((msg, index) => {
               const fromBoss = checkIsFromBoss(msg.author, msg.author_role);
               
               // REGLA FUNDAMENTAL DE ALINEACIÓN:
@@ -498,67 +542,89 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
               const canDelete = isMe || isJefatura;
 
+              const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
+              const meta = formatChatMessageMeta(msg);
+              const prevMeta = prevMsg ? formatChatMessageMeta(prevMsg) : null;
+              const showDateDivider = !prevMeta || prevMeta.dateGroupKey !== meta.dateGroupKey;
+
               return (
-                <div
-                  key={msg.id}
-                  className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
-                >
-                  <div
-                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
-                      isMe 
-                        ? 'bg-[#005c4b] text-white rounded-tr-xs' 
-                        : 'bg-[#202c33] text-slate-100 rounded-tl-xs'
-                    } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
-                  >
-                    {/* Header del mensaje */}
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
-                        {headerLabel}
+                <React.Fragment key={msg.id}>
+                  {/* SEPARADOR DE FECHA ESTILO WHATSAPP */}
+                  {showDateDivider && (
+                    <div className="flex justify-center my-2.5 select-none pointer-events-none sticky top-1 z-10">
+                      <span className="bg-[#182229]/95 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-md backdrop-blur-md uppercase tracking-wider">
+                        {meta.dividerTitle}
                       </span>
-                      {msg.atendido && (
-                        <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
+                    </div>
+                  )}
+
+                  <div
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
+                  >
+                    <div
+                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
+                        isMe 
+                          ? 'bg-[#005c4b] text-white rounded-tr-xs' 
+                          : 'bg-[#202c33] text-slate-100 rounded-tl-xs'
+                      } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
+                    >
+                      {/* Header del mensaje */}
+                      <div className="flex items-center justify-between gap-3 mb-1">
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
+                          {headerLabel}
                         </span>
-                      )}
-                    </div>
+                        {msg.atendido && (
+                          <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
+                          </span>
+                        )}
+                      </div>
 
-                    {/* Texto del mensaje */}
-                    <p className="text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text">
-                      {msg.mensaje}
-                    </p>
+                      {/* Texto del mensaje */}
+                      <p className="text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text">
+                        {msg.mensaje}
+                      </p>
 
-                    {/* Footer con hora, checks y botón de eliminar */}
-                    <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
-                      {canDelete && (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDeleteConfirm({
-                              isOpen: true,
-                              msgId: msg.id,
-                              msgText: msg.mensaje
-                            });
-                          }}
-                          title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
-                          className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
+                      {/* Footer con hora estilo WhatsApp, checks y botón de eliminar */}
+                      <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
+                        {canDelete && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeleteConfirm({
+                                isOpen: true,
+                                msgId: msg.id,
+                                msgText: msg.mensaje
+                              });
+                            }}
+                            title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
+                            className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-0.5 rounded transition-all cursor-pointer mr-1"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        )}
+
+                        {/* HORA Y FECHA TIPO WHATSAPP */}
+                        <span 
+                          className="font-mono text-[9.5px] text-white/70 opacity-80 whitespace-nowrap tracking-tight"
+                          title={meta.dateFormatted ? `${meta.dateFormatted} • ${meta.timeFormatted}` : meta.timeFormatted}
                         >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      )}
-                      <span>{msg.fecha}</span>
-                      {isMe && (
-                        (msg.atendido || (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)) ? (
-                          <span title="Leído por el destinatario (Doble check azul)">
-                            <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
-                          </span>
-                        ) : (
-                          <span title="Enviado (Un check gris)">
-                            <Check className="w-3 h-3 text-white/60 shrink-0" />
-                          </span>
-                        )
-                      )}
-                    </div>
+                          {meta.fullLabel}
+                        </span>
+
+                        {isMe && (
+                          (msg.atendido || (isJefatura ? msg.leido_por_empleado : msg.leido_por_jefe)) ? (
+                            <span title="Leído por el destinatario (Doble check azul)">
+                              <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+                            </span>
+                          ) : (
+                            <span title="Enviado (Un check gris)">
+                              <Check className="w-3 h-3 text-white/60 shrink-0" />
+                            </span>
+                          )
+                        )}
+                      </div>
 
                     {/* Acciones de Jefatura (Marcar como Atendido en burbuja) */}
                     {isJefatura && !isMe && (
@@ -578,8 +644,9 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                     )}
                   </div>
                 </div>
-              );
-            })
+              </React.Fragment>
+            );
+          })
           )}
           <div ref={messagesEndRef} />
         </div>

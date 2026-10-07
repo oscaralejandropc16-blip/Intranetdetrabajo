@@ -1443,9 +1443,10 @@ export async function supabaseGetChatMessages(contact?: string): Promise<any[]> 
     author: m.sender_name || 'Usuario',
     recipient: m.recipient_name || '',
     mensaje: m.mensaje || '',
-    time: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    time: formatTime12h(new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })),
     created_at: m.created_at,
     fecha: new Date(m.created_at).toISOString().split('T')[0],
+    fecha_timestamp: m.created_at ? Math.floor(new Date(m.created_at).getTime() / 1000) : undefined,
     leido: m.leido === true,
     leido_por_jefe: m.leido === true,
     leido_por_empleado: m.leido === true,
@@ -1548,7 +1549,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
       unreadCountJefe: !isBossC ? unreadCount : 0,
       unreadCountEmpleado: isBossC ? unreadCount : 0,
       lastMessage: lastMsg ? lastMsg.mensaje : 'Sin mensajes aún',
-      lastMessageTime: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      lastMessageTime: lastMsg ? formatTime12h(new Date(lastMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })) : '',
       lastMessageIsMe: lastMsg ? (lastMsg.sender_name || '').toLowerCase().includes(currentLower) : false,
       totalMessages: relMsgs.length
     });
@@ -1587,7 +1588,10 @@ export async function supabaseSendChatMessage(payload: any): Promise<any> {
       author: data.sender_name,
       recipient: data.recipient_name,
       mensaje: data.mensaje,
-      time: new Date(data.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: formatTime12h(new Date(data.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })),
+      created_at: data.created_at,
+      fecha: new Date(data.created_at).toISOString().split('T')[0],
+      fecha_timestamp: Math.floor(new Date(data.created_at).getTime() / 1000),
       leido: false
     }
   };
