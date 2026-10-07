@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Clock, 
   DollarSign, 
@@ -22,28 +22,13 @@ import {
   setSimulatedDate
 } from '../../lib/efemeridesVenezuela';
 import EfemeridesModal from './EfemeridesModal';
-
-interface CityWeather {
-  name: string;
-  state: string;
-  lat: number;
-  lon: number;
-  temp?: number;
-  conditionCode?: number;
-  conditionText?: string;
-  humidity?: number;
-  windSpeed?: number;
-  loading?: boolean;
-}
-
-const CITIES: CityWeather[] = [
-  { name: 'Maracay', state: 'Aragua', lat: 10.2469, lon: -67.5958 },
-  { name: 'Caracas', state: 'Distrito Capital', lat: 10.4806, lon: -66.9036 },
-  { name: 'Valencia', state: 'Carabobo', lat: 10.1620, lon: -68.0077 },
-  { name: 'Boca de Aroa', state: 'Falcón', lat: 10.7483, lon: -68.3075 },
-  { name: 'La Guaira', state: 'Vargas', lat: 10.6014, lon: -66.9322 },
-  { name: 'Maracaibo', state: 'Zulia', lat: 10.6544, lon: -71.6372 }
-];
+import { 
+  CITIES, 
+  type CityWeather, 
+  getInitialWeatherData, 
+  fetchLiveCityWeather,
+  getFallbackWeatherForCity 
+} from '../../lib/weatherService';
 
 export default function LiveStatusBar() {
   // 1. Estado del Reloj y Fecha (tiempo real oficial o fecha de prueba)
@@ -74,7 +59,7 @@ export default function LiveStatusBar() {
     if (pref.toLowerCase().includes('caracas') && !pref.includes('NetUno') && !pref.includes('Red IP')) return 1;
     return 2; // Valencia (sede principal) por defecto
   });
-  const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>({});
+  const [weatherData, setWeatherData] = useState<Record<string, CityWeather>>(() => getInitialWeatherData());
   const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
 
   // 4. Estado de Efemérides de Venezuela
@@ -162,52 +147,42 @@ export default function LiveStatusBar() {
     return () => clearInterval(ratesInterval);
   }, []);
 
-  // Efecto Carga de Clima (Open-Meteo API)
-  const fetchCityWeather = async (city: CityWeather) => {
+  // Refrescar Clima en Vivo con tolerancia a fallos
+  const refreshWeather = useCallback(async () => {
+    const currentCity = CITIES[selectedCityIndex] || CITIES[2];
     try {
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${city.lat}&longitude=${city.lon}&current_weather=true&hourly=relativehumidity_2m`;
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        const current = data.current_weather;
-        const temp = current ? Math.round(current.temperature) : undefined;
-        const code = current ? current.weathercode : 0;
-        const wind = current ? Math.round(current.windspeed) : undefined;
+      const liveCurrent = await fetchLiveCityWeather(currentCity);
+      setWeatherData(prev => {
+        const next = { ...prev, [currentCity.name]: liveCurrent };
+        try { localStorage.setItem('rd_weather_cache', JSON.stringify(next)); } catch {}
+        return next;
+      });
+    } catch {}
 
-        // Obtener humedad aproximada de la hora actual
-        let hum: number | undefined = undefined;
-        if (data.hourly && data.hourly.relativehumidity_2m && data.hourly.relativehumidity_2m.length > 0) {
-          const hour = new Date().getHours();
-          hum = data.hourly.relativehumidity_2m[hour] || data.hourly.relativehumidity_2m[0];
-        }
-
-        const conditionInfo = getWeatherInfo(code);
-
-        setWeatherData(prev => ({
-          ...prev,
-          [city.name]: {
-            ...city,
-            temp,
-            conditionCode: code,
-            conditionText: conditionInfo.text,
-            humidity: hum,
-            windSpeed: wind
-          }
-        }));
+    // Cargar las demás ciudades en segundo plano
+    CITIES.forEach(c => {
+      if (c.name !== currentCity.name) {
+        fetchLiveCityWeather(c).then(live => {
+          setWeatherData(prev => {
+            const next = { ...prev, [c.name]: live };
+            try { localStorage.setItem('rd_weather_cache', JSON.stringify(next)); } catch {}
+            return next;
+          });
+        }).catch(() => {});
       }
-    } catch (e) {
-      console.warn(`Error obteniendo clima para ${city.name}:`, e);
-    }
-  };
+    });
+  }, [selectedCityIndex]);
 
   useEffect(() => {
-    // Cargar clima de la ciudad actual seleccionada y de todas en segundo plano
-    CITIES.forEach(c => fetchCityWeather(c));
-    const weatherInterval = setInterval(() => {
-      CITIES.forEach(c => fetchCityWeather(c));
-    }, 600000); // Cada 10 minutos
+    refreshWeather();
+    const weatherInterval = setInterval(refreshWeather, 300000); // Cada 5 minutos
     return () => clearInterval(weatherInterval);
-  }, []);
+  }, [refreshWeather]);
+
+  const handleRefreshAll = () => {
+    fetchRates();
+    refreshWeather();
+  };
 
   const getWeatherInfo = (code: number = 0) => {
     if (code === 0) return { text: 'Despejado', icon: <Sun className="w-5 h-5 text-amber-400 animate-spin-slow" /> };
@@ -234,8 +209,8 @@ export default function LiveStatusBar() {
     };
   }, [isCityDropdownOpen]);
 
-  const activeCity = CITIES[selectedCityIndex];
-  const activeWeatherData = weatherData[activeCity.name] || activeCity;
+  const activeCity = CITIES[selectedCityIndex] || CITIES[2];
+  const activeWeatherData = weatherData[activeCity.name] || getFallbackWeatherForCity(activeCity, currentTime);
   const weatherIconInfo = getWeatherInfo(activeWeatherData.conditionCode);
 
   const formattedDate = currentTime.toLocaleDateString('es-VE', {
@@ -253,14 +228,14 @@ export default function LiveStatusBar() {
   });
 
   return (
-    <div className="w-full bg-slate-900/90 backdrop-blur-2xl border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 text-white shadow-xl mb-4 relative z-30 transition-all overflow-hidden">
+    <div className={`w-full bg-slate-900/90 backdrop-blur-2xl border border-slate-800/90 rounded-2xl p-2.5 sm:p-3 text-white shadow-xl mb-4 relative ${isCityDropdownOpen ? 'z-50' : 'z-30'} transition-all`}>
       {/* Luz ambiental de fondo (Aurora Glow) */}
       <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none">
         <div className="absolute -top-10 right-1/4 w-80 h-24 bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '6s' }}></div>
         <div className="absolute -bottom-10 left-1/4 w-80 h-24 bg-gradient-to-r from-emerald-500/10 via-blue-500/15 to-transparent blur-3xl animate-pulse" style={{ animationDuration: '8s' }}></div>
       </div>
 
-      <div className="relative z-10 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 sm:gap-3">
+      <div className="relative z-10 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 sm:gap-3 flex-wrap">
         
         {/* SECCIÓN 1: RELOJ DIGITAL & FECHA EN VIVO CON GLOW */}
         <div className="flex items-center gap-3 bg-slate-950/80 border border-amber-500/20 hover:border-amber-500/40 px-3.5 py-1.5 rounded-xl shadow-inner flex-1 min-w-[200px] transition-all duration-300 group">
@@ -376,11 +351,11 @@ export default function LiveStatusBar() {
             </div>
           </div>
 
-          {/* Botón Refrescar Tasas con Glow en Hover */}
+          {/* Botón Refrescar Tasas y Clima con Glow en Hover */}
           <button
-            onClick={fetchRates}
+            onClick={handleRefreshAll}
             disabled={loadingRates}
-            title="Actualizar Cotizaciones BCV"
+            title="Actualizar Cotizaciones BCV y Clima en Vivo"
             className="p-1.5 sm:p-2 rounded-xl bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700 hover:border-amber-400/50 text-slate-300 hover:text-amber-400 hover:shadow-[0_0_12px_rgba(245,158,11,0.3)] transition-all cursor-pointer shrink-0 active:scale-95"
           >
             <RefreshCw className={`w-3.5 h-3.5 transition-transform ${loadingRates ? 'animate-spin text-amber-400' : 'group-hover:rotate-180'}`} />
@@ -388,7 +363,7 @@ export default function LiveStatusBar() {
         </div>
 
         {/* SECCIÓN 3: MONITOR DE CLIMA MULTICIUDAD */}
-        <div className="relative city-dropdown-container">
+        <div className="relative city-dropdown-container shrink-0 min-w-[175px] sm:min-w-[200px]">
           <button
             onClick={() => setIsCityDropdownOpen(!isCityDropdownOpen)}
             className="flex items-center gap-2.5 bg-slate-950/80 hover:bg-slate-950 border border-white/10 hover:border-amber-400/50 px-3 py-1.5 rounded-xl transition-all duration-300 cursor-pointer text-left w-full shadow-sm hover:shadow-[0_0_15px_rgba(245,158,11,0.25)] group"
@@ -408,10 +383,10 @@ export default function LiveStatusBar() {
               </div>
               <div className="flex items-baseline gap-1.5 mt-0.2">
                 <span className="text-xs sm:text-sm font-black text-white leading-none">
-                  {activeWeatherData.temp !== undefined ? `${activeWeatherData.temp}°C` : '--°C'}
+                  {activeWeatherData.temp !== undefined ? `${activeWeatherData.temp}°C` : '28°C'}
                 </span>
-                <span className="text-[10px] text-slate-300 font-medium truncate max-w-[100px] sm:max-w-none">
-                  {activeWeatherData.conditionText || 'Cargando...'}
+                <span className="text-[10px] text-slate-300 font-medium truncate max-w-[110px] sm:max-w-none">
+                  {activeWeatherData.conditionText || 'Parcialmente Nublado'}
                 </span>
               </div>
             </div>
@@ -419,37 +394,53 @@ export default function LiveStatusBar() {
 
           {/* Menú Desplegable de Selección de Ciudades */}
           {isCityDropdownOpen && (
-            <div className="absolute right-0 top-full mt-2 w-72 max-w-[calc(100vw-2rem)] bg-slate-900/95 border border-slate-700 rounded-2xl shadow-2xl z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl">
-              <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex justify-between items-center">
-                <span>Seleccionar Ciudad</span>
-                <span className="text-amber-500 text-[9px] font-bold">{CITIES.length} Disponibles</span>
+            <div className="absolute right-0 top-full mt-2 w-80 max-w-[calc(100vw-2rem)] bg-slate-900/98 border border-slate-700/80 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.85)] ring-1 ring-white/10 z-50 p-2 space-y-1 animate-in fade-in zoom-in-95 duration-150 backdrop-blur-2xl max-h-[380px] overflow-y-auto">
+              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800 flex justify-between items-center">
+                <span className="flex items-center gap-1.5 text-amber-400 font-bold">
+                  <MapPin className="w-3.5 h-3.5" /> Ciudades Disponibles
+                </span>
+                <span className="text-slate-400 text-[9px] font-bold">Pronóstico en Vivo</span>
               </div>
               {CITIES.map((c, index) => {
-                const cWeather = weatherData[c.name];
+                const cWeather = weatherData[c.name] || getFallbackWeatherForCity(c, currentTime);
                 const isSelected = selectedCityIndex === index;
+                const cIconInfo = getWeatherInfo(cWeather.conditionCode);
                 return (
                   <button
                     key={c.name}
+                    type="button"
                     onClick={() => {
                       setSelectedCityIndex(index);
                       localStorage.setItem('rd_weather_city_idx', String(index));
+                      localStorage.setItem('rd_preferred_city', c.name);
                       setIsCityDropdownOpen(false);
+                      fetchLiveCityWeather(c).then(live => {
+                        setWeatherData(prev => {
+                          const next = { ...prev, [c.name]: live };
+                          try { localStorage.setItem('rd_weather_cache', JSON.stringify(next)); } catch {}
+                          return next;
+                        });
+                      });
                     }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left transition-all cursor-pointer ${
                       isSelected 
                         ? 'bg-amber-500 text-slate-950 font-black shadow-md' 
-                        : 'hover:bg-slate-800 text-slate-200'
+                        : 'hover:bg-slate-800/80 text-slate-200'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <MapPin className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-slate-950' : 'text-amber-400'}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-800/90 text-amber-400'}`}>
+                        {cIconInfo.icon}
+                      </div>
                       <div className="truncate">
                         <p className="text-xs font-bold leading-tight truncate">{c.name}</p>
-                        <p className={`text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'}`}>{c.state}</p>
+                        <p className={`text-[10px] truncate ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-400'}`}>
+                          {c.state} • {cWeather.conditionText || 'Parcialmente Nublado'}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right text-xs font-black shrink-0 ml-2">
-                      {cWeather && cWeather.temp !== undefined ? `${cWeather.temp}°C` : '--'}
+                      {cWeather.temp !== undefined ? `${cWeather.temp}°C` : '28°C'}
                     </div>
                   </button>
                 );

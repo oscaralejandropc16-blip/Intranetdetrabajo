@@ -1620,9 +1620,12 @@ export async function supabaseDeleteChatMessage(id?: string | number, mensaje?: 
 // -------------------------------------------------------------
 // 9. SUBIDA DIRECTA DE ARCHIVOS (SUPABASE STORAGE)
 // -------------------------------------------------------------
-export async function supabaseUploadFile(bucket: string, file: File, folder = ''): Promise<string> {
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${folder ? folder + '/' : ''}${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+export async function supabaseUploadFile(bucket: string, file: File, folder = '', customName?: string): Promise<string> {
+  const fileExt = file.name.split('.').pop() || 'pdf';
+  let baseName = customName || file.name.replace(/\.[^/.]+$/, '');
+  // Sanitizar caracteres especiales para una URL limpia y amigable
+  baseName = baseName.replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_');
+  const fileName = `${folder ? folder + '/' : ''}${baseName}.${fileExt}`;
 
   const { data, error } = await supabase.storage.from(bucket).upload(fileName, file, {
     cacheControl: '3600',

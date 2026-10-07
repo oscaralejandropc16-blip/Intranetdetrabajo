@@ -228,13 +228,19 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
 /**
  * Subida de PDF optimizada a Supabase Storage (sin troceo innecesario de chunks)
  */
-export async function uploadPdfInChunks(postId: string | number, pdfBase64: string): Promise<any> {
+export async function uploadPdfInChunks(postId: string | number, pdfBase64: string, customFileName?: string): Promise<any> {
   if (!pdfBase64) return { success: true };
 
   try {
     const raw = pdfBase64.includes('base64,') ? pdfBase64.split('base64,')[1] : pdfBase64;
-    const file = dataUrlToFile(`data:application/pdf;base64,${raw}`, `bitacora_${postId}_${Date.now()}.pdf`, 'application/pdf');
-    const publicUrl = await supabaseUploadFile('evidencias', file, 'pdfs');
+    const employeeName = localStorage.getItem('rd_user_name') || 'Empleado';
+    const cleanEmp = employeeName.trim().replace(/\s+/g, '_');
+    const today = new Date().toISOString().split('T')[0];
+    const defaultName = `Bitacora_${cleanEmp}_${today}`;
+    const cleanFileName = (customFileName || defaultName).replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const file = dataUrlToFile(`data:application/pdf;base64,${raw}`, `${cleanFileName}.pdf`, 'application/pdf');
+    const publicUrl = await supabaseUploadFile('evidencias', file, 'pdfs', cleanFileName);
 
     // Actualizar registro en bitácoras si existe ID
     if (postId) {

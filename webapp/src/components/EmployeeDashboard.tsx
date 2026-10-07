@@ -20,6 +20,7 @@ import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import { normalizeSupervisorName, getServerDate, formatTime12h, parseDateAndTime } from '../lib/supabaseAdapter';
+import { cleanLocationForPdf } from '../lib/locationUtils';
 
 const safeFormatTime = (dateInput: Date | string | null | undefined, fallback = 'N/A'): string => {
   if (!dateInput) return fallback;
@@ -892,14 +893,14 @@ export default function EmployeeDashboard() {
       doc.setFont('helvetica', 'bold');
       doc.text('UBICACIÓN ENTRADA:', 135, 42);
       doc.setFont('helvetica', 'normal');
-      const cleanLocIn = (finalUbicacionEntrada && finalUbicacionEntrada !== 'N/A') ? (finalUbicacionEntrada.includes('|||') ? finalUbicacionEntrada.split('|||')[1] : finalUbicacionEntrada) : 'N/A';
-      doc.text(cleanLocIn.substring(0, 50), 180, 42);
+      const cleanLocIn = cleanLocationForPdf(finalUbicacionEntrada);
+      doc.text(cleanLocIn, 180, 42, { maxWidth: 95 });
 
       doc.setFont('helvetica', 'bold');
       doc.text('UBICACIÓN SALIDA:', 135, 51);
       doc.setFont('helvetica', 'normal');
-      const cleanLocOut = locSalida ? (locSalida.includes('|||') ? locSalida.split('|||')[1] : locSalida) : 'N/A';
-      doc.text(cleanLocOut.substring(0, 50), 180, 51);
+      const cleanLocOut = cleanLocationForPdf(locSalida);
+      doc.text(cleanLocOut, 180, 51, { maxWidth: 95 });
 
       // 1. Libro de Actuaciones (Siempre mostrar)
       doc.setFontSize(10.5);
@@ -1132,7 +1133,8 @@ export default function EmployeeDashboard() {
         
         if (postId && pdfBase64) {
           console.log(`Cargando archivo PDF por bloques (Chunked Upload) al servidor (post_id: ${postId})...`);
-          await uploadPdfInChunks(postId, pdfBase64);
+          const pdfFileName = `Bitacora_${(currentUserName || 'Empleado').trim().replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
+          await uploadPdfInChunks(postId, pdfBase64, pdfFileName);
         }
 
         if (postId && attachedFiles.length > 0) {

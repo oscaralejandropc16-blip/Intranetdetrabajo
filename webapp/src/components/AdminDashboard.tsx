@@ -20,6 +20,7 @@ import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import AttendanceReportModal from './common/AttendanceReportModal';
 import { normalizeSupervisorName, formatTime12h } from '../lib/supabaseAdapter';
+import { cleanLocationForPdf } from '../lib/locationUtils';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -920,7 +921,8 @@ export default function AdminDashboard() {
 
         if (newPdfBase64) {
           try {
-            await uploadPdfInChunks(selectedReport.id, newPdfBase64);
+            const pdfFileName = `Bitacora_${(selectedReport.user || 'Empleado').trim().replace(/\s+/g, '_')}_${(selectedReport.date || format(new Date(), 'yyyy-MM-dd')).replace(/[^a-zA-Z0-9_-]/g, '_')}`;
+            await uploadPdfInChunks(selectedReport.id, newPdfBase64, pdfFileName);
           } catch (e) {
             throw new Error('Error al subir el PDF (uploadPdfInChunks failed)');
           }
@@ -1085,10 +1087,10 @@ export default function AdminDashboard() {
       doc.setFontSize(8.5);
       doc.setTextColor(71, 85, 105);
       doc.setFont('helvetica', 'normal');
-      const cleanLocIn = report.ubicacionEntrada ? (report.ubicacionEntrada.includes('|||') ? report.ubicacionEntrada.split('|||')[1] : report.ubicacionEntrada) : 'N/A';
-      doc.text(`Ubicación Entrada: ${String(cleanLocIn).substring(0, 60)}`, 14, finalY);
-      const cleanLocOut = report.ubicacionSalida ? (report.ubicacionSalida.includes('|||') ? report.ubicacionSalida.split('|||')[1] : report.ubicacionSalida) : 'N/A';
-      doc.text(`Ubicación Salida: ${String(cleanLocOut).substring(0, 60)}`, 145, finalY);
+      const cleanLocIn = cleanLocationForPdf(report.ubicacionEntrada);
+      doc.text(`Ubicación Entrada: ${cleanLocIn}`, 14, finalY, { maxWidth: 125 });
+      const cleanLocOut = cleanLocationForPdf(report.ubicacionSalida);
+      doc.text(`Ubicación Salida: ${cleanLocOut}`, 145, finalY, { maxWidth: 125 });
       finalY += 8;
 
       // Utility for parsing potentially stringified JSON arrays
@@ -1615,7 +1617,7 @@ export default function AdminDashboard() {
                 className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700 bg-white"
               />
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full md:w-auto">
               <div className="relative flex-1 md:flex-none">
                 <button
                   onClick={() => setShowDateFilter(!showDateFilter)}
@@ -2733,7 +2735,8 @@ export default function AdminDashboard() {
                       const postId = responseData?.post_id;
                       if (postId && pdfBase64) {
                         console.log(`Cargando archivo PDF de Jefatura por bloques al servidor (post_id: ${postId})...`);
-                        await uploadPdfInChunks(postId, pdfBase64);
+                        const pdfFileName = `Bitacora_Jefatura_${(jefeName || 'Admin').trim().replace(/\s+/g, '_')}_${format(new Date(), 'yyyy-MM-dd')}`;
+                        await uploadPdfInChunks(postId, pdfBase64, pdfFileName);
                       }
 
                       // Subir evidencias si existen y no cuentan con url en la nube

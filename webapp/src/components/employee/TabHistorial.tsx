@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
-import { normalizeSupervisorName, formatTime12h } from '../../lib/supabaseAdapter';
+import { normalizeSupervisorName, formatTime12h, checkIsJefatura } from '../../lib/supabaseAdapter';
+import { cleanLocationForPdf } from '../../lib/locationUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -28,6 +29,7 @@ interface BitacoraHistorial {
 
 export default function TabHistorial() {
   const currentLoggedUser = localStorage.getItem('rd_user_name') || '';
+  const isJefaturaUser = checkIsJefatura(currentLoggedUser, localStorage.getItem('rd_is_admin') === 'true');
   const userKey = currentLoggedUser.toLowerCase().replace(/[^a-z0-9]/g, '_');
   const userCacheKey = `rd_cached_user_history_${userKey}`;
 
@@ -211,14 +213,14 @@ export default function TabHistorial() {
       doc.setFont('helvetica', 'bold');
       doc.text('UBICACIÓN ENTRADA:', 145, 42);
       doc.setFont('helvetica', 'normal');
-      const cleanLocIn = bitacora.ubicacionEntrada ? (bitacora.ubicacionEntrada.includes('|||') ? bitacora.ubicacionEntrada.split('|||')[1] : bitacora.ubicacionEntrada) : 'N/A';
-      doc.text(String(cleanLocIn).substring(0, 50), 190, 42);
+      const cleanLocIn = cleanLocationForPdf(bitacora.ubicacionEntrada);
+      doc.text(cleanLocIn, 190, 42, { maxWidth: 88 });
 
       doc.setFont('helvetica', 'bold');
       doc.text('UBICACIÓN SALIDA:', 145, 51);
       doc.setFont('helvetica', 'normal');
-      const cleanLocOut = bitacora.ubicacionSalida ? (bitacora.ubicacionSalida.includes('|||') ? bitacora.ubicacionSalida.split('|||')[1] : bitacora.ubicacionSalida) : 'N/A';
-      doc.text(String(cleanLocOut).substring(0, 50), 190, 51);
+      const cleanLocOut = cleanLocationForPdf(bitacora.ubicacionSalida);
+      doc.text(cleanLocOut, 190, 51, { maxWidth: 88 });
 
       const parseJsonArray = (data: any) => {
         if (!data) return [];
@@ -435,14 +437,16 @@ export default function TabHistorial() {
           </h3>
           <p className="text-slate-500 font-medium mt-1">Consulta tus reportes pasados, revisa los archivos adjuntos y descarga los PDF de cada jornada.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setShowAttendanceModal(true)}
-          className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
-          title="Descargar reporte oficial consolidado de horas de entrada y salida"
-        >
-          <FileText className="w-4 h-4" /> Reporte de Asistencia (PDF)
-        </button>
+        {isJefaturaUser && (
+          <button
+            type="button"
+            onClick={() => setShowAttendanceModal(true)}
+            className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-sm hover:shadow transition-all cursor-pointer shrink-0"
+            title="Descargar reporte oficial consolidado de horas de entrada y salida"
+          >
+            <FileText className="w-4 h-4" /> Reporte de Asistencia (PDF)
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
@@ -665,12 +669,14 @@ export default function TabHistorial() {
         </div>
       )}
 
-      {/* MODAL REPORTE CONSOLIDADO DE ASISTENCIA Y HORAS */}
-      <AttendanceReportModal
-        isOpen={showAttendanceModal}
-        onClose={() => setShowAttendanceModal(false)}
-        initialEmployee={currentLoggedUser || 'Carmen Luisa'}
-      />
+      {/* MODAL REPORTE CONSOLIDADO DE ASISTENCIA Y HORAS (SOLO JEFATURA) */}
+      {isJefaturaUser && (
+        <AttendanceReportModal
+          isOpen={showAttendanceModal}
+          onClose={() => setShowAttendanceModal(false)}
+          initialEmployee={currentLoggedUser || 'Carmen Luisa'}
+        />
+      )}
     </div>
   );
 }
