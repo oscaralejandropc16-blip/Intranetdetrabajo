@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
 import { normalizeSupervisorName, formatTime12h, checkIsJefatura } from '../../lib/supabaseAdapter';
@@ -454,16 +454,16 @@ export default function TabHistorial() {
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
-        <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm bg-white">
+        <table className="w-full text-sm text-left border-collapse">
+          <thead className="bg-slate-50 text-slate-700 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
             <tr>
-              <th className="px-6 py-4">Fecha</th>
-              <th className="px-6 py-4">Jornada</th>
-              <th className="px-6 py-4">Ubicación (GPS)</th>
-              <th className="px-6 py-4">Archivos Adjuntos</th>
-              <th className="px-6 py-4">Estado</th>
-              <th className="px-6 py-4 text-center">Acciones</th>
+              <th className="px-5 py-3.5 whitespace-nowrap w-28">Fecha</th>
+              <th className="px-5 py-3.5 whitespace-nowrap w-44">Jornada</th>
+              <th className="px-5 py-3.5 min-w-[200px]">Ubicación (GPS)</th>
+              <th className="px-5 py-3.5 whitespace-nowrap w-40">Archivos Adjuntos</th>
+              <th className="px-5 py-3.5 whitespace-nowrap w-36">Estado</th>
+              <th className="px-5 py-3.5 text-center whitespace-nowrap w-24">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -487,88 +487,123 @@ export default function TabHistorial() {
                 const isExpanded = expandedId === bitacora.id;
 
                 return (
-                  <tbody key={bitacora.id} className="divide-y divide-slate-100">
-                    <tr className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-6 py-4 font-bold text-slate-800">{bitacora.date}</td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1 text-sm font-medium">
-                          <span className="flex items-center gap-1.5 text-emerald-600"><Clock className="w-3.5 h-3.5" /> Entrada: {formatTime12h(bitacora.clockIn)}</span>
-                          <span className="flex items-center gap-1.5 text-rose-500"><Clock className="w-3.5 h-3.5" /> Salida: {formatTime12h(bitacora.clockOut)}</span>
+                  <Fragment key={bitacora.id}>
+                    <tr className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-3.5 font-bold text-slate-800 whitespace-nowrap align-middle text-xs">
+                        {bitacora.date}
+                      </td>
+                      <td className="px-5 py-3.5 whitespace-nowrap align-middle">
+                        <div className="flex flex-col gap-1 text-xs font-semibold">
+                          <span className="flex items-center gap-1.5 text-emerald-700">
+                            <Clock className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Entrada: {formatTime12h(bitacora.clockIn)}
+                          </span>
+                          <span className="flex items-center gap-1.5 text-rose-600">
+                            <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" /> Salida: {formatTime12h(bitacora.clockOut)}
+                          </span>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-3">
+                      <td className="px-5 py-3.5 align-middle">
+                        <div className="flex flex-col gap-1.5 min-w-[200px] max-w-[280px]">
+                          {/* Entrada */}
                           {bitacora.ubicacionEntrada && bitacora.ubicacionEntrada !== 'N/A' ? (
-                            <div className="flex flex-col items-start gap-1">
-                              {bitacora.ubicacionEntrada.includes('|||') && (
-                                <span className="text-xs font-bold text-slate-700 leading-tight">{bitacora.ubicacionEntrada.split('|||')[1]}</span>
-                              )}
-                              <button onClick={() => openMap(bitacora.ubicacionEntrada!)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max uppercase tracking-wider">
+                            <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200/80 transition-colors">
+                              <div className="flex items-center gap-1.5 overflow-hidden">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                <span className="text-xs font-semibold text-slate-700 truncate" title={bitacora.ubicacionEntrada}>
+                                  {cleanLocationForPdf(bitacora.ubicacionEntrada)}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openMap(bitacora.ubicacionEntrada!)}
+                                className="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-1.5 py-0.5 rounded transition-colors flex items-center gap-0.5 shrink-0 cursor-pointer uppercase tracking-wider"
+                                title="Ver coordenadas en Google Maps"
+                              >
                                 <MapPin className="w-3 h-3" /> Entrada
                               </button>
                             </div>
-                          ) : <span className="text-xs text-slate-400 font-medium">Sin GPS (Entrada)</span>}
-                          
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium px-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                              <span>Sin GPS (Entrada)</span>
+                            </div>
+                          )}
+
+                          {/* Salida */}
                           {bitacora.ubicacionSalida && bitacora.ubicacionSalida !== 'N/A' ? (
-                            <div className="flex flex-col items-start gap-1">
-                              {bitacora.ubicacionSalida.includes('|||') && (
-                                <span className="text-xs font-bold text-slate-700 leading-tight">{bitacora.ubicacionSalida.split('|||')[1]}</span>
-                              )}
-                              <button onClick={() => openMap(bitacora.ubicacionSalida!)} className="text-[11px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-md transition-colors w-max uppercase tracking-wider">
+                            <div className="flex items-center justify-between gap-2 p-1.5 bg-slate-50 hover:bg-slate-100/80 rounded-lg border border-slate-200/80 transition-colors">
+                              <div className="flex items-center gap-1.5 overflow-hidden">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                <span className="text-xs font-semibold text-slate-700 truncate" title={bitacora.ubicacionSalida}>
+                                  {cleanLocationForPdf(bitacora.ubicacionSalida)}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => openMap(bitacora.ubicacionSalida!)}
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-800 bg-rose-50 hover:bg-rose-100 px-1.5 py-0.5 rounded transition-colors flex items-center gap-0.5 shrink-0 cursor-pointer uppercase tracking-wider"
+                                title="Ver coordenadas en Google Maps"
+                              >
                                 <MapPin className="w-3 h-3" /> Salida
                               </button>
                             </div>
-                          ) : <span className="text-xs text-slate-400 font-medium">Sin GPS (Salida)</span>}
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium px-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                              <span>Sin GPS (Salida)</span>
+                            </div>
+                          )}
                         </div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3.5 whitespace-nowrap align-middle">
                         {hasEvidences ? (
                           <button
+                            type="button"
                             onClick={() => toggleExpand(bitacora.id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 text-blue-700 font-bold text-xs hover:bg-blue-100 transition-all border border-blue-200"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs transition-all border border-blue-200 cursor-pointer"
                           >
                             <Paperclip className="w-3.5 h-3.5" />
                             {bitacora.evidences!.length} {bitacora.evidences!.length === 1 ? 'archivo' : 'archivos'}
                             {isExpanded ? <ChevronUp className="w-3.5 h-3.5 ml-0.5" /> : <ChevronDown className="w-3.5 h-3.5 ml-0.5" />}
                           </button>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 font-semibold text-xs border border-slate-200">
-                            Sin archivos adjuntos
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-400 font-semibold text-xs border border-slate-200">
+                            Sin archivos
                           </span>
                         )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-5 py-3.5 align-middle">
                         <div className="flex flex-col items-start gap-1.5">
-                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap
                             ${bitacora.status === 'Enviado' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}
                           `}>
                             {bitacora.status === 'Enviado' ? <AlertCircle className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
                             {bitacora.status}
                           </span>
                           {bitacora.comentario_admin && (
-                            <div className="p-3 bg-blue-50/95 border border-blue-300/80 rounded-2xl text-xs text-blue-950 shadow-sm max-w-sm sm:max-w-md mt-1.5 transition-all">
-                              <span className="font-black text-blue-950 flex items-center gap-1.5 text-[10px] uppercase tracking-wider mb-1">
-                                <MessageSquare className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <div className="p-2.5 bg-blue-50/95 border border-blue-200 rounded-xl text-xs text-blue-950 shadow-xs max-w-xs mt-1 transition-all">
+                              <span className="font-bold text-blue-950 flex items-center gap-1 text-[10px] uppercase tracking-wider mb-0.5">
+                                <MessageSquare className="w-3 h-3 text-blue-600 shrink-0" />
                                 {(() => {
                                   const sup = normalizeSupervisorName(bitacora.supervisado_por, bitacora.date);
-                                  return sup ? `Supervisado por: ${sup} (Jefatura)` : 'Observaciones de Jefatura';
-                                })()}:
+                                  return sup ? `${sup}:` : 'Jefatura:';
+                                })()}
                               </span>
-                              <p className="italic text-blue-900 text-xs leading-relaxed whitespace-pre-wrap break-words font-medium">
+                              <p className="italic text-blue-900 text-xs leading-relaxed break-words font-medium line-clamp-3" title={bitacora.comentario_admin}>
                                 "{bitacora.comentario_admin}"
                               </p>
                             </div>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-5 py-3.5 text-center whitespace-nowrap align-middle">
                         <button
                           type="button"
                           onClick={() => generateFallbackPdf(bitacora)}
-                          className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3.5 py-2 rounded-xl transition-all shadow-md text-xs cursor-pointer active:scale-95"
+                          className="inline-flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold px-3 py-1.5 rounded-xl transition-all shadow-xs text-xs cursor-pointer active:scale-95"
                           title="Ver o descargar PDF oficial con formato limpio"
                         >
-                          <Download className="w-4 h-4 text-amber-400" /> PDF
+                          <Download className="w-3.5 h-3.5 text-amber-400" /> PDF
                         </button>
                       </td>
                     </tr>
@@ -576,7 +611,7 @@ export default function TabHistorial() {
                     {/* Fila desplegable con lista de archivos adjuntos */}
                     {isExpanded && hasEvidences && (
                       <tr className="bg-blue-50/40">
-                        <td colSpan={6} className="px-6 py-4">
+                        <td colSpan={6} className="px-5 py-3.5">
                           <div className="bg-white rounded-2xl p-4 border border-blue-200/80 shadow-sm space-y-3">
                             <div className="flex items-center justify-between">
                               <h4 className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-2">
@@ -612,7 +647,7 @@ export default function TabHistorial() {
                         </td>
                       </tr>
                     )}
-                  </tbody>
+                  </Fragment>
                 );
               })
             )}
