@@ -1781,7 +1781,6 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
   }
 
   // 2. Si no hay datos directos, consultar en investigaciones_kant (categoría recibo_nomina)
-  let supabaseQuerySuccess = false;
   if (recibosMap.size === 0) {
     try {
       const { data, error } = await supabase
@@ -1790,47 +1789,55 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
         .eq('categoria', 'recibo_nomina')
         .order('created_at', { ascending: false });
 
-      if (!error) {
-        supabaseQuerySuccess = true;
-        if (Array.isArray(data)) {
-          data.forEach((inv: any) => {
-            if (inv.contenido) {
-              try {
-                const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
-                if (parsed && parsed.id) {
-                  recibosMap.set(String(parsed.id), parsed);
+      if (!error && Array.isArray(data)) {
+        data.forEach((inv: any) => {
+          if (inv.contenido) {
+            try {
+              const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+              if (parsed && (parsed.id || parsed.numeroRecibo)) {
+                const key = String(parsed.id || parsed.numeroRecibo);
+                const current = recibosMap.get(key);
+                if (!current) {
+                  recibosMap.set(key, parsed);
+                } else {
+                  // Si ya existe un registro y el actual es 'pagado', preservarlo y no degradar a borrador
+                  if (parsed.estado === 'pagado' && current.estado !== 'pagado') {
+                    recibosMap.set(key, parsed);
+                  }
                 }
-              } catch (err) {}
-            }
-          });
-        }
+              }
+            } catch (err) {}
+          }
+        });
       }
     } catch (e) {}
-  } else {
-    supabaseQuerySuccess = true;
   }
 
-  // 3. Respaldo offline / sincronización
-  if (!supabaseQuerySuccess) {
-    try {
-      const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
-      if (rawLocal) {
-        const localList: ReciboNomina[] = JSON.parse(rawLocal);
-        if (Array.isArray(localList)) {
-          localList.forEach(item => {
-            if (!recibosMap.has(item.id)) {
-              recibosMap.set(item.id, item);
-            }
-          });
-        }
+  // 3. Respaldo y sincronización resiliente con caché local:
+  // NUNCA permitir que un recibo pagado se pierda o sea degradado a borrador por lag de red
+  try {
+    const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+    if (rawLocal) {
+      const localList: ReciboNomina[] = JSON.parse(rawLocal);
+      if (Array.isArray(localList)) {
+        localList.forEach(item => {
+          if (!item) return;
+          const key = String(item.id || item.numeroRecibo);
+          const current = recibosMap.get(key);
+          if (!current) {
+            recibosMap.set(key, item);
+          } else if (item.estado === 'pagado' && current.estado !== 'pagado') {
+            recibosMap.set(key, item);
+          }
+        });
       }
-    } catch (e) {}
-  } else {
-    // Si la consulta a Supabase fue exitosa, sincronizar la caché local para que coincida exactamente
-    try {
-      localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(Array.from(recibosMap.values())));
-    } catch (e) {}
-  }
+    }
+  } catch (e) {}
+
+  // Guardar la lista consolidada en caché local para acceso offline instantáneo
+  try {
+    localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(Array.from(recibosMap.values())));
+  } catch (e) {}
 
   let list = Array.from(recibosMap.values());
 
@@ -1854,11 +1861,11 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
 }
 
 export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ success: boolean; data: ReciboNomina }> {
-  // 1. Actualizar caché local
+  // 1. Actualizar caché local de inmediato (optimista)
   try {
     const raw = localStorage.getItem('rd_local_recibos_nomina');
     const list: ReciboNomina[] = raw ? JSON.parse(raw) : [];
-    const idx = list.findIndex(r => r.id === recibo.id);
+    const idx = list.findIndex(r => r.id === recibo.id || r.numeroRecibo === recibo.numeroRecibo);
     if (idx >= 0) {
       list[idx] = recibo;
     } else {
@@ -1901,55 +1908,57 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
 
     // Respaldo de notificación en la nube (Supabase) para sincronización multidispositivo
     try {
-      await supabase.from('investigaciones_kant').upsert({
-        titulo: `NOTIF-PAGO-${recibo.id}-${recibo.empleadoNombre}`,
-        categoria: 'notificacion_empleado',
-        autor: recibo.emitidoPor || 'Jefatura',
-        contenido: JSON.stringify(notifItem),
-        tags: [recibo.empleadoNombre.toLowerCase(), 'pago_nomina', recibo.id]
-      });
+      const notifTitulo = `NOTIF-PAGO-${recibo.id}-${recibo.empleadoNombre}`;
+      const { data: existingNotifs } = await supabase
+        .from('investigaciones_kant')
+        .select('id')
+        .eq('categoria', 'notificacion_empleado')
+        .eq('titulo', notifTitulo)
+        .limit(1);
+
+      if (existingNotifs && existingNotifs.length > 0) {
+        await supabase
+          .from('investigaciones_kant')
+          .update({
+            contenido: JSON.stringify(notifItem),
+            created_at: new Date().toISOString()
+          })
+          .eq('id', existingNotifs[0].id);
+      } else {
+        await supabase.from('investigaciones_kant').insert({
+          titulo: notifTitulo,
+          categoria: 'notificacion_empleado',
+          autor: recibo.emitidoPor || 'Jefatura',
+          contenido: JSON.stringify(notifItem),
+          tags: [recibo.empleadoNombre.toLowerCase(), 'pago_nomina', recibo.id]
+        });
+      }
     } catch (e) {}
   }
 
-  // 3. Intentar guardar en Supabase (recibos_nomina o investigaciones_kant como respaldo)
+  // 3. Guardar en Supabase (investigaciones_kant como almacenamiento permanente y recibos_nomina)
   try {
-    const { error: errTable } = await supabase.from('recibos_nomina').upsert({
-      id: recibo.id,
-      numero_recibo: recibo.numeroRecibo,
-      empleado_nombre: recibo.empleadoNombre,
-      empleado_email: recibo.empleadoEmail,
-      cedula: recibo.cedula,
-      cargo: recibo.cargo,
-      cod_trabajador: recibo.codTrabajador,
-      banco: recibo.banco,
-      tipo_pago: recibo.tipoPago,
-      referencia_pago: recibo.referenciaPago,
-      quincena: recibo.quincena,
-      mes: recibo.mes,
-      anio: recibo.anio,
-      periodo_inicio: recibo.periodoInicio,
-      periodo_fin: recibo.periodoFin,
-      moneda_principal: recibo.monedaPrincipal,
-      tasa_cambio: recibo.tasaCambio,
-      sueldo_base_mensual: recibo.sueldoBaseMensual,
-      sueldo_quincenal_base: recibo.sueldoQuincenalBase,
-      dias_laborados: recibo.diasLaborados,
-      dias_descanso: recibo.diasDescanso,
-      conceptos: recibo.conceptos,
-      total_devengado: recibo.totalDevengado,
-      total_deducciones: recibo.totalDeducciones,
-      neto_pagar_usd: recibo.netoPagarUsd,
-      neto_pagar_ves: recibo.netoPagarVes,
-      estado: recibo.estado,
-      fecha_pago: recibo.fechaPago,
-      emitido_por: recibo.emitidoPor,
-      observaciones: recibo.observaciones,
-      notificacion_enviada: recibo.notificacionEnviada
-    });
+    const tituloRecibo = `RECIBO-${recibo.numeroRecibo}-${recibo.empleadoNombre}`;
+    const { data: existingInv } = await supabase
+      .from('investigaciones_kant')
+      .select('id')
+      .eq('categoria', 'recibo_nomina')
+      .eq('titulo', tituloRecibo)
+      .limit(1);
 
-    if (errTable || recibo.comprobanteBase64) {
-      await supabase.from('investigaciones_kant').upsert({
-        titulo: `RECIBO-${recibo.numeroRecibo}-${recibo.empleadoNombre}`,
+    if (existingInv && existingInv.length > 0) {
+      await supabase
+        .from('investigaciones_kant')
+        .update({
+          contenido: JSON.stringify(recibo),
+          autor: recibo.empleadoNombre,
+          tags: [recibo.empleadoNombre.toLowerCase(), `q${recibo.quincena}`, `${recibo.mes}-${recibo.anio}`, recibo.estado],
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existingInv[0].id);
+    } else {
+      await supabase.from('investigaciones_kant').insert({
+        titulo: tituloRecibo,
         categoria: 'recibo_nomina',
         autor: recibo.empleadoNombre,
         contenido: JSON.stringify(recibo),
@@ -1968,8 +1977,10 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
   const numeroRecibo = typeof idOrRecibo === 'object' ? idOrRecibo.numeroRecibo : '';
   const empleadoNombre = typeof idOrRecibo === 'object' ? idOrRecibo.empleadoNombre : '';
   const quincena = typeof idOrRecibo === 'object' ? idOrRecibo.quincena : undefined;
+  const mes = typeof idOrRecibo === 'object' ? idOrRecibo.mes : undefined;
+  const anio = typeof idOrRecibo === 'object' ? idOrRecibo.anio : undefined;
 
-  // 1. Limpiar de localStorage local
+  // 1. Limpiar de localStorage local SOLO el recibo específico
   try {
     const raw = localStorage.getItem('rd_local_recibos_nomina');
     if (raw) {
@@ -1978,8 +1989,9 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
         if (id && String(r.id) === String(id)) return false;
         if (numeroRecibo && r.numeroRecibo === numeroRecibo) return false;
         if (empleadoNombre && r.empleadoNombre && r.empleadoNombre.toLowerCase().trim() === empleadoNombre.toLowerCase().trim()) {
-          if (quincena !== undefined && r.quincena === quincena) return false;
-          if (quincena === undefined) return false;
+          if (quincena !== undefined && mes !== undefined && anio !== undefined) {
+            if (r.quincena === quincena && r.mes === mes && r.anio === anio) return false;
+          }
         }
         return true;
       });
@@ -1990,21 +2002,19 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
   // 2. Intentar borrar en tabla recibos_nomina
   try {
     if (id) await supabase.from('recibos_nomina').delete().eq('id', id);
+    if (numeroRecibo) await supabase.from('recibos_nomina').delete().eq('numero_recibo', numeroRecibo);
   } catch (e) {}
 
-  // 3. Borrar de investigaciones_kant por categoria recibo_nomina
+  // 3. Borrar de investigaciones_kant por categoria recibo_nomina (SOLO ese recibo específico)
   try {
     if (numeroRecibo) {
       await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${numeroRecibo}%`);
-    }
-    if (id) {
+    } else if (id) {
       await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${id}%`);
-    }
-    if (empleadoNombre) {
-      await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${empleadoNombre}%`);
     }
   } catch (e) {}
 
+  // IMPORTANTE: Jamás se toca la plantilla de empleados aquí. El empleado permanece intacto en la nómina.
   return { success: true };
 }
 
@@ -2021,8 +2031,18 @@ export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNom
       const raw = data[0].contenido;
       const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(parsed));
-        return parsed;
+        // Deduplicar automáticamente por nombre completo para evitar duplicados accidentales
+        const seen = new Set<string>();
+        const deduped: PlantillaEmpleadoNomina[] = [];
+        for (const w of parsed) {
+          const k = (w.nombre || '').toLowerCase().trim();
+          if (k && !seen.has(k)) {
+            seen.add(k);
+            deduped.push(w);
+          }
+        }
+        localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(deduped));
+        return deduped;
       }
     }
   } catch (err) {}
@@ -2032,7 +2052,16 @@ export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNom
     if (rawLocal) {
       const parsed = JSON.parse(rawLocal);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+        const seen = new Set<string>();
+        const deduped: PlantillaEmpleadoNomina[] = [];
+        for (const w of parsed) {
+          const k = (w.nombre || '').toLowerCase().trim();
+          if (k && !seen.has(k)) {
+            seen.add(k);
+            deduped.push(w);
+          }
+        }
+        return deduped;
       }
     }
   } catch (err) {}
@@ -2041,8 +2070,19 @@ export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNom
 }
 
 export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNomina[]): Promise<boolean> {
+  // Deduplicar antes de persistir
+  const seen = new Set<string>();
+  const cleanList: PlantillaEmpleadoNomina[] = [];
+  for (const w of plantilla) {
+    const k = (w.nombre || '').toLowerCase().trim();
+    if (k && !seen.has(k)) {
+      seen.add(k);
+      cleanList.push(w);
+    }
+  }
+
   try {
-    localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(plantilla));
+    localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(cleanList));
   } catch (e) {}
 
   try {
@@ -2056,7 +2096,7 @@ export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNo
       await supabase
         .from('investigaciones_kant')
         .update({
-          contenido: JSON.stringify(plantilla),
+          contenido: JSON.stringify(cleanList),
           created_at: new Date().toISOString()
         })
         .eq('id', existing[0].id);
@@ -2065,7 +2105,7 @@ export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNo
         titulo: 'PLANTILLA_PERSONAL_NOMINA',
         categoria: 'nomina_plantilla',
         autor: 'Jefatura',
-        contenido: JSON.stringify(plantilla),
+        contenido: JSON.stringify(cleanList),
         tags: ['plantilla', 'nomina', 'personal']
       });
     }

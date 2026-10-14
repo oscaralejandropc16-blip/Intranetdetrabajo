@@ -288,14 +288,29 @@ export default function ModuloNominaJefatura() {
   // Unir la lista oficial de trabajadores con los recibos guardados para la quincena seleccionada
   const currentQuincenaList = useMemo(() => {
     return plantillaPersonal.map(emp => {
+      const empNombreNorm = (emp.nombre || '').toLowerCase().trim();
+      const empCedDigits = (emp.cedula || '').replace(/\D/g, '');
+
       // Buscar si ya existe un recibo emitido o guardado para este empleado en esta quincena
-      const existing = recibos.find(r => 
-        r.quincena === selectedQuincena && 
-        r.mes === selectedMes && 
-        r.anio === selectedAnio &&
-        (r.empleadoNombre.toLowerCase().trim() === emp.nombre.toLowerCase().trim() ||
-         (r.cedula && emp.cedula && r.cedula.trim() === emp.cedula.trim()))
-      );
+      const existing = recibos.find(r => {
+        if (r.quincena !== selectedQuincena || r.mes !== selectedMes || r.anio !== selectedAnio) {
+          return false;
+        }
+        const rNombreNorm = (r.empleadoNombre || '').toLowerCase().trim();
+        const rCedDigits = (r.cedula || '').replace(/\D/g, '');
+
+        if (rNombreNorm && empNombreNorm && (rNombreNorm === empNombreNorm || rNombreNorm.includes(empNombreNorm) || empNombreNorm.includes(rNombreNorm))) {
+          return true;
+        }
+        if (rCedDigits && empCedDigits && rCedDigits === empCedDigits) {
+          return true;
+        }
+        if (r.codTrabajador && emp.id && r.codTrabajador.includes(emp.id.replace('emp_', ''))) {
+          return true;
+        }
+        return false;
+      });
+
       if (existing) {
         if (existing.estado !== 'pagado' && tasaCambio && existing.tasaCambio !== tasaCambio) {
           return {
@@ -638,6 +653,19 @@ export default function ModuloNominaJefatura() {
       notificacionEnviada: true
     };
 
+    // Actualización optimista inmediata en estado para que pase a PAGADO al instante
+    setRecibos(prev => {
+      const filtered = prev.filter(r => !(
+        r.quincena === reciboPagado.quincena &&
+        r.mes === reciboPagado.mes &&
+        r.anio === reciboPagado.anio &&
+        (r.id === reciboPagado.id || 
+         r.empleadoNombre.toLowerCase().trim() === reciboPagado.empleadoNombre.toLowerCase().trim() ||
+         (r.cedula && reciboPagado.cedula && r.cedula.replace(/\D/g, '') !== '' && r.cedula.replace(/\D/g, '') === reciboPagado.cedula.replace(/\D/g, '')))
+      ));
+      return [reciboPagado, ...filtered];
+    });
+
     setIsSaving(true);
     try {
       // 1. Guardar en Supabase / Base de datos y disparar notificación al empleado
@@ -653,7 +681,7 @@ export default function ModuloNominaJefatura() {
         }, 400);
       }
 
-      // 4. Refrescar datos
+      // 4. Refrescar datos desde la nube
       await fetchRecibos();
       if (editingRecibo) {
         setEditingRecibo(null);
@@ -762,17 +790,19 @@ Jefatura — Román & Delgado`;
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
 
-  // Eliminar recibo (solo jefatura)
+  // Eliminar recibo / factura (solo anula el recibo, el empleado permanece en nómina)
   const handleEliminarRecibo = (reciboTarget: ReciboNomina) => {
     setSystemAlert({
       isOpen: true,
       type: 'warning',
-      title: '¿Eliminar Recibo de Nómina?',
-      message: `¿Estás seguro de eliminar el registro de pago de ${reciboTarget.empleadoNombre}? Esta acción no se puede deshacer.`,
+      title: '¿Anular Recibo de Pago?',
+      message: `¿Estás seguro de anular el recibo emitido de ${reciboTarget.empleadoNombre}? El recibo volverá a estado pendiente en la nómina, pero ${reciboTarget.empleadoNombre} permanecerá intacto(a) en la lista de trabajadores de la empresa.`,
       showCancel: true,
-      confirmText: 'Sí, Eliminar',
+      confirmText: 'Sí, Anular Recibo',
       onConfirm: async () => {
         try {
+          // Optimista: retirar el recibo para que vuelva a borrador/pendiente
+          setRecibos(prev => prev.filter(r => r.id !== reciboTarget.id && r.numeroRecibo !== reciboTarget.numeroRecibo));
           await supabaseEliminarReciboNomina(reciboTarget);
           await fetchRecibos();
         } catch (e) {}
@@ -818,10 +848,13 @@ Jefatura — Román & Delgado`;
     setWorkerModalOpen(true);
   };
 
-  // Guardar nuevo o editar trabajador en plantilla
+  // Guardar nuevo o editar trabajador en plantilla (permanente e independiente de los recibos)
   const handleGuardarTrabajador = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workerForm.nombre.trim() || !workerForm.cedula.trim()) {
+    const cleanNombre = workerForm.nombre.trim();
+    const cleanCedula = workerForm.cedula.trim();
+
+    if (!cleanNombre || !cleanCedula) {
       setSystemAlert({
         isOpen: true,
         type: 'warning',
@@ -835,8 +868,8 @@ Jefatura — Román & Delgado`;
     if (editingWorker) {
       updatedList = plantillaPersonal.map(w => w.id === editingWorker.id ? {
         ...w,
-        nombre: workerForm.nombre.trim(),
-        cedula: workerForm.cedula.trim(),
+        nombre: cleanNombre,
+        cedula: cleanCedula,
         cargo: workerForm.cargo.trim() || 'Personal',
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
@@ -848,10 +881,22 @@ Jefatura — Román & Delgado`;
         email: workerForm.email.trim()
       } : w);
     } else {
+      // Verificar si ya existe un empleado con el mismo nombre para evitar duplicados accidentales
+      const exists = plantillaPersonal.find(w => w.nombre.toLowerCase().trim() === cleanNombre.toLowerCase());
+      if (exists) {
+        setSystemAlert({
+          isOpen: true,
+          type: 'warning',
+          title: 'Trabajador ya Registrado',
+          message: `Ya existe un trabajador registrado con el nombre "${cleanNombre}". Si deseas actualizar sus datos o sueldo, utiliza el botón de editar.`
+        });
+        return;
+      }
+
       const newWorker: PlantillaEmpleadoNomina = {
         id: `emp_${Date.now()}`,
-        nombre: workerForm.nombre.trim(),
-        cedula: workerForm.cedula.trim(),
+        nombre: cleanNombre,
+        cedula: cleanCedula,
         cargo: workerForm.cargo.trim() || 'Personal',
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
@@ -865,36 +910,47 @@ Jefatura — Román & Delgado`;
       updatedList = [...plantillaPersonal, newWorker];
     }
 
-    setPlantillaPersonal(updatedList);
-    await supabaseSavePlantillaNomina(updatedList);
+    // Deduplicar lista antes de guardar
+    const seen = new Set<string>();
+    const cleanDeduped: PlantillaEmpleadoNomina[] = [];
+    for (const w of updatedList) {
+      const k = w.nombre.toLowerCase().trim();
+      if (!seen.has(k)) {
+        seen.add(k);
+        cleanDeduped.push(w);
+      }
+    }
+
+    setPlantillaPersonal(cleanDeduped);
+    await supabaseSavePlantillaNomina(cleanDeduped);
     setWorkerModalOpen(false);
 
     setSystemAlert({
       isOpen: true,
       type: 'success',
       title: editingWorker ? 'Trabajador Actualizado' : 'Trabajador Agregado',
-      message: `${workerForm.nombre} ha sido ${editingWorker ? 'actualizado' : 'incorporado'} exitosamente a la nómina.`
+      message: `${cleanNombre} ha sido ${editingWorker ? 'actualizado' : 'incorporado'} exitosamente en la nómina de la empresa.`
     });
   };
 
-  // Quitar trabajador de la nómina activa
+  // Quitar trabajador de la nómina activa (solo esta acción elimina al empleado)
   const handleQuitarTrabajador = (emp: PlantillaEmpleadoNomina) => {
     setSystemAlert({
       isOpen: true,
       type: 'warning',
-      title: '¿Quitar de Nómina?',
-      message: `¿Deseas remover a "${emp.nombre}" de la nómina? No se eliminarán los recibos pasados que ya hayan sido pagados en el historial.`,
+      title: '¿Eliminar Empleado de Nómina?',
+      message: `¿Estás seguro de eliminar a "${emp.nombre}" de la nómina de la empresa? El empleado ya no aparecerá en las próximas quincenas. Sus recibos históricos ya pagados se mantendrán intactos.`,
       showCancel: true,
-      confirmText: 'Sí, Quitar',
+      confirmText: 'Sí, Eliminar de Nómina',
       onConfirm: async () => {
-        const updated = plantillaPersonal.filter(w => w.id !== emp.id);
+        const updated = plantillaPersonal.filter(w => w.id !== emp.id && w.nombre.toLowerCase().trim() !== emp.nombre.toLowerCase().trim());
         setPlantillaPersonal(updated);
         await supabaseSavePlantillaNomina(updated);
         setSystemAlert({
           isOpen: true,
           type: 'info',
-          title: 'Trabajador Removido',
-          message: `${emp.nombre} ha sido removido de la nómina activa.`
+          title: 'Empleado Eliminado',
+          message: `${emp.nombre} fue removido de la nómina de la empresa.`
         });
       }
     });
