@@ -92,6 +92,7 @@ export default function ModuloNominaJefatura() {
   const [editingInlineCuenta, setEditingInlineCuenta] = useState<boolean>(false);
   const [inlineCuentaVal, setInlineCuentaVal] = useState<string>('');
   const [notificacionModal, setNotificacionModal] = useState<ReciboNomina | null>(null);
+  const [autoOpenWhatsApp, setAutoOpenWhatsApp] = useState<boolean>(true);
 
   // Alerta del sistema
   const [systemAlert, setSystemAlert] = useState<{
@@ -645,13 +646,20 @@ export default function ModuloNominaJefatura() {
       // 2. Generar y descargar el PDF oficial inmediatamente
       await exportarReciboNominaPDF(reciboPagado);
 
-      // 3. Refrescar datos
+      // 3. Abrir WhatsApp automáticamente si la casilla está activada
+      if (autoOpenWhatsApp) {
+        setTimeout(() => {
+          handleEnviarWhatsApp(reciboPagado);
+        }, 400);
+      }
+
+      // 4. Refrescar datos
       await fetchRecibos();
       if (editingRecibo) {
         setEditingRecibo(null);
       }
 
-      // Abrir modal interactivo para enviar por WhatsApp o Correo con 1 clic
+      // 5. Abrir modal interactivo para enviar por WhatsApp o Correo con 1 clic
       setNotificacionModal(reciboPagado);
     } catch (err: any) {
       setSystemAlert({
@@ -2102,14 +2110,29 @@ Jefatura — Román & Delgado`;
             </div>
 
             {/* Modal Footer (Optimizado para Pantallas de iPhone y Escritorio) */}
-            <div className="bg-slate-50 p-4 px-4 sm:px-6 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setEditingRecibo(null)}
-                className="w-full sm:w-auto px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
-              >
-                Cancelar
-              </button>
+            <div className="bg-slate-50 p-4 px-4 sm:px-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingRecibo(null)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={autoOpenWhatsApp}
+                    onChange={(e) => setAutoOpenWhatsApp(e.target.checked)}
+                    className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                    <MessageCircle className="w-3.5 h-3.5 text-emerald-600" />
+                    Abrir WhatsApp automáticamente con el comprobante
+                  </span>
+                </label>
+              </div>
 
               <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
                 <button
