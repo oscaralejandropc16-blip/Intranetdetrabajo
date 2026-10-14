@@ -4,18 +4,22 @@ import {
   Download, Edit3, Trash2, Plus, Search, 
   RefreshCw, FileText, 
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
-  Sparkles, X
+  Sparkles, X, UserPlus, UserMinus, RotateCcw
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
   type PlantillaEmpleadoNomina, 
   type ConceptoNomina,
-  EMPLEADOS_NOMINA_DEFAULT 
+  EMPLEADOS_NOMINA_DEFAULT,
+  PLANTILLA_EJEMPLO_SOLCARGO
 } from '../../types/nomina';
 import { 
   supabaseGetRecibosNomina, 
   supabaseSaveReciboNomina, 
-  supabaseEliminarReciboNomina 
+  supabaseEliminarReciboNomina,
+  supabaseGetPlantillaNomina,
+  supabaseSavePlantillaNomina,
+  supabaseLimpiarTodosRecibosNomina
 } from '../../lib/supabaseAdapter';
 import { exportarReciboNominaPDF } from '../../lib/pdfExportNomina';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -42,7 +46,33 @@ export default function ModuloNominaJefatura() {
   const [viewFilter, setViewFilter] = useState<'todos' | 'pagados' | 'pendientes'>('todos');
   const [activeTab, setActiveTab] = useState<'quincena_actual' | 'historial'>('quincena_actual');
 
-  // Modal de Edición / Liquidación
+  // Plantilla dinámica de trabajadores activos
+  const [plantillaPersonal, setPlantillaPersonal] = useState<PlantillaEmpleadoNomina[]>([]);
+
+  // Modal de Agregar / Editar Trabajador en la Plantilla
+  const [workerModalOpen, setWorkerModalOpen] = useState<boolean>(false);
+  const [editingWorker, setEditingWorker] = useState<PlantillaEmpleadoNomina | null>(null);
+  const [workerForm, setWorkerForm] = useState<{
+    nombre: string;
+    cedula: string;
+    cargo: string;
+    sueldoMensual: number;
+    banco: string;
+    tipoPago: 'Pago Móvil' | 'Transferencia' | 'Efectivo' | 'Zelle' | 'Otro';
+    telefono: string;
+    email: string;
+  }>({
+    nombre: '',
+    cedula: 'V-',
+    cargo: '',
+    sueldoMensual: 200,
+    banco: 'Banesco',
+    tipoPago: 'Pago Móvil',
+    telefono: '',
+    email: ''
+  });
+
+  // Modal de Edición / Liquidación de Recibo
   const [editingRecibo, setEditingRecibo] = useState<ReciboNomina | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
@@ -99,8 +129,19 @@ export default function ModuloNominaJefatura() {
     }
   };
 
+  // Cargar plantilla de trabajadores
+  const fetchPlantilla = async () => {
+    try {
+      const list = await supabaseGetPlantillaNomina();
+      setPlantillaPersonal(list);
+    } catch (err) {
+      setPlantillaPersonal(EMPLEADOS_NOMINA_DEFAULT);
+    }
+  };
+
   useEffect(() => {
     fetchRecibos();
+    fetchPlantilla();
   }, []);
 
   // Función constructora para generar un recibo inicial desde plantilla
@@ -162,20 +203,21 @@ export default function ModuloNominaJefatura() {
 
   // Unir la lista oficial de trabajadores con los recibos guardados para la quincena seleccionada
   const currentQuincenaList = useMemo(() => {
-    return EMPLEADOS_NOMINA_DEFAULT.map(emp => {
+    return plantillaPersonal.map(emp => {
       // Buscar si ya existe un recibo emitido o guardado para este empleado en esta quincena
       const existing = recibos.find(r => 
         r.quincena === selectedQuincena && 
         r.mes === selectedMes && 
         r.anio === selectedAnio &&
-        r.empleadoNombre.toLowerCase().trim() === emp.nombre.toLowerCase().trim()
+        (r.empleadoNombre.toLowerCase().trim() === emp.nombre.toLowerCase().trim() ||
+         (r.cedula && emp.cedula && r.cedula.trim() === emp.cedula.trim()))
       );
       if (existing) {
         return existing;
       }
       return construirReciboBorrador(emp, selectedQuincena, selectedMes, selectedAnio);
     });
-  }, [recibos, selectedQuincena, selectedMes, selectedAnio, tasaCambio]);
+  }, [plantillaPersonal, recibos, selectedQuincena, selectedMes, selectedAnio, tasaCambio]);
 
   // Filtrado de la quincena actual
   const filteredCurrentList = useMemo(() => {
@@ -399,6 +441,184 @@ export default function ModuloNominaJefatura() {
     });
   };
 
+  // Abrir modal para agregar trabajador
+  const handleAbrirAgregarTrabajador = () => {
+    setEditingWorker(null);
+    setWorkerForm({
+      nombre: '',
+      cedula: 'V-',
+      cargo: '',
+      sueldoMensual: 200,
+      banco: 'Banesco',
+      tipoPago: 'Pago Móvil',
+      telefono: '',
+      email: ''
+    });
+    setWorkerModalOpen(true);
+  };
+
+  // Abrir modal para editar trabajador existente
+  const handleAbrirEditarTrabajador = (emp: PlantillaEmpleadoNomina) => {
+    setEditingWorker(emp);
+    setWorkerForm({
+      nombre: emp.nombre,
+      cedula: emp.cedula,
+      cargo: emp.cargo,
+      sueldoMensual: emp.sueldoMensual,
+      banco: emp.banco || 'Banesco',
+      tipoPago: emp.tipoPago || 'Pago Móvil',
+      telefono: emp.telefono || '',
+      email: emp.email || ''
+    });
+    setWorkerModalOpen(true);
+  };
+
+  // Guardar nuevo o editar trabajador en plantilla
+  const handleGuardarTrabajador = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workerForm.nombre.trim() || !workerForm.cedula.trim()) {
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: 'Datos Incompletos',
+        message: 'Por favor ingresa el nombre y la cédula del trabajador.'
+      });
+      return;
+    }
+
+    let updatedList: PlantillaEmpleadoNomina[];
+    if (editingWorker) {
+      updatedList = plantillaPersonal.map(w => w.id === editingWorker.id ? {
+        ...w,
+        nombre: workerForm.nombre.trim(),
+        cedula: workerForm.cedula.trim(),
+        cargo: workerForm.cargo.trim() || 'Personal',
+        sueldoMensual: Number(workerForm.sueldoMensual) || 0,
+        banco: workerForm.banco,
+        tipoPago: workerForm.tipoPago,
+        telefono: workerForm.telefono.trim(),
+        email: workerForm.email.trim()
+      } : w);
+    } else {
+      const newWorker: PlantillaEmpleadoNomina = {
+        id: `emp_${Date.now()}`,
+        nombre: workerForm.nombre.trim(),
+        cedula: workerForm.cedula.trim(),
+        cargo: workerForm.cargo.trim() || 'Personal',
+        sueldoMensual: Number(workerForm.sueldoMensual) || 0,
+        banco: workerForm.banco,
+        tipoPago: workerForm.tipoPago,
+        telefono: workerForm.telefono.trim(),
+        email: workerForm.email.trim()
+      };
+      updatedList = [...plantillaPersonal, newWorker];
+    }
+
+    setPlantillaPersonal(updatedList);
+    await supabaseSavePlantillaNomina(updatedList);
+    setWorkerModalOpen(false);
+
+    setSystemAlert({
+      isOpen: true,
+      type: 'success',
+      title: editingWorker ? 'Trabajador Actualizado' : 'Trabajador Agregado',
+      message: `${workerForm.nombre} ha sido ${editingWorker ? 'actualizado' : 'incorporado'} exitosamente a la nómina.`
+    });
+  };
+
+  // Quitar trabajador de la nómina activa
+  const handleQuitarTrabajador = (emp: PlantillaEmpleadoNomina) => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'warning',
+      title: '¿Quitar de Nómina?',
+      message: `¿Deseas remover a "${emp.nombre}" de la nómina? No se eliminarán los recibos pasados que ya hayan sido pagados en el historial.`,
+      showCancel: true,
+      confirmText: 'Sí, Quitar',
+      onConfirm: async () => {
+        const updated = plantillaPersonal.filter(w => w.id !== emp.id);
+        setPlantillaPersonal(updated);
+        await supabaseSavePlantillaNomina(updated);
+        setSystemAlert({
+          isOpen: true,
+          type: 'info',
+          title: 'Trabajador Removido',
+          message: `${emp.nombre} ha sido removido de la nómina activa.`
+        });
+      }
+    });
+  };
+
+  // Restaurar plantilla con equipo oficial de Román & Delgado
+  const handleRestaurarEquipoRD = () => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'info',
+      title: '¿Cargar Equipo Román & Delgado?',
+      message: 'Se cargará la plantilla oficial con el equipo real del despacho (Carmen Luisa Delgado, Mariela Isabel, Héctor, Víctor Román y Luis Delgado).',
+      showCancel: true,
+      confirmText: 'Sí, Cargar Equipo Real',
+      onConfirm: async () => {
+        setPlantillaPersonal(EMPLEADOS_NOMINA_DEFAULT);
+        await supabaseSavePlantillaNomina(EMPLEADOS_NOMINA_DEFAULT);
+      }
+    });
+  };
+
+  // Vaciar lista de trabajadores
+  const handleVaciarPlantilla = () => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'warning',
+      title: '¿Vaciar Lista de Nómina?',
+      message: 'Se removerán todos los trabajadores de la lista activa para que puedas ingresar solo a tu personal.',
+      showCancel: true,
+      confirmText: 'Sí, Vaciar Todo',
+      onConfirm: async () => {
+        setPlantillaPersonal([]);
+        await supabaseSavePlantillaNomina([]);
+      }
+    });
+  };
+
+  // Cargar modelo de ejemplo de Solcargo
+  const handleCargarEjemploSolcargo = () => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'info',
+      title: '¿Cargar Modelo de Ejemplo Solcargo?',
+      message: 'Se cargará la lista de 12 trabajadores de muestra extraída del archivo Excel de ejemplo para pruebas.',
+      showCancel: true,
+      confirmText: 'Cargar Modelo de Ejemplo',
+      onConfirm: async () => {
+        setPlantillaPersonal(PLANTILLA_EJEMPLO_SOLCARGO);
+        await supabaseSavePlantillaNomina(PLANTILLA_EJEMPLO_SOLCARGO);
+      }
+    });
+  };
+
+  // Limpiar todos los recibos de prueba
+  const handleLimpiarRecibosPrueba = () => {
+    setSystemAlert({
+      isOpen: true,
+      type: 'warning',
+      title: '¿Limpiar Recibos de Prueba?',
+      message: 'Esta acción reiniciará todos los pagos de prueba emitidos para que la nómina quede limpia (0 personal pagado).',
+      showCancel: true,
+      confirmText: 'Limpiar Todo',
+      onConfirm: async () => {
+        await supabaseLimpiarTodosRecibosNomina();
+        await fetchRecibos();
+        setSystemAlert({
+          isOpen: true,
+          type: 'success',
+          title: 'Historial Limpio',
+          message: 'Se han reiniciado los recibos de prueba. La quincena actual está completamente limpia.'
+        });
+      }
+    });
+  };
+
   // Historial global de recibos emitidos (todas las quincenas)
   const recibosHistorial = useMemo(() => {
     return recibos.filter(r => r.estado === 'pagado');
@@ -581,44 +801,94 @@ export default function ModuloNominaJefatura() {
             </div>
           </div>
 
-          {/* 3. Barra de Búsqueda y Filtros */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-sm flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="relative w-full sm:w-80">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, cédula o cargo..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 transition-all"
-              />
+          {/* 3. Acciones de Nómina, Búsqueda y Filtros */}
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+            {/* Fila 1: Botón Principal de Agregar + Presets Rápidos */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleAbrirAgregarTrabajador}
+                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs flex items-center gap-2 shadow-md shadow-blue-600/25 transition-all cursor-pointer whitespace-nowrap"
+                >
+                  <UserPlus className="w-4 h-4" /> + Agregar Trabajador a Nómina
+                </button>
+                <span className="text-xs font-bold text-slate-400 hidden sm:inline">
+                  {plantillaPersonal.length} registrados
+                </span>
+              </div>
+
+              {/* Botones de Gestión de Plantilla */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  onClick={handleRestaurarEquipoRD}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Cargar el equipo real del despacho Román & Delgado"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Equipo R&D Real
+                </button>
+                <button
+                  onClick={handleVaciarPlantilla}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Vaciar lista para registrar a tu propio personal"
+                >
+                  <UserMinus className="w-3.5 h-3.5 text-rose-500" /> Vaciar Lista
+                </button>
+                <button
+                  onClick={handleCargarEjemploSolcargo}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                  title="Cargar modelo de 12 personas de Solcargo (referencia de ejemplo)"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Modelo Ejemplo
+                </button>
+                <button
+                  onClick={handleLimpiarRecibosPrueba}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                  title="Reiniciar y limpiar los recibos de prueba"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-rose-600" /> Limpiar Pruebas
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                onClick={() => setViewFilter('todos')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewFilter === 'todos' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Todos ({currentQuincenaList.length})
-              </button>
-              <button
-                onClick={() => setViewFilter('pendientes')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Pendientes ({kpis.pendientesCount})
-              </button>
-              <button
-                onClick={() => setViewFilter('pagados')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                  viewFilter === 'pagados' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                Pagados ({kpis.pagadosCount})
-              </button>
+            {/* Fila 2: Buscador y Filtros de Estado */}
+            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+              <div className="relative w-full sm:w-80">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, cédula o cargo..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2 text-xs font-bold text-slate-800 outline-none focus:border-emerald-500 transition-all"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => setViewFilter('todos')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    viewFilter === 'todos' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todos ({currentQuincenaList.length})
+                </button>
+                <button
+                  onClick={() => setViewFilter('pendientes')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    viewFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 font-black' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Pendientes ({kpis.pendientesCount})
+                </button>
+                <button
+                  onClick={() => setViewFilter('pagados')}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    viewFilter === 'pagados' ? 'bg-emerald-600 text-white font-black' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Pagados ({kpis.pagadosCount})
+                </button>
+              </div>
             </div>
           </div>
 
@@ -698,51 +968,107 @@ export default function ModuloNominaJefatura() {
 
                         {/* Acciones */}
                         <td className="py-4 px-6 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            {/* Botón Editar / Ajustar conceptos */}
-                            <button
-                              onClick={() => handleEdit(recibo)}
-                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs cursor-pointer shadow-sm"
-                              title="Editar conceptos, días laborados o préstamos"
-                            >
-                              <Edit3 className="w-3.5 h-3.5 text-blue-600" /> Ajustar
-                            </button>
+                          {(() => {
+                            const empItem = plantillaPersonal.find(p => 
+                              p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+                              (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+                            );
+                            return (
+                              <div className="flex items-center justify-center gap-1.5">
+                                {/* Botón Editar / Ajustar conceptos */}
+                                <button
+                                  onClick={() => handleEdit(recibo)}
+                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer shadow-xs"
+                                  title="Ajustar conceptos, días laborados, bonos o préstamos de esta quincena"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" /> Ajustar
+                                </button>
 
-                            {/* Botón Emitir / Descargar */}
-                            {isPagado ? (
-                              <button
-                                onClick={() => handleDescargarPdf(recibo)}
-                                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
-                                title="Descargar Recibo Oficial en PDF (Doble Talón)"
-                              >
-                                <Download className="w-3.5 h-3.5" /> Recibo PDF
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleEmitirYMarcarPagado(recibo)}
-                                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
-                                title="Marcar como Pagado, Generar Recibo y Notificar al Empleado"
-                              >
-                                <CheckCheck className="w-3.5 h-3.5 text-emerald-300" /> Pagar & Emitir
-                              </button>
-                            )}
+                                {/* Botón Emitir / Descargar */}
+                                {isPagado ? (
+                                  <button
+                                    onClick={() => handleDescargarPdf(recibo)}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
+                                    title="Descargar Recibo Oficial en PDF (Doble Talón)"
+                                  >
+                                    <Download className="w-3.5 h-3.5" /> Recibo PDF
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleEmitirYMarcarPagado(recibo)}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
+                                    title="Marcar como Pagado, Generar Recibo y Notificar al Empleado"
+                                  >
+                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-300" /> Pagar & Emitir
+                                  </button>
+                                )}
 
-                            {isPagado && (
-                              <button
-                                onClick={() => handleEliminarRecibo(recibo.id, recibo.empleadoNombre)}
-                                className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                                title="Anular / Eliminar recibo"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
+                                {/* Editar datos base del trabajador */}
+                                {empItem && (
+                                  <button
+                                    onClick={() => handleAbrirEditarTrabajador(empItem)}
+                                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-lg transition-colors cursor-pointer"
+                                    title="Editar datos base del trabajador (sueldo mensual, banco, cargo)"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+
+                                {/* Quitar de nómina */}
+                                {empItem && (
+                                  <button
+                                    onClick={() => handleQuitarTrabajador(empItem)}
+                                    className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                    title="Quitar este trabajador de la nómina"
+                                  >
+                                    <UserMinus className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+
+                                {isPagado && (
+                                  <button
+                                    onClick={() => handleEliminarRecibo(recibo.id, recibo.empleadoNombre)}
+                                    className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                    title="Anular recibo emitido"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+
+              {filteredCurrentList.length === 0 && (
+                <div className="p-12 text-center">
+                  <div className="w-16 h-16 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-400 mb-4">
+                    <Users className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-base font-extrabold text-slate-800">No hay trabajadores en esta lista</h3>
+                  <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                    {searchQuery ? 'No se encontraron resultados para tu búsqueda.' : 'La nómina está vacía. Puedes registrar a tus trabajadores haciendo clic en "+ Agregar Trabajador" o cargar la plantilla oficial de Román & Delgado.'}
+                  </p>
+                  <div className="mt-5 flex items-center justify-center gap-3">
+                    <button
+                      onClick={handleAbrirAgregarTrabajador}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <UserPlus className="w-4 h-4" /> + Agregar Trabajador
+                    </button>
+                    <button
+                      onClick={handleRestaurarEquipoRD}
+                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4 text-amber-500" /> Cargar Equipo R&D
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -997,6 +1323,194 @@ export default function ModuloNominaJefatura() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Agregar / Editar Trabajador en Plantilla */}
+      {workerModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div 
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
+            role="dialog"
+            aria-modal="true"
+          >
+            {/* Header */}
+            <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-blue-500/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                  <UserPlus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    {editingWorker ? 'Editar Ficha del Trabajador' : 'Agregar Trabajador a Nómina'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {editingWorker ? 'Modifica los datos contractuales y bancarios' : 'Registra un miembro del despacho para liquidar su nómina'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setWorkerModalOpen(false)}
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <form onSubmit={handleGuardarTrabajador}>
+              <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+                {/* Nombre Completo */}
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                    Nombre Completo *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={workerForm.nombre}
+                    onChange={(e) => setWorkerForm({ ...workerForm, nombre: e.target.value })}
+                    placeholder="Ej: Carmen Luisa Delgado"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                  />
+                </div>
+
+                {/* Cédula y Cargo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Cédula de Identidad *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={workerForm.cedula}
+                      onChange={(e) => setWorkerForm({ ...workerForm, cedula: e.target.value })}
+                      placeholder="Ej: V-12.338.408"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Cargo / Puesto
+                    </label>
+                    <input
+                      type="text"
+                      value={workerForm.cargo}
+                      onChange={(e) => setWorkerForm({ ...workerForm, cargo: e.target.value })}
+                      placeholder="Ej: Abogada Asociada, Asistente"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Sueldo Mensual Base */}
+                <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <label className="text-xs font-extrabold uppercase tracking-wider text-emerald-900">
+                      Sueldo Base Mensual ($ USD) *
+                    </label>
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      Quincenal: $ {((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 font-extrabold text-sm">$</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      required
+                      value={workerForm.sueldoMensual || ''}
+                      onChange={(e) => setWorkerForm({ ...workerForm, sueldoMensual: Number(e.target.value) || 0 })}
+                      placeholder="200.00"
+                      className="w-full bg-white border border-emerald-300 rounded-xl pl-8 pr-4 py-2.5 text-sm font-black text-emerald-800 outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    />
+                  </div>
+                  <span className="text-[11px] text-emerald-700/80 mt-1 block">
+                    En cada quincena se calculará automáticamente el 50% de este sueldo base ($ {((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}).
+                  </span>
+                </div>
+
+                {/* Método de Pago y Banco */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Método de Pago
+                    </label>
+                    <select
+                      value={workerForm.tipoPago}
+                      onChange={(e) => setWorkerForm({ ...workerForm, tipoPago: e.target.value as any })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 cursor-pointer"
+                    >
+                      <option value="Pago Móvil">Pago Móvil</option>
+                      <option value="Transferencia">Transferencia Bancaria</option>
+                      <option value="Efectivo">Efectivo en Dólares ($)</option>
+                      <option value="Zelle">Zelle</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Banco Receptor
+                    </label>
+                    <input
+                      type="text"
+                      value={workerForm.banco}
+                      onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
+                      placeholder="Ej: Banesco, Mercantil, Venezuela"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Teléfono y Correo */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Teléfono / Pago Móvil (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={workerForm.telefono}
+                      onChange={(e) => setWorkerForm({ ...workerForm, telefono: e.target.value })}
+                      placeholder="0414-1234567"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                      Correo Electrónico (Opcional)
+                    </label>
+                    <input
+                      type="email"
+                      value={workerForm.email}
+                      onChange={(e) => setWorkerForm({ ...workerForm, email: e.target.value })}
+                      placeholder="empleado@gmail.com"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setWorkerModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <UserPlus className="w-4 h-4" /> {editingWorker ? 'Actualizar Ficha' : 'Guardar e Incorporar'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

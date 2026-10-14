@@ -57,10 +57,21 @@ export interface PlantillaEmpleadoNomina {
   sueldoMensual: number;
   banco: string;
   tipoPago: 'Transferencia' | 'Pago Móvil' | 'Efectivo' | 'Zelle' | 'Otro';
+  telefono?: string;
+  email?: string;
 }
 
-// Plantilla extraída directamente de la base de datos oficial del Excel de Román & Delgado
+// Plantilla oficial del Despacho Román & Delgado (Equipo Real)
 export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
+  { id: 'emp_carmen', nombre: 'Carmen Luisa Delgado', cedula: 'V-12.338.408', cargo: 'Abogada / Gestión de Despacho', sueldoMensual: 200, banco: 'Banesco', tipoPago: 'Pago Móvil', email: 'abgcarmendelgado.990@gmail.com' },
+  { id: 'emp_mariela', nombre: 'Mariela Isabel', cedula: 'V-15.421.890', cargo: 'Abogada Asociada', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil' },
+  { id: 'emp_hector', nombre: 'Héctor', cedula: 'V-22.189.543', cargo: 'Asistente Legal / Procurador', sueldoMensual: 200, banco: 'Venezuela', tipoPago: 'Pago Móvil' },
+  { id: 'emp_victor', nombre: 'Víctor Román', cedula: 'V-18.531.909', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Banesco', tipoPago: 'Transferencia' },
+  { id: 'emp_luis', nombre: 'Luis Delgado', cedula: 'V-25.451.018', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Mercantil', tipoPago: 'Transferencia' },
+];
+
+// Plantilla de Ejemplo Solcargo (Modelo de referencia opcional)
+export const PLANTILLA_EJEMPLO_SOLCARGO: PlantillaEmpleadoNomina[] = [
   { id: 'emp_1', nombre: 'Victor Roman', cedula: 'V-18.531.909', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Banesco', tipoPago: 'Transferencia' },
   { id: 'emp_2', nombre: 'Luis Delgado', cedula: 'V-25.451.018', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Mercantil', tipoPago: 'Transferencia' },
   { id: 'emp_3', nombre: 'Carlos Almeida', cedula: 'V-9.820.585', cargo: 'Abogado Asociado', sueldoMensual: 700, banco: 'Banesco', tipoPago: 'Transferencia' },

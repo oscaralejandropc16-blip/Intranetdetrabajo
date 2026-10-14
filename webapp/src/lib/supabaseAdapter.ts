@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import type { ReciboNomina } from '../types/nomina';
+import { type ReciboNomina, type PlantillaEmpleadoNomina, EMPLEADOS_NOMINA_DEFAULT } from '../types/nomina';
 
 export interface UserSession {
   token: string;
@@ -1937,4 +1937,89 @@ export async function supabaseEliminarReciboNomina(id: string): Promise<{ succes
 
   return { success: true };
 }
+
+export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNomina[]> {
+  try {
+    const { data, error } = await supabase
+      .from('investigaciones_kant')
+      .select('contenido')
+      .eq('categoria', 'nomina_plantilla')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (!error && data && data.length > 0) {
+      const raw = data[0].contenido;
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+  } catch (err) {}
+
+  try {
+    const rawLocal = localStorage.getItem('rd_nomina_plantilla_personal');
+    if (rawLocal) {
+      const parsed = JSON.parse(rawLocal);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {}
+
+  return EMPLEADOS_NOMINA_DEFAULT;
+}
+
+export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNomina[]): Promise<boolean> {
+  try {
+    localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(plantilla));
+  } catch (e) {}
+
+  try {
+    const { data: existing } = await supabase
+      .from('investigaciones_kant')
+      .select('id')
+      .eq('categoria', 'nomina_plantilla')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase
+        .from('investigaciones_kant')
+        .update({
+          contenido: JSON.stringify(plantilla),
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existing[0].id);
+    } else {
+      await supabase.from('investigaciones_kant').insert({
+        titulo: 'PLANTILLA_PERSONAL_NOMINA',
+        categoria: 'nomina_plantilla',
+        autor: 'Jefatura',
+        contenido: JSON.stringify(plantilla),
+        tags: ['plantilla', 'nomina', 'personal']
+      });
+    }
+    return true;
+  } catch (err) {
+    console.warn('Nota: plantilla guardada en local.');
+    return true;
+  }
+}
+
+export async function supabaseLimpiarTodosRecibosNomina(): Promise<{ success: boolean }> {
+  try {
+    localStorage.removeItem('rd_local_recibos_nomina');
+  } catch (e) {}
+
+  try {
+    await supabase.from('recibos_nomina').delete().neq('id', 'dummy');
+  } catch (e) {}
+
+  try {
+    await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina');
+  } catch (e) {}
+
+  return { success: true };
+}
+
 
