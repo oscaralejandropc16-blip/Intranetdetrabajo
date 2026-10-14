@@ -1779,6 +1779,7 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
   }
 
   // 2. Si no hay datos directos, consultar en investigaciones_kant (categoría recibo_nomina)
+  let supabaseQuerySuccess = false;
   if (recibosMap.size === 0) {
     try {
       const { data, error } = await supabase
@@ -1787,35 +1788,47 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
         .eq('categoria', 'recibo_nomina')
         .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data)) {
-        data.forEach((inv: any) => {
-          if (inv.contenido) {
-            try {
-              const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
-              if (parsed && parsed.id) {
-                recibosMap.set(String(parsed.id), parsed);
-              }
-            } catch (err) {}
-          }
-        });
+      if (!error) {
+        supabaseQuerySuccess = true;
+        if (Array.isArray(data)) {
+          data.forEach((inv: any) => {
+            if (inv.contenido) {
+              try {
+                const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+                if (parsed && parsed.id) {
+                  recibosMap.set(String(parsed.id), parsed);
+                }
+              } catch (err) {}
+            }
+          });
+        }
       }
     } catch (e) {}
+  } else {
+    supabaseQuerySuccess = true;
   }
 
-  // 3. Fusionar con caché local en localStorage para velocidad y soporte offline
-  try {
-    const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
-    if (rawLocal) {
-      const localList: ReciboNomina[] = JSON.parse(rawLocal);
-      if (Array.isArray(localList)) {
-        localList.forEach(item => {
-          if (!recibosMap.has(item.id)) {
-            recibosMap.set(item.id, item);
-          }
-        });
+  // 3. Respaldo offline / sincronización
+  if (!supabaseQuerySuccess) {
+    try {
+      const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+      if (rawLocal) {
+        const localList: ReciboNomina[] = JSON.parse(rawLocal);
+        if (Array.isArray(localList)) {
+          localList.forEach(item => {
+            if (!recibosMap.has(item.id)) {
+              recibosMap.set(item.id, item);
+            }
+          });
+        }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  } else {
+    // Si la consulta a Supabase fue exitosa, sincronizar la caché local para que coincida exactamente
+    try {
+      localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(Array.from(recibosMap.values())));
+    } catch (e) {}
+  }
 
   let list = Array.from(recibosMap.values());
 
@@ -1948,22 +1961,46 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
   return { success: true, data: recibo };
 }
 
-export async function supabaseEliminarReciboNomina(id: string): Promise<{ success: boolean }> {
+export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNomina): Promise<{ success: boolean }> {
+  const id = typeof idOrRecibo === 'string' ? idOrRecibo : idOrRecibo.id;
+  const numeroRecibo = typeof idOrRecibo === 'object' ? idOrRecibo.numeroRecibo : '';
+  const empleadoNombre = typeof idOrRecibo === 'object' ? idOrRecibo.empleadoNombre : '';
+  const quincena = typeof idOrRecibo === 'object' ? idOrRecibo.quincena : undefined;
+
+  // 1. Limpiar de localStorage local
   try {
     const raw = localStorage.getItem('rd_local_recibos_nomina');
     if (raw) {
       const list: ReciboNomina[] = JSON.parse(raw);
-      const filtered = list.filter(r => String(r.id) !== String(id));
+      const filtered = list.filter(r => {
+        if (id && String(r.id) === String(id)) return false;
+        if (numeroRecibo && r.numeroRecibo === numeroRecibo) return false;
+        if (empleadoNombre && r.empleadoNombre && r.empleadoNombre.toLowerCase().trim() === empleadoNombre.toLowerCase().trim()) {
+          if (quincena !== undefined && r.quincena === quincena) return false;
+          if (quincena === undefined) return false;
+        }
+        return true;
+      });
       localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(filtered));
     }
   } catch (e) {}
 
+  // 2. Intentar borrar en tabla recibos_nomina
   try {
-    await supabase.from('recibos_nomina').delete().eq('id', id);
+    if (id) await supabase.from('recibos_nomina').delete().eq('id', id);
   } catch (e) {}
 
+  // 3. Borrar de investigaciones_kant por categoria recibo_nomina
   try {
-    await supabase.from('investigaciones_kant').delete().ilike('titulo', `%RECIBO%${id}%`);
+    if (numeroRecibo) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${numeroRecibo}%`);
+    }
+    if (id) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${id}%`);
+    }
+    if (empleadoNombre) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${empleadoNombre}%`);
+    }
   } catch (e) {}
 
   return { success: true };

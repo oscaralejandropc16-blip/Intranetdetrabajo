@@ -536,17 +536,17 @@ export default function ModuloNominaJefatura() {
   };
 
   // Eliminar recibo (solo jefatura)
-  const handleEliminarRecibo = (id: string, nombre: string) => {
+  const handleEliminarRecibo = (reciboTarget: ReciboNomina) => {
     setSystemAlert({
       isOpen: true,
       type: 'warning',
       title: '¿Eliminar Recibo de Nómina?',
-      message: `¿Estás seguro de eliminar el registro de pago de ${nombre}? Esta acción no se puede deshacer.`,
+      message: `¿Estás seguro de eliminar el registro de pago de ${reciboTarget.empleadoNombre}? Esta acción no se puede deshacer.`,
       showCancel: true,
       confirmText: 'Sí, Eliminar',
       onConfirm: async () => {
         try {
-          await supabaseEliminarReciboNomina(id);
+          await supabaseEliminarReciboNomina(reciboTarget);
           await fetchRecibos();
         } catch (e) {}
       }
@@ -1072,7 +1072,7 @@ export default function ModuloNominaJefatura() {
 
                             {isPagado && (
                               <button
-                                onClick={() => handleEliminarRecibo(recibo.id, recibo.empleadoNombre)}
+                                onClick={() => handleEliminarRecibo(recibo)}
                                 className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
                                 title="Anular recibo emitido"
                               >
