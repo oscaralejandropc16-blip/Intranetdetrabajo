@@ -653,7 +653,7 @@ export default function ModuloNominaJefatura() {
                         </td>
 
                         {/* Cédula */}
-                        <td className="py-4 px-4 text-center font-bold text-slate-700">
+                        <td className="py-4 px-4 text-center font-bold text-slate-700 whitespace-nowrap">
                           {recibo.cedula}
                         </td>
 
