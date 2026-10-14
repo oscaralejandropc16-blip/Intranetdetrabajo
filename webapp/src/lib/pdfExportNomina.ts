@@ -55,15 +55,15 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
 
     const headerTextX = logoBase64 ? marginX + 22 : marginX;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(15, 23, 42); // slate-900
-    doc.text('ROMÁN & DELGADO  |  ABOGADOS', headerTextX, currentY + 4.5);
+    doc.text('ROMÁN & DELGADO, C.A', headerTextX, currentY + 4.2);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(6.8);
     doc.setTextColor(100, 116, 139); // slate-500
-    doc.text('SISTEMA INTEGRAL DE NÓMINA Y GESTIÓN LABORAL (KANT)', headerTextX, currentY + 8.5);
-    doc.text('RIF: J-50175917-0  •  Valencia, Venezuela', headerTextX, currentY + 12);
+    doc.text('RIF: J-50808205-2  •  Contribuyente Ordinario del IVA', headerTextX, currentY + 7.8);
+    doc.text('CC Multicentro Paseo El Parral, Nivel 8, Of. 8-6-D, Urb. El Parral, Valencia', headerTextX, currentY + 11.4);
 
     // Número de Recibo y Tipo de Talón en esquina derecha
     doc.setFont('helvetica', 'bold');

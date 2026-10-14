@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
   Sparkles, X, UserPlus, UserMinus,
   Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar,
-  Building2, Smartphone
+  Building2, Smartphone, MessageCircle, Mail
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -91,6 +91,7 @@ export default function ModuloNominaJefatura() {
   const [copiedMonto, setCopiedMonto] = useState<boolean>(false);
   const [editingInlineCuenta, setEditingInlineCuenta] = useState<boolean>(false);
   const [inlineCuentaVal, setInlineCuentaVal] = useState<string>('');
+  const [notificacionModal, setNotificacionModal] = useState<ReciboNomina | null>(null);
 
   // Alerta del sistema
   const [systemAlert, setSystemAlert] = useState<{
@@ -650,12 +651,8 @@ export default function ModuloNominaJefatura() {
         setEditingRecibo(null);
       }
 
-      setSystemAlert({
-        isOpen: true,
-        type: 'success',
-        title: '¡Nómina Pagada y Recibo Emitido!',
-        message: `Se ha registrado exitosamente el pago para ${reciboPagado.empleadoNombre} por $ ${reciboPagado.netoPagarUsd.toFixed(2)}. El recibo oficial se ha descargado y el trabajador ha recibido la notificación inmediata en su portal KANT.`
-      });
+      // Abrir modal interactivo para enviar por WhatsApp o Correo con 1 clic
+      setNotificacionModal(reciboPagado);
     } catch (err: any) {
       setSystemAlert({
         isOpen: true,
@@ -680,6 +677,81 @@ export default function ModuloNominaJefatura() {
         message: 'No se pudo compilar el PDF del recibo.'
       });
     }
+  };
+
+  // Generar texto formal y detallado para WhatsApp o Correo Electrónico
+  const generarTextoNotificacion = (recibo: ReciboNomina) => {
+    const netoBs = (recibo.netoPagarVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 });
+    const netoUsd = (recibo.netoPagarUsd || 0).toFixed(2);
+    const tasa = (recibo.tasaCambio || tasaCambio || 877.90).toFixed(2);
+    const periodo = `del ${recibo.periodoInicio} al ${recibo.periodoFin}`;
+    const modalidad = recibo.modalidadLiquidacion === 'mensual_completo' ? 'Sueldo Mensual Completo' : `Quincena (${recibo.quincena === 1 ? '1ra' : '2da'})`;
+    const refTxt = recibo.referenciaPago ? `\n* Referencia Bancaria: ${recibo.referenciaPago}` : '';
+    const numCta = recibo.numeroCuenta ? recibo.numeroCuenta.replace(/\D/g, '') : '';
+    const cuentaTxt = numCta.length >= 4 
+      ? `\n* Cuenta Destino: ${recibo.banco} (terminada en ••${numCta.slice(-4)})` 
+      : (recibo.banco ? `\n* Banco Receptor: ${recibo.banco}` : '');
+    const fechaTxt = recibo.fechaPago ? `\n* Fecha y Hora: ${recibo.fechaPago}` : '';
+
+    return `ROMÁN & DELGADO — ASESORES JURÍDICOS
+Comprobante de Liquidación de Nómina
+
+Estimado(a) ${recibo.empleadoNombre}:
+Le informamos que se ha procesado exitosamente la liquidación correspondiente a:
+
+* Período: ${periodo}
+* Modalidad: ${modalidad}
+* Monto Liquidado: Bs. ${netoBs} (Ref. $ ${netoUsd})
+* Tasa Oficial BCV: Bs. ${tasa}
+* Método de Pago: ${recibo.tipoPago}${cuentaTxt}${refTxt}${fechaTxt}
+
+El recibo oficial en PDF ha sido generado formalmente con membrete del despacho. Agradecemos acusar recibo al constatar los fondos en su cuenta.
+
+Atentamente,
+Jefatura — Román & Delgado`;
+  };
+
+  // Enviar notificación formal por WhatsApp a 1 clic (sin necesidad de tener usuario)
+  const handleEnviarWhatsApp = (recibo: ReciboNomina) => {
+    const empItem = plantillaPersonal.find(p => 
+      p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+      (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+    );
+    let tel = recibo.empleadoTelefono || empItem?.telefono || '';
+    if (!tel) {
+      const inputTel = window.prompt(`Ingresa el número de WhatsApp para ${recibo.empleadoNombre} (ej: 04141234567):`);
+      if (!inputTel) return;
+      tel = inputTel;
+    }
+
+    const clean = tel.replace(/\D/g, '');
+    let finalPhone = clean;
+    if (finalPhone.startsWith('0')) {
+      finalPhone = '58' + finalPhone.slice(1);
+    } else if (!finalPhone.startsWith('58')) {
+      finalPhone = '58' + finalPhone;
+    }
+
+    const text = encodeURIComponent(generarTextoNotificacion(recibo));
+    window.open(`https://wa.me/${finalPhone}?text=${text}`, '_blank');
+  };
+
+  // Enviar notificación formal por Correo Electrónico a 1 clic
+  const handleEnviarEmail = (recibo: ReciboNomina) => {
+    const empItem = plantillaPersonal.find(p => 
+      p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+      (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+    );
+    let email = recibo.empleadoEmail || empItem?.email || '';
+    if (!email) {
+      const inputEmail = window.prompt(`Ingresa el correo electrónico para ${recibo.empleadoNombre}:`);
+      if (!inputEmail) return;
+      email = inputEmail;
+    }
+
+    const subject = encodeURIComponent(`Comprobante de Pago de Nómina • ${recibo.periodoInicio} al ${recibo.periodoFin} • Román & Delgado`);
+    const body = encodeURIComponent(generarTextoNotificacion(recibo));
+    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_blank');
   };
 
   // Eliminar recibo (solo jefatura)
@@ -1162,7 +1234,22 @@ export default function ModuloNominaJefatura() {
                             className="flex-1 min-h-[42px] py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
                           >
                             <Download className="w-3.5 h-3.5" />
-                            <span>Recibo PDF</span>
+                            <span>PDF</span>
+                          </button>
+                          <button
+                            onClick={() => handleEnviarWhatsApp(recibo)}
+                            className="min-h-[42px] px-3.5 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer shadow-xs"
+                            title="Enviar por WhatsApp"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>WhatsApp</span>
+                          </button>
+                          <button
+                            onClick={() => handleEnviarEmail(recibo)}
+                            className="min-h-[42px] px-3 py-2 bg-sky-50 text-sky-700 border border-sky-200 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
+                            title="Enviar por Correo"
+                          >
+                            <Mail className="w-4 h-4 text-sky-600" />
                           </button>
                           {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
                             <button
@@ -1334,6 +1421,24 @@ export default function ModuloNominaJefatura() {
                                   title="Descargar Recibo Oficial en PDF (Doble Talón)"
                                 >
                                   <Download className="w-3.5 h-3.5" /> Recibo PDF
+                                </button>
+
+                                {/* Botón WhatsApp */}
+                                <button
+                                  onClick={() => handleEnviarWhatsApp(recibo)}
+                                  className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold flex items-center gap-1 transition-all text-xs shadow-xs cursor-pointer"
+                                  title="Enviar comprobante formal por WhatsApp a este trabajador"
+                                >
+                                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                                </button>
+
+                                {/* Botón Correo */}
+                                <button
+                                  onClick={() => handleEnviarEmail(recibo)}
+                                  className="p-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl font-bold transition-all text-xs cursor-pointer"
+                                  title="Enviar comprobante por Correo Electrónico"
+                                >
+                                  <Mail className="w-3.5 h-3.5 text-sky-600" />
                                 </button>
 
                                 {/* Botón Ver Capture si existe */}
@@ -2444,6 +2549,89 @@ export default function ModuloNominaJefatura() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Envío de Notificación Inmediata por WhatsApp / Correo */}
+      {notificacionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                  <CheckCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-sm sm:text-base text-white">Pago Emitido Exitosamente</h3>
+                  <p className="text-[11px] text-slate-400">Recibo oficial generado en PDF</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setNotificacionModal(null)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4">
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Trabajador Acreditado</span>
+                <div className="font-extrabold text-slate-900 text-base mt-0.5">{notificacionModal.empleadoNombre}</div>
+                <div className="flex justify-between items-center mt-3 pt-3 border-t border-slate-200/80">
+                  <div>
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Monto Liquidado</span>
+                    <span className="text-lg font-black text-emerald-600">
+                      Bs. {notificacionModal.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-500 block uppercase font-bold">Ref. USD</span>
+                    <span className="text-sm font-bold text-slate-800">$ {notificacionModal.netoPagarUsd.toFixed(2)}</span>
+                  </div>
+                </div>
+                {notificacionModal.referenciaPago && (
+                  <div className="mt-2 text-[11px] font-mono text-slate-600 font-bold">
+                    Ref. Bancaria: <span className="text-emerald-700">{notificacionModal.referenciaPago}</span>
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-slate-600 font-medium">
+                El comprobante en PDF ya ha sido descargado en tu dispositivo. Puedes enviar la notificación detallada al trabajador a través de:
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleEnviarWhatsApp(notificacionModal)}
+                  className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-emerald-600/25 transition-all cursor-pointer active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  <span>Enviar por WhatsApp</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleEnviarEmail(notificacionModal)}
+                  className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-sky-600/25 transition-all cursor-pointer active:scale-95"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>Enviar por Correo</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-50 px-6 py-3 border-t border-slate-200 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setNotificacionModal(null)}
+                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 rounded-lg transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}

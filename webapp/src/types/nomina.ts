@@ -11,6 +11,7 @@ export interface ReciboNomina {
   numeroRecibo: string; // ej: "RD-2026-0001"
   empleadoNombre: string;
   empleadoEmail?: string;
+  empleadoTelefono?: string;
   cedula: string;
   cargo: string;
   codTrabajador?: string;

@@ -132,14 +132,14 @@ export async function exportarReporteAsistenciaPDF(options: ExportAsistenciaOpti
   let currentY = 16;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(12);
   doc.setTextColor(15, 23, 42); // Gris oscuro casi negro
-  doc.text('ROMÁN & DELGADO ABOGADOS', marginX, currentY);
+  doc.text('ROMÁN & DELGADO, C.A', marginX, currentY);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
-  doc.text('Control Interno de Gestión y Asistencia Laboral', marginX, currentY + 4.5);
+  doc.text('RIF: J-50808205-2  •  CC Multicentro Paseo El Parral, Valencia  •  Control de Asistencia', marginX, currentY + 4.5);
 
   const todayFormatted = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
   doc.setFontSize(8);
