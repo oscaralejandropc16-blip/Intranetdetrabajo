@@ -1821,7 +1821,14 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     const filterClean = empleadoFilter.toLowerCase().trim();
     list = list.filter(r => {
       const nLower = (r.empleadoNombre || '').toLowerCase();
-      return nLower === filterClean || nLower.includes(filterClean) || filterClean.includes(nLower);
+      const emailLower = (r.empleadoEmail || '').toLowerCase();
+      if (nLower === filterClean || nLower.includes(filterClean) || filterClean.includes(nLower)) return true;
+      if (emailLower && (emailLower.includes(filterClean) || filterClean.includes(emailLower))) return true;
+      if (filterClean.includes('oscar') && (nLower.includes('oscar') || emailLower.includes('oscar'))) return true;
+      if (filterClean.includes('carmen') && (nLower.includes('carmen') || emailLower.includes('carmen'))) return true;
+      if (filterClean.includes('mariela') && (nLower.includes('mariela') || emailLower.includes('mariela'))) return true;
+      if (filterClean.includes('hector') && (nLower.includes('hector') || emailLower.includes('hector'))) return true;
+      return false;
     });
   }
 

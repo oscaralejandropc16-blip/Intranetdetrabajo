@@ -63,6 +63,7 @@ export interface PlantillaEmpleadoNomina {
 
 // Plantilla oficial del Despacho Román & Delgado (Equipo Real)
 export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
+  { id: 'emp_oscar', nombre: 'Oscar Alejandro Pérez Calzadilla', cedula: 'V-24.891.023', cargo: 'Sistemas & Tecnología', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil', email: 'oscarpc' },
   { id: 'emp_carmen', nombre: 'Carmen Luisa Delgado', cedula: 'V-12.338.408', cargo: 'Abogada / Gestión de Despacho', sueldoMensual: 200, banco: 'Banesco', tipoPago: 'Pago Móvil', email: 'abgcarmendelgado.990@gmail.com' },
   { id: 'emp_mariela', nombre: 'Mariela Isabel', cedula: 'V-15.421.890', cargo: 'Abogada Asociada', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil' },
   { id: 'emp_hector', nombre: 'Héctor', cedula: 'V-22.189.543', cargo: 'Asistente Legal / Procurador', sueldoMensual: 200, banco: 'Venezuela', tipoPago: 'Pago Móvil' },
