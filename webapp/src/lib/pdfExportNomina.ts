@@ -251,7 +251,7 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.2);
     doc.setTextColor(16, 185, 129);
-    doc.text(`✓ PAGADO • ${recibo.fechaPago || new Date().toLocaleDateString('es-VE')}`, marginX + 3, netY + 11.5);
+    doc.text(`PAGADO • ${recibo.fechaPago || new Date().toLocaleDateString('es-VE')}`, marginX + 3, netY + 11.5);
 
     // 6. Pie de Talón (Derecha): Cuadro de Neto a Pagar Destacado (Bolívares Protagonista)
     doc.setFillColor(15, 23, 42); // slate-900
@@ -295,7 +295,7 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(6.5);
   doc.setTextColor(148, 163, 184);
-  doc.text('✂  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  LÍNEA DE CORTE OFICIAL  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  ✂', pageWidth / 2, cutY - 1, { align: 'center' });
+  doc.text('------------------------------------------------ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -  LÍNEA DE CORTE OFICIAL  - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - ------------------------------------------------', pageWidth / 2, cutY - 1, { align: 'center' });
 
   // Dibujar Talón 2: COPIA (Abajo)
   drawVoucher(144, true);

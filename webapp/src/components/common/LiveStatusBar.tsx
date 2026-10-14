@@ -11,7 +11,8 @@ import {
   MapPin, 
   ChevronDown, 
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Calendar
 } from 'lucide-react';
 import { syncServerTime, getServerDateSync } from '../../lib/supabaseAdapter';
 import { 
@@ -280,12 +281,8 @@ export default function LiveStatusBar() {
           }`}
           title="Ver Efemérides de Venezuela y Feriados Legales"
         >
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform ${
-            todayEfemeride 
-              ? 'bg-amber-500/30 border border-amber-400/60 shadow-[0_0_8px_rgba(245,158,11,0.3)]' 
-              : 'bg-slate-800/80 border border-slate-700'
-          }`}>
-            {todayEfemeride ? todayEfemeride.icono : '🇻🇪'}
+          <div className="w-8 h-8 rounded-lg flex items-center justify-center text-lg shrink-0 group-hover:scale-110 transition-transform bg-amber-500/20 border border-amber-400/40 shadow-[0_0_8px_rgba(245,158,11,0.2)]">
+            <Calendar className="w-4 h-4 text-amber-400" />
           </div>
           <div className="min-w-0 max-w-[190px] sm:max-w-[220px]">
             <div className="flex items-center gap-1.5">
@@ -296,7 +293,7 @@ export default function LiveStatusBar() {
                     ? 'bg-amber-400 text-slate-950 border-amber-300' 
                     : 'bg-slate-800 text-amber-300 border-amber-500/30'
               }`}>
-                {simulatedDate ? '🧪 PRUEBA VZLA' : todayEfemeride ? 'HOY EN VENEZUELA' : 'EFEMÉRIDES VZLA'}
+                {simulatedDate ? 'PRUEBA VZLA' : todayEfemeride ? 'HOY EN VENEZUELA' : 'EFEMÉRIDES VZLA'}
               </span>
               {simulatedDate && (
                 <span
@@ -315,9 +312,9 @@ export default function LiveStatusBar() {
             </div>
             <p className="text-[11px] font-bold text-white leading-tight truncate mt-0.5">
               {todayEfemeride 
-                ? todayEfemeride.titulo 
+                ? todayEfemeride.titulo.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim() 
                 : proximaEfemeride 
-                  ? `${proximaEfemeride.icono} ${proximaEfemeride.titulo}` 
+                  ? proximaEfemeride.titulo.replace(/[\u{1F300}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\u{1F1E0}-\u{1F1FF}]/gu, '').trim() 
                   : 'Explorar Fechas Patrias & Legales'}
             </p>
           </div>

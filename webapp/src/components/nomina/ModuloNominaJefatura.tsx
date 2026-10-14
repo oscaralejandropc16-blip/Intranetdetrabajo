@@ -1132,7 +1132,7 @@ export default function ModuloNominaJefatura() {
                     {/* Modalidad si cobra fin de mes */}
                     {isMensual && (
                       <div className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-md inline-block">
-                        {isCobraFinMesQ1 ? '📅 Cobra el último (Mes Único)' : '⭐ Mes Completo (100%)'}
+                        {isCobraFinMesQ1 ? 'Cobra el último (Mes Único)' : 'Mes Completo (100%)'}
                       </div>
                     )}
 
@@ -1248,11 +1248,11 @@ export default function ModuloNominaJefatura() {
                             {isMensual && (
                               isCobraFinMesQ1 ? (
                                 <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-md text-[10px] font-bold">
-                                  📅 Cobra el último (Mes Único)
+                                  Cobra el último (Mes Único)
                                 </span>
                               ) : (
                                 <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md text-[10px] font-bold">
-                                  ⭐ Mes Completo (100%)
+                                  Mes Completo (100%)
                                 </span>
                               )
                             )}
@@ -1721,7 +1721,7 @@ export default function ModuloNominaJefatura() {
                               </div>
                             ) : !editingInlineCuenta ? (
                               <div className="text-xs text-amber-300 font-bold mt-0.5">
-                                ⚠️ No se ha registrado el número de cuenta de 20 dígitos
+                                No se ha registrado el número de cuenta de 20 dígitos
                               </div>
                             ) : null}
                           </div>
@@ -1797,7 +1797,7 @@ export default function ModuloNominaJefatura() {
                               ? 'bg-emerald-100 text-emerald-800' 
                               : 'bg-rose-100 text-rose-700 font-extrabold animate-pulse'
                           }`}>
-                            {isRefValida ? '✓ Referencia ingresada' : '⚠️ Requerido para emitir'}
+                            {isRefValida ? 'Referencia ingresada' : 'Requerido para emitir'}
                           </span>
                         )}
                       </div>
@@ -1815,7 +1815,7 @@ export default function ModuloNominaJefatura() {
                       />
                       {!isRefValida ? (
                         <p className="text-[11px] text-amber-800 font-bold flex items-center gap-1">
-                          <span>⚠️ Debes ingresar la referencia bancaria para poder confirmar y emitir el pago.</span>
+                          <span>Debes ingresar la referencia bancaria para poder confirmar y emitir el pago.</span>
                         </p>
                       ) : (
                         <p className="text-[11px] text-slate-500">
@@ -1844,7 +1844,7 @@ export default function ModuloNominaJefatura() {
                           <span className="text-xs font-bold text-slate-800 block truncate">
                             {editingRecibo.comprobanteNombre || 'Capture_Pago_Bancario.png'}
                           </span>
-                          <span className="text-[10px] text-emerald-600 font-bold block">✓ Comprobante listo para enviar</span>
+                          <span className="text-[10px] text-emerald-600 font-bold block">Comprobante listo para enviar</span>
                         </div>
                       </div>
 
@@ -2271,7 +2271,7 @@ export default function ModuloNominaJefatura() {
                           ? 'bg-emerald-100 text-emerald-800'
                           : 'bg-amber-100 text-amber-800'
                       }`}>
-                        {workerForm.numeroCuenta.replace(/\D/g, '').length}/20 dígitos {workerForm.numeroCuenta.replace(/\D/g, '').length === 20 ? '✓' : ''}
+                        {workerForm.numeroCuenta.replace(/\D/g, '').length}/20 dígitos {workerForm.numeroCuenta.replace(/\D/g, '').length === 20 ? '' : ''}
                       </span>
                     </div>
 
@@ -2330,7 +2330,7 @@ export default function ModuloNominaJefatura() {
                         className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-black text-slate-900 tracking-wider outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                       />
                       <span className="text-[10px] text-slate-500 mt-1 block">
-                        💡 Este número se mostrará en el Centro de Pagos con un botón de 1 clic para copiarlo y pegarlo directamente en el portal del banco.
+                        Este número se mostrará en el Centro de Pagos con un botón de 1 clic para copiarlo y pegarlo directamente en el portal del banco.
                       </span>
                     </div>
                   </div>

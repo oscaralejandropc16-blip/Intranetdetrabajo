@@ -2921,11 +2921,11 @@ export default function AdminDashboard() {
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin className="w-4 h-4 text-emerald-500" /> GPS Entrada</p>
                     {selectedReport.ubicacionEntrada?.includes('GPS Verificado') ? (
                       <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase tracking-wider">
-                        🛰️ Verificado
+                        GPS Verificado
                       </span>
                     ) : selectedReport.ubicacionEntrada?.includes('Red IP') ? (
                       <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
-                        ⚠️ Red IP
+                        Red IP
                       </span>
                     ) : null}
                   </div>
@@ -2951,11 +2951,11 @@ export default function AdminDashboard() {
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5"><MapPin className="w-4 h-4 text-rose-500" /> GPS Salida</p>
                     {selectedReport.ubicacionSalida?.includes('GPS Verificado') ? (
                       <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[9px] font-black rounded-full uppercase tracking-wider">
-                        🛰️ Verificado
+                        GPS Verificado
                       </span>
                     ) : selectedReport.ubicacionSalida?.includes('Red IP') ? (
                       <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
-                        ⚠️ Red IP
+                        Red IP
                       </span>
                     ) : null}
                   </div>

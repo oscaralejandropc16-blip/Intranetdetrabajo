@@ -1502,9 +1502,9 @@ export default function EmployeeDashboard() {
           const isCaracasNode = parts[1].toLowerCase().includes('caracas');
           const cityDisplay = isCaracasNode ? defaultCity : parts[1];
           const coordsDisplay = isCaracasNode ? defaultCoords : parts[0];
-          resolve(`${coordsDisplay}|||${cityDisplay} (🌐 Red IP NetUno/CANTV - ${reason})`);
+          resolve(`${coordsDisplay}|||${cityDisplay} (Red IP NetUno/CANTV - ${reason})`);
         } else {
-          resolve(`${defaultCoords}|||${defaultCity} (🌐 Red IP - ${reason})`);
+          resolve(`${defaultCoords}|||${defaultCity} (Red IP - ${reason})`);
         }
       };
 
@@ -1570,7 +1570,7 @@ export default function EmployeeDashboard() {
             if (!cityName || cityName.includes('10.') || cityName === 'Venezuela') {
               cityName = 'Valencia, Carabobo';
             }
-            resolve(`${coordsStr}|||${cityName} (🛰️ GPS Verificado ±${accuracy}m)`);
+            resolve(`${coordsStr}|||${cityName} (GPS Verificado ±${accuracy}m)`);
           } catch {
             finishWithFallback('Error al geocodificar coordenadas');
           }
@@ -1934,7 +1934,7 @@ export default function EmployeeDashboard() {
                                     isOpen: true,
                                     type: 'info',
                                     title: 'Ubicación Registrada en Valencia (Red IP)',
-                                    message: 'Se ha registrado tu asistencia en Valencia mediante la red IP de tu conexión. Si deseas que Jefatura vea el sello satelital "GPS Verificado", haz clic en el ícono del pin 📍 arriba en la barra de tu navegador (Chrome) y activa el permiso de ubicación.'
+                                    message: 'Se ha registrado tu asistencia en Valencia mediante la red IP de tu conexión. Si deseas que Jefatura vea el sello satelital "GPS Verificado", haz clic en el ícono del pin de ubicación arriba en la barra de tu navegador (Chrome) y activa el permiso de ubicación.'
                                   });
                                 } else {
                                   setSystemAlert({
@@ -1977,7 +1977,7 @@ export default function EmployeeDashboard() {
                         title="Haz clic para volver a detectar tu ubicación satelital / IP"
                       >
                         <MapPin className="w-3.5 h-3.5 text-amber-600 animate-bounce" />
-                        <span>📍 Falta Ubicación (Clic para detectar)</span>
+                        <span>Falta Ubicación (Clic para detectar)</span>
                       </button>
                     )}
                   </div>
