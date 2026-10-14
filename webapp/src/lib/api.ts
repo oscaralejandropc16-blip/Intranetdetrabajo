@@ -28,9 +28,18 @@ import {
   supabaseUploadFile,
   supabaseResetUserDay,
   supabaseResetTestData,
-  checkIsJefatura
+  checkIsJefatura,
+  supabaseGetRecibosNomina,
+  supabaseSaveReciboNomina,
+  supabaseEliminarReciboNomina
 } from './supabaseAdapter';
 import { supabase } from './supabase';
+
+export {
+  supabaseGetRecibosNomina,
+  supabaseSaveReciboNomina,
+  supabaseEliminarReciboNomina
+};
 
 // Axios instance para compatibilidad
 const api = axios.create({
@@ -110,6 +119,12 @@ api.get = async function (url: string, config?: any) {
     if (cleanUrl.endsWith('/mensajes-jefatura')) {
       const msgs = await supabaseGetChatMessages();
       return { data: msgs, status: 200 };
+    }
+
+    // 7. Nómina y Recibos de Pago
+    if (cleanUrl.endsWith('/nomina/recibos') || cleanUrl.endsWith('/recibos-nomina')) {
+      const recibos = await supabaseGetRecibosNomina(params.empleado || params.user || params.author);
+      return { data: recibos, status: 200 };
     }
 
     // Por defecto, retornar array vacío para endpoints no mapeados
@@ -215,6 +230,14 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
     }
     if (cleanEndpoint.endsWith('/reset-test-data')) {
       return await supabaseResetTestData();
+    }
+
+    // 10. Nómina y Recibos de Pago
+    if (cleanEndpoint.endsWith('/nomina/recibo') || cleanEndpoint.endsWith('/guardar-recibo-nomina')) {
+      return await supabaseSaveReciboNomina(data as any);
+    }
+    if (cleanEndpoint.endsWith('/nomina/eliminar-recibo')) {
+      return await supabaseEliminarReciboNomina(data.id);
     }
 
     console.warn('Endpoint no interceptado en Supabase submitToServer:', endpoint);

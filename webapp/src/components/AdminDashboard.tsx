@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -12,6 +12,7 @@ import TabHistorial from './employee/TabHistorial';
 import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
+import ModuloNominaJefatura from './nomina/ModuloNominaJefatura';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
@@ -280,7 +281,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina'>(() => {
     const saved = sessionStorage.getItem('rd_admin_active_view');
     if (saved === 'agenda') return 'bitacoras';
     return (saved as any) || 'bitacoras';
@@ -1581,6 +1582,18 @@ export default function AdminDashboard() {
           )}
         </button>
 
+        {/* NÓMINA & RECIBOS DE PAGO */}
+        <button
+          onClick={() => setActiveView('nomina')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'nomina' 
+              ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white font-black shadow-[0_4px_22px_-2px_rgba(16,185,129,0.55)] ring-1 ring-emerald-400 scale-[1.02]' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/60 font-bold'
+          }`}
+        >
+          <Wallet className={`w-4 h-4 ${activeView === 'nomina' ? 'text-white' : 'text-emerald-600'}`} /> Nómina & Recibos
+        </button>
+
         {/* ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
         <button
           onClick={() => setActiveView('biblioteca')}
@@ -2809,6 +2822,11 @@ export default function AdminDashboard() {
       {/* VISTA: GASTOS Y REEMBOLSOS (DESEMBOLSOS DE TRÁMITES) */}
       {activeView === 'gastos' && (
         <ModuloGastos isJefatura={true} />
+      )}
+
+      {/* VISTA: CONTROL Y LIQUIDACIÓN DE NÓMINA (ROMÁN & DELGADO) */}
+      {activeView === 'nomina' && (
+        <ModuloNominaJefatura />
       )}
 
       {/* VISTA: ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}

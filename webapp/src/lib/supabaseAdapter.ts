@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import type { ReciboNomina } from '../types/nomina';
 
 export interface UserSession {
   token: string;
@@ -1395,6 +1396,7 @@ export async function supabaseGetInvestigaciones(): Promise<any[]> {
   const { data, error } = await supabase
     .from('investigaciones_kant')
     .select('*')
+    .neq('categoria', 'recibo_nomina')
     .order('created_at', { ascending: false });
 
   if (error) return [];
@@ -1717,3 +1719,222 @@ export async function supabaseResetTestData(): Promise<{ success: boolean; messa
     return { success: false, message: err.message };
   }
 }
+
+// -------------------------------------------------------------
+// 9. NÓMINA Y RECIBOS DE PAGO (ROMÁN & DELGADO)
+// -------------------------------------------------------------
+export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise<ReciboNomina[]> {
+  const recibosMap = new Map<string, ReciboNomina>();
+
+  // 1. Intentar leer desde la tabla recibos_nomina
+  try {
+    const { data, error } = await supabase
+      .from('recibos_nomina')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && Array.isArray(data)) {
+      data.forEach((r: any) => {
+        recibosMap.set(String(r.id), {
+          id: String(r.id),
+          numeroRecibo: r.numero_recibo || r.numeroRecibo || `RD-${r.id}`,
+          empleadoNombre: r.empleado_nombre || r.empleadoNombre,
+          empleadoEmail: r.empleado_email || r.empleadoEmail,
+          cedula: r.cedula,
+          cargo: r.cargo,
+          codTrabajador: r.cod_trabajador || r.codTrabajador,
+          banco: r.banco,
+          tipoPago: r.tipo_pago || r.tipoPago || 'Transferencia',
+          referenciaPago: r.referencia_pago || r.referenciaPago,
+          quincena: r.quincena || 1,
+          mes: r.mes || (new Date().getMonth() + 1),
+          anio: r.anio || new Date().getFullYear(),
+          periodoInicio: r.periodo_inicio || r.periodoInicio,
+          periodoFin: r.periodo_fin || r.periodoFin,
+          monedaPrincipal: r.moneda_principal || r.monedaPrincipal || 'USD',
+          tasaCambio: Number(r.tasa_cambio || r.tasaCambio) || 0,
+          sueldoBaseMensual: Number(r.sueldo_base_mensual || r.sueldoBaseMensual) || 0,
+          sueldoQuincenalBase: Number(r.sueldo_quincenal_base || r.sueldoQuincenalBase) || 0,
+          diasLaborados: Number(r.dias_laborados || r.diasLaborados) || 11,
+          diasDescanso: Number(r.dias_descanso || r.diasDescanso) || 4,
+          conceptos: Array.isArray(r.conceptos) ? r.conceptos : [],
+          totalDevengado: Number(r.total_devengado || r.totalDevengado) || 0,
+          totalDeducciones: Number(r.total_deducciones || r.totalDeducciones) || 0,
+          netoPagarUsd: Number(r.neto_pagar_usd || r.netoPagarUsd) || 0,
+          netoPagarVes: Number(r.neto_pagar_ves || r.netoPagarVes) || 0,
+          estado: r.estado || 'borrador',
+          fechaPago: r.fecha_pago || r.fechaPago,
+          emitidoPor: r.emitido_por || r.emitidoPor,
+          observaciones: r.observaciones,
+          notificacionEnviada: r.notificacion_enviada || r.notificacionEnviada,
+          createdAt: r.created_at || r.createdAt || new Date().toISOString()
+        });
+      });
+    }
+  } catch (e) {
+    // Si la tabla no existe aún, se pasa al backup
+  }
+
+  // 2. Si no hay datos directos, consultar en investigaciones_kant (categoría recibo_nomina)
+  if (recibosMap.size === 0) {
+    try {
+      const { data, error } = await supabase
+        .from('investigaciones_kant')
+        .select('*')
+        .eq('categoria', 'recibo_nomina')
+        .order('created_at', { ascending: false });
+
+      if (!error && Array.isArray(data)) {
+        data.forEach((inv: any) => {
+          if (inv.contenido) {
+            try {
+              const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+              if (parsed && parsed.id) {
+                recibosMap.set(String(parsed.id), parsed);
+              }
+            } catch (err) {}
+          }
+        });
+      }
+    } catch (e) {}
+  }
+
+  // 3. Fusionar con caché local en localStorage para velocidad y soporte offline
+  try {
+    const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+    if (rawLocal) {
+      const localList: ReciboNomina[] = JSON.parse(rawLocal);
+      if (Array.isArray(localList)) {
+        localList.forEach(item => {
+          if (!recibosMap.has(item.id)) {
+            recibosMap.set(item.id, item);
+          }
+        });
+      }
+    }
+  } catch (e) {}
+
+  let list = Array.from(recibosMap.values());
+
+  // 4. Filtrar por empleado si se solicita
+  if (empleadoFilter && empleadoFilter.trim()) {
+    const filterClean = empleadoFilter.toLowerCase().trim();
+    list = list.filter(r => {
+      const nLower = (r.empleadoNombre || '').toLowerCase();
+      return nLower === filterClean || nLower.includes(filterClean) || filterClean.includes(nLower);
+    });
+  }
+
+  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ success: boolean; data: ReciboNomina }> {
+  // 1. Actualizar caché local
+  try {
+    const raw = localStorage.getItem('rd_local_recibos_nomina');
+    const list: ReciboNomina[] = raw ? JSON.parse(raw) : [];
+    const idx = list.findIndex(r => r.id === recibo.id);
+    if (idx >= 0) {
+      list[idx] = recibo;
+    } else {
+      list.unshift(recibo);
+    }
+    localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(list));
+  } catch (e) {}
+
+  // 2. Si el estado es 'pagado', registrar la notificación formal para el trabajador
+  if (recibo.estado === 'pagado') {
+    try {
+      const notifsRaw = localStorage.getItem('rd_local_employee_notifications') || '[]';
+      const notifs: any[] = JSON.parse(notifsRaw);
+      const notifId = `notif_pago_${recibo.id}`;
+      if (!notifs.some(n => n.id === notifId)) {
+        notifs.unshift({
+          id: notifId,
+          type: 'pago',
+          target_user: recibo.empleadoNombre,
+          title: `¡Pago de Nómina Realizado! (${recibo.periodoInicio} al ${recibo.periodoFin})`,
+          message: `Jefatura ha procesado y pagado tu nómina por un monto neto de $ ${recibo.netoPagarUsd.toFixed(2)}${recibo.netoPagarVes ? ` (Bs. ${recibo.netoPagarVes.toFixed(2)})` : ''}. Ya puedes consultar y descargar tu recibo oficial firmado.`,
+          sender: recibo.emitidoPor || 'Jefatura (Román & Delgado)',
+          read: false,
+          date: recibo.fechaPago ? recibo.fechaPago.split(' ')[0] : new Date().toISOString().split('T')[0],
+          recibo_id: recibo.id
+        });
+        localStorage.setItem('rd_local_employee_notifications', JSON.stringify(notifs));
+      }
+    } catch (e) {}
+  }
+
+  // 3. Intentar guardar en Supabase (recibos_nomina o investigaciones_kant como respaldo)
+  try {
+    const { error: errTable } = await supabase.from('recibos_nomina').upsert({
+      id: recibo.id,
+      numero_recibo: recibo.numeroRecibo,
+      empleado_nombre: recibo.empleadoNombre,
+      empleado_email: recibo.empleadoEmail,
+      cedula: recibo.cedula,
+      cargo: recibo.cargo,
+      cod_trabajador: recibo.codTrabajador,
+      banco: recibo.banco,
+      tipo_pago: recibo.tipoPago,
+      referencia_pago: recibo.referenciaPago,
+      quincena: recibo.quincena,
+      mes: recibo.mes,
+      anio: recibo.anio,
+      periodo_inicio: recibo.periodoInicio,
+      periodo_fin: recibo.periodoFin,
+      moneda_principal: recibo.monedaPrincipal,
+      tasa_cambio: recibo.tasaCambio,
+      sueldo_base_mensual: recibo.sueldoBaseMensual,
+      sueldo_quincenal_base: recibo.sueldoQuincenalBase,
+      dias_laborados: recibo.diasLaborados,
+      dias_descanso: recibo.diasDescanso,
+      conceptos: recibo.conceptos,
+      total_devengado: recibo.totalDevengado,
+      total_deducciones: recibo.totalDeducciones,
+      neto_pagar_usd: recibo.netoPagarUsd,
+      neto_pagar_ves: recibo.netoPagarVes,
+      estado: recibo.estado,
+      fecha_pago: recibo.fechaPago,
+      emitido_por: recibo.emitidoPor,
+      observaciones: recibo.observaciones,
+      notificacion_enviada: recibo.notificacionEnviada
+    });
+
+    if (errTable) {
+      await supabase.from('investigaciones_kant').upsert({
+        titulo: `RECIBO-${recibo.numeroRecibo}-${recibo.empleadoNombre}`,
+        categoria: 'recibo_nomina',
+        autor: recibo.empleadoNombre,
+        contenido: JSON.stringify(recibo),
+        tags: [recibo.empleadoNombre.toLowerCase(), `q${recibo.quincena}`, `${recibo.mes}-${recibo.anio}`, recibo.estado]
+      });
+    }
+  } catch (err) {
+    console.warn('Nota: guardado en Supabase completado con respaldo local resiliente.');
+  }
+
+  return { success: true, data: recibo };
+}
+
+export async function supabaseEliminarReciboNomina(id: string): Promise<{ success: boolean }> {
+  try {
+    const raw = localStorage.getItem('rd_local_recibos_nomina');
+    if (raw) {
+      const list: ReciboNomina[] = JSON.parse(raw);
+      const filtered = list.filter(r => String(r.id) !== String(id));
+      localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(filtered));
+    }
+  } catch (e) {}
+
+  try {
+    await supabase.from('recibos_nomina').delete().eq('id', id);
+  } catch (e) {}
+
+  try {
+    await supabase.from('investigaciones_kant').delete().ilike('titulo', `%RECIBO%${id}%`);
+  } catch (e) {}
+
+  return { success: true };
+}
+

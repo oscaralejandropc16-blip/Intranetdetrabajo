@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
@@ -12,6 +12,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
+import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
@@ -521,6 +522,36 @@ export default function EmployeeDashboard() {
           });
         }
       }
+
+      // 5. Notificaciones de Pago de Nómina para el Empleado
+      try {
+        const notifsRaw = localStorage.getItem('rd_local_employee_notifications');
+        if (notifsRaw) {
+          const list = JSON.parse(notifsRaw);
+          if (Array.isArray(list)) {
+            const curUser = (localStorage.getItem('rd_user_name') || 'carmen').toLowerCase().trim();
+            list.forEach((item: any) => {
+              const target = (item.target_user || '').toLowerCase().trim();
+              if (!target || target === curUser || curUser.includes(target) || target.includes(curUser)) {
+                const notifId = item.id;
+                const isRead = item.read || localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                if (!allNotifs.some(n => String(n.id) === String(notifId))) {
+                  allNotifs.unshift({
+                    id: notifId,
+                    type: 'pago',
+                    title: item.title || '¡Pago de Nómina Realizado!',
+                    message: item.message,
+                    sender: item.sender || 'Jefatura (Román & Delgado)',
+                    read: isRead,
+                    date: item.date,
+                    recibo_id: item.recibo_id
+                  });
+                }
+              }
+            });
+          }
+        }
+      } catch (e) {}
 
       // Deduplicar notificaciones respetando estado leído
       const uniqueNotifs = allNotifs.filter((item, index, self) => 
@@ -1206,10 +1237,10 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial') return saved;
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina') return saved;
     return 'jornada';
   });
   const [unreadChatLive, setUnreadChatLive] = useState(0);
@@ -1709,6 +1740,18 @@ export default function EmployeeDashboard() {
         </button>
 
         <button 
+          onClick={() => setActiveTab('nomina')}
+          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+            activeTab === 'nomina' 
+              ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white font-black shadow-md shadow-emerald-500/20 ring-1 ring-emerald-400' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+          }`}
+        >
+          <Wallet className={`w-3.5 h-3.5 ${activeTab === 'nomina' ? 'text-white' : 'text-emerald-600'} shrink-0`} />
+          <span>Mis Recibos de Nómina</span>
+        </button>
+
+        <button 
           onClick={() => setActiveTab('notificaciones')}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'notificaciones' 
@@ -2067,10 +2110,19 @@ export default function EmployeeDashboard() {
           <ModuloGastos isJefatura={false} globalExpedientes={globalExpedientes} />
         )}
 
+        {/* VISTA: MIS RECIBOS DE NÓMINA (ROMÁN & DELGADO) */}
+        {activeTab === 'nomina' && (
+          <ModuloNominaEmpleado />
+        )}
+
         {/* VISTA 3: BUZÓN (ANCHO COMPLETO) */}
         {activeTab === 'notificaciones' && (
           <div className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-200">
-            <NotificationPanel notifications={notifications} setNotifications={setNotifications} />
+            <NotificationPanel 
+              notifications={notifications} 
+              setNotifications={setNotifications} 
+              onNavigate={setActiveTab}
+            />
           </div>
         )}
 

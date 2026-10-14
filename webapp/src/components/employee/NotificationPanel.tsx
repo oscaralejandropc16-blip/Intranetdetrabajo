@@ -13,7 +13,8 @@ import {
   Calendar, 
   CornerDownRight,
   ShieldCheck,
-  X
+  X,
+  Wallet
 } from 'lucide-react';
 import { WhatsAppStyleChat, checkIsFromBoss } from '../chat/WhatsAppStyleChat';
 import { normalizeSupervisorName } from '../../lib/supabaseAdapter';
@@ -28,6 +29,7 @@ export interface Notification {
   read: boolean;
   date?: string;
   detalles?: string[];
+  recibo_id?: string;
   respuestas?: Array<{
     id: string;
     mensaje: string;
@@ -39,9 +41,10 @@ export interface Notification {
 interface NotificationPanelProps {
   notifications: Notification[];
   setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  onNavigate?: (tab: any) => void;
 }
 
-export default function NotificationPanel({ notifications, setNotifications }: NotificationPanelProps) {
+export default function NotificationPanel({ notifications, setNotifications, onNavigate }: NotificationPanelProps) {
   const [filterTab, setFilterTab] = useState<'unread' | 'read' | 'all'>('unread');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -182,6 +185,13 @@ export default function NotificationPanel({ notifications, setNotifications }: N
           <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider rounded-full border border-amber-200 flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
             Instrucción de Tarea
+          </span>
+        );
+      case 'pago':
+        return (
+          <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-950 text-[10px] font-black uppercase tracking-wider rounded-full border border-emerald-300 flex items-center gap-1 shadow-xs animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+            Pago de Nómina Realizado
           </span>
         );
       default:
@@ -389,7 +399,7 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
                       isUnread
-                        ? notif.type === 'approval'
+                        ? notif.type === 'approval' || notif.type === 'pago'
                           ? 'bg-emerald-600 text-white'
                           : notif.type === 'changes'
                           ? 'bg-rose-500 text-white'
@@ -400,6 +410,8 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                     }`}>
                       {notif.type === 'approval' ? (
                         <CheckCircle2 className="w-4 h-4" />
+                      ) : notif.type === 'pago' ? (
+                        <Wallet className="w-4 h-4 animate-bounce" />
                       ) : notif.type === 'changes' ? (
                         <Sparkles className="w-4 h-4" />
                       ) : notif.type === 'instruction' ? (
@@ -427,7 +439,27 @@ export default function NotificationPanel({ notifications, setNotifications }: N
                       </h4>
 
                       {/* Mensaje Principal o Detalles */}
-                      {notif.type === 'approval' ? (
+                      {notif.type === 'pago' ? (
+                        <div className="mt-1.5 p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-950 space-y-2">
+                          <p className="font-bold flex items-center gap-1.5 text-emerald-900">
+                            <Wallet className="w-4 h-4 text-emerald-600" /> Comprobante Oficial Disponible
+                          </p>
+                          <p className="text-[11px] text-emerald-800 font-medium">
+                            {notif.message}
+                          </p>
+                          {onNavigate && (
+                            <button
+                              onClick={() => {
+                                handleMarkAsRead(notif.id);
+                                onNavigate('nomina');
+                              }}
+                              className="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+                            >
+                              <Wallet className="w-3.5 h-3.5" /> Ir a Mis Recibos de Nómina
+                            </button>
+                          )}
+                        </div>
+                      ) : notif.type === 'approval' ? (
                         <div className="mt-1.5 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-950 space-y-1">
                           <p className="font-bold flex items-center gap-1.5 text-emerald-900">
                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Revisión y aprobación completada
