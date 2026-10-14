@@ -4,22 +4,20 @@ import {
   Download, Edit3, Trash2, Plus, Search, 
   RefreshCw, FileText, 
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
-  Sparkles, X, UserPlus, UserMinus, RotateCcw
+  Sparkles, X, UserPlus, UserMinus
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
   type PlantillaEmpleadoNomina, 
   type ConceptoNomina,
-  EMPLEADOS_NOMINA_DEFAULT,
-  PLANTILLA_EJEMPLO_SOLCARGO
+  EMPLEADOS_NOMINA_DEFAULT
 } from '../../types/nomina';
 import { 
   supabaseGetRecibosNomina, 
   supabaseSaveReciboNomina, 
   supabaseEliminarReciboNomina,
   supabaseGetPlantillaNomina,
-  supabaseSavePlantillaNomina,
-  supabaseLimpiarTodosRecibosNomina
+  supabaseSavePlantillaNomina
 } from '../../lib/supabaseAdapter';
 import { exportarReciboNominaPDF } from '../../lib/pdfExportNomina';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -549,76 +547,6 @@ export default function ModuloNominaJefatura() {
     });
   };
 
-  // Restaurar plantilla con equipo oficial de Román & Delgado
-  const handleRestaurarEquipoRD = () => {
-    setSystemAlert({
-      isOpen: true,
-      type: 'info',
-      title: '¿Cargar Equipo Román & Delgado?',
-      message: 'Se cargará la plantilla oficial con el equipo real del despacho (Carmen Luisa Delgado, Mariela Isabel, Héctor, Víctor Román y Luis Delgado).',
-      showCancel: true,
-      confirmText: 'Sí, Cargar Equipo Real',
-      onConfirm: async () => {
-        setPlantillaPersonal(EMPLEADOS_NOMINA_DEFAULT);
-        await supabaseSavePlantillaNomina(EMPLEADOS_NOMINA_DEFAULT);
-      }
-    });
-  };
-
-  // Vaciar lista de trabajadores
-  const handleVaciarPlantilla = () => {
-    setSystemAlert({
-      isOpen: true,
-      type: 'warning',
-      title: '¿Vaciar Lista de Nómina?',
-      message: 'Se removerán todos los trabajadores de la lista activa para que puedas ingresar solo a tu personal.',
-      showCancel: true,
-      confirmText: 'Sí, Vaciar Todo',
-      onConfirm: async () => {
-        setPlantillaPersonal([]);
-        await supabaseSavePlantillaNomina([]);
-      }
-    });
-  };
-
-  // Cargar modelo de ejemplo de Solcargo
-  const handleCargarEjemploSolcargo = () => {
-    setSystemAlert({
-      isOpen: true,
-      type: 'info',
-      title: '¿Cargar Modelo de Ejemplo Solcargo?',
-      message: 'Se cargará la lista de 12 trabajadores de muestra extraída del archivo Excel de ejemplo para pruebas.',
-      showCancel: true,
-      confirmText: 'Cargar Modelo de Ejemplo',
-      onConfirm: async () => {
-        setPlantillaPersonal(PLANTILLA_EJEMPLO_SOLCARGO);
-        await supabaseSavePlantillaNomina(PLANTILLA_EJEMPLO_SOLCARGO);
-      }
-    });
-  };
-
-  // Limpiar todos los recibos de prueba
-  const handleLimpiarRecibosPrueba = () => {
-    setSystemAlert({
-      isOpen: true,
-      type: 'warning',
-      title: '¿Limpiar Recibos de Prueba?',
-      message: 'Esta acción reiniciará todos los pagos de prueba emitidos para que la nómina quede limpia (0 personal pagado).',
-      showCancel: true,
-      confirmText: 'Limpiar Todo',
-      onConfirm: async () => {
-        await supabaseLimpiarTodosRecibosNomina();
-        await fetchRecibos();
-        setSystemAlert({
-          isOpen: true,
-          type: 'success',
-          title: 'Historial Limpio',
-          message: 'Se han reiniciado los recibos de prueba. La quincena actual está completamente limpia.'
-        });
-      }
-    });
-  };
-
   // Historial global de recibos emitidos (todas las quincenas)
   const recibosHistorial = useMemo(() => {
     return recibos.filter(r => r.estado === 'pagado');
@@ -802,57 +730,21 @@ export default function ModuloNominaJefatura() {
           </div>
 
           {/* 3. Acciones de Nómina, Búsqueda y Filtros */}
-          <div className="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-            {/* Fila 1: Botón Principal de Agregar + Presets Rápidos */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3 pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={handleAbrirAgregarTrabajador}
-                  className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs flex items-center gap-2 shadow-md shadow-blue-600/25 transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <UserPlus className="w-4 h-4" /> + Agregar Trabajador a Nómina
-                </button>
-                <span className="text-xs font-bold text-slate-400 hidden sm:inline">
-                  {plantillaPersonal.length} registrados
-                </span>
-              </div>
-
-              {/* Botones de Gestión de Plantilla */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <button
-                  onClick={handleRestaurarEquipoRD}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                  title="Cargar el equipo real del despacho Román & Delgado"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-500" /> Equipo R&D Real
-                </button>
-                <button
-                  onClick={handleVaciarPlantilla}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                  title="Vaciar lista para registrar a tu propio personal"
-                >
-                  <UserMinus className="w-3.5 h-3.5 text-rose-500" /> Vaciar Lista
-                </button>
-                <button
-                  onClick={handleCargarEjemploSolcargo}
-                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
-                  title="Cargar modelo de 12 personas de Solcargo (referencia de ejemplo)"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" /> Modelo Ejemplo
-                </button>
-                <button
-                  onClick={handleLimpiarRecibosPrueba}
-                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
-                  title="Reiniciar y limpiar los recibos de prueba"
-                >
-                  <Trash2 className="w-3.5 h-3.5 text-rose-600" /> Limpiar Pruebas
-                </button>
-              </div>
+          <div className="bg-white rounded-3xl border border-slate-200/80 p-4 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex items-center gap-3 w-full md:w-auto">
+              <button
+                onClick={handleAbrirAgregarTrabajador}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs flex items-center gap-2 shadow-md shadow-blue-600/25 transition-all cursor-pointer whitespace-nowrap"
+              >
+                <UserPlus className="w-4 h-4" /> + Agregar Trabajador a Nómina
+              </button>
+              <span className="text-xs font-bold text-slate-400 hidden sm:inline">
+                {plantillaPersonal.length} miembros registrados
+              </span>
             </div>
 
-            {/* Fila 2: Buscador y Filtros de Estado */}
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-              <div className="relative w-full sm:w-80">
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              <div className="relative w-full sm:w-72">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
@@ -1051,20 +943,14 @@ export default function ModuloNominaJefatura() {
                   </div>
                   <h3 className="text-base font-extrabold text-slate-800">No hay trabajadores en esta lista</h3>
                   <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-                    {searchQuery ? 'No se encontraron resultados para tu búsqueda.' : 'La nómina está vacía. Puedes registrar a tus trabajadores haciendo clic en "+ Agregar Trabajador" o cargar la plantilla oficial de Román & Delgado.'}
+                    {searchQuery ? 'No se encontraron resultados para tu búsqueda.' : 'No hay personal registrado en este estado. Puedes registrar un nuevo trabajador con el botón superior.'}
                   </p>
                   <div className="mt-5 flex items-center justify-center gap-3">
                     <button
                       onClick={handleAbrirAgregarTrabajador}
                       className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-2"
                     >
-                      <UserPlus className="w-4 h-4" /> + Agregar Trabajador
-                    </button>
-                    <button
-                      onClick={handleRestaurarEquipoRD}
-                      className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2"
-                    >
-                      <Sparkles className="w-4 h-4 text-amber-500" /> Cargar Equipo R&D
+                      <UserPlus className="w-4 h-4" /> + Agregar Trabajador a Nómina
                     </button>
                   </div>
                 </div>
