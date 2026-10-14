@@ -4,7 +4,8 @@ import {
   Download, Edit3, Trash2, Plus, Search, 
   RefreshCw, FileText, 
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
-  Sparkles, X, UserPlus, UserMinus
+  Sparkles, X, UserPlus, UserMinus,
+  Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -73,6 +74,9 @@ export default function ModuloNominaJefatura() {
   // Modal de Edición / Liquidación de Recibo
   const [editingRecibo, setEditingRecibo] = useState<ReciboNomina | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [showConceptosAccordion, setShowConceptosAccordion] = useState<boolean>(false);
+  const [previewCaptureModal, setPreviewCaptureModal] = useState<{ url: string; title: string } | null>(null);
+  const [copiedData, setCopiedData] = useState<boolean>(false);
 
   // Alerta del sistema
   const [systemAlert, setSystemAlert] = useState<{
@@ -261,9 +265,46 @@ export default function ModuloNominaJefatura() {
     };
   }, [currentQuincenaList, tasaCambio]);
 
-  // Manejador para abrir el modal de edición
-  const handleEdit = (recibo: ReciboNomina) => {
-    setEditingRecibo(JSON.parse(JSON.stringify(recibo))); // clon limpio
+  // Manejador para abrir el Centro de Pago & Liquidación
+  const handleAbrirPagar = (recibo: ReciboNomina) => {
+    const currentTasa = tasaCambio || 832.48;
+    const netoUsd = recibo.netoPagarUsd;
+    const netoVes = Math.round(netoUsd * currentTasa * 100) / 100;
+    setEditingRecibo({
+      ...JSON.parse(JSON.stringify(recibo)),
+      tasaCambio: currentTasa,
+      netoPagarVes: netoVes
+    });
+    setShowConceptosAccordion(false);
+  };
+
+  // Manejo de carga de Capture Bancario (opcional)
+  const handleCaptureUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editingRecibo) return;
+    if (file.size > 5 * 1024 * 1024) {
+      alert('La imagen no debe superar los 5MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setEditingRecibo(prev => prev ? ({
+        ...prev,
+        comprobanteBase64: base64,
+        comprobanteNombre: file.name
+      }) : null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Copiar datos del empleado para pagar rápido en el banco
+  const handleCopiarDatos = (texto: string) => {
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(texto);
+      setCopiedData(true);
+      setTimeout(() => setCopiedData(false), 2000);
+    }
   };
 
   // Recalcular montos en el modal de edición
@@ -665,7 +706,7 @@ export default function ModuloNominaJefatura() {
         <>
           {/* 2. KPIs y Métricas de la Quincena */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* KPI: Total Quincena USD */}
+            {/* KPI: Total Quincena en Bolívares */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm relative overflow-hidden">
               <div className="flex justify-between items-start">
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Total Nómina Quincenal</span>
@@ -674,10 +715,10 @@ export default function ModuloNominaJefatura() {
                 </div>
               </div>
               <div className="text-2xl font-black text-slate-900 mt-2">
-                $ {kpis.totalNominaUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                Bs. {kpis.totalNominaVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
               </div>
               <div className="text-xs text-emerald-600 font-bold mt-1 flex items-center gap-1">
-                <ArrowUpRight className="w-3.5 h-3.5" /> Equiv. Bs. {kpis.totalNominaVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                <ArrowUpRight className="w-3.5 h-3.5" /> Ref. $ {kpis.totalNominaUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })} (Tasa: {tasaCambio.toFixed(2)})
               </div>
             </div>
 
@@ -795,7 +836,7 @@ export default function ModuloNominaJefatura() {
                     <th className="py-4 px-4 text-right">Sueldo Base</th>
                     <th className="py-4 px-4 text-right">Devengado</th>
                     <th className="py-4 px-4 text-right">Deducciones</th>
-                    <th className="py-4 px-4 text-right">Neto a Pagar ($ / Bs.)</th>
+                    <th className="py-4 px-4 text-right">Neto a Pagar (Bs. / $)</th>
                     <th className="py-4 px-4 text-center">Estado</th>
                     <th className="py-4 px-6 text-center">Acciones</th>
                   </tr>
@@ -835,13 +876,13 @@ export default function ModuloNominaJefatura() {
                           {recibo.totalDeducciones > 0 ? `$ -${recibo.totalDeducciones.toFixed(2)}` : '—'}
                         </td>
 
-                        {/* Neto a Pagar */}
+                        {/* Neto a Pagar (Bs. Protagonista) */}
                         <td className="py-4 px-4 text-right">
                           <div className="font-black text-slate-900 text-sm">
-                            $ {recibo.netoPagarUsd.toFixed(2)}
+                            Bs. {recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                           </div>
                           <div className="text-[10px] font-bold text-slate-500">
-                            Bs. {recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                            Ref. $ {recibo.netoPagarUsd.toFixed(2)}
                           </div>
                         </td>
 
@@ -858,7 +899,7 @@ export default function ModuloNominaJefatura() {
                           )}
                         </td>
 
-                        {/* Acciones */}
+                        {/* Acciones: Flujo Unificado en Pagar & Emitir */}
                         <td className="py-4 px-6 text-center">
                           {(() => {
                             const empItem = plantillaPersonal.find(p => 
@@ -867,29 +908,37 @@ export default function ModuloNominaJefatura() {
                             );
                             return (
                               <div className="flex items-center justify-center gap-1.5">
-                                {/* Botón Editar / Ajustar conceptos */}
-                                <button
-                                  onClick={() => handleEdit(recibo)}
-                                  className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer shadow-xs"
-                                  title="Ajustar conceptos, días laborados, bonos o préstamos de esta quincena"
-                                >
-                                  <Edit3 className="w-3.5 h-3.5 text-blue-600" /> Ajustar
-                                </button>
-
-                                {/* Botón Emitir / Descargar */}
                                 {isPagado ? (
-                                  <button
-                                    onClick={() => handleDescargarPdf(recibo)}
-                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
-                                    title="Descargar Recibo Oficial en PDF (Doble Talón)"
-                                  >
-                                    <Download className="w-3.5 h-3.5" /> Recibo PDF
-                                  </button>
+                                  <>
+                                    {/* Botón Descargar Recibo PDF */}
+                                    <button
+                                      onClick={() => handleDescargarPdf(recibo)}
+                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
+                                      title="Descargar Recibo Oficial en PDF (Doble Talón)"
+                                    >
+                                      <Download className="w-3.5 h-3.5" /> Recibo PDF
+                                    </button>
+
+                                    {/* Botón Ver Capture si existe */}
+                                    {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
+                                      <button
+                                        onClick={() => setPreviewCaptureModal({
+                                          url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
+                                          title: `Comprobante de Pago • ${recibo.empleadoNombre}`
+                                        })}
+                                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer"
+                                        title="Ver capture o comprobante bancario adjunto"
+                                      >
+                                        <Eye className="w-3.5 h-3.5 text-emerald-600" /> Capture
+                                      </button>
+                                    )}
+                                  </>
                                 ) : (
+                                  /* Botón Único Principal: Pagar & Emitir */
                                   <button
-                                    onClick={() => handleEmitirYMarcarPagado(recibo)}
-                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
-                                    title="Marcar como Pagado, Generar Recibo y Notificar al Empleado"
+                                    onClick={() => handleAbrirPagar(recibo)}
+                                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
+                                    title="Pagar, ingresar referencia, capture y emitir recibo oficial"
                                   >
                                     <CheckCheck className="w-3.5 h-3.5 text-emerald-300" /> Pagar & Emitir
                                   </button>
@@ -1028,18 +1077,18 @@ export default function ModuloNominaJefatura() {
         </div>
       )}
 
-      {/* 6. Modal de Edición / Liquidación Detallada */}
+      {/* 6. MODAL UNIFICADO: PAGAR & EMITIR NÓMINA (CON BS. DESTACADO, CAPTURE Y REFERENCIA) */}
       {editingRecibo && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[92vh] animate-in zoom-in-95 duration-200 border border-slate-200">
             {/* Modal Header */}
             <div className="bg-slate-900 p-6 text-white flex justify-between items-start">
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2">
-                  Liquidación de Nómina Quincenal
+                <div className="inline-flex items-center gap-1.5 px-3 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-[10px] font-black uppercase tracking-wider mb-2">
+                  <CheckCheck className="w-3.5 h-3.5 text-emerald-400" /> Liquidación, Pago y Emisión de Nómina
                 </div>
-                <h3 className="text-xl font-extrabold flex items-center gap-2">
-                  <Edit3 className="w-5 h-5 text-blue-400" /> {editingRecibo.empleadoNombre}
+                <h3 className="text-xl sm:text-2xl font-black flex items-center gap-2">
+                  <Wallet className="w-6 h-6 text-emerald-400" /> {editingRecibo.empleadoNombre}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
                   C.I. {editingRecibo.cedula} • {editingRecibo.cargo} • Recibo Nº {editingRecibo.numeroRecibo}
@@ -1055,137 +1104,295 @@ export default function ModuloNominaJefatura() {
 
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6">
-              {/* Resumen Superior de Totales */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-500 block">Total Devengado</span>
-                  <span className="text-lg font-black text-emerald-600">$ {editingRecibo.totalDevengado.toFixed(2)}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold uppercase text-slate-500 block">Total Deducciones</span>
-                  <span className="text-lg font-black text-rose-500">$ -{editingRecibo.totalDeducciones.toFixed(2)}</span>
-                </div>
-                <div className="bg-slate-900 p-2.5 rounded-xl text-white">
-                  <span className="text-[10px] font-bold uppercase text-slate-400 block">Neto a Liquidar</span>
-                  <span className="text-lg font-black text-emerald-400">$ {editingRecibo.netoPagarUsd.toFixed(2)}</span>
-                  <span className="text-[10px] text-slate-300 block">≈ Bs. {editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+              
+              {/* BLOQUE PRINCIPAL: MONTO A TRANSFERIR EN BOLÍVARES (PROTAGONISTA) */}
+              <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 border border-emerald-500/40 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-emerald-400 block mb-1">
+                      Monto Total a Transferir (Bolívares - Tasa Oficial BCV)
+                    </span>
+                    <div className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight">
+                      Bs. {editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                    </div>
+                    <div className="text-xs text-slate-300 font-bold mt-2 flex flex-wrap items-center gap-2">
+                      <span>Equiv: <strong className="text-white">$ {editingRecibo.netoPagarUsd.toFixed(2)} USD</strong></span>
+                      <span className="text-slate-500">•</span>
+                      <span>Tasa BCV: <strong className="text-white">{editingRecibo.tasaCambio?.toFixed(2) || tasaCambio.toFixed(2)} Bs./$</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Ajustador Rápido de Tasa si se requiere recalcular */}
+                  <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-3 text-right">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase block">Ajustar Tasa (Bs./$)</span>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-emerald-400 text-xs font-bold">Bs.</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={editingRecibo.tasaCambio || tasaCambio}
+                        onChange={(e) => {
+                          const newTasa = Math.max(1, Number(e.target.value) || 1);
+                          const newNetoVes = Math.round(editingRecibo.netoPagarUsd * newTasa * 100) / 100;
+                          setEditingRecibo({
+                            ...editingRecibo,
+                            tasaCambio: newTasa,
+                            netoPagarVes: newNetoVes
+                          });
+                        }}
+                        className="w-24 bg-slate-900 border border-slate-700 rounded-xl px-2 py-1 text-xs font-bold text-white text-right outline-none focus:border-emerald-500"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Ajustes de Datos de Pago */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 block mb-1">Método de Pago</label>
-                  <select
-                    value={editingRecibo.tipoPago}
-                    onChange={(e) => setEditingRecibo({ ...editingRecibo, tipoPago: e.target.value as any })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-blue-500 cursor-pointer"
-                  >
-                    <option value="Transferencia">Transferencia Bancaria</option>
-                    <option value="Pago Móvil">Pago Móvil</option>
-                    <option value="Efectivo">Efectivo en Dólares ($)</option>
-                    <option value="Zelle">Zelle / Transferencia Ext.</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 block mb-1">Banco Destino</label>
-                  <input
-                    type="text"
-                    value={editingRecibo.banco}
-                    onChange={(e) => setEditingRecibo({ ...editingRecibo, banco: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:border-blue-500"
-                    placeholder="Banesco, Mercantil..."
-                  />
-                </div>
-                <div>
-                  <label className="text-[11px] font-bold uppercase text-slate-600 block mb-1">Referencia / Comprobante (Opcional)</label>
+              {/* BLOQUE DE DATOS BANCARIOS DEL TRABAJADOR (PARA TRANSFERIR AL INSTANTE) */}
+              {(() => {
+                const empInfo = plantillaPersonal.find(p => 
+                  p.nombre.toLowerCase().trim() === editingRecibo.empleadoNombre.toLowerCase().trim() ||
+                  (p.cedula && editingRecibo.cedula && p.cedula.trim() === editingRecibo.cedula.trim())
+                );
+                const copiaTexto = `Pago a ${editingRecibo.empleadoNombre} | Banco: ${editingRecibo.banco} | ${editingRecibo.tipoPago} | CI: ${editingRecibo.cedula} ${empInfo?.telefono ? `| Tel: ${empInfo.telefono}` : ''} | Monto: Bs. ${editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+
+                return (
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-blue-600" /> Datos Bancarios para el Pago
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopiarDatos(copiaTexto)}
+                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                      >
+                        {copiedData ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600" /> ¡Copiado al Portapapeles!
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-500" /> Copiar Datos para el Banco
+                          </>
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Método</span>
+                        <span className="font-extrabold text-slate-800">{editingRecibo.tipoPago}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Banco</span>
+                        <span className="font-extrabold text-slate-800">{editingRecibo.banco}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Cédula</span>
+                        <span className="font-extrabold text-slate-800">{editingRecibo.cedula}</span>
+                      </div>
+                      <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Teléfono / Pago Móvil</span>
+                        <span className="font-extrabold text-slate-800">{empInfo?.telefono || 'Consultar con empleado'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* BLOQUE DE COMPROBANTE: NÚMERO DE REFERENCIA Y ADJUNTAR CAPTURE (OPCIONAL) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Referencia Bancaria */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-700 block">
+                    Número de Referencia Bancaria
+                  </label>
                   <input
                     type="text"
                     value={editingRecibo.referenciaPago || ''}
                     onChange={(e) => setEditingRecibo({ ...editingRecibo, referenciaPago: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 outline-none focus:border-blue-500"
-                    placeholder="Nº de Transferencia"
+                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-xs"
+                    placeholder="Ej: 849201 (Transferencia o Pago Móvil)"
                   />
-                </div>
-              </div>
-
-              {/* Tabla de Conceptos Editables */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">Desglose de Conceptos de la Quincena</h4>
-                  <button
-                    onClick={handleAddConcepto}
-                    className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> Agregar Concepto
-                  </button>
+                  <p className="text-[11px] text-slate-500">
+                    Aparecerá en el recibo PDF oficial y en la notificación instantánea del trabajador.
+                  </p>
                 </div>
 
-                <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 text-xs">
-                  <div className="grid grid-cols-12 bg-slate-100 p-2.5 font-bold text-slate-600 text-[10px] uppercase">
-                    <div className="col-span-5">Concepto</div>
-                    <div className="col-span-2 text-center">Días / Tasa</div>
-                    <div className="col-span-2 text-right">Asignación ($)</div>
-                    <div className="col-span-2 text-right">Deducción ($)</div>
-                    <div className="col-span-1 text-center">Quitar</div>
-                  </div>
+                {/* 2. Adjuntar Capture / Comprobante de Pago (Opcional) */}
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-700 block">
+                    Capture / Comprobante de Pago <span className="text-slate-400 font-medium lowercase">(opcional)</span>
+                  </label>
+                  
+                  {editingRecibo.comprobanteBase64 || editingRecibo.comprobanteUrl ? (
+                    <div className="flex items-center justify-between gap-3 bg-white p-2.5 rounded-xl border border-emerald-300 shadow-xs">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <img 
+                          src={editingRecibo.comprobanteBase64 || editingRecibo.comprobanteUrl} 
+                          alt="Thumbnail Capture" 
+                          className="w-10 h-10 object-cover rounded-lg border border-slate-200 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <span className="text-xs font-bold text-slate-800 block truncate">
+                            {editingRecibo.comprobanteNombre || 'Capture_Pago_Bancario.png'}
+                          </span>
+                          <span className="text-[10px] text-emerald-600 font-bold block">✓ Comprobante listo para enviar</span>
+                        </div>
+                      </div>
 
-                  {editingRecibo.conceptos.map((concepto, idx) => (
-                    <div key={concepto.id || idx} className="grid grid-cols-12 p-2 items-center gap-2 hover:bg-slate-50">
-                      <div className="col-span-5">
-                        <input
-                          type="text"
-                          value={concepto.concepto}
-                          onChange={(e) => handleConceptoChange(idx, 'concepto', e.target.value)}
-                          className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-1 text-xs font-bold text-slate-800 outline-none"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <input
-                          type="text"
-                          value={concepto.dht || ''}
-                          onChange={(e) => handleConceptoChange(idx, 'dht', e.target.value)}
-                          placeholder="—"
-                          className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-[11px] text-center font-medium text-slate-600 outline-none"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={concepto.devengado ?? ''}
-                          onChange={(e) => handleConceptoChange(idx, 'devengado', e.target.value)}
-                          placeholder="0.00"
-                          className="w-full bg-emerald-50/50 border border-emerald-200 rounded px-2 py-1 text-xs font-bold text-emerald-700 text-right outline-none focus:border-emerald-500"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={concepto.deduccion ?? ''}
-                          onChange={(e) => handleConceptoChange(idx, 'deduccion', e.target.value)}
-                          placeholder="0.00"
-                          className="w-full bg-rose-50/50 border border-rose-200 rounded px-2 py-1 text-xs font-bold text-rose-700 text-right outline-none focus:border-rose-500"
-                        />
-                      </div>
-                      <div className="col-span-1 text-center">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
-                          onClick={() => handleRemoveConcepto(idx)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                          type="button"
+                          onClick={() => setPreviewCaptureModal({
+                            url: editingRecibo.comprobanteBase64 || editingRecibo.comprobanteUrl || '',
+                            title: `Capture de Pago • ${editingRecibo.empleadoNombre}`
+                          })}
+                          className="p-1.5 hover:bg-slate-100 text-slate-600 hover:text-emerald-600 rounded-lg transition-colors cursor-pointer"
+                          title="Ver capture a tamaño completo"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingRecibo({
+                            ...editingRecibo,
+                            comprobanteBase64: undefined,
+                            comprobanteUrl: undefined,
+                            comprobanteNombre: undefined
+                          })}
+                          className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                          title="Quitar comprobante"
+                        >
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 w-full p-2.5 bg-white border border-dashed border-slate-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-50/30 transition-all cursor-pointer text-slate-600 text-xs font-bold shadow-xs">
+                      <Upload className="w-4 h-4 text-emerald-600" />
+                      <span>Subir Capture o Foto del Pago</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleCaptureUpload} 
+                        className="hidden" 
+                      />
+                    </label>
+                  )}
+                  <p className="text-[11px] text-slate-500">
+                    El trabajador podrá previsualizarlo y descargarlo directamente desde su portal.
+                  </p>
                 </div>
+              </div>
+
+              {/* BLOQUE 4: ACORDEÓN DESPLEGABLE DE AJUSTE DE CONCEPTOS (OPCIONAL) */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setShowConceptosAccordion(!showConceptosAccordion)}
+                  className="w-full p-3.5 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-left transition-colors cursor-pointer"
+                >
+                  <div className="flex items-center gap-2">
+                    <Edit3 className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                      ¿Deseas verificar o ajustar conceptos, bonos o deducciones?
+                    </span>
+                    <span className="px-2 py-0.5 bg-slate-200 text-slate-600 rounded-md text-[10px] font-bold">
+                      Opcional
+                    </span>
+                  </div>
+                  {showConceptosAccordion ? (
+                    <ChevronUp className="w-4 h-4 text-slate-500" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-slate-500" />
+                  )}
+                </button>
+
+                {showConceptosAccordion && (
+                  <div className="p-4 space-y-4 border-t border-slate-200 animate-in fade-in duration-150">
+                    <div className="flex justify-between items-center">
+                      <p className="text-[11px] text-slate-500">
+                        Modifica los montos en dólares ($). El total neto en Bolívares (Bs.) se recalculará automáticamente.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={handleAddConcepto}
+                        className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> Agregar Concepto / Bono
+                      </button>
+                    </div>
+
+                    <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+                      <div className="grid grid-cols-12 bg-slate-100 p-2 font-bold text-slate-600 text-[10px] uppercase">
+                        <div className="col-span-5">Concepto</div>
+                        <div className="col-span-2 text-center">Días / Tasa</div>
+                        <div className="col-span-2 text-right">Asignación ($)</div>
+                        <div className="col-span-2 text-right">Deducción ($)</div>
+                        <div className="col-span-1 text-center">Quitar</div>
+                      </div>
+
+                      {editingRecibo.conceptos.map((concepto, idx) => (
+                        <div key={concepto.id || idx} className="grid grid-cols-12 p-2 items-center gap-2 hover:bg-slate-50">
+                          <div className="col-span-5">
+                            <input
+                              type="text"
+                              value={concepto.concepto}
+                              onChange={(e) => handleConceptoChange(idx, 'concepto', e.target.value)}
+                              className="w-full bg-transparent border-0 border-b border-transparent hover:border-slate-300 focus:border-blue-500 px-1 py-0.5 text-xs font-bold text-slate-800 outline-none"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <input
+                              type="text"
+                              value={concepto.dht || ''}
+                              onChange={(e) => handleConceptoChange(idx, 'dht', e.target.value)}
+                              placeholder="—"
+                              className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-0.5 text-[11px] text-center font-medium text-slate-600 outline-none"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={concepto.devengado ?? ''}
+                              onChange={(e) => handleConceptoChange(idx, 'devengado', e.target.value)}
+                              placeholder="0.00"
+                              className="w-full bg-emerald-50/50 border border-emerald-200 rounded px-2 py-0.5 text-xs font-bold text-emerald-700 text-right outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={concepto.deduccion ?? ''}
+                              onChange={(e) => handleConceptoChange(idx, 'deduccion', e.target.value)}
+                              placeholder="0.00"
+                              className="w-full bg-rose-50/50 border border-rose-200 rounded px-2 py-0.5 text-xs font-bold text-rose-700 text-right outline-none focus:border-rose-500"
+                            />
+                          </div>
+                          <div className="col-span-1 text-center">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveConcepto(idx)}
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="bg-slate-50 p-4 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div className="bg-slate-50 p-4 px-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
               <button
+                type="button"
                 onClick={() => setEditingRecibo(null)}
                 className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
               >
@@ -1194,6 +1401,7 @@ export default function ModuloNominaJefatura() {
 
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
+                  type="button"
                   onClick={handleSaveBorrador}
                   disabled={isSaving}
                   className="w-full sm:w-auto px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
@@ -1201,13 +1409,58 @@ export default function ModuloNominaJefatura() {
                   Guardar Borrador
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleEmitirYMarcarPagado(editingRecibo)}
                   disabled={isSaving}
-                  className="w-full sm:w-auto px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                 >
-                  <CheckCheck className="w-4 h-4" /> Emitir Pago & Descargar PDF
+                  <CheckCheck className="w-4 h-4 text-emerald-200" /> Confirmar Pago & Descargar Recibo PDF
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Previsualización de Capture de Jefatura */}
+      {previewCaptureModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 px-6 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-sm sm:text-base truncate">{previewCaptureModal.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewCaptureModal(null)}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/50 min-h-[250px]">
+              <img 
+                src={previewCaptureModal.url} 
+                alt="Capture de pago bancario" 
+                className="max-w-full max-h-[70vh] object-contain rounded-2xl border border-slate-800 shadow-md"
+              />
+            </div>
+            <div className="p-3 px-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/90">
+              <a
+                href={previewCaptureModal.url}
+                download="Comprobante_Pago.png"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4" /> Descargar Imagen
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewCaptureModal(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

@@ -137,7 +137,10 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
     doc.text('Pago:', c2X, currentY + 9.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text(`${recibo.tipoPago} (${recibo.banco})`, c2X + 12, currentY + 9.5);
+    const pagoDetalle = recibo.referenciaPago 
+      ? `${recibo.tipoPago} (${recibo.banco}) • Ref: ${recibo.referenciaPago}`
+      : `${recibo.tipoPago} (${recibo.banco})`;
+    doc.text(pagoDetalle, c2X + 10, currentY + 9.5);
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
@@ -203,27 +206,27 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
     doc.setTextColor(225, 29, 72);
     doc.text(formatMonto(recibo.totalDeducciones, 'USD'), pageWidth - marginX - 2, totalsY + 4.3, { align: 'right' });
 
-    // Cuadro de Neto a Pagar Destacado
+    // Cuadro de Neto a Pagar Destacado (Bolívares Protagonista)
     const netY = totalsY + 8;
     doc.setFillColor(15, 23, 42);
-    doc.roundedRect(marginX + (contentWidth * 0.45), netY, contentWidth * 0.55, 11, 1.2, 1.2, 'F');
+    doc.roundedRect(marginX + (contentWidth * 0.40), netY, contentWidth * 0.60, 11, 1.2, 1.2, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.8);
     doc.setTextColor(241, 245, 249);
-    doc.text('NETO A PAGAR:', marginX + (contentWidth * 0.45) + 4, netY + 4.8);
+    doc.text('NETO A PAGAR:', marginX + (contentWidth * 0.40) + 3.5, netY + 4.8);
 
-    doc.setFontSize(10.5);
+    // Monto Principal en Bolívares (VES)
+    doc.setFontSize(10.2);
     doc.setTextColor(52, 211, 153); // emerald-400
-    doc.text(formatMonto(recibo.netoPagarUsd, 'USD'), pageWidth - marginX - 4, netY + 5.2, { align: 'right' });
+    doc.text(formatMonto(recibo.netoPagarVes, 'VES'), pageWidth - marginX - 3.5, netY + 5.2, { align: 'right' });
 
-    // Equivalente en Bolívares si aplica tasa
-    if (recibo.tasaCambio && recibo.tasaCambio > 0) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.8);
-      doc.setTextColor(203, 213, 225);
-      doc.text(`Equiv. BCV: ${formatMonto(recibo.netoPagarVes, 'VES')} (Tasa: ${recibo.tasaCambio.toFixed(2)})`, pageWidth - marginX - 4, netY + 9.2, { align: 'right' });
-    }
+    // Referencia Oficial en USD y Tasa BCV
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(203, 213, 225);
+    const refTxt = `Ref. Oficial: ${formatMonto(recibo.netoPagarUsd, 'USD')}${recibo.tasaCambio ? ` (Tasa BCV: ${recibo.tasaCambio.toFixed(2)})` : ''}${recibo.referenciaPago ? ` • Ref: ${recibo.referenciaPago}` : ''}`;
+    doc.text(refTxt, pageWidth - marginX - 3.5, netY + 9.2, { align: 'right' });
 
     // 5. Pie de Talón: Caja de Firma y Huella
     doc.setFillColor(255, 255, 255);

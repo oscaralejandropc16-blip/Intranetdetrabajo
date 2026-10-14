@@ -14,10 +14,14 @@ import {
   CornerDownRight,
   ShieldCheck,
   X,
-  Wallet
+  Wallet,
+  Image as ImageIcon,
+  Eye,
+  Download
 } from 'lucide-react';
 import { WhatsAppStyleChat, checkIsFromBoss } from '../chat/WhatsAppStyleChat';
-import { normalizeSupervisorName } from '../../lib/supabaseAdapter';
+import { normalizeSupervisorName, supabaseGetRecibosNomina } from '../../lib/supabaseAdapter';
+import { exportarReciboNominaPDF } from '../../lib/pdfExportNomina';
 
 export interface Notification {
   id: string | number;
@@ -30,6 +34,12 @@ export interface Notification {
   date?: string;
   detalles?: string[];
   recibo_id?: string;
+  montoVes?: number;
+  montoUsd?: number;
+  referenciaPago?: string;
+  banco?: string;
+  comprobanteBase64?: string;
+  comprobanteUrl?: string;
   respuestas?: Array<{
     id: string;
     mensaje: string;
@@ -53,6 +63,8 @@ export default function NotificationPanel({ notifications, setNotifications, onN
 
   // Estados para el chat tipo WhatsApp y respuestas
   const [activeChatNotif, setActiveChatNotif] = useState<Notification | null>(null);
+  const [captureModalImg, setCaptureModalImg] = useState<{ url: string; title: string } | null>(null);
+  const [downloadingReciboId, setDownloadingReciboId] = useState<string | null>(null);
   const [localRepliesMap, setLocalRepliesMap] = useState<Record<string, any[]>>(() => {
     try {
       return JSON.parse(localStorage.getItem('rd_local_employee_replies') || '{}');
@@ -440,24 +452,108 @@ export default function NotificationPanel({ notifications, setNotifications, onN
 
                       {/* Mensaje Principal o Detalles */}
                       {notif.type === 'pago' ? (
-                        <div className="mt-1.5 p-3 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-950 space-y-2">
-                          <p className="font-bold flex items-center gap-1.5 text-emerald-900">
-                            <Wallet className="w-4 h-4 text-emerald-600" /> Comprobante Oficial Disponible
-                          </p>
-                          <p className="text-[11px] text-emerald-800 font-medium">
+                        <div className="mt-2 p-3.5 rounded-2xl bg-gradient-to-br from-emerald-50 via-emerald-50/70 to-teal-50 border border-emerald-300 text-xs text-emerald-950 space-y-3 shadow-xs">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/70 pb-2.5">
+                            <div>
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-700 block">Monto Acreditado</span>
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-lg font-black text-emerald-950">
+                                  Bs. {(notif.montoVes ?? 0) > 0 ? notif.montoVes?.toLocaleString('es-VE', { minimumFractionDigits: 2 }) : 'Acreditado'}
+                                </span>
+                                {(notif.montoUsd ?? 0) > 0 && (
+                                  <span className="text-xs font-bold text-emerald-700">
+                                    (Ref: $ {notif.montoUsd?.toFixed(2)})
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Banco y Referencia */}
+                            <div className="text-left sm:text-right">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase block">Datos de Pago</span>
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/90 border border-emerald-300 rounded-lg text-[11px] font-black text-emerald-900 mt-0.5">
+                                <span>{notif.banco || 'Banco'}</span>
+                                {notif.referenciaPago && (
+                                  <>
+                                    <span className="text-emerald-400">•</span>
+                                    <span>Ref: {notif.referenciaPago}</span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          <p className="text-[11px] text-emerald-850 font-medium leading-relaxed">
                             {notif.message}
                           </p>
-                          {onNavigate && (
-                            <button
-                              onClick={() => {
-                                handleMarkAsRead(notif.id);
-                                onNavigate('nomina');
-                              }}
-                              className="mt-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
-                            >
-                              <Wallet className="w-3.5 h-3.5" /> Ir a Mis Recibos de Nómina
-                            </button>
-                          )}
+
+                          {/* Acciones del Pago: Capture, Descargar PDF y Mis Recibos */}
+                          <div className="flex flex-wrap items-center gap-2 pt-1">
+                            {/* Ver Capture Bancario si existe */}
+                            {(notif.comprobanteBase64 || notif.comprobanteUrl) && (
+                              <button
+                                type="button"
+                                onClick={() => setCaptureModalImg({
+                                  url: notif.comprobanteBase64 || notif.comprobanteUrl || '',
+                                  title: `Comprobante de Pago • ${notif.title}`
+                                })}
+                                className="px-3 py-1.5 bg-white hover:bg-slate-50 text-emerald-900 border border-emerald-300 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-600" /> Ver Capture Bancario
+                              </button>
+                            )}
+
+                            {/* Descargar Recibo Oficial en PDF */}
+                            {notif.recibo_id && (
+                              <button
+                                type="button"
+                                disabled={downloadingReciboId === notif.recibo_id}
+                                onClick={async () => {
+                                  try {
+                                    setDownloadingReciboId(notif.recibo_id || null);
+                                    const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+                                    let reciboToExport = null;
+                                    if (rawLocal) {
+                                      const list = JSON.parse(rawLocal);
+                                      reciboToExport = list.find((r: any) => String(r.id) === String(notif.recibo_id));
+                                    }
+                                    if (!reciboToExport) {
+                                      const cloudRecibos = await supabaseGetRecibosNomina();
+                                      reciboToExport = cloudRecibos.find(r => String(r.id) === String(notif.recibo_id));
+                                    }
+                                    if (reciboToExport) {
+                                      await exportarReciboNominaPDF(reciboToExport);
+                                    } else {
+                                      alert('Abriendo sección de nómina...');
+                                      if (onNavigate) onNavigate('nomina');
+                                    }
+                                  } catch (e) {
+                                    if (onNavigate) onNavigate('nomina');
+                                  } finally {
+                                    setDownloadingReciboId(null);
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
+                              >
+                                <Download className="w-3.5 h-3.5" /> 
+                                {downloadingReciboId === notif.recibo_id ? 'Generando PDF...' : 'Descargar Recibo (PDF)'}
+                              </button>
+                            )}
+
+                            {/* Ir a Mis Recibos */}
+                            {onNavigate && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleMarkAsRead(notif.id);
+                                  onNavigate('nomina');
+                                }}
+                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                              >
+                                <Wallet className="w-3.5 h-3.5 text-emerald-400" /> Ir a Mis Recibos
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : notif.type === 'approval' ? (
                         <div className="mt-1.5 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs text-emerald-950 space-y-1">
@@ -717,6 +813,50 @@ export default function NotificationPanel({ notifications, setNotifications, onN
             localStorage.setItem('rd_local_employee_replies', JSON.stringify(updated));
           }}
         />
+      )}
+
+      {/* MODAL DE PREVISUALIZACIÓN DE CAPTURE BANCARIO */}
+      {captureModalImg && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 px-6 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-sm sm:text-base truncate">{captureModalImg.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCaptureModalImg(null)}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/50 min-h-[250px]">
+              <img 
+                src={captureModalImg.url} 
+                alt="Capture de pago bancario" 
+                className="max-w-full max-h-[70vh] object-contain rounded-2xl border border-slate-800 shadow-md"
+              />
+            </div>
+            <div className="p-3 px-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/90">
+              <a
+                href={captureModalImg.url}
+                download="Comprobante_Pago_Nomina.png"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4" /> Descargar Imagen
+              </a>
+              <button
+                type="button"
+                onClick={() => setCaptureModalImg(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

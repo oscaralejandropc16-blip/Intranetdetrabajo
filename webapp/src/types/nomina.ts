@@ -17,6 +17,9 @@ export interface ReciboNomina {
   banco: string;
   tipoPago: 'Transferencia' | 'Pago Móvil' | 'Efectivo' | 'Zelle' | 'Otro';
   referenciaPago?: string;
+  comprobanteUrl?: string;
+  comprobanteBase64?: string;
+  comprobanteNombre?: string;
   
   // Período
   quincena: 1 | 2;

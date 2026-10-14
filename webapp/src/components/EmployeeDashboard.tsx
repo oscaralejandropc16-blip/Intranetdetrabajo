@@ -523,16 +523,18 @@ export default function EmployeeDashboard() {
         }
       }
 
-      // 5. Notificaciones de Pago de Nómina para el Empleado
+      // 5. Notificaciones de Pago de Nómina para el Empleado (Local y Nube Supabase)
       try {
+        const curUser = (localStorage.getItem('rd_user_name') || 'carmen').toLowerCase().trim();
+
+        // 5.1 Cargar de memoria local
         const notifsRaw = localStorage.getItem('rd_local_employee_notifications');
         if (notifsRaw) {
           const list = JSON.parse(notifsRaw);
           if (Array.isArray(list)) {
-            const curUser = (localStorage.getItem('rd_user_name') || 'carmen').toLowerCase().trim();
             list.forEach((item: any) => {
               const target = (item.target_user || '').toLowerCase().trim();
-              if (!target || target === curUser || curUser.includes(target) || target.includes(curUser)) {
+              if (!target || target === curUser || curUser.includes(target) || target.includes(curUser) || (curUser.includes('oscar') && target.includes('oscar'))) {
                 const notifId = item.id;
                 const isRead = item.read || localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
                 if (!allNotifs.some(n => String(n.id) === String(notifId))) {
@@ -544,12 +546,61 @@ export default function EmployeeDashboard() {
                     sender: item.sender || 'Jefatura (Román & Delgado)',
                     read: isRead,
                     date: item.date,
-                    recibo_id: item.recibo_id
+                    recibo_id: item.recibo_id,
+                    montoVes: item.montoVes,
+                    montoUsd: item.montoUsd,
+                    referenciaPago: item.referenciaPago,
+                    banco: item.banco,
+                    comprobanteBase64: item.comprobanteBase64,
+                    comprobanteUrl: item.comprobanteUrl
                   });
                 }
               }
             });
           }
+        }
+
+        // 5.2 Cargar notificaciones de pago desde la Nube Supabase
+        const { data: cloudNotifs } = await supabase
+          .from('investigaciones_kant')
+          .select('*')
+          .eq('categoria', 'notificacion_empleado')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (Array.isArray(cloudNotifs)) {
+          cloudNotifs.forEach((inv: any) => {
+            if (inv.contenido) {
+              try {
+                const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+                if (parsed && parsed.id) {
+                  const target = (parsed.target_user || '').toLowerCase().trim();
+                  if (!target || target === curUser || curUser.includes(target) || target.includes(curUser) || (curUser.includes('oscar') && target.includes('oscar'))) {
+                    const notifId = parsed.id;
+                    const isRead = parsed.read || localStorage.getItem(`rd_notif_read_${notifId}`) === 'true';
+                    if (!allNotifs.some(n => String(n.id) === String(notifId))) {
+                      allNotifs.unshift({
+                        id: notifId,
+                        type: 'pago',
+                        title: parsed.title || '¡Pago de Nómina Realizado!',
+                        message: parsed.message,
+                        sender: parsed.sender || 'Jefatura (Román & Delgado)',
+                        read: isRead,
+                        date: parsed.date,
+                        recibo_id: parsed.recibo_id,
+                        montoVes: parsed.montoVes,
+                        montoUsd: parsed.montoUsd,
+                        referenciaPago: parsed.referenciaPago,
+                        banco: parsed.banco,
+                        comprobanteBase64: parsed.comprobanteBase64,
+                        comprobanteUrl: parsed.comprobanteUrl
+                      });
+                    }
+                  }
+                }
+              } catch (e) {}
+            }
+          });
         }
       } catch (e) {}
 

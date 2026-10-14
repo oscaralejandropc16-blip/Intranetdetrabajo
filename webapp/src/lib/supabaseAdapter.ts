@@ -1746,6 +1746,9 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
           banco: r.banco,
           tipoPago: r.tipo_pago || r.tipoPago || 'Transferencia',
           referenciaPago: r.referencia_pago || r.referenciaPago,
+          comprobanteUrl: r.comprobante_url || r.comprobanteUrl,
+          comprobanteBase64: r.comprobante_base64 || r.comprobanteBase64,
+          comprobanteNombre: r.comprobante_nombre || r.comprobanteNombre,
           quincena: r.quincena || 1,
           mes: r.mes || (new Date().getMonth() + 1),
           anio: r.anio || new Date().getFullYear(),
@@ -1851,24 +1854,45 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
 
   // 2. Si el estado es 'pagado', registrar la notificación formal para el trabajador
   if (recibo.estado === 'pagado') {
+    const notifItem = {
+      id: `notif_pago_${recibo.id}`,
+      type: 'pago',
+      target_user: recibo.empleadoNombre,
+      title: `¡Pago de Nómina Realizado! (${recibo.periodoInicio} al ${recibo.periodoFin})`,
+      message: `Jefatura ha procesado tu nómina por un monto neto de Bs. ${recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })} (Ref. $ ${recibo.netoPagarUsd.toFixed(2)}). Banco: ${recibo.banco}${recibo.referenciaPago ? ` • Ref: ${recibo.referenciaPago}` : ''}. Ya puedes consultar y descargar tu recibo oficial y capture.`,
+      sender: recibo.emitidoPor || 'Jefatura (Román & Delgado)',
+      read: false,
+      date: recibo.fechaPago ? recibo.fechaPago.split(' ')[0] : new Date().toISOString().split('T')[0],
+      recibo_id: recibo.id,
+      montoVes: recibo.netoPagarVes,
+      montoUsd: recibo.netoPagarUsd,
+      referenciaPago: recibo.referenciaPago,
+      banco: recibo.banco,
+      comprobanteBase64: recibo.comprobanteBase64,
+      comprobanteUrl: recibo.comprobanteUrl
+    };
+
     try {
       const notifsRaw = localStorage.getItem('rd_local_employee_notifications') || '[]';
       const notifs: any[] = JSON.parse(notifsRaw);
-      const notifId = `notif_pago_${recibo.id}`;
-      if (!notifs.some(n => n.id === notifId)) {
-        notifs.unshift({
-          id: notifId,
-          type: 'pago',
-          target_user: recibo.empleadoNombre,
-          title: `¡Pago de Nómina Realizado! (${recibo.periodoInicio} al ${recibo.periodoFin})`,
-          message: `Jefatura ha procesado y pagado tu nómina por un monto neto de $ ${recibo.netoPagarUsd.toFixed(2)}${recibo.netoPagarVes ? ` (Bs. ${recibo.netoPagarVes.toFixed(2)})` : ''}. Ya puedes consultar y descargar tu recibo oficial firmado.`,
-          sender: recibo.emitidoPor || 'Jefatura (Román & Delgado)',
-          read: false,
-          date: recibo.fechaPago ? recibo.fechaPago.split(' ')[0] : new Date().toISOString().split('T')[0],
-          recibo_id: recibo.id
-        });
-        localStorage.setItem('rd_local_employee_notifications', JSON.stringify(notifs));
+      const existingIdx = notifs.findIndex(n => n.id === notifItem.id);
+      if (existingIdx >= 0) {
+        notifs[existingIdx] = notifItem;
+      } else {
+        notifs.unshift(notifItem);
       }
+      localStorage.setItem('rd_local_employee_notifications', JSON.stringify(notifs));
+    } catch (e) {}
+
+    // Respaldo de notificación en la nube (Supabase) para sincronización multidispositivo
+    try {
+      await supabase.from('investigaciones_kant').upsert({
+        titulo: `NOTIF-PAGO-${recibo.id}-${recibo.empleadoNombre}`,
+        categoria: 'notificacion_empleado',
+        autor: recibo.emitidoPor || 'Jefatura',
+        contenido: JSON.stringify(notifItem),
+        tags: [recibo.empleadoNombre.toLowerCase(), 'pago_nomina', recibo.id]
+      });
     } catch (e) {}
   }
 
@@ -1908,7 +1932,7 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
       notificacion_enviada: recibo.notificacionEnviada
     });
 
-    if (errTable) {
+    if (errTable || recibo.comprobanteBase64) {
       await supabase.from('investigaciones_kant').upsert({
         titulo: `RECIBO-${recibo.numeroRecibo}-${recibo.empleadoNombre}`,
         categoria: 'recibo_nomina',

@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Wallet, Download, CheckCircle2, 
-  FileText, Search, RefreshCw, Sparkles 
+  FileText, Search, RefreshCw, Sparkles,
+  Eye, Image as ImageIcon, X
 } from 'lucide-react';
 import { type ReciboNomina } from '../../types/nomina';
 import { supabaseGetRecibosNomina } from '../../lib/supabaseAdapter';
@@ -15,6 +16,7 @@ export default function ModuloNominaEmpleado() {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [previewCapture, setPreviewCapture] = useState<{ url: string; title: string } | null>(null);
 
   const [systemAlert, setSystemAlert] = useState<{
     isOpen: boolean;
@@ -120,10 +122,18 @@ export default function ModuloNominaEmpleado() {
               <h3 className="text-xl sm:text-2xl font-black text-white">
                 Quincena del {ultimoRecibo.periodoInicio} al {ultimoRecibo.periodoFin}
               </h3>
-              <p className="text-xs text-slate-300 mt-1 flex items-center gap-2">
+              <p className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
                 <span>Recibo Nº {ultimoRecibo.numeroRecibo}</span>
                 <span>•</span>
                 <span>Acreditado vía {ultimoRecibo.tipoPago} ({ultimoRecibo.banco})</span>
+                {ultimoRecibo.referenciaPago && (
+                  <>
+                    <span>•</span>
+                    <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-md font-mono font-bold">
+                      Ref: {ultimoRecibo.referenciaPago}
+                    </span>
+                  </>
+                )}
                 {ultimoRecibo.fechaPago && (
                   <>
                     <span>•</span>
@@ -134,24 +144,44 @@ export default function ModuloNominaEmpleado() {
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-              {/* Monto */}
+              {/* Monto Principal en Bolívares */}
               <div className="bg-slate-800/80 backdrop-blur-md px-6 py-3.5 rounded-2xl border border-slate-700/80 text-left sm:text-right w-full sm:w-auto">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">Monto Neto Acreditado</span>
-                <span className="text-2xl font-black text-emerald-400 block">$ {ultimoRecibo.netoPagarUsd.toFixed(2)}</span>
-                {ultimoRecibo.netoPagarVes > 0 && (
-                  <span className="text-xs font-bold text-slate-300 block">Bs. {ultimoRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                )}
+                <span className="text-2xl font-black text-emerald-400 block">
+                  Bs. {ultimoRecibo.netoPagarVes > 0 
+                    ? ultimoRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 }) 
+                    : (ultimoRecibo.netoPagarUsd * (ultimoRecibo.tasaCambio || 1)).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                </span>
+                <span className="text-xs font-bold text-slate-300 block">
+                  Ref. $ {ultimoRecibo.netoPagarUsd.toFixed(2)} {ultimoRecibo.tasaCambio ? `• Tasa BCV: ${ultimoRecibo.tasaCambio.toFixed(2)}` : ''}
+                </span>
               </div>
 
-              {/* Botón Descargar */}
-              <button
-                onClick={() => handleDescargar(ultimoRecibo)}
-                disabled={downloadingId === ultimoRecibo.id}
-                className="w-full sm:w-auto px-6 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50"
-              >
-                <Download className="w-5 h-5 text-slate-950" />
-                <span>{downloadingId === ultimoRecibo.id ? 'Descargando...' : 'Descargar Recibo (PDF)'}</span>
-              </button>
+              {/* Botones de Acción */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                {(ultimoRecibo.comprobanteBase64 || ultimoRecibo.comprobanteUrl) && (
+                  <button
+                    onClick={() => setPreviewCapture({
+                      url: ultimoRecibo.comprobanteBase64 || ultimoRecibo.comprobanteUrl || '',
+                      title: `Capture de Pago • Quincena ${ultimoRecibo.periodoInicio} al ${ultimoRecibo.periodoFin}`
+                    })}
+                    className="px-4 py-4 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-2xl text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-slate-700"
+                    title="Ver capture o comprobante bancario"
+                  >
+                    <Eye className="w-4 h-4 text-emerald-400" />
+                    <span>Capture</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => handleDescargar(ultimoRecibo)}
+                  disabled={downloadingId === ultimoRecibo.id}
+                  className="flex-1 sm:flex-none px-6 py-4 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black rounded-2xl text-sm shadow-xl shadow-emerald-500/25 flex items-center justify-center gap-2.5 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
+                >
+                  <Download className="w-5 h-5 text-slate-950" />
+                  <span>{downloadingId === ultimoRecibo.id ? 'Descargando...' : 'Descargar Recibo (PDF)'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -213,7 +243,13 @@ export default function ModuloNominaEmpleado() {
                     {recibo.periodoInicio} al {recibo.periodoFin}
                   </p>
 
-                  <div className="mt-4 pt-3 border-t border-slate-200/80 grid grid-cols-2 gap-2 text-xs">
+                  {recibo.referenciaPago && (
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 bg-slate-200/80 rounded-md text-[10px] font-bold text-slate-700">
+                      <span>Ref: {recibo.referenciaPago}</span>
+                    </div>
+                  )}
+
+                  <div className="mt-3 pt-3 border-t border-slate-200/80 grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase block">Devengado</span>
                       <span className="font-bold text-emerald-600">$ {recibo.totalDevengado.toFixed(2)}</span>
@@ -226,22 +262,41 @@ export default function ModuloNominaEmpleado() {
                     </div>
                   </div>
 
+                  {/* Neto Cobrado Destacado en Bs. */}
                   <div className="mt-3 bg-white p-3 rounded-xl border border-slate-200 flex justify-between items-center">
                     <span className="text-xs font-black text-slate-700">Neto Cobrado:</span>
                     <div className="text-right">
-                      <span className="text-base font-black text-emerald-600 block">$ {recibo.netoPagarUsd.toFixed(2)}</span>
-                      {recibo.netoPagarVes > 0 && (
-                        <span className="text-[10px] font-bold text-slate-400 block">Bs. {recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
-                      )}
+                      <span className="text-base font-black text-emerald-600 block">
+                        Bs. {recibo.netoPagarVes > 0 
+                          ? recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 }) 
+                          : (recibo.netoPagarUsd * (recibo.tasaCambio || 1)).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-400 block">
+                        Ref. $ {recibo.netoPagarUsd.toFixed(2)}
+                      </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-slate-200">
+                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center gap-2">
+                  {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
+                    <button
+                      onClick={() => setPreviewCapture({
+                        url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
+                        title: `Capture de Pago • Recibo ${recibo.numeroRecibo}`
+                      })}
+                      className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                      title="Ver capture bancario"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Capture</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => handleDescargar(recibo)}
                     disabled={downloadingId === recibo.id}
-                    className="w-full py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                    className="flex-1 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm disabled:opacity-50"
                   >
                     <Download className="w-4 h-4 text-emerald-400" />
                     <span>{downloadingId === recibo.id ? 'Descargando...' : 'Descargar Recibo (PDF)'}</span>
@@ -252,6 +307,50 @@ export default function ModuloNominaEmpleado() {
           </div>
         )}
       </div>
+
+      {/* Modal de Previsualización de Capture */}
+      {previewCapture && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+            <div className="p-4 px-6 border-b border-slate-800 flex items-center justify-between text-white">
+              <div className="flex items-center gap-2">
+                <ImageIcon className="w-5 h-5 text-emerald-400" />
+                <h3 className="font-extrabold text-sm sm:text-base truncate">{previewCapture.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewCapture(null)}
+                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/50 min-h-[250px]">
+              <img 
+                src={previewCapture.url} 
+                alt="Capture de pago bancario" 
+                className="max-w-full max-h-[70vh] object-contain rounded-2xl border border-slate-800 shadow-md"
+              />
+            </div>
+            <div className="p-3 px-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/90">
+              <a
+                href={previewCapture.url}
+                download="Comprobante_Pago_Nomina.png"
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+              >
+                <Download className="w-4 h-4" /> Descargar Imagen
+              </a>
+              <button
+                type="button"
+                onClick={() => setPreviewCapture(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal de Alerta */}
       <SystemAlertModal
