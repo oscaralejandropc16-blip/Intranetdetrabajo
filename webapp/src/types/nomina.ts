@@ -70,14 +70,12 @@ export interface PlantillaEmpleadoNomina {
   email?: string;
 }
 
-// Plantilla oficial del Despacho Román & Delgado (Equipo Real)
+// Plantilla oficial del Despacho Román & Delgado (Personal Empleado y Asociados)
 export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
   { id: 'emp_oscar', nombre: 'Oscar Alejandro Pérez Calzadilla', cedula: 'V-24.891.023', cargo: 'Sistemas & Tecnología', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0414-1234567', email: 'oscarpc' },
   { id: 'emp_carmen', nombre: 'Carmen Luisa Delgado', cedula: 'V-12.338.408', cargo: 'Abogada / Gestión de Despacho', sueldoMensual: 200, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0414-9876543', email: 'abgcarmendelgado.990@gmail.com' },
   { id: 'emp_mariela', nombre: 'Mariela Isabel', cedula: 'V-15.421.890', cargo: 'Abogada Asociada', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0412-5556677' },
   { id: 'emp_hector', nombre: 'Héctor', cedula: 'V-22.189.543', cargo: 'Asistente Legal / Procurador', sueldoMensual: 200, banco: 'Venezuela', tipoPago: 'Pago Móvil', telefono: '0416-1112233' },
-  { id: 'emp_victor', nombre: 'Víctor Román', cedula: 'V-18.531.909', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Banesco', tipoPago: 'Transferencia', numeroCuenta: '0134-0000-00-0000000000', tipoCuenta: 'Corriente' },
-  { id: 'emp_luis', nombre: 'Luis Delgado', cedula: 'V-25.451.018', cargo: 'Socio Director', sueldoMensual: 500, banco: 'Mercantil', tipoPago: 'Transferencia', numeroCuenta: '0105-0000-00-0000000000', tipoCuenta: 'Corriente' },
 ];
 
 // Plantilla de Ejemplo Solcargo (Modelo de referencia opcional)

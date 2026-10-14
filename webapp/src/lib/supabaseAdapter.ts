@@ -1237,7 +1237,8 @@ export async function supabaseGetGastos(): Promise<any[]> {
       (rawStatus.includes('recha') ? 'Rechazado' : 'Pendiente');
 
     const totalUsd = Number(g.total_usd || g.monto) || 0;
-    const tasaBcv = Number(g.tasa_bcv) || 832.48;
+    const liveTasa = typeof window !== 'undefined' ? (Number(localStorage.getItem('rd_bcv_usd')) || 877.90) : 877.90;
+    const tasaBcv = Number(g.tasa_bcv) || liveTasa;
     const totalVes = Number(g.total_ves) || (totalUsd * tasaBcv);
     const items = Array.isArray(g.items) && g.items.length > 0 
       ? g.items 
@@ -1296,7 +1297,8 @@ export async function supabaseGetGastos(): Promise<any[]> {
 export async function supabaseSaveGasto(payload: any): Promise<any> {
   const currentUser = localStorage.getItem('rd_user_name') || 'Usuario';
   const totalUsd = Number(payload.totalUsd ?? payload.total_usd ?? payload.monto) || 0;
-  const tasaBcv = Number(payload.tasaBcv ?? payload.tasa_bcv) || 832.48;
+  const liveTasa = typeof window !== 'undefined' ? (Number(localStorage.getItem('rd_bcv_usd')) || 877.90) : 877.90;
+  const tasaBcv = Number(payload.tasaBcv ?? payload.tasa_bcv) || liveTasa;
   const totalVes = Number(payload.totalVes ?? payload.total_ves) || (totalUsd * tasaBcv);
 
   // Validación estricta: No permitir guardar relaciones en $0.00

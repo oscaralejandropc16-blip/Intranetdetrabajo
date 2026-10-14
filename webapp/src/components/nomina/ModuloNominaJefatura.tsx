@@ -35,8 +35,10 @@ export default function ModuloNominaJefatura() {
   const [selectedMes, setSelectedMes] = useState<number>(() => new Date().getMonth() + 1);
   const [selectedAnio, setSelectedAnio] = useState<number>(() => new Date().getFullYear());
   const [tasaCambio, setTasaCambio] = useState<number>(() => {
+    const live = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
+    if (live && !isNaN(Number(live)) && Number(live) > 0) return Number(live);
     const saved = localStorage.getItem('rd_nomina_tasa_bcv');
-    return saved ? Number(saved) : 832.48; // Tasa referencial oficial
+    return saved && !isNaN(Number(saved)) && Number(saved) > 0 ? Number(saved) : 877.90; // Tasa oficial del día BCV
   });
 
   // Estados de datos
@@ -85,6 +87,8 @@ export default function ModuloNominaJefatura() {
   const [previewCaptureModal, setPreviewCaptureModal] = useState<{ url: string; title: string } | null>(null);
   const [copiedData, setCopiedData] = useState<boolean>(false);
   const [copiedAccount, setCopiedAccount] = useState<boolean>(false);
+  const [copiedCedula, setCopiedCedula] = useState<boolean>(false);
+  const [copiedMonto, setCopiedMonto] = useState<boolean>(false);
   const [editingInlineCuenta, setEditingInlineCuenta] = useState<boolean>(false);
   const [inlineCuentaVal, setInlineCuentaVal] = useState<string>('');
 
@@ -108,6 +112,37 @@ export default function ModuloNominaJefatura() {
   useEffect(() => {
     localStorage.setItem('rd_nomina_tasa_bcv', String(tasaCambio));
   }, [tasaCambio]);
+
+  // Sincronizar automáticamente con la Tasa Oficial del BCV en vivo (desde LiveStatusBar o API oficial)
+  useEffect(() => {
+    const handleBcvUpdate = (e: any) => {
+      const liveRate = e.detail || Number(localStorage.getItem('rd_bcv_usd'));
+      if (liveRate && !isNaN(liveRate) && liveRate > 0) {
+        setTasaCambio(liveRate);
+      }
+    };
+    window.addEventListener('rd_bcv_updated', handleBcvUpdate);
+
+    // Consulta inicial inmediata de la tasa BCV del día si no está cargada
+    const liveSaved = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
+    if (liveSaved && !isNaN(Number(liveSaved)) && Number(liveSaved) > 0) {
+      setTasaCambio(Number(liveSaved));
+    } else {
+      fetch('https://ve.dolarapi.com/v1/dolares/oficial')
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.promedio) {
+            setTasaCambio(data.promedio);
+            localStorage.setItem('rd_bcv_usd', data.promedio.toString());
+          }
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      window.removeEventListener('rd_bcv_updated', handleBcvUpdate);
+    };
+  }, []);
 
   // Calcular fechas de la quincena seleccionada
   const { periodoInicio, periodoFin } = useMemo(() => {
@@ -141,11 +176,22 @@ export default function ModuloNominaJefatura() {
     }
   };
 
-  // Cargar plantilla de trabajadores
+  // Cargar plantilla de trabajadores (excluyendo a los socios directores / jefes Víctor Román y Luis Delgado)
+  const isJefeSocio = (p: PlantillaEmpleadoNomina) => {
+    const n = (p.nombre || '').toLowerCase().trim();
+    const c = (p.cargo || '').toLowerCase().trim();
+    return n.includes('victor rom') || n.includes('luis delg') || c.includes('socio director');
+  };
+
   const fetchPlantilla = async () => {
     try {
       const list = await supabaseGetPlantillaNomina();
-      setPlantillaPersonal(list);
+      const cleanList = (list || []).filter(p => !isJefeSocio(p));
+      const finalList = cleanList.length > 0 ? cleanList : EMPLEADOS_NOMINA_DEFAULT;
+      setPlantillaPersonal(finalList);
+      if (list && cleanList.length !== list.length) {
+        await supabaseSavePlantillaNomina(finalList);
+      }
     } catch (err) {
       setPlantillaPersonal(EMPLEADOS_NOMINA_DEFAULT);
     }
@@ -187,16 +233,10 @@ export default function ModuloNominaJefatura() {
       sueldoDevengado = Math.round((emp.sueldoMensual / 2) * 100) / 100;
     }
     
-    // Conceptos base según el modelo de Excel de Román & Delgado
+    // Conceptos base: solo se incluye por defecto la asignación salarial devengada.
+    // Bonos o deducciones adicionales se agregan únicamente si aplican.
     const conceptos: ConceptoNomina[] = [
-      { id: 'c_1', concepto: conceptoPrincipal, dht: dhtPrincipal, devengado: sueldoDevengado, deduccion: 0 },
-      { id: 'c_2', concepto: 'Días de Descanso y Feriados', dht: isMensual && quincenaNum === 2 ? '8 DIAS' : '4 DIAS', devengado: 0, deduccion: 0 },
-      { id: 'c_3', concepto: 'Sueldo Variable / Bonificaciones', dht: '', devengado: 0, deduccion: 0 },
-      { id: 'c_4', concepto: 'Seguro Social Obligatorio (IVSS)', dht: '2 Lunes', devengado: 0, deduccion: 0 },
-      { id: 'c_5', concepto: 'Régimen Prestacional de Empleo', dht: '2 Lunes', devengado: 0, deduccion: 0 },
-      { id: 'c_6', concepto: 'Banavih (LPH)', dht: '1.00%', devengado: 0, deduccion: 0 },
-      { id: 'c_7', concepto: 'Retención de I.S.L.R.', dht: '2.35%', devengado: 0, deduccion: 0 },
-      { id: 'c_8', concepto: 'Préstamos del Mes / Deducciones', dht: '', devengado: 0, deduccion: 0 }
+      { id: 'c_1', concepto: conceptoPrincipal, dht: dhtPrincipal, devengado: sueldoDevengado, deduccion: 0 }
     ];
 
     const totalDevengado = sueldoDevengado;
@@ -255,6 +295,13 @@ export default function ModuloNominaJefatura() {
          (r.cedula && emp.cedula && r.cedula.trim() === emp.cedula.trim()))
       );
       if (existing) {
+        if (existing.estado !== 'pagado' && tasaCambio && existing.tasaCambio !== tasaCambio) {
+          return {
+            ...existing,
+            tasaCambio,
+            netoPagarVes: Math.round((existing.netoPagarUsd || 0) * tasaCambio * 100) / 100
+          };
+        }
         return existing;
       }
       return construirReciboBorrador(emp, selectedQuincena, selectedMes, selectedAnio);
@@ -307,7 +354,7 @@ export default function ModuloNominaJefatura() {
 
   // Manejador para abrir el Centro de Pago & Liquidación
   const handleAbrirPagar = (recibo: ReciboNomina) => {
-    const currentTasa = tasaCambio || 832.48;
+    const currentTasa = tasaCambio || 877.90;
     const netoUsd = recibo.netoPagarUsd;
     const netoVes = Math.round(netoUsd * currentTasa * 100) / 100;
     const empInfo = plantillaPersonal.find(p => 
@@ -317,8 +364,18 @@ export default function ModuloNominaJefatura() {
     const numCta = recibo.numeroCuenta || empInfo?.numeroCuenta || '';
     setInlineCuentaVal(numCta);
     setEditingInlineCuenta(false);
+
+    // Limpiar cualquier concepto vacío heredado (con montos 0)
+    const rawConceptos = recibo.conceptos || [];
+    const conceptosLimpios = rawConceptos.filter((c, idx) => 
+      idx === 0 || 
+      (c.devengado !== undefined && c.devengado > 0) || 
+      (c.deduccion !== undefined && c.deduccion > 0)
+    );
+
     setEditingRecibo({
       ...JSON.parse(JSON.stringify(recibo)),
+      conceptos: conceptosLimpios.length > 0 ? conceptosLimpios : rawConceptos,
       numeroCuenta: numCta,
       tipoCuenta: recibo.tipoCuenta || empInfo?.tipoCuenta || 'Corriente',
       tasaCambio: currentTasa,
@@ -327,13 +384,29 @@ export default function ModuloNominaJefatura() {
     setShowConceptosAccordion(false);
   };
 
-  // Copiar solo el número de cuenta al portapapeles
+  // Copiar solo el número de cuenta al portapapeles (solo 20 dígitos)
   const handleCopiarCuenta = (cuenta: string) => {
     if (!cuenta) return;
     const cleanDigits = cuenta.replace(/\D/g, '');
     navigator.clipboard.writeText(cleanDigits || cuenta);
     setCopiedAccount(true);
     setTimeout(() => setCopiedAccount(false), 2500);
+  };
+
+  // Copiar cédula limpia para transferencias (solo números)
+  const handleCopiarCedula = (cedula: string) => {
+    if (!cedula) return;
+    const cleanDigits = cedula.replace(/[^\d]/g, '');
+    navigator.clipboard.writeText(cleanDigits || cedula);
+    setCopiedCedula(true);
+    setTimeout(() => setCopiedCedula(false), 2500);
+  };
+
+  // Copiar monto neto en Bolívares para transferencias
+  const handleCopiarMonto = (monto: number) => {
+    navigator.clipboard.writeText(monto.toFixed(2));
+    setCopiedMonto(true);
+    setTimeout(() => setCopiedMonto(false), 2500);
   };
 
   // Guardar cuenta bancaria inline directamente desde el modal de pago
@@ -361,7 +434,7 @@ export default function ModuloNominaJefatura() {
   // Alternar entre Quincenal (50%) y Mensual Completo (100% • El Último)
   const handleToggleModalidadLiquidacion = (nuevaModalidad: 'quincenal' | 'mensual_completo') => {
     if (!editingRecibo) return;
-    const currentTasa = editingRecibo.tasaCambio || tasaCambio || 832.48;
+    const currentTasa = tasaCambio || editingRecibo.tasaCambio || 877.90;
     const conceptos = [...editingRecibo.conceptos];
     const sueldoBase = editingRecibo.sueldoBaseMensual;
 
@@ -526,13 +599,37 @@ export default function ModuloNominaJefatura() {
 
   // Acción principal: Emitir y Marcar como Pagado
   const handleEmitirYMarcarPagado = async (reciboTarget: ReciboNomina) => {
+    // 1. Validar que la referencia bancaria no esté vacía (obligatoria para transferencias y pagos móviles)
+    if (reciboTarget.tipoPago !== 'Efectivo' && (!reciboTarget.referenciaPago || !reciboTarget.referenciaPago.trim())) {
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: 'Referencia Bancaria Requerida',
+        message: `Debes ingresar el número de referencia bancaria emitida por el banco (${reciboTarget.banco || 'Banco'}) para confirmar el pago de ${reciboTarget.empleadoNombre}.`
+      });
+      return;
+    }
+
     const nowStr = new Date().toLocaleString('es-VE', { 
       day: '2-digit', month: '2-digit', year: 'numeric', 
       hour: '2-digit', minute: '2-digit', hour12: true 
     });
 
+    // 2. Limpiar conceptos con montos vacíos antes de emitir
+    const conceptosFinales = (reciboTarget.conceptos || []).filter((c, idx) => 
+      idx === 0 || 
+      (c.devengado !== undefined && c.devengado > 0) || 
+      (c.deduccion !== undefined && c.deduccion > 0)
+    );
+
+    const tasaFinal = reciboTarget.tasaCambio || tasaCambio || 877.90;
+    const netoVesFinal = Math.round((reciboTarget.netoPagarUsd || 0) * tasaFinal * 100) / 100;
+
     const reciboPagado: ReciboNomina = {
       ...reciboTarget,
+      conceptos: conceptosFinales,
+      tasaCambio: tasaFinal,
+      netoPagarVes: netoVesFinal,
       estado: 'pagado',
       fechaPago: nowStr,
       emitidoPor: currentLoggedUser,
@@ -747,19 +844,42 @@ export default function ModuloNominaJefatura() {
             </p>
           </div>
 
-          {/* Configuración rápida de Tasa BCV */}
-          <div className="bg-slate-800/80 backdrop-blur-md border border-slate-700/60 rounded-2xl p-4 flex items-center gap-4 shrink-0">
+          {/* Configuración de Tasa BCV Oficial */}
+          <div className="bg-slate-800/90 backdrop-blur-md border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-4 shrink-0 shadow-lg shadow-emerald-950/20">
             <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">Tasa Referencial (Bs./$)</span>
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Tasa Oficial del Día (BCV)</span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-bold">En Vivo</span>
+              </div>
+              <div className="flex items-center gap-2">
                 <span className="text-emerald-400 font-extrabold text-lg">Bs.</span>
                 <input
                   type="number"
                   step="0.01"
                   value={tasaCambio}
                   onChange={(e) => setTasaCambio(Math.max(1, Number(e.target.value) || 1))}
-                  className="w-28 bg-slate-900 border border-slate-700 rounded-xl px-2.5 py-1 text-sm font-bold text-white outline-none focus:border-emerald-500"
+                  className="w-28 bg-slate-900 border border-emerald-500/40 rounded-xl px-2.5 py-1 text-sm font-black text-emerald-300 outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400"
+                  title="Tasa oficial del BCV del día"
                 />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                      const data = await res.json();
+                      if (data?.promedio) {
+                        setTasaCambio(data.promedio);
+                        localStorage.setItem('rd_bcv_usd', String(data.promedio));
+                        window.dispatchEvent(new CustomEvent('rd_bcv_updated', { detail: data.promedio }));
+                      }
+                    } catch {}
+                  }}
+                  title="Actualizar con la tasa oficial BCV de hoy"
+                  className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-slate-700/60 rounded-xl transition-all"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
@@ -960,9 +1080,142 @@ export default function ModuloNominaJefatura() {
             </div>
           </div>
 
-          {/* 4. Tabla de Trabajadores de la Quincena */}
+          {/* 4. Lista y Tabla de Trabajadores de la Quincena (Responsivo Móvil + Escritorio) */}
           <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+            {/* VISTA MÓVIL OPTIMIZADA PARA IPHONE / SMARTPHONES */}
+            <div className="block md:hidden divide-y divide-slate-100">
+              {filteredCurrentList.map((recibo) => {
+                const isPagado = recibo.estado === 'pagado';
+                const empItem = plantillaPersonal.find(p => 
+                  p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+                  (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+                );
+                const isMensual = empItem?.frecuenciaPago === 'mensual_ultimo' || recibo.modalidadLiquidacion === 'mensual_completo';
+                const isCobraFinMesQ1 = isMensual && recibo.quincena === 1 && !isPagado && recibo.netoPagarUsd === 0;
+                const numCta = recibo.numeroCuenta || empItem?.numeroCuenta;
+                const cleanCta = numCta ? numCta.replace(/\D/g, '') : '';
+                const ctaLabel = cleanCta.length >= 4 ? ` • Cta: ••${cleanCta.slice(-4)}` : (numCta ? ` • Cta: ${numCta}` : '');
+
+                return (
+                  <div key={`m_${recibo.id}`} className="p-4 bg-white space-y-3">
+                    {/* Encabezado: Nombre, Cédula y Estado */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-slate-900 text-sm truncate">{recibo.empleadoNombre}</h4>
+                        <div className="text-[11px] text-slate-500 font-medium flex flex-wrap items-center gap-1 mt-0.5">
+                          <span className="font-bold text-slate-700">{recibo.cedula}</span>
+                          <span>•</span>
+                          <span className="text-slate-600">{recibo.cargo}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium mt-0.5">
+                          {recibo.tipoPago} ({recibo.banco}{ctaLabel})
+                        </div>
+                      </div>
+
+                      <div className="shrink-0">
+                        {isPagado ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black uppercase tracking-wider">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Pagado
+                          </span>
+                        ) : isCobraFinMesQ1 ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full text-[10px] font-bold">
+                            Cobra Fin de Mes
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black uppercase tracking-wider">
+                            <Clock className="w-3 h-3 text-amber-600" /> Pendiente
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Modalidad si cobra fin de mes */}
+                    {isMensual && (
+                      <div className="text-[10px] font-bold px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-md inline-block">
+                        {isCobraFinMesQ1 ? '📅 Cobra el último (Mes Único)' : '⭐ Mes Completo (100%)'}
+                      </div>
+                    )}
+
+                    {/* Bloque de Montos y Equivalencia */}
+                    <div className="bg-slate-50 rounded-2xl p-3 border border-slate-200/80 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Neto a Liquidar (Bs.)</span>
+                        <div className="text-lg font-black text-emerald-600">
+                          Bs. {recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Equiv. USD</span>
+                        <div className="text-xs font-bold text-slate-700">
+                          $ {recibo.netoPagarUsd.toFixed(2)} USD
+                        </div>
+                        <span className="text-[9px] text-slate-400 block">Base: ${recibo.sueldoBaseMensual}/mes</span>
+                      </div>
+                    </div>
+
+                    {/* Botones de Acción para iPhone / Móvil */}
+                    <div className="flex items-center gap-2 pt-1">
+                      {isPagado ? (
+                        <>
+                          <button
+                            onClick={() => handleDescargarPdf(recibo)}
+                            className="flex-1 min-h-[42px] py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Recibo PDF</span>
+                          </button>
+                          {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
+                            <button
+                              onClick={() => setPreviewCaptureModal({
+                                url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
+                                title: `Comprobante de Pago • ${recibo.empleadoNombre}`
+                              })}
+                              className="min-h-[42px] px-3 py-2 bg-slate-100 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
+                              title="Ver capture"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleEliminarRecibo(recibo)}
+                            className="min-h-[42px] p-2.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                            title="Eliminar recibo"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-500" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => handleAbrirPagar(recibo)}
+                            className={`flex-1 min-h-[42px] py-2 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer active:scale-95 ${
+                              isCobraFinMesQ1
+                                ? 'bg-slate-700 hover:bg-slate-800'
+                                : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/30'
+                            }`}
+                          >
+                            <CheckCheck className="w-3.5 h-3.5 text-emerald-300" />
+                            <span>{isCobraFinMesQ1 ? 'Adelantar / Pagar' : 'Pagar & Emitir'}</span>
+                          </button>
+                          {empItem && (
+                            <button
+                              onClick={() => handleAbrirEditarTrabajador(empItem)}
+                              className="min-h-[42px] p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
+                              title="Editar ficha del trabajador"
+                            >
+                              <Edit3 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* VISTA ESCRITORIO / PANTALLAS GRANDES (TABLE) */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider">
@@ -1393,38 +1646,40 @@ export default function ModuloNominaJefatura() {
                         {isTransfer ? <Building2 className="w-4 h-4 text-blue-600" /> : <Users className="w-4 h-4 text-blue-600" />}
                         {isTransfer ? 'Datos para Transferencia Bancaria' : 'Datos Bancarios para el Pago'}
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         {isTransfer && currentCuenta && (
                           <button
                             type="button"
                             onClick={() => handleCopiarCuenta(currentCuenta)}
                             className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                           >
-                            {copiedAccount ? (
-                              <>
-                                <Check className="w-3.5 h-3.5 text-blue-600" /> ¡Cuenta Copiada!
-                              </>
-                            ) : (
-                              <>
-                                <Copy className="w-3.5 h-3.5 text-blue-500" /> Copiar Solo Cuenta (20 Dígitos)
-                              </>
-                            )}
+                            {copiedAccount ? <Check className="w-3.5 h-3.5 text-blue-600" /> : <Copy className="w-3.5 h-3.5 text-blue-500" />}
+                            <span>{copiedAccount ? '¡Cuenta Copiada!' : 'Copiar Cuenta'}</span>
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarCedula(editingRecibo.cedula)}
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                        >
+                          {copiedCedula ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                          <span>{copiedCedula ? '¡Cédula Copiada!' : 'Copiar Cédula'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarMonto(editingRecibo.netoPagarVes)}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                        >
+                          {copiedMonto ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-emerald-600" />}
+                          <span>{copiedMonto ? '¡Monto Copiado!' : 'Copiar Monto Bs.'}</span>
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleCopiarDatos(copiaTexto)}
                           className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
                         >
-                          {copiedData ? (
-                            <>
-                              <Check className="w-3.5 h-3.5 text-emerald-600" /> ¡Copiado al Portapapeles!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3.5 h-3.5 text-slate-500" /> Copiar Resumen Completo
-                            </>
-                          )}
+                          {copiedData ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                          <span>{copiedData ? '¡Copiado!' : 'Copiar Todo'}</span>
                         </button>
                       </div>
                     </div>
@@ -1435,11 +1690,11 @@ export default function ModuloNominaJefatura() {
                         <span className="font-extrabold text-slate-800">{editingRecibo.tipoPago}</span>
                       </div>
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Banco</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Banco Receptor</span>
                         <span className="font-extrabold text-slate-800">{editingRecibo.banco}</span>
                       </div>
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Cédula / RIF</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Cédula del Titular</span>
                         <span className="font-extrabold text-slate-800">{editingRecibo.cedula}</span>
                       </div>
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
@@ -1520,22 +1775,56 @@ export default function ModuloNominaJefatura() {
 
               {/* BLOQUE DE COMPROBANTE: NÚMERO DE REFERENCIA Y ADJUNTAR CAPTURE (OPCIONAL) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 1. Referencia Bancaria */}
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-700 block">
-                    Número de Referencia Bancaria
-                  </label>
-                  <input
-                    type="text"
-                    value={editingRecibo.referenciaPago || ''}
-                    onChange={(e) => setEditingRecibo({ ...editingRecibo, referenciaPago: e.target.value })}
-                    className="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-emerald-500 shadow-xs"
-                    placeholder="Ej: 849201 (Transferencia o Pago Móvil)"
-                  />
-                  <p className="text-[11px] text-slate-500">
-                    Aparecerá en el recibo PDF oficial y en la notificación instantánea del trabajador.
-                  </p>
-                </div>
+                {/* 1. Referencia Bancaria (Obligatoria para transferencias / pago móvil) */}
+                {(() => {
+                  const isRefValida = editingRecibo.tipoPago === 'Efectivo' || (editingRecibo.referenciaPago && editingRecibo.referenciaPago.trim().length > 0);
+                  const isRefRequerida = editingRecibo.tipoPago !== 'Efectivo';
+
+                  return (
+                    <div className={`p-4 rounded-2xl border transition-all ${
+                      !isRefValida 
+                        ? 'bg-amber-50/70 border-amber-300 ring-2 ring-amber-400/20' 
+                        : 'bg-slate-50 border-slate-200'
+                    } space-y-2`}>
+                      <div className="flex justify-between items-center">
+                        <label className="text-xs font-black uppercase text-slate-800 flex items-center gap-1">
+                          <span>Número de Referencia Bancaria</span>
+                          {isRefRequerida && <span className="text-rose-600 font-black">*</span>}
+                        </label>
+                        {isRefRequerida && (
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            isRefValida 
+                              ? 'bg-emerald-100 text-emerald-800' 
+                              : 'bg-rose-100 text-rose-700 font-extrabold animate-pulse'
+                          }`}>
+                            {isRefValida ? '✓ Referencia ingresada' : '⚠️ Requerido para emitir'}
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        required={isRefRequerida}
+                        value={editingRecibo.referenciaPago || ''}
+                        onChange={(e) => setEditingRecibo({ ...editingRecibo, referenciaPago: e.target.value })}
+                        className={`w-full bg-white border rounded-xl px-3.5 py-2.5 text-sm font-bold text-slate-900 outline-none shadow-xs transition-colors ${
+                          !isRefValida 
+                            ? 'border-amber-400 focus:border-rose-500' 
+                            : 'border-slate-300 focus:border-emerald-500'
+                        }`}
+                        placeholder="Ej: 849201 (Transferencia o Pago Móvil)"
+                      />
+                      {!isRefValida ? (
+                        <p className="text-[11px] text-amber-800 font-bold flex items-center gap-1">
+                          <span>⚠️ Debes ingresar la referencia bancaria para poder confirmar y emitir el pago.</span>
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-slate-500">
+                          Aparecerá en el recibo PDF oficial y en la notificación instantánea del trabajador.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* 2. Adjuntar Capture / Comprobante de Pago (Opcional) */}
                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
@@ -1707,33 +1996,45 @@ export default function ModuloNominaJefatura() {
               </div>
             </div>
 
-            {/* Modal Footer */}
-            <div className="bg-slate-50 p-4 px-6 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-3">
+            {/* Modal Footer (Optimizado para Pantallas de iPhone y Escritorio) */}
+            <div className="bg-slate-50 p-4 px-4 sm:px-6 border-t border-slate-200 flex flex-col-reverse sm:flex-row justify-between items-stretch sm:items-center gap-3">
               <button
                 type="button"
                 onClick={() => setEditingRecibo(null)}
-                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-4 py-3 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer text-center"
               >
                 Cancelar
               </button>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={handleSaveBorrador}
                   disabled={isSaving}
-                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-colors cursor-pointer disabled:opacity-50 text-center"
                 >
                   Guardar Borrador
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleEmitirYMarcarPagado(editingRecibo)}
-                  disabled={isSaving}
-                  className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                >
-                  <CheckCheck className="w-4 h-4 text-emerald-200" /> Confirmar Pago & Descargar Recibo PDF
-                </button>
+
+                {(() => {
+                  const isRefValida = editingRecibo.tipoPago === 'Efectivo' || (editingRecibo.referenciaPago && editingRecibo.referenciaPago.trim().length > 0);
+
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleEmitirYMarcarPagado(editingRecibo)}
+                      disabled={isSaving || !isRefValida}
+                      className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 ${
+                        isRefValida && !isSaving
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30 cursor-pointer'
+                          : 'bg-slate-300 text-slate-500 cursor-not-allowed opacity-80 shadow-none'
+                      }`}
+                    >
+                      <CheckCheck className="w-4 h-4" />
+                      <span>{isRefValida ? 'Confirmar Pago & Descargar Recibo PDF' : 'Falta Nº de Referencia para Emitir'}</span>
+                    </button>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -1975,7 +2276,7 @@ export default function ModuloNominaJefatura() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="sm:col-span-2">
+                      <div>
                         <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
                           Banco Receptor *
                         </label>
@@ -1984,13 +2285,13 @@ export default function ModuloNominaJefatura() {
                           required
                           value={workerForm.banco}
                           onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
-                          placeholder="Ej: Banesco, Mercantil, Venezuela, Provincial, Bancamiga"
+                          placeholder="Ej: Banesco, Mercantil, Venezuela"
                           className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
                         />
                       </div>
                       <div>
                         <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
-                          Tipo de Cuenta
+                          Tipo de Cuenta *
                         </label>
                         <select
                           value={workerForm.tipoCuenta}
@@ -2000,6 +2301,19 @@ export default function ModuloNominaJefatura() {
                           <option value="Corriente">Corriente</option>
                           <option value="Ahorro">Ahorro</option>
                         </select>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                          Cédula del Titular *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={workerForm.cedula}
+                          onChange={(e) => setWorkerForm({ ...workerForm, cedula: e.target.value })}
+                          placeholder="Ej: V-12.338.408"
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                        />
                       </div>
                     </div>
 

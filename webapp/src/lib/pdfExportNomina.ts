@@ -159,9 +159,17 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
       currentY + 9.5
     );
 
-    // 3. Tabla de Conceptos
+    // 3. Tabla de Conceptos (Solo mostrar conceptos que tengan montos reales devengados o deducidos)
     currentY += 16;
-    const tableData = recibo.conceptos.map(c => [
+    const conceptosValidos = (recibo.conceptos || []).filter(c => 
+      (c.devengado !== undefined && c.devengado > 0) || 
+      (c.deduccion !== undefined && c.deduccion > 0)
+    );
+    const conceptosParaTabla = conceptosValidos.length > 0 
+      ? conceptosValidos 
+      : (recibo.conceptos && recibo.conceptos.length > 0 ? [recibo.conceptos[0]] : []);
+
+    const tableData = conceptosParaTabla.map(c => [
       c.concepto,
       c.dht || '—',
       c.devengado !== undefined && c.devengado > 0 ? formatMonto(c.devengado, 'USD') : '',
