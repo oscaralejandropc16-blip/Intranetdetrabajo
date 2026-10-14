@@ -144,10 +144,17 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
 
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(100, 116, 139);
-    doc.text('Días Quincena:', c3X, currentY + 9.5);
+    const esMensualCompleto = recibo.modalidadLiquidacion === 'mensual_completo';
+    doc.text(esMensualCompleto ? 'Liquidación:' : 'Días Quincena:', c3X, currentY + 9.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
-    doc.text(`${recibo.diasLaborados} laborados + ${recibo.diasDescanso} descanso`, c3X + 21, currentY + 9.5);
+    doc.text(
+      esMensualCompleto 
+        ? 'Mes Completo (El Último)' 
+        : `${recibo.diasLaborados} laborados + ${recibo.diasDescanso} descanso`, 
+      c3X + (esMensualCompleto ? 18 : 21), 
+      currentY + 9.5
+    );
 
     // 3. Tabla de Conceptos
     currentY += 16;

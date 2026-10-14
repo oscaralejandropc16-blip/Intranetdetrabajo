@@ -119,8 +119,13 @@ export default function ModuloNominaEmpleado() {
               <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/30 text-emerald-300 rounded-full text-[11px] font-black uppercase tracking-wider mb-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Último Pago Acreditado
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white">
-                Quincena del {ultimoRecibo.periodoInicio} al {ultimoRecibo.periodoFin}
+              <h3 className="text-xl sm:text-2xl font-black text-white flex flex-wrap items-center gap-2">
+                <span>{ultimoRecibo.modalidadLiquidacion === 'mensual_completo' ? 'Sueldo Mensual Completo' : 'Quincena'} del {ultimoRecibo.periodoInicio} al {ultimoRecibo.periodoFin}</span>
+                {ultimoRecibo.modalidadLiquidacion === 'mensual_completo' && (
+                  <span className="px-2 py-0.5 bg-amber-400 text-slate-950 font-black text-[11px] rounded-full uppercase tracking-wider">
+                    El Último (100%)
+                  </span>
+                )}
               </h3>
               <p className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
                 <span>Recibo Nº {ultimoRecibo.numeroRecibo}</span>
@@ -236,8 +241,8 @@ export default function ModuloNominaEmpleado() {
                     </span>
                   </div>
 
-                  <h4 className="font-extrabold text-slate-900 text-sm">
-                    Quincena {recibo.quincena} • Mes {recibo.mes}/{recibo.anio}
+                  <h4 className="font-extrabold text-slate-900 text-sm flex items-center justify-between">
+                    <span>{recibo.modalidadLiquidacion === 'mensual_completo' ? 'Mes Completo (El Último)' : `Quincena ${recibo.quincena}`} • {recibo.mes}/{recibo.anio}</span>
                   </h4>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {recibo.periodoInicio} al {recibo.periodoFin}

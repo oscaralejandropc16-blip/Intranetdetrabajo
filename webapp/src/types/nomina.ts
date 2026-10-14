@@ -45,6 +45,7 @@ export interface ReciboNomina {
 
   // Estado y emisión
   estado: 'borrador' | 'pagado';
+  modalidadLiquidacion?: 'quincenal' | 'mensual_completo';
   fechaPago?: string; // YYYY-MM-DD HH:mm
   emitidoPor?: string;
   observaciones?: string;
@@ -60,6 +61,7 @@ export interface PlantillaEmpleadoNomina {
   sueldoMensual: number;
   banco: string;
   tipoPago: 'Transferencia' | 'Pago Móvil' | 'Efectivo' | 'Zelle' | 'Otro';
+  frecuenciaPago?: 'quincenal' | 'mensual_ultimo'; // 'quincenal' (15 y último) o 'mensual_ultimo' (un solo pago a fin de mes)
   telefono?: string;
   email?: string;
 }

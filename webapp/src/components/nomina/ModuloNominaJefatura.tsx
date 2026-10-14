@@ -5,7 +5,7 @@ import {
   RefreshCw, FileText, 
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
   Sparkles, X, UserPlus, UserMinus,
-  Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp
+  Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -58,6 +58,7 @@ export default function ModuloNominaJefatura() {
     sueldoMensual: number;
     banco: string;
     tipoPago: 'Pago Móvil' | 'Transferencia' | 'Efectivo' | 'Zelle' | 'Otro';
+    frecuenciaPago: 'quincenal' | 'mensual_ultimo';
     telefono: string;
     email: string;
   }>({
@@ -67,6 +68,7 @@ export default function ModuloNominaJefatura() {
     sueldoMensual: 200,
     banco: 'Banesco',
     tipoPago: 'Pago Móvil',
+    frecuenciaPago: 'quincenal',
     telefono: '',
     email: ''
   });
@@ -148,12 +150,39 @@ export default function ModuloNominaJefatura() {
 
   // Función constructora para generar un recibo inicial desde plantilla
   const construirReciboBorrador = (emp: PlantillaEmpleadoNomina, quincenaNum: 1 | 2, mesNum: number, anioNum: number): ReciboNomina => {
-    const sueldoQuincenal = Math.round((emp.sueldoMensual / 2) * 100) / 100;
+    const isMensual = emp.frecuenciaPago === 'mensual_ultimo';
+    
+    // Si cobra mensual único (el último):
+    // En la 1ra quincena no cobra (devengado 0)
+    // En la 2da quincena cobra el 100% del sueldo mensual completo
+    let sueldoDevengado = 0;
+    let conceptoPrincipal = 'Sueldo Quincenal';
+    let dhtPrincipal = '11 DIAS';
+    let diasLab = 11;
+    let diasDesc = 4;
+
+    if (isMensual) {
+      if (quincenaNum === 1) {
+        sueldoDevengado = 0;
+        conceptoPrincipal = 'Sueldo Mensual Único (Cobra a Fin de Mes / El Último)';
+        dhtPrincipal = 'Cobra el último';
+        diasLab = 0;
+        diasDesc = 0;
+      } else {
+        sueldoDevengado = emp.sueldoMensual; // 100% Completo
+        conceptoPrincipal = 'Sueldo Mensual Completo (El Último)';
+        dhtPrincipal = '30 DIAS';
+        diasLab = 22;
+        diasDesc = 8;
+      }
+    } else {
+      sueldoDevengado = Math.round((emp.sueldoMensual / 2) * 100) / 100;
+    }
     
     // Conceptos base según el modelo de Excel de Román & Delgado
     const conceptos: ConceptoNomina[] = [
-      { id: 'c_1', concepto: 'Sueldo Quincenal', dht: '11 DIAS', devengado: sueldoQuincenal, deduccion: 0 },
-      { id: 'c_2', concepto: 'Días de Descanso y Feriados', dht: '4 DIAS', devengado: 0, deduccion: 0 },
+      { id: 'c_1', concepto: conceptoPrincipal, dht: dhtPrincipal, devengado: sueldoDevengado, deduccion: 0 },
+      { id: 'c_2', concepto: 'Días de Descanso y Feriados', dht: isMensual && quincenaNum === 2 ? '8 DIAS' : '4 DIAS', devengado: 0, deduccion: 0 },
       { id: 'c_3', concepto: 'Sueldo Variable / Bonificaciones', dht: '', devengado: 0, deduccion: 0 },
       { id: 'c_4', concepto: 'Seguro Social Obligatorio (IVSS)', dht: '2 Lunes', devengado: 0, deduccion: 0 },
       { id: 'c_5', concepto: 'Régimen Prestacional de Empleo', dht: '2 Lunes', devengado: 0, deduccion: 0 },
@@ -162,7 +191,7 @@ export default function ModuloNominaJefatura() {
       { id: 'c_8', concepto: 'Préstamos del Mes / Deducciones', dht: '', devengado: 0, deduccion: 0 }
     ];
 
-    const totalDevengado = sueldoQuincenal;
+    const totalDevengado = sueldoDevengado;
     const totalDeducciones = 0;
     const netoUsd = totalDevengado - totalDeducciones;
     const netoVes = Math.round(netoUsd * tasaCambio * 100) / 100;
@@ -190,9 +219,10 @@ export default function ModuloNominaJefatura() {
       monedaPrincipal: 'USD',
       tasaCambio,
       sueldoBaseMensual: emp.sueldoMensual,
-      sueldoQuincenalBase: sueldoQuincenal,
-      diasLaborados: 11,
-      diasDescanso: 4,
+      sueldoQuincenalBase: sueldoDevengado,
+      modalidadLiquidacion: isMensual ? 'mensual_completo' : 'quincenal',
+      diasLaborados: diasLab,
+      diasDescanso: diasDesc,
       conceptos,
       totalDevengado,
       totalDeducciones,
@@ -248,7 +278,7 @@ export default function ModuloNominaJefatura() {
       totalDeducciones += r.totalDeducciones || 0;
       if (r.estado === 'pagado') {
         pagadosCount++;
-      } else {
+      } else if (r.netoPagarUsd > 0) {
         pendientesCount++;
       }
     });
@@ -276,6 +306,49 @@ export default function ModuloNominaJefatura() {
       netoPagarVes: netoVes
     });
     setShowConceptosAccordion(false);
+  };
+
+  // Alternar entre Quincenal (50%) y Mensual Completo (100% • El Último)
+  const handleToggleModalidadLiquidacion = (nuevaModalidad: 'quincenal' | 'mensual_completo') => {
+    if (!editingRecibo) return;
+    const currentTasa = editingRecibo.tasaCambio || tasaCambio || 832.48;
+    const conceptos = [...editingRecibo.conceptos];
+    const sueldoBase = editingRecibo.sueldoBaseMensual;
+
+    const esMensual = nuevaModalidad === 'mensual_completo';
+    const nuevoSueldo = esMensual ? sueldoBase : Math.round((sueldoBase / 2) * 100) / 100;
+    const nuevoConceptoTexto = esMensual ? 'Sueldo Mensual Completo (El Último)' : 'Sueldo Quincenal';
+    const nuevoDht = esMensual ? '30 DIAS' : '11 DIAS';
+
+    if (conceptos.length > 0) {
+      conceptos[0] = {
+        ...conceptos[0],
+        concepto: nuevoConceptoTexto,
+        dht: nuevoDht,
+        devengado: nuevoSueldo
+      };
+    }
+
+    let totalDev = 0;
+    let totalDed = 0;
+    conceptos.forEach(c => {
+      totalDev += Number(c.devengado || 0);
+      totalDed += Number(c.deduccion || 0);
+    });
+
+    const netoUsd = Math.max(0, totalDev - totalDed);
+    const netoVes = Math.round(netoUsd * currentTasa * 100) / 100;
+
+    setEditingRecibo({
+      ...editingRecibo,
+      modalidadLiquidacion: nuevaModalidad,
+      sueldoQuincenalBase: nuevoSueldo,
+      conceptos,
+      totalDevengado: totalDev,
+      totalDeducciones: totalDed,
+      netoPagarUsd: netoUsd,
+      netoPagarVes: netoVes
+    });
   };
 
   // Manejo de carga de Capture Bancario (opcional)
@@ -490,6 +563,7 @@ export default function ModuloNominaJefatura() {
       sueldoMensual: 200,
       banco: 'Banesco',
       tipoPago: 'Pago Móvil',
+      frecuenciaPago: 'quincenal',
       telefono: '',
       email: ''
     });
@@ -506,6 +580,7 @@ export default function ModuloNominaJefatura() {
       sueldoMensual: emp.sueldoMensual,
       banco: emp.banco || 'Banesco',
       tipoPago: emp.tipoPago || 'Pago Móvil',
+      frecuenciaPago: emp.frecuenciaPago || 'quincenal',
       telefono: emp.telefono || '',
       email: emp.email || ''
     });
@@ -535,6 +610,7 @@ export default function ModuloNominaJefatura() {
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
         tipoPago: workerForm.tipoPago,
+        frecuenciaPago: workerForm.frecuenciaPago || 'quincenal',
         telefono: workerForm.telefono.trim(),
         email: workerForm.email.trim()
       } : w);
@@ -547,6 +623,7 @@ export default function ModuloNominaJefatura() {
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
         tipoPago: workerForm.tipoPago,
+        frecuenciaPago: workerForm.frecuenciaPago || 'quincenal',
         telefono: workerForm.telefono.trim(),
         email: workerForm.email.trim()
       };
@@ -844,11 +921,31 @@ export default function ModuloNominaJefatura() {
                 <tbody className="divide-y divide-slate-100 text-xs">
                   {filteredCurrentList.map((recibo) => {
                     const isPagado = recibo.estado === 'pagado';
+                    const empItem = plantillaPersonal.find(p => 
+                      p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+                      (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+                    );
+                    const isMensual = empItem?.frecuenciaPago === 'mensual_ultimo' || recibo.modalidadLiquidacion === 'mensual_completo';
+                    const isCobraFinMesQ1 = isMensual && recibo.quincena === 1 && !isPagado && recibo.netoPagarUsd === 0;
+
                     return (
                       <tr key={recibo.id} className="hover:bg-slate-50/80 transition-colors">
                         {/* Nombre y Cargo */}
                         <td className="py-4 px-6">
-                          <div className="font-extrabold text-slate-900 text-sm">{recibo.empleadoNombre}</div>
+                          <div className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                            <span>{recibo.empleadoNombre}</span>
+                            {isMensual && (
+                              isCobraFinMesQ1 ? (
+                                <span className="px-1.5 py-0.5 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-md text-[10px] font-bold">
+                                  📅 Cobra el último (Mes Único)
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md text-[10px] font-bold">
+                                  ⭐ Mes Completo (100%)
+                                </span>
+                              )
+                            )}
+                          </div>
                           <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 mt-0.5">
                             <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">{recibo.cargo}</span>
                             <span>• {recibo.tipoPago} ({recibo.banco})</span>
@@ -863,7 +960,11 @@ export default function ModuloNominaJefatura() {
                         {/* Sueldo Base */}
                         <td className="py-4 px-4 text-right font-medium text-slate-600">
                           $ {recibo.sueldoBaseMensual.toFixed(2)}
-                          <span className="text-[10px] text-slate-400 block">($ {(recibo.sueldoBaseMensual / 2).toFixed(2)} qna)</span>
+                          {isMensual ? (
+                            <span className="text-[10px] text-amber-700 font-bold block">(Pago Único Fin de Mes)</span>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 block">($ {(recibo.sueldoBaseMensual / 2).toFixed(2)} qna)</span>
+                          )}
                         </td>
 
                         {/* Devengado */}
@@ -892,6 +993,10 @@ export default function ModuloNominaJefatura() {
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Pagado
                             </span>
+                          ) : isCobraFinMesQ1 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-bold tracking-wider">
+                              <Calendar className="w-3.5 h-3.5 text-slate-400" /> Cobra Fin de Mes
+                            </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm">
                               <Clock className="w-3.5 h-3.5 text-amber-600" /> Pendiente
@@ -901,83 +1006,80 @@ export default function ModuloNominaJefatura() {
 
                         {/* Acciones: Flujo Unificado en Pagar & Emitir */}
                         <td className="py-4 px-6 text-center">
-                          {(() => {
-                            const empItem = plantillaPersonal.find(p => 
-                              p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
-                              (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
-                            );
-                            return (
-                              <div className="flex items-center justify-center gap-1.5">
-                                {isPagado ? (
-                                  <>
-                                    {/* Botón Descargar Recibo PDF */}
-                                    <button
-                                      onClick={() => handleDescargarPdf(recibo)}
-                                      className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
-                                      title="Descargar Recibo Oficial en PDF (Doble Talón)"
-                                    >
-                                      <Download className="w-3.5 h-3.5" /> Recibo PDF
-                                    </button>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {isPagado ? (
+                              <>
+                                {/* Botón Descargar Recibo PDF */}
+                                <button
+                                  onClick={() => handleDescargarPdf(recibo)}
+                                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer"
+                                  title="Descargar Recibo Oficial en PDF (Doble Talón)"
+                                >
+                                  <Download className="w-3.5 h-3.5" /> Recibo PDF
+                                </button>
 
-                                    {/* Botón Ver Capture si existe */}
-                                    {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
-                                      <button
-                                        onClick={() => setPreviewCaptureModal({
-                                          url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
-                                          title: `Comprobante de Pago • ${recibo.empleadoNombre}`
-                                        })}
-                                        className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer"
-                                        title="Ver capture o comprobante bancario adjunto"
-                                      >
-                                        <Eye className="w-3.5 h-3.5 text-emerald-600" /> Capture
-                                      </button>
-                                    )}
-                                  </>
-                                ) : (
-                                  /* Botón Único Principal: Pagar & Emitir */
+                                {/* Botón Ver Capture si existe */}
+                                {(recibo.comprobanteBase64 || recibo.comprobanteUrl) && (
                                   <button
-                                    onClick={() => handleAbrirPagar(recibo)}
-                                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md shadow-blue-600/20 cursor-pointer"
-                                    title="Pagar, ingresar referencia, capture y emitir recibo oficial"
+                                    onClick={() => setPreviewCaptureModal({
+                                      url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
+                                      title: `Comprobante de Pago • ${recibo.empleadoNombre}`
+                                    })}
+                                    className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer"
+                                    title="Ver capture o comprobante bancario adjunto"
                                   >
-                                    <CheckCheck className="w-3.5 h-3.5 text-emerald-300" /> Pagar & Emitir
+                                    <Eye className="w-3.5 h-3.5 text-emerald-600" /> Capture
                                   </button>
                                 )}
+                              </>
+                            ) : (
+                              /* Botón Principal: Pagar & Emitir */
+                              <button
+                                onClick={() => handleAbrirPagar(recibo)}
+                                className={`px-3.5 py-1.5 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md cursor-pointer ${
+                                  isCobraFinMesQ1
+                                    ? 'bg-slate-700 hover:bg-slate-800 shadow-slate-700/20'
+                                    : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                                }`}
+                                title={isCobraFinMesQ1 ? 'Adelantar o liquidar nómina' : 'Pagar, ingresar referencia, capture y emitir recibo oficial'}
+                              >
+                                <CheckCheck className="w-3.5 h-3.5 text-emerald-300" /> 
+                                {isCobraFinMesQ1 ? 'Adelantar / Pagar' : 'Pagar & Emitir'}
+                              </button>
+                            )}
 
-                                {/* Editar datos base del trabajador */}
-                                {empItem && (
-                                  <button
-                                    onClick={() => handleAbrirEditarTrabajador(empItem)}
-                                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-lg transition-colors cursor-pointer"
-                                    title="Editar datos base del trabajador (sueldo mensual, banco, cargo)"
-                                  >
-                                    <Edit3 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
+                            {/* Editar datos base del trabajador */}
+                            {empItem && (
+                              <button
+                                onClick={() => handleAbrirEditarTrabajador(empItem)}
+                                className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-lg transition-colors cursor-pointer"
+                                title="Editar datos base del trabajador (sueldo mensual, modalidad de cobro, banco, cargo)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                                {/* Quitar de nómina */}
-                                {empItem && (
-                                  <button
-                                    onClick={() => handleQuitarTrabajador(empItem)}
-                                    className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                                    title="Quitar este trabajador de la nómina"
-                                  >
-                                    <UserMinus className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
+                            {/* Quitar de nómina */}
+                            {empItem && (
+                              <button
+                                onClick={() => handleQuitarTrabajador(empItem)}
+                                className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                title="Quitar este trabajador de la nómina"
+                              >
+                                <UserMinus className="w-3.5 h-3.5" />
+                              </button>
+                            )}
 
-                                {isPagado && (
-                                  <button
-                                    onClick={() => handleEliminarRecibo(recibo.id, recibo.empleadoNombre)}
-                                    className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                                    title="Anular recibo emitido"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })()}
+                            {isPagado && (
+                              <button
+                                onClick={() => handleEliminarRecibo(recibo.id, recibo.empleadoNombre)}
+                                className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                                title="Anular recibo emitido"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -1105,6 +1207,66 @@ export default function ModuloNominaJefatura() {
             {/* Modal Body */}
             <div className="p-6 overflow-y-auto space-y-6">
               
+              {/* SELECTOR DE MODALIDAD DE COBRO: QUINCENAL (50%) VS MENSUAL COMPLETO (100% • EL ÚLTIMO) */}
+              <div className="bg-slate-800/80 border border-slate-700/80 rounded-2xl p-4 space-y-2.5">
+                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-amber-400" /> Modalidad de Pago de este Recibo
+                  </span>
+                  <span className="text-xs font-bold text-slate-400">
+                    Sueldo Mensual Base: <strong className="text-white">$ {editingRecibo.sueldoBaseMensual.toFixed(2)}</strong>
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleModalidadLiquidacion('quincenal')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      editingRecibo.modalidadLiquidacion !== 'mensual_completo'
+                        ? 'bg-blue-600/30 border-blue-500 text-white ring-2 ring-blue-500/40 shadow-sm'
+                        : 'bg-slate-900/50 border-slate-700/60 text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${editingRecibo.modalidadLiquidacion !== 'mensual_completo' ? 'bg-blue-400 shadow-sm shadow-blue-400/50' : 'bg-slate-600'}`} />
+                        Pago Quincenal (50%)
+                      </span>
+                      <span className="text-xs font-black text-white">
+                        $ {(editingRecibo.sueldoBaseMensual / 2).toFixed(2)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 block mt-1">
+                      15 días de labor • Pago habitual fraccionado (15 y Último)
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleModalidadLiquidacion('mensual_completo')}
+                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      editingRecibo.modalidadLiquidacion === 'mensual_completo'
+                        ? 'bg-amber-500/25 border-amber-500 text-white ring-2 ring-amber-500/40 shadow-sm'
+                        : 'bg-slate-900/50 border-slate-700/60 text-slate-400 hover:bg-slate-900 hover:text-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${editingRecibo.modalidadLiquidacion === 'mensual_completo' ? 'bg-amber-400 shadow-sm shadow-amber-400/50' : 'bg-slate-600'}`} />
+                        Un Solo Pago • Mes Completo (100%)
+                      </span>
+                      <span className="text-xs font-black text-amber-300">
+                        $ {editingRecibo.sueldoBaseMensual.toFixed(2)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-slate-400 block mt-1">
+                      30 días completos • Para quien cobra todo junto a fin de mes (El Último)
+                    </span>
+                  </button>
+                </div>
+              </div>
+
               {/* BLOQUE PRINCIPAL: MONTO A TRANSFERIR EN BOLÍVARES (PROTAGONISTA) */}
               <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 border border-emerald-500/40 rounded-3xl p-6 text-white shadow-lg relative overflow-hidden">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1544,6 +1706,50 @@ export default function ModuloNominaJefatura() {
                   </div>
                 </div>
 
+                {/* Modalidad y Frecuencia de Cobro */}
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1.5">
+                    Frecuencia de Pago y Liquidación
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setWorkerForm({ ...workerForm, frecuenciaPago: 'quincenal' })}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        workerForm.frecuenciaPago !== 'mensual_ultimo'
+                          ? 'border-blue-500 bg-blue-50/80 text-blue-950 ring-2 ring-blue-500/20'
+                          : 'border-slate-200 bg-slate-50/60 text-slate-600 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${workerForm.frecuenciaPago !== 'mensual_ultimo' ? 'bg-blue-600' : 'bg-slate-300'}`}></span>
+                        Quincenal (15 y Último)
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+                        Cobra 50% cada quincena ($ {((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)})
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setWorkerForm({ ...workerForm, frecuenciaPago: 'mensual_ultimo' })}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                        workerForm.frecuenciaPago === 'mensual_ultimo'
+                          ? 'border-amber-500 bg-amber-50/80 text-amber-950 ring-2 ring-amber-500/20'
+                          : 'border-slate-200 bg-slate-50/60 text-slate-600 hover:bg-slate-100/70'
+                      }`}
+                    >
+                      <span className="text-xs font-bold flex items-center gap-1.5">
+                        <span className={`w-2 h-2 rounded-full ${workerForm.frecuenciaPago === 'mensual_ultimo' ? 'bg-amber-600' : 'bg-slate-300'}`}></span>
+                        Un Solo Pago (El Último)
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium block mt-0.5">
+                        Cobra 100% a fin de mes ($ {(Number(workerForm.sueldoMensual) || 0).toFixed(2)})
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
                 {/* Sueldo Mensual Base */}
                 <div className="bg-emerald-50/60 border border-emerald-200/80 rounded-2xl p-4">
                   <div className="flex justify-between items-center mb-1.5">
@@ -1551,7 +1757,10 @@ export default function ModuloNominaJefatura() {
                       Sueldo Base Mensual ($ USD) *
                     </label>
                     <span className="text-[11px] font-bold text-emerald-700">
-                      Quincenal: $ {((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}
+                      {workerForm.frecuenciaPago === 'mensual_ultimo'
+                        ? `Pago único a fin de mes: $ ${(Number(workerForm.sueldoMensual) || 0).toFixed(2)}`
+                        : `Quincenal: $ ${((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}`
+                      }
                     </span>
                   </div>
                   <div className="relative">
@@ -1568,7 +1777,10 @@ export default function ModuloNominaJefatura() {
                     />
                   </div>
                   <span className="text-[11px] text-emerald-700/80 mt-1 block">
-                    En cada quincena se calculará automáticamente el 50% de este sueldo base ($ {((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}).
+                    {workerForm.frecuenciaPago === 'mensual_ultimo'
+                      ? 'Este trabajador cobra la totalidad mensual en un solo pago a fin de mes (16 al último día). En la primera quincena no acumula cobro.'
+                      : `En cada quincena se calculará automáticamente el 50% de este sueldo base ($ ${((Number(workerForm.sueldoMensual) || 0) / 2).toFixed(2)}).`
+                    }
                   </span>
                 </div>
 
