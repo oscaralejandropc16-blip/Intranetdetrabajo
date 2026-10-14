@@ -5,7 +5,8 @@ import {
   RefreshCw, FileText, 
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
   Sparkles, X, UserPlus, UserMinus,
-  Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar
+  Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar,
+  Building2, Smartphone
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -58,6 +59,8 @@ export default function ModuloNominaJefatura() {
     sueldoMensual: number;
     banco: string;
     tipoPago: 'Pago Móvil' | 'Transferencia' | 'Efectivo' | 'Zelle' | 'Otro';
+    numeroCuenta: string;
+    tipoCuenta: 'Corriente' | 'Ahorro';
     frecuenciaPago: 'quincenal' | 'mensual_ultimo';
     telefono: string;
     email: string;
@@ -68,6 +71,8 @@ export default function ModuloNominaJefatura() {
     sueldoMensual: 200,
     banco: 'Banesco',
     tipoPago: 'Pago Móvil',
+    numeroCuenta: '',
+    tipoCuenta: 'Corriente',
     frecuenciaPago: 'quincenal',
     telefono: '',
     email: ''
@@ -79,6 +84,9 @@ export default function ModuloNominaJefatura() {
   const [showConceptosAccordion, setShowConceptosAccordion] = useState<boolean>(false);
   const [previewCaptureModal, setPreviewCaptureModal] = useState<{ url: string; title: string } | null>(null);
   const [copiedData, setCopiedData] = useState<boolean>(false);
+  const [copiedAccount, setCopiedAccount] = useState<boolean>(false);
+  const [editingInlineCuenta, setEditingInlineCuenta] = useState<boolean>(false);
+  const [inlineCuentaVal, setInlineCuentaVal] = useState<string>('');
 
   // Alerta del sistema
   const [systemAlert, setSystemAlert] = useState<{
@@ -211,6 +219,8 @@ export default function ModuloNominaJefatura() {
       codTrabajador: `RD-${emp.id.replace('emp_', '').padStart(3, '0')}`,
       banco: emp.banco,
       tipoPago: emp.tipoPago,
+      numeroCuenta: emp.numeroCuenta,
+      tipoCuenta: emp.tipoCuenta,
       quincena: quincenaNum,
       mes: mesNum,
       anio: anioNum,
@@ -300,12 +310,52 @@ export default function ModuloNominaJefatura() {
     const currentTasa = tasaCambio || 832.48;
     const netoUsd = recibo.netoPagarUsd;
     const netoVes = Math.round(netoUsd * currentTasa * 100) / 100;
+    const empInfo = plantillaPersonal.find(p => 
+      p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
+      (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
+    );
+    const numCta = recibo.numeroCuenta || empInfo?.numeroCuenta || '';
+    setInlineCuentaVal(numCta);
+    setEditingInlineCuenta(false);
     setEditingRecibo({
       ...JSON.parse(JSON.stringify(recibo)),
+      numeroCuenta: numCta,
+      tipoCuenta: recibo.tipoCuenta || empInfo?.tipoCuenta || 'Corriente',
       tasaCambio: currentTasa,
       netoPagarVes: netoVes
     });
     setShowConceptosAccordion(false);
+  };
+
+  // Copiar solo el número de cuenta al portapapeles
+  const handleCopiarCuenta = (cuenta: string) => {
+    if (!cuenta) return;
+    const cleanDigits = cuenta.replace(/\D/g, '');
+    navigator.clipboard.writeText(cleanDigits || cuenta);
+    setCopiedAccount(true);
+    setTimeout(() => setCopiedAccount(false), 2500);
+  };
+
+  // Guardar cuenta bancaria inline directamente desde el modal de pago
+  const handleGuardarCuentaInline = async () => {
+    if (!editingRecibo) return;
+    const cleanVal = inlineCuentaVal.trim();
+    if (!cleanVal) return;
+
+    setEditingRecibo(prev => prev ? ({ ...prev, numeroCuenta: cleanVal }) : null);
+
+    const updatedPlantilla = plantillaPersonal.map(p => {
+      if (
+        p.nombre.toLowerCase().trim() === editingRecibo.empleadoNombre.toLowerCase().trim() ||
+        (p.cedula && editingRecibo.cedula && p.cedula.trim() === editingRecibo.cedula.trim())
+      ) {
+        return { ...p, numeroCuenta: cleanVal };
+      }
+      return p;
+    });
+    setPlantillaPersonal(updatedPlantilla);
+    await supabaseSavePlantillaNomina(updatedPlantilla);
+    setEditingInlineCuenta(false);
   };
 
   // Alternar entre Quincenal (50%) y Mensual Completo (100% • El Último)
@@ -563,6 +613,8 @@ export default function ModuloNominaJefatura() {
       sueldoMensual: 200,
       banco: 'Banesco',
       tipoPago: 'Pago Móvil',
+      numeroCuenta: '',
+      tipoCuenta: 'Corriente',
       frecuenciaPago: 'quincenal',
       telefono: '',
       email: ''
@@ -580,6 +632,8 @@ export default function ModuloNominaJefatura() {
       sueldoMensual: emp.sueldoMensual,
       banco: emp.banco || 'Banesco',
       tipoPago: emp.tipoPago || 'Pago Móvil',
+      numeroCuenta: emp.numeroCuenta || '',
+      tipoCuenta: emp.tipoCuenta || 'Corriente',
       frecuenciaPago: emp.frecuenciaPago || 'quincenal',
       telefono: emp.telefono || '',
       email: emp.email || ''
@@ -610,6 +664,8 @@ export default function ModuloNominaJefatura() {
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
         tipoPago: workerForm.tipoPago,
+        numeroCuenta: workerForm.numeroCuenta.trim(),
+        tipoCuenta: workerForm.tipoCuenta,
         frecuenciaPago: workerForm.frecuenciaPago || 'quincenal',
         telefono: workerForm.telefono.trim(),
         email: workerForm.email.trim()
@@ -623,6 +679,8 @@ export default function ModuloNominaJefatura() {
         sueldoMensual: Number(workerForm.sueldoMensual) || 0,
         banco: workerForm.banco,
         tipoPago: workerForm.tipoPago,
+        numeroCuenta: workerForm.numeroCuenta.trim(),
+        tipoCuenta: workerForm.tipoCuenta,
         frecuenciaPago: workerForm.frecuenciaPago || 'quincenal',
         telefono: workerForm.telefono.trim(),
         email: workerForm.email.trim()
@@ -948,7 +1006,14 @@ export default function ModuloNominaJefatura() {
                           </div>
                           <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 mt-0.5">
                             <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">{recibo.cargo}</span>
-                            <span>• {recibo.tipoPago} ({recibo.banco})</span>
+                            {(() => {
+                              const numCta = recibo.numeroCuenta || empItem?.numeroCuenta;
+                              const cleanCta = numCta ? numCta.replace(/\D/g, '') : '';
+                              const ctaLabel = cleanCta.length >= 4 ? ` • Cta: ••${cleanCta.slice(-4)}` : (numCta ? ` • Cta: ${numCta}` : '');
+                              return (
+                                <span>• {recibo.tipoPago} ({recibo.banco}{ctaLabel})</span>
+                              );
+                            })()}
                           </div>
                         </td>
 
@@ -1315,29 +1380,53 @@ export default function ModuloNominaJefatura() {
                   p.nombre.toLowerCase().trim() === editingRecibo.empleadoNombre.toLowerCase().trim() ||
                   (p.cedula && editingRecibo.cedula && p.cedula.trim() === editingRecibo.cedula.trim())
                 );
-                const copiaTexto = `Pago a ${editingRecibo.empleadoNombre} | Banco: ${editingRecibo.banco} | ${editingRecibo.tipoPago} | CI: ${editingRecibo.cedula} ${empInfo?.telefono ? `| Tel: ${empInfo.telefono}` : ''} | Monto: Bs. ${editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`;
+                const isTransfer = editingRecibo.tipoPago === 'Transferencia';
+                const currentCuenta = editingRecibo.numeroCuenta || empInfo?.numeroCuenta || '';
+                const copiaTexto = isTransfer
+                  ? `Beneficiario: ${editingRecibo.empleadoNombre}\nCédula: ${editingRecibo.cedula}\nBanco: ${editingRecibo.banco}\nTipo de Cuenta: ${editingRecibo.tipoCuenta || empInfo?.tipoCuenta || 'Corriente'}\nCuenta (20 Dígitos): ${currentCuenta || 'No registrada'}\nMonto a Transferir: Bs. ${editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })} (Ref: $ ${editingRecibo.netoPagarUsd.toFixed(2)})`
+                  : `Beneficiario: ${editingRecibo.empleadoNombre}\nCédula: ${editingRecibo.cedula}\nBanco: ${editingRecibo.banco}\nMétodo: ${editingRecibo.tipoPago}\nTeléfono Pago Móvil: ${empInfo?.telefono || 'No registrado'}\nMonto a Pagar: Bs. ${editingRecibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })} (Ref: $ ${editingRecibo.netoPagarUsd.toFixed(2)})`;
 
                 return (
-                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-2">
-                    <div className="flex justify-between items-center">
+                  <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-3">
+                    <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
                       <span className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                        <Users className="w-4 h-4 text-blue-600" /> Datos Bancarios para el Pago
+                        {isTransfer ? <Building2 className="w-4 h-4 text-blue-600" /> : <Users className="w-4 h-4 text-blue-600" />}
+                        {isTransfer ? 'Datos para Transferencia Bancaria' : 'Datos Bancarios para el Pago'}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => handleCopiarDatos(copiaTexto)}
-                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
-                      >
-                        {copiedData ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-600" /> ¡Copiado al Portapapeles!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5 text-slate-500" /> Copiar Datos para el Banco
-                          </>
+                      <div className="flex items-center gap-2">
+                        {isTransfer && currentCuenta && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopiarCuenta(currentCuenta)}
+                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                          >
+                            {copiedAccount ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-blue-600" /> ¡Cuenta Copiada!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5 text-blue-500" /> Copiar Solo Cuenta (20 Dígitos)
+                              </>
+                            )}
+                          </button>
                         )}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarDatos(copiaTexto)}
+                          className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-[11px] font-bold inline-flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                        >
+                          {copiedData ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-600" /> ¡Copiado al Portapapeles!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-500" /> Copiar Resumen Completo
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs pt-1">
@@ -1350,14 +1439,81 @@ export default function ModuloNominaJefatura() {
                         <span className="font-extrabold text-slate-800">{editingRecibo.banco}</span>
                       </div>
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Cédula</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Cédula / RIF</span>
                         <span className="font-extrabold text-slate-800">{editingRecibo.cedula}</span>
                       </div>
                       <div className="bg-white p-2.5 rounded-xl border border-slate-200/80">
-                        <span className="text-[10px] font-bold uppercase text-slate-400 block">Teléfono / Pago Móvil</span>
-                        <span className="font-extrabold text-slate-800">{empInfo?.telefono || 'Consultar con empleado'}</span>
+                        <span className="text-[10px] font-bold uppercase text-slate-400 block">
+                          {isTransfer ? 'Tipo de Cuenta' : 'Teléfono / Pago Móvil'}
+                        </span>
+                        <span className="font-extrabold text-slate-800">
+                          {isTransfer ? (editingRecibo.tipoCuenta || empInfo?.tipoCuenta || 'Corriente') : (empInfo?.telefono || 'Consultar con empleado')}
+                        </span>
                       </div>
                     </div>
+
+                    {/* Si es Transferencia: Mostrar y permitir registrar o modificar la cuenta bancaria de 20 dígitos */}
+                    {isTransfer && (
+                      <div className="mt-2 bg-slate-900 text-white rounded-xl p-3 border border-slate-800">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                              Número de Cuenta Bancaria (20 Dígitos)
+                            </span>
+                            {currentCuenta && !editingInlineCuenta ? (
+                              <div className="font-mono text-sm sm:text-base font-black text-emerald-400 tracking-wider mt-0.5 select-all">
+                                {currentCuenta}
+                              </div>
+                            ) : !editingInlineCuenta ? (
+                              <div className="text-xs text-amber-300 font-bold mt-0.5">
+                                ⚠️ No se ha registrado el número de cuenta de 20 dígitos
+                              </div>
+                            ) : null}
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            {editingInlineCuenta ? (
+                              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                                <input
+                                  type="text"
+                                  maxLength={24}
+                                  value={inlineCuentaVal}
+                                  onChange={(e) => setInlineCuentaVal(e.target.value)}
+                                  placeholder="0134-0000-00-0000000000"
+                                  className="bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-xs font-mono font-bold text-white outline-none focus:border-blue-500 w-56"
+                                  autoFocus
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleGuardarCuentaInline}
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer"
+                                >
+                                  Guardar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingInlineCuenta(false)}
+                                  className="px-2 py-1 text-slate-400 hover:text-white text-xs font-bold cursor-pointer"
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInlineCuentaVal(currentCuenta);
+                                  setEditingInlineCuenta(true);
+                                }}
+                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg text-xs font-bold border border-slate-700 inline-flex items-center gap-1 transition-all cursor-pointer"
+                              >
+                                <Edit3 className="w-3 h-3 text-slate-400" /> {currentCuenta ? 'Modificar Cuenta' : 'Registrar Cuenta'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })()}
@@ -1784,55 +1940,167 @@ export default function ModuloNominaJefatura() {
                   </span>
                 </div>
 
-                {/* Método de Pago y Banco */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                      Método de Pago
-                    </label>
-                    <select
-                      value={workerForm.tipoPago}
-                      onChange={(e) => setWorkerForm({ ...workerForm, tipoPago: e.target.value as any })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 cursor-pointer"
-                    >
-                      <option value="Pago Móvil">Pago Móvil</option>
-                      <option value="Transferencia">Transferencia Bancaria</option>
-                      <option value="Efectivo">Efectivo en Dólares ($)</option>
-                      <option value="Zelle">Zelle</option>
-                      <option value="Otro">Otro</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                      Banco Receptor
-                    </label>
-                    <input
-                      type="text"
-                      value={workerForm.banco}
-                      onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
-                      placeholder="Ej: Banesco, Mercantil, Venezuela"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
-                    />
-                  </div>
+                {/* Método de Pago */}
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                    Método de Pago Principal *
+                  </label>
+                  <select
+                    value={workerForm.tipoPago}
+                    onChange={(e) => setWorkerForm({ ...workerForm, tipoPago: e.target.value as any })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value="Transferencia">Transferencia Bancaria (Cuenta 20 Dígitos)</option>
+                    <option value="Pago Móvil">Pago Móvil (Teléfono + Cédula)</option>
+                    <option value="Efectivo">Efectivo en Dólares ($ USD)</option>
+                    <option value="Zelle">Zelle</option>
+                    <option value="Otro">Otro Método</option>
+                  </select>
                 </div>
 
-                {/* Teléfono y Correo */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                      Teléfono / Pago Móvil (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={workerForm.telefono}
-                      onChange={(e) => setWorkerForm({ ...workerForm, telefono: e.target.value })}
-                      placeholder="0414-1234567"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
-                    />
+                {/* DETALLE SEGÚN MÉTODO: TRANSFERENCIA BANCARIA */}
+                {workerForm.tipoPago === 'Transferencia' && (
+                  <div className="bg-blue-50/80 border border-blue-200 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                        <Building2 className="w-4 h-4 text-blue-600" /> Datos de Transferencia Bancaria
+                      </span>
+                      <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md ${
+                        workerForm.numeroCuenta.replace(/\D/g, '').length === 20
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {workerForm.numeroCuenta.replace(/\D/g, '').length}/20 dígitos {workerForm.numeroCuenta.replace(/\D/g, '').length === 20 ? '✓' : ''}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                          Banco Receptor *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={workerForm.banco}
+                          onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
+                          placeholder="Ej: Banesco, Mercantil, Venezuela, Provincial, Bancamiga"
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                          Tipo de Cuenta
+                        </label>
+                        <select
+                          value={workerForm.tipoCuenta}
+                          onChange={(e) => setWorkerForm({ ...workerForm, tipoCuenta: e.target.value as any })}
+                          className="w-full bg-white border border-blue-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-500 cursor-pointer"
+                        >
+                          <option value="Corriente">Corriente</option>
+                          <option value="Ahorro">Ahorro</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                        Número de Cuenta Bancaria (20 Dígitos) *
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={24}
+                        value={workerForm.numeroCuenta}
+                        onChange={(e) => setWorkerForm({ ...workerForm, numeroCuenta: e.target.value })}
+                        placeholder="Ej: 0134-0000-00-0000000000 (20 dígitos)"
+                        className="w-full bg-white border border-blue-200 rounded-xl px-3.5 py-2.5 text-xs font-mono font-black text-slate-900 tracking-wider outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                      <span className="text-[10px] text-slate-500 mt-1 block">
+                        💡 Este número se mostrará en el Centro de Pagos con un botón de 1 clic para copiarlo y pegarlo directamente en el portal del banco.
+                      </span>
+                    </div>
                   </div>
-                  <div>
+                )}
+
+                {/* DETALLE SEGÚN MÉTODO: PAGO MÓVIL */}
+                {workerForm.tipoPago === 'Pago Móvil' && (
+                  <div className="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                        <Smartphone className="w-4 h-4 text-emerald-600" /> Datos de Pago Móvil
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Cédula + Teléfono
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                          Banco Receptor *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={workerForm.banco}
+                          onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
+                          placeholder="Ej: Banesco, Venezuela, Mercantil"
+                          className="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                          Teléfono Pago Móvil *
+                        </label>
+                        <input
+                          type="text"
+                          value={workerForm.telefono}
+                          onChange={(e) => setWorkerForm({ ...workerForm, telefono: e.target.value })}
+                          placeholder="0414-1234567"
+                          className="w-full bg-white border border-emerald-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* OTROS MÉTODOS (EFECTIVO / ZELLE / OTRO) */}
+                {workerForm.tipoPago !== 'Transferencia' && workerForm.tipoPago !== 'Pago Móvil' && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3 animate-in fade-in duration-200">
+                    <div>
+                      <label className="text-[11px] font-bold uppercase text-slate-700 block mb-1">
+                        Banco / Plataforma / Detalles
+                      </label>
+                      <input
+                        type="text"
+                        value={workerForm.banco}
+                        onChange={(e) => setWorkerForm({ ...workerForm, banco: e.target.value })}
+                        placeholder={workerForm.tipoPago === 'Zelle' ? 'Correo o teléfono Zelle' : 'Detalles de entrega'}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Teléfono y Correo de Contacto General */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {workerForm.tipoPago !== 'Pago Móvil' && (
+                    <div>
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
+                        Teléfono de Contacto (Opcional)
+                      </label>
+                      <input
+                        type="text"
+                        value={workerForm.telefono}
+                        onChange={(e) => setWorkerForm({ ...workerForm, telefono: e.target.value })}
+                        placeholder="0414-1234567"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 outline-none focus:border-blue-500"
+                      />
+                    </div>
+                  )}
+                  <div className={workerForm.tipoPago === 'Pago Móvil' ? 'sm:col-span-2' : ''}>
                     <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
-                      Correo Electrónico (Opcional)
+                      Correo Electrónico (Para envío de recibos / avisos)
                     </label>
                     <input
                       type="email"

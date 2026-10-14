@@ -137,9 +137,12 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
     doc.text('Pago:', c2X, currentY + 9.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(15, 23, 42);
+    const cleanDigits = (recibo.numeroCuenta || '').replace(/\D/g, '');
+    const ctaMask = cleanDigits.length >= 4 ? ` • Cta: ••${cleanDigits.slice(-4)}` : (recibo.numeroCuenta ? ` • Cta: ${recibo.numeroCuenta}` : '');
+    const bancoConCta = recibo.banco ? `${recibo.banco}${ctaMask}` : (ctaMask ? ctaMask.replace(' • ', '') : '');
     const pagoDetalle = recibo.referenciaPago 
-      ? `${recibo.tipoPago} (${recibo.banco}) • Ref: ${recibo.referenciaPago}`
-      : `${recibo.tipoPago} (${recibo.banco})`;
+      ? `${recibo.tipoPago}${bancoConCta ? ` (${bancoConCta})` : ''} • Ref: ${recibo.referenciaPago}`
+      : `${recibo.tipoPago}${bancoConCta ? ` (${bancoConCta})` : ''}`;
     doc.text(pagoDetalle, c2X + 10, currentY + 9.5);
 
     doc.setFont('helvetica', 'bold');

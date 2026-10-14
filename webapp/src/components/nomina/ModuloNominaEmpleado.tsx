@@ -130,7 +130,7 @@ export default function ModuloNominaEmpleado() {
               <p className="text-xs text-slate-300 mt-1 flex flex-wrap items-center gap-2">
                 <span>Recibo Nº {ultimoRecibo.numeroRecibo}</span>
                 <span>•</span>
-                <span>Acreditado vía {ultimoRecibo.tipoPago} ({ultimoRecibo.banco})</span>
+                <span>Acreditado vía {ultimoRecibo.tipoPago} ({ultimoRecibo.banco}{ultimoRecibo.numeroCuenta ? ` • Cta: ••${ultimoRecibo.numeroCuenta.replace(/\D/g, '').slice(-4)}` : ''})</span>
                 {ultimoRecibo.referenciaPago && (
                   <>
                     <span>•</span>
