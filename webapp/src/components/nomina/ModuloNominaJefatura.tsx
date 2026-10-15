@@ -109,6 +109,7 @@ export default function ModuloNominaJefatura() {
     showCancel?: boolean;
     onConfirm?: () => void;
     confirmText?: string;
+    cancelText?: string;
   }>({
     isOpen: false,
     type: 'info',
@@ -976,15 +977,24 @@ Jefatura — Román & Delgado`;
     });
   };
 
-  // Quitar trabajador de la nómina activa (solo esta acción elimina al empleado)
+  // Quitar trabajador de la nómina activa (solo esta acción desincorpora al empleado)
   const handleQuitarTrabajador = (emp: PlantillaEmpleadoNomina) => {
     setSystemAlert({
       isOpen: true,
       type: 'warning',
-      title: '¿Eliminar Empleado de Nómina?',
-      message: `¿Estás seguro de eliminar a "${emp.nombre}" de la nómina de la empresa? El empleado ya no aparecerá en las próximas quincenas. Sus recibos históricos ya pagados se mantendrán intactos.`,
+      title: `¿Dar de baja a ${emp.nombre}?`,
+      message: `¿Está seguro de que desea desincorporar a "${emp.nombre}" de la nómina de la empresa?
+
+Lo que ocurrirá a continuación:
+• El trabajador ya no aparecerá en la lista para liquidar sueldos en las próximas quincenas.
+• No se le calcularán pagos automáticos ni retenciones en las siguientes fechas.
+
+Lo que se mantendrá 100% seguro e intacto:
+• Todos sus recibos de pago anteriores ya emitidos permanecerán en el Historial General y en la contabilidad.
+• Sus comprobantes oficiales en PDF y registros bancarios previos no se verán alterados ni eliminados.`,
       showCancel: true,
-      confirmText: 'Sí, Eliminar de Nómina',
+      confirmText: 'Sí, Desincorporar de Nómina',
+      cancelText: 'No, Mantener en Nómina',
       onConfirm: async () => {
         const updated = plantillaPersonal.filter(w => w.id !== emp.id && w.nombre.toLowerCase().trim() !== emp.nombre.toLowerCase().trim());
         setPlantillaPersonal(updated);
@@ -992,8 +1002,8 @@ Jefatura — Román & Delgado`;
         setSystemAlert({
           isOpen: true,
           type: 'info',
-          title: 'Empleado Eliminado',
-          message: `${emp.nombre} fue removido de la nómina de la empresa.`
+          title: 'Trabajador Desincorporado',
+          message: `${emp.nombre} fue desincorporado de la nómina activa exitosamente. Sus recibos históricos continúan disponibles en el Historial General.`
         });
       }
     });
@@ -3291,6 +3301,7 @@ Jefatura — Román & Delgado`;
         message={systemAlert.message}
         showCancel={systemAlert.showCancel}
         confirmText={systemAlert.confirmText}
+        cancelText={systemAlert.cancelText}
         onClose={() => setSystemAlert(prev => ({ ...prev, isOpen: false }))}
         onConfirm={() => {
           if (systemAlert.onConfirm) systemAlert.onConfirm();
