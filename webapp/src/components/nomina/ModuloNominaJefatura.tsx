@@ -310,7 +310,7 @@ export default function ModuloNominaJefatura() {
 
       // Buscar si ya existe un recibo emitido o guardado para este empleado en esta quincena
       const existing = recibos.find(r => {
-        if (r.quincena !== selectedQuincena || r.mes !== selectedMes || r.anio !== selectedAnio) {
+        if (Number(r.quincena) !== Number(selectedQuincena) || Number(r.mes) !== Number(selectedMes) || Number(r.anio) !== Number(selectedAnio)) {
           return false;
         }
         const rNombreNorm = (r.empleadoNombre || '').toLowerCase().trim();
@@ -329,14 +329,23 @@ export default function ModuloNominaJefatura() {
       });
 
       if (existing) {
-        if (existing.estado !== 'pagado' && tasaCambio && existing.tasaCambio !== tasaCambio) {
+        const merged: ReciboNomina = {
+          ...existing,
+          cedula: existing.cedula || emp.cedula,
+          cargo: existing.cargo || emp.cargo,
+          banco: existing.banco || emp.banco,
+          tipoPago: existing.tipoPago || emp.tipoPago,
+          numeroCuenta: existing.numeroCuenta || emp.numeroCuenta,
+          sueldoBaseMensual: existing.sueldoBaseMensual || emp.sueldoMensual,
+        };
+        if (merged.estado !== 'pagado' && tasaCambio && merged.tasaCambio !== tasaCambio) {
           return {
-            ...existing,
+            ...merged,
             tasaCambio,
-            netoPagarVes: Math.round((existing.netoPagarUsd || 0) * tasaCambio * 100) / 100
+            netoPagarVes: Math.round((merged.netoPagarUsd || 0) * tasaCambio * 100) / 100
           };
         }
-        return existing;
+        return merged;
       }
       return construirReciboBorrador(emp, selectedQuincena, selectedMes, selectedAnio);
     });

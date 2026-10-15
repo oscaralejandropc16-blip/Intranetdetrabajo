@@ -1939,38 +1939,122 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     // Si la tabla no existe aún, se pasa al backup
   }
 
-  // 2. Si no hay datos directos, consultar en investigaciones_kant (categoría recibo_nomina)
-  if (recibosMap.size === 0) {
-    try {
-      const { data, error } = await supabase
-        .from('investigaciones_kant')
-        .select('*')
-        .eq('categoria', 'recibo_nomina')
-        .order('created_at', { ascending: false });
+  // 2. Consultar en investigaciones_kant (categoría recibo_nomina) - Almacenamiento permanente en la nube
+  try {
+    const { data, error } = await supabase
+      .from('investigaciones_kant')
+      .select('*')
+      .eq('categoria', 'recibo_nomina')
+      .order('created_at', { ascending: false });
 
-      if (!error && Array.isArray(data)) {
-        data.forEach((inv: any) => {
-          if (inv.contenido) {
-            try {
-              const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
-              if (parsed && (parsed.id || parsed.numeroRecibo)) {
-                const key = String(parsed.id || parsed.numeroRecibo);
-                const current = recibosMap.get(key);
-                if (!current) {
+    if (!error && Array.isArray(data)) {
+      data.forEach((inv: any) => {
+        if (inv.contenido) {
+          try {
+            const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+            if (parsed && (parsed.id || parsed.numeroRecibo)) {
+              const key = String(parsed.id || parsed.numeroRecibo);
+              const current = recibosMap.get(key);
+              if (!current) {
+                recibosMap.set(key, parsed);
+              } else {
+                // Si ya existe un registro y el actual es 'pagado', preservarlo y no degradar a borrador
+                if (parsed.estado === 'pagado' && current.estado !== 'pagado') {
                   recibosMap.set(key, parsed);
-                } else {
-                  // Si ya existe un registro y el actual es 'pagado', preservarlo y no degradar a borrador
-                  if (parsed.estado === 'pagado' && current.estado !== 'pagado') {
-                    recibosMap.set(key, parsed);
-                  }
                 }
               }
-            } catch (err) {}
+            }
+          } catch (err) {}
+        }
+      });
+    }
+  } catch (e) {}
+
+  // 2.5. Reconciliación con notificaciones formales de pago emitidas por Jefatura
+  // Si Jefatura ya pagó y emitió notificación a un colaborador (como Doris Rangel), asegurar que su recibo pagado se auto-recupere
+  try {
+    const { data: notifs, error: notifsErr } = await supabase
+      .from('investigaciones_kant')
+      .select('contenido')
+      .eq('categoria', 'notificacion_empleado')
+      .order('created_at', { ascending: false });
+
+    if (!notifsErr && Array.isArray(notifs)) {
+      notifs.forEach((n: any) => {
+        if (!n.contenido) return;
+        try {
+          const item = typeof n.contenido === 'string' ? JSON.parse(n.contenido) : n.contenido;
+          if (item && item.type === 'pago' && item.target_user) {
+            const empName = item.target_user.trim();
+            const existingPaid = Array.from(recibosMap.values()).find(r => {
+              const sameName = (r.empleadoNombre || '').toLowerCase().trim() === empName.toLowerCase().trim();
+              return sameName && r.estado === 'pagado';
+            });
+
+            if (!existingPaid && item.recibo_id) {
+              let pIni = '2026-10-01';
+              let pFin = '2026-10-15';
+              let qNum: 1 | 2 = 1;
+              let mNum = 10;
+              let yNum = 2026;
+
+              const titleMatch = (item.title || '').match(/(\d{4})-(\d{2})-(\d{2})\s+al\s+(\d{4})-(\d{2})-(\d{2})/);
+              if (titleMatch) {
+                pIni = `${titleMatch[1]}-${titleMatch[2]}-${titleMatch[3]}`;
+                pFin = `${titleMatch[4]}-${titleMatch[5]}-${titleMatch[6]}`;
+                yNum = parseInt(titleMatch[1]);
+                mNum = parseInt(titleMatch[2]);
+                qNum = parseInt(titleMatch[3]) <= 15 ? 1 : 2;
+              }
+
+              const recoveredRecibo: ReciboNomina = {
+                id: item.recibo_id,
+                numeroRecibo: `RD-${yNum}-Q${qNum}${String(mNum).padStart(2, '0')}-${empName.toLowerCase().replace(/\s+/g, '')}`,
+                empleadoNombre: empName,
+                cedula: '',
+                cargo: '',
+                banco: item.banco || '',
+                tipoPago: 'Pago Móvil',
+                referenciaPago: item.referenciaPago || '',
+                quincena: qNum,
+                mes: mNum,
+                anio: yNum,
+                periodoInicio: pIni,
+                periodoFin: pFin,
+                monedaPrincipal: 'USD',
+                tasaCambio: item.montoUsd && item.montoVes ? Math.round((item.montoVes / item.montoUsd) * 100) / 100 : 0,
+                sueldoBaseMensual: (item.montoUsd || 0) * 2,
+                sueldoQuincenalBase: item.montoUsd || 0,
+                diasLaborados: 11,
+                diasDescanso: 4,
+                conceptos: [
+                  {
+                    id: 'c1',
+                    concepto: 'Sueldo Quincenal',
+                    dht: '11 DIAS',
+                    devengado: item.montoUsd || 0
+                  }
+                ],
+                totalDevengado: item.montoUsd || 0,
+                totalDeducciones: 0,
+                netoPagarUsd: item.montoUsd || 0,
+                netoPagarVes: item.montoVes || 0,
+                estado: 'pagado',
+                fechaPago: item.date || new Date().toISOString(),
+                emitidoPor: item.sender || 'Jefatura',
+                comprobanteBase64: item.comprobanteBase64,
+                comprobanteUrl: item.comprobanteUrl,
+                notificacionEnviada: true,
+                createdAt: item.date || new Date().toISOString()
+              };
+
+              recibosMap.set(String(recoveredRecibo.id), recoveredRecibo);
+            }
           }
-        });
-      }
-    } catch (e) {}
-  }
+        } catch (e) {}
+      });
+    }
+  } catch (e) {}
 
   // 3. Respaldo y sincronización resiliente con caché local:
   // NUNCA permitir que un recibo pagado se pierda o sea degradado a borrador por lag de red
