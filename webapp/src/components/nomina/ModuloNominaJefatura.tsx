@@ -175,8 +175,18 @@ export default function ModuloNominaJefatura() {
   const fetchRecibos = async () => {
     setLoading(true);
     try {
+      try {
+        const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+        if (rawLocal && rawLocal.toLowerCase().includes('juan prueba')) {
+          const list: ReciboNomina[] = JSON.parse(rawLocal);
+          const filtered = list.filter(r => !r.empleadoNombre.toLowerCase().includes('juan prueba'));
+          localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(filtered));
+        }
+      } catch {}
+
       const data = await supabaseGetRecibosNomina();
-      setRecibos(data);
+      const cleanData = (data || []).filter(r => !(r.empleadoNombre || '').toLowerCase().includes('juan prueba'));
+      setRecibos(cleanData);
     } catch (err) {
       console.error('Error cargando recibos de nómina:', err);
     } finally {
@@ -188,7 +198,7 @@ export default function ModuloNominaJefatura() {
   const isJefeSocio = (p: PlantillaEmpleadoNomina) => {
     const n = (p.nombre || '').toLowerCase().trim();
     const c = (p.cargo || '').toLowerCase().trim();
-    return n.includes('victor rom') || n.includes('luis delg') || c.includes('socio director');
+    return n.includes('victor rom') || n.includes('luis delg') || c.includes('socio director') || n.includes('juan prueba');
   };
 
   const fetchPlantilla = async () => {
@@ -1934,6 +1944,16 @@ Jefatura — Román & Delgado`;
                                 <FolderGit2 className="w-3.5 h-3.5" />
                               </button>
                             )}
+
+                            {/* Anular / Eliminar recibo */}
+                            <button
+                              type="button"
+                              onClick={() => handleEliminarRecibo(r)}
+                              className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer"
+                              title="Anular / Eliminar este recibo"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </td>
                       </tr>

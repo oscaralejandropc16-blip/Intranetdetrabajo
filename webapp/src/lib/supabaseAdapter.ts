@@ -1939,12 +1939,13 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     }
   } catch (e) {}
 
+  // Excluir cualquier registro de prueba de 'Juan Prueba'
+  let list = Array.from(recibosMap.values()).filter(r => !(r.empleadoNombre || '').toLowerCase().includes('juan prueba'));
+
   // Guardar la lista consolidada en caché local para acceso offline instantáneo
   try {
-    localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(Array.from(recibosMap.values())));
+    localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(list));
   } catch (e) {}
-
-  let list = Array.from(recibosMap.values());
 
   // 4. Filtrar por empleado si se solicita
   if (empleadoFilter && empleadoFilter.trim()) {
@@ -2141,7 +2142,7 @@ export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNom
         const deduped: PlantillaEmpleadoNomina[] = [];
         for (const w of parsed) {
           const k = (w.nombre || '').toLowerCase().trim();
-          if (k && !seen.has(k)) {
+          if (k && !seen.has(k) && !k.includes('juan prueba')) {
             seen.add(k);
             deduped.push(w);
           }
@@ -2157,19 +2158,12 @@ export async function supabaseGetPlantillaNomina(): Promise<PlantillaEmpleadoNom
     if (rawLocal) {
       const parsed = JSON.parse(rawLocal);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const seen = new Set<string>();
-        const deduped: PlantillaEmpleadoNomina[] = [];
-        for (const w of parsed) {
-          const k = (w.nombre || '').toLowerCase().trim();
-          if (k && !seen.has(k)) {
-            seen.add(k);
-            deduped.push(w);
-          }
-        }
-        return deduped;
+        const cleaned = parsed.filter((w: any) => !(w.nombre || '').toLowerCase().includes('juan prueba'));
+        localStorage.setItem('rd_nomina_plantilla_personal', JSON.stringify(cleaned));
+        return cleaned;
       }
     }
-  } catch (err) {}
+  } catch (e) {}
 
   return EMPLEADOS_NOMINA_DEFAULT;
 }
