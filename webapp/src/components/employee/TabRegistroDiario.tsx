@@ -5,6 +5,7 @@ import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
 import { supabaseUploadFile, getUserDepartment } from '../../lib/supabaseAdapter';
 import ExpedienteSelectorModal from '../common/ExpedienteSelectorModal';
+import EstudioMarketingGrilla from '../marketing/EstudioMarketingGrilla';
 
 interface TabRegistroDiarioProps {
   reportSubmitted: boolean;
@@ -290,6 +291,69 @@ export default function TabRegistroDiario({
     }));
     setActiveSelectorRowId(null);
   };
+
+  if (userDept === 'Marketing') {
+    return (
+      <div className="animate-in fade-in zoom-in-95 duration-300">
+        <EstudioMarketingGrilla 
+          actuaciones={actuaciones}
+          setActuaciones={setActuaciones}
+          reportSubmitted={reportSubmitted}
+        />
+
+        {/* Sección: Subida de Artes, Diseños y Archivos Adjuntos a la Bitácora */}
+        <div className="mt-8 bg-white p-6 lg:p-8 rounded-3xl border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-3">
+              <UploadCloud className="w-6 h-6 text-purple-600" />
+              <h3 className="text-xl font-bold text-slate-800">
+                Material Visual, Miniaturas & Adjuntos de Marketing
+                <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200 ml-2">Opcional</span>
+              </h3>
+            </div>
+          </div>
+          <p className="text-sm text-slate-500 font-medium mb-4">
+            Anexa artes gráficos, capturas de pantalla de métricas de Instagram o miniaturas de los posts para que queden archivados formalmente en tu bitácora de hoy.
+          </p>
+
+          <div className="border-2 border-dashed border-purple-200 bg-purple-50/20 rounded-2xl p-8 text-center hover:bg-purple-50/50 hover:border-purple-300 transition-all group mb-6 relative">
+            <input type="file" id="evidencia_mkt" disabled={reportSubmitted} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileUpload} />
+            <div className="flex flex-col items-center gap-3 pointer-events-none">
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-xs border border-purple-200 text-purple-600">
+                <UploadCloud className="w-7 h-7" />
+              </div>
+              <div>
+                <span className="font-bold text-base block text-slate-700">Arrastra imágenes, artes o documentos de marketing aquí</span>
+                <span className="text-xs text-slate-400 font-bold mt-0.5 block">Admite JPG, PNG, MP4, PDF, Word o capturas</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Listado de archivos adjuntos */}
+          {attachedFiles.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Artes y Archivos Adjuntados ({attachedFiles.length}):</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {attachedFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                      <span className="font-bold text-slate-800 truncate">{file.name || file.file?.name}</span>
+                    </div>
+                    {!reportSubmitted && (
+                      <button type="button" onClick={() => removeFile(idx)} className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-in fade-in zoom-in-95 duration-300">

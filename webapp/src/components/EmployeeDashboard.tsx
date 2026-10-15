@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet, Cpu } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet, Cpu, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
@@ -1746,13 +1746,19 @@ export default function EmployeeDashboard() {
           onClick={() => setActiveTab('jornada')}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
             activeTab === 'jornada' 
-              ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+              ? (userDept === 'Marketing'
+                  ? 'bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 text-white font-black shadow-md shadow-purple-500/20 ring-1 ring-purple-400'
+                  : 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400')
               : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
           }`}
         >
-          <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          {userDept === 'Marketing' ? (
+            <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'jornada' ? 'text-white' : 'text-pink-600'} shrink-0`} />
+          ) : (
+            <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          )}
           <span>
-            {userDept === 'Marketing' ? 'Grilla de Contenido & Marketing' :
+            {userDept === 'Marketing' ? 'Estudio de Redes & Marketing' :
              userDept === 'Servicios Generales' ? 'Mantenimiento & Insumos' :
              userDept === 'Contabilidad' ? 'Operaciones & Contabilidad' :
              userDept === 'Sistemas' ? 'Sistemas & Plataforma KANT' :
