@@ -1886,6 +1886,7 @@ export async function supabaseResetTestData(): Promise<{ success: boolean; messa
 // -------------------------------------------------------------
 export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise<ReciboNomina[]> {
   const recibosMap = new Map<string, ReciboNomina>();
+  let cloudFetchSuccess = false;
 
   // 1. Intentar leer desde la tabla recibos_nomina
   try {
@@ -1948,6 +1949,7 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
       .order('created_at', { ascending: false });
 
     if (!error && Array.isArray(data)) {
+      cloudFetchSuccess = true;
       data.forEach((inv: any) => {
         if (inv.contenido) {
           try {
@@ -1986,6 +1988,9 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
           const item = typeof n.contenido === 'string' ? JSON.parse(n.contenido) : n.contenido;
           if (item && item.type === 'pago' && item.target_user) {
             const empName = item.target_user.trim();
+            // Ignorar pruebas
+            if (empName.toLowerCase().includes('juan prueba')) return;
+
             const existingPaid = Array.from(recibosMap.values()).find(r => {
               const sameName = (r.empleadoNombre || '').toLowerCase().trim() === empName.toLowerCase().trim();
               return sameName && r.estado === 'pagado';
@@ -2056,26 +2061,25 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     }
   } catch (e) {}
 
-  // 3. Respaldo y sincronización resiliente con caché local:
-  // NUNCA permitir que un recibo pagado se pierda o sea degradado a borrador por lag de red
-  try {
-    const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
-    if (rawLocal) {
-      const localList: ReciboNomina[] = JSON.parse(rawLocal);
-      if (Array.isArray(localList)) {
-        localList.forEach(item => {
-          if (!item) return;
-          const key = String(item.id || item.numeroRecibo);
-          const current = recibosMap.get(key);
-          if (!current) {
-            recibosMap.set(key, item);
-          } else if (item.estado === 'pagado' && current.estado !== 'pagado') {
-            recibosMap.set(key, item);
-          }
-        });
+  // 3. Sincronización resiliente con caché local:
+  // Si la nube respondió con éxito, la nube manda (no revivimos recibos anulados del caché)
+  if (!cloudFetchSuccess) {
+    try {
+      const rawLocal = localStorage.getItem('rd_local_recibos_nomina');
+      if (rawLocal) {
+        const localList: ReciboNomina[] = JSON.parse(rawLocal);
+        if (Array.isArray(localList)) {
+          localList.forEach(item => {
+            if (!item) return;
+            const key = String(item.id || item.numeroRecibo);
+            if (!recibosMap.has(key)) {
+              recibosMap.set(key, item);
+            }
+          });
+        }
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   // Excluir cualquier registro de prueba de 'Juan Prueba'
   let list = Array.from(recibosMap.values()).filter(r => !(r.empleadoNombre || '').toLowerCase().includes('juan prueba'));
@@ -2234,12 +2238,30 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
         if (numeroRecibo && r.numeroRecibo === numeroRecibo) return false;
         if (empleadoNombre && r.empleadoNombre && r.empleadoNombre.toLowerCase().trim() === empleadoNombre.toLowerCase().trim()) {
           if (quincena !== undefined && mes !== undefined && anio !== undefined) {
-            if (r.quincena === quincena && r.mes === mes && r.anio === anio) return false;
+            if (Number(r.quincena) === Number(quincena) && Number(r.mes) === Number(mes) && Number(r.anio) === Number(anio)) return false;
+          } else {
+            return false;
           }
         }
         return true;
       });
       localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(filtered));
+    }
+  } catch (e) {}
+
+  // 1.5. Limpiar de localStorage las notificaciones de pago del empleado
+  try {
+    const rawNotifs = localStorage.getItem('rd_local_employee_notifications');
+    if (rawNotifs) {
+      const notifs: any[] = JSON.parse(rawNotifs);
+      const filteredNotifs = notifs.filter((n: any) => {
+        if (id && (n.id === `notif_pago_${id}` || n.recibo_id === id)) return false;
+        if (empleadoNombre && (n.target_user || '').toLowerCase().trim() === empleadoNombre.toLowerCase().trim()) {
+          if (n.type === 'pago') return false;
+        }
+        return true;
+      });
+      localStorage.setItem('rd_local_employee_notifications', JSON.stringify(filteredNotifs));
     }
   } catch (e) {}
 
@@ -2255,6 +2277,16 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
       await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${numeroRecibo}%`);
     } else if (id) {
       await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${id}%`);
+    } else if (empleadoNombre) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${empleadoNombre}%`);
+    }
+
+    // 4. Borrar cualquier notificación de pago en Supabase asociada a este recibo
+    if (id) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'notificacion_empleado').ilike('titulo', `%${id}%`);
+    }
+    if (empleadoNombre) {
+      await supabase.from('investigaciones_kant').delete().eq('categoria', 'notificacion_empleado').ilike('titulo', `%${empleadoNombre}%`);
     }
   } catch (e) {}
 
