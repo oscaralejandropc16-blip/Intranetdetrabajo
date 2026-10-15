@@ -51,6 +51,8 @@ export default function ModuloNominaJefatura() {
   const [activeTab, setActiveTab] = useState<'quincena_actual' | 'historial' | 'expedientes_personal'>('quincena_actual');
   const [expedienteWorker, setExpedienteWorker] = useState<PlantillaEmpleadoNomina | null>(null);
   const [deptFilter, setDeptFilter] = useState<string>('todos');
+  const [historialWorkerFilter, setHistorialWorkerFilter] = useState<string>('todos');
+  const [historialSearch, setHistorialSearch] = useState<string>('');
 
   // Plantilla dinámica de trabajadores activos
   const [plantillaPersonal, setPlantillaPersonal] = useState<PlantillaEmpleadoNomina[]>([]);
@@ -992,6 +994,41 @@ Jefatura — Román & Delgado`;
     return recibos.filter(r => r.estado === 'pagado');
   }, [recibos]);
 
+  // Historial filtrado por trabajador o búsqueda
+  const filteredHistorial = useMemo(() => {
+    return recibosHistorial.filter(r => {
+      if (historialWorkerFilter !== 'todos') {
+        const cleanFilter = historialWorkerFilter.toLowerCase().trim();
+        const matchName = r.empleadoNombre.toLowerCase().trim() === cleanFilter;
+        const matchCedula = r.cedula && cleanFilter.includes(r.cedula.toLowerCase().trim());
+        if (!matchName && !matchCedula) return false;
+      }
+      if (historialSearch.trim()) {
+        const q = historialSearch.toLowerCase().trim();
+        const matchName = r.empleadoNombre.toLowerCase().includes(q);
+        const matchRecibo = r.numeroRecibo.toLowerCase().includes(q);
+        const matchRef = r.referenciaPago ? r.referenciaPago.toLowerCase().includes(q) : false;
+        const matchCedula = r.cedula ? r.cedula.toLowerCase().includes(q) : false;
+        if (!matchName && !matchRecibo && !matchRef && !matchCedula) return false;
+      }
+      return true;
+    });
+  }, [recibosHistorial, historialWorkerFilter, historialSearch]);
+
+  const statsHistorial = useMemo(() => {
+    let usd = 0;
+    let ves = 0;
+    filteredHistorial.forEach(r => {
+      usd += (r.netoPagarUsd || 0);
+      ves += (r.netoPagarVes || 0);
+    });
+    return {
+      count: filteredHistorial.length,
+      totalUsd: usd,
+      totalVes: ves
+    };
+  }, [filteredHistorial]);
+
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* 1. Header con Estética Ejecutiva */}
@@ -1667,67 +1704,241 @@ Jefatura — Román & Delgado`;
         </>
       )}
 
-      {/* 5. Historial General de Nóminas */}
+      {/* 5. Historial General y Consulta de Pagos por Empleado */}
       {activeTab === 'historial' && (
         <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 pb-6">
             <div>
-              <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                <FileText className="w-6 h-6 text-blue-600" /> Histórico General de Recibos de Pago Emitidos
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Auditoría de Pagos & Desembolsos
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+                <FileText className="w-6 h-6 text-blue-600" /> Historial de Pagos Realizados por Empleado
               </h3>
-              <p className="text-slate-500 text-xs mt-1">
-                Consulta y reimprime todos los comprobantes de pago generados para la firma.
+              <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-3xl">
+                Consulta y audita todos los recibos liquidados por Jefatura, filtra por cualquier colaborador (Legal, Marketing, Servicios Generales, Contabilidad, Sistemas), verifica referencias bancarias y reimprime recibos en PDF.
               </p>
             </div>
 
             <button
               onClick={fetchRecibos}
               disabled={loading}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 shrink-0"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar Datos
             </button>
           </div>
 
-          {recibosHistorial.length === 0 ? (
+          {/* Filtros de Historial: Selector por Colaborador y Buscador Rápido */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Selector por Empleado Específico */}
+            <div className="flex-1 sm:max-w-xs">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                Filtrar por Colaborador:
+              </label>
+              <select
+                value={historialWorkerFilter}
+                onChange={(e) => setHistorialWorkerFilter(e.target.value)}
+                className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+              >
+                <option value="todos">Todos los Colaboradores ({recibosHistorial.length} pagos globales)</option>
+                {plantillaPersonal.map(p => {
+                  const count = recibosHistorial.filter(r => 
+                    r.empleadoNombre.toLowerCase().trim() === p.nombre.toLowerCase().trim() ||
+                    (r.cedula && p.cedula && r.cedula.trim() === p.cedula.trim())
+                  ).length;
+                  return (
+                    <option key={p.id} value={p.nombre}>
+                      {p.nombre} ({count} recibos pagados)
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Buscador de Recibo o Referencia */}
+            <div className="flex-1 sm:max-w-sm">
+              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                Buscar por Recibo, Ref. o Nombre:
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={historialSearch}
+                  onChange={(e) => setHistorialSearch(e.target.value)}
+                  placeholder="Ej: Carmen, R-2026-..., ref: 9482..."
+                  className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                {historialSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setHistorialSearch('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Botón Restablecer si hay filtro */}
+            {(historialWorkerFilter !== 'todos' || historialSearch) && (
+              <div className="self-end pb-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHistorialWorkerFilter('todos');
+                    setHistorialSearch('');
+                  }}
+                  className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                >
+                  Limpiar Filtros
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Tarjetas de Resumen (KPIs del filtro seleccionado) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 block">
+                Comprobantes Emitidos
+              </span>
+              <div className="mt-1 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-slate-900">{statsHistorial.count}</span>
+                <span className="text-xs text-slate-500 font-bold">
+                  {historialWorkerFilter !== 'todos' ? `para ${historialWorkerFilter}` : 'en total'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/60 rounded-2xl p-4 border border-emerald-200/80">
+              <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800 block">
+                Total Desembolsado (Bs.)
+              </span>
+              <div className="mt-1">
+                <span className="text-xl sm:text-2xl font-black text-emerald-700">
+                  Bs. {statsHistorial.totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50/60 rounded-2xl p-4 border border-blue-200/80">
+              <span className="text-[11px] font-black uppercase tracking-wider text-blue-800 block">
+                Total Equivalente ($)
+              </span>
+              <div className="mt-1">
+                <span className="text-xl sm:text-2xl font-black text-blue-700">
+                  $ {statsHistorial.totalUsd.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Tabla de Resultados */}
+          {filteredHistorial.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
               <Wallet className="w-12 h-12 text-slate-400 mx-auto mb-3 opacity-60" />
-              <p className="text-slate-700 font-bold text-sm">No hay recibos pagados archivados todavía</p>
-              <p className="text-slate-400 text-xs mt-1">Cuando emitas pagos en la quincena actual, quedarán registrados aquí permanentemente.</p>
+              <p className="text-slate-700 font-bold text-sm">No se encontraron recibos pagados con los filtros seleccionados</p>
+              <p className="text-slate-400 text-xs mt-1">Prueba seleccionando otro colaborador o limpiando los términos de búsqueda.</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-[10px]">
-                    <th className="py-3 px-4">Nº Recibo</th>
-                    <th className="py-3 px-4">Trabajador</th>
-                    <th className="py-3 px-4">Período</th>
-                    <th className="py-3 px-4 text-right">Neto Pagado ($)</th>
-                    <th className="py-3 px-4 text-right">Neto (Bs.)</th>
-                    <th className="py-3 px-4">Fecha de Pago</th>
-                    <th className="py-3 px-4 text-center">Descargar</th>
+                  <tr className="bg-slate-900 text-white font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-3.5 px-4">Nº Recibo</th>
+                    <th className="py-3.5 px-4">Trabajador & Cargo</th>
+                    <th className="py-3.5 px-4">Período / Quincena</th>
+                    <th className="py-3.5 px-4">Referencia / Banco</th>
+                    <th className="py-3.5 px-4 text-right">Neto Liquidado ($)</th>
+                    <th className="py-3.5 px-4 text-right">Neto Liquidado (Bs.)</th>
+                    <th className="py-3.5 px-4">Fecha de Pago</th>
+                    <th className="py-3.5 px-4 text-center">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {recibosHistorial.map(r => (
-                    <tr key={r.id} className="hover:bg-slate-50/80">
-                      <td className="py-3 px-4 font-mono font-bold text-slate-900">{r.numeroRecibo}</td>
-                      <td className="py-3 px-4 font-bold text-slate-800">{r.empleadoNombre}</td>
-                      <td className="py-3 px-4 text-slate-600">{r.periodoInicio} al {r.periodoFin}</td>
-                      <td className="py-3 px-4 text-right font-black text-emerald-600">$ {r.netoPagarUsd.toFixed(2)}</td>
-                      <td className="py-3 px-4 text-right font-medium text-slate-600">Bs. {r.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-3 px-4 text-slate-500">{r.fechaPago || '—'}</td>
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          onClick={() => handleDescargarPdf(r)}
-                          className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg font-bold inline-flex items-center gap-1 transition-all cursor-pointer"
-                        >
-                          <Download className="w-3.5 h-3.5" /> PDF
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredHistorial.map(r => {
+                    const empItem = plantillaPersonal.find(p => 
+                      p.nombre.toLowerCase().trim() === r.empleadoNombre.toLowerCase().trim() ||
+                      (p.cedula && r.cedula && p.cedula.trim() === r.cedula.trim())
+                    );
+                    return (
+                      <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
+                          {r.numeroRecibo}
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <div className="font-extrabold text-slate-900 text-sm">{r.empleadoNombre}</div>
+                          <div className="text-[11px] text-slate-500 font-medium">{r.cargo}</div>
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
+                          <span className="font-bold block">Q{r.quincena} • Mes {r.mes}/{r.anio}</span>
+                          <span className="text-[10px] text-slate-400">{r.periodoInicio} al {r.periodoFin}</span>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          {r.referenciaPago ? (
+                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px] block">
+                              Ref: {r.referenciaPago}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 italic text-[11px]">Sin referencia</span>
+                          )}
+                          <span className="text-[10px] text-slate-500">{r.banco || r.tipoPago || 'Banesco'}</span>
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-black text-slate-700 whitespace-nowrap">
+                          $ {r.netoPagarUsd.toFixed(2)}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-black text-emerald-600 whitespace-nowrap text-sm">
+                          Bs. {r.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
+                          {r.fechaPago || '—'}
+                        </td>
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Descargar PDF oficial */}
+                            <button
+                              type="button"
+                              onClick={() => handleDescargarPdf(r)}
+                              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold inline-flex items-center gap-1 transition-all cursor-pointer text-xs shadow-xs"
+                              title="Descargar Recibo Oficial en PDF (Doble Talón)"
+                            >
+                              <Download className="w-3.5 h-3.5" /> PDF
+                            </button>
+
+                            {/* Ver capture si existe */}
+                            {(r.comprobanteBase64 || r.comprobanteUrl) && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewCaptureModal({
+                                  url: r.comprobanteBase64 || r.comprobanteUrl || '',
+                                  title: `Comprobante Bancario • ${r.empleadoNombre} (${r.numeroRecibo})`
+                                })}
+                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                                title="Ver capture bancario adjunto"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-emerald-600" />
+                              </button>
+                            )}
+
+                            {/* Abrir Expediente Digital del trabajador */}
+                            {empItem && (
+                              <button
+                                type="button"
+                                onClick={() => setExpedienteWorker(empItem)}
+                                className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors cursor-pointer"
+                                title="Abrir Expediente Digital / RRHH de este colaborador"
+                              >
+                                <FolderGit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
