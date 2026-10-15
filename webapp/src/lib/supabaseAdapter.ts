@@ -12,7 +12,7 @@ export interface UserSession {
 // Helper para detectar si es el superadministrador de Sistemas TI (Óscar)
 export const checkIsSistemas = (nameOrEmail?: string | null): boolean => {
   if (!nameOrEmail) return false;
-  const lower = nameOrEmail.toLowerCase().trim();
+  const lower = nameOrEmail.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   const sistemasList = ['oscarpc', 'oscar', 'oscarpc20', 'sistemas'];
   return sistemasList.some(s => lower === s || lower.startsWith(s) || lower.includes(s));
 };
@@ -2104,16 +2104,18 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
 
   // 4. Filtrar por empleado si se solicita
   if (empleadoFilter && empleadoFilter.trim()) {
-    const filterClean = empleadoFilter.toLowerCase().trim();
+    const filterClean = empleadoFilter.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     list = list.filter(r => {
-      const nLower = (r.empleadoNombre || '').toLowerCase();
-      const emailLower = (r.empleadoEmail || '').toLowerCase();
+      const nLower = (r.empleadoNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const emailLower = (r.empleadoEmail || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       if (nLower === filterClean || nLower.includes(filterClean) || filterClean.includes(nLower)) return true;
       if (emailLower && (emailLower.includes(filterClean) || filterClean.includes(emailLower))) return true;
       if (filterClean.includes('oscar') && (nLower.includes('oscar') || emailLower.includes('oscar'))) return true;
       if (filterClean.includes('carmen') && (nLower.includes('carmen') || emailLower.includes('carmen'))) return true;
       if (filterClean.includes('mariela') && (nLower.includes('mariela') || emailLower.includes('mariela'))) return true;
       if (filterClean.includes('hector') && (nLower.includes('hector') || emailLower.includes('hector'))) return true;
+      if (filterClean.includes('doris') && (nLower.includes('doris') || emailLower.includes('doris'))) return true;
+      if (filterClean.includes('david') && (nLower.includes('david') || emailLower.includes('david'))) return true;
       return false;
     });
   }

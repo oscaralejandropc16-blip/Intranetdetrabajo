@@ -5,7 +5,7 @@ import {
   Eye, Image as ImageIcon, X
 } from 'lucide-react';
 import { type ReciboNomina } from '../../types/nomina';
-import { supabaseGetRecibosNomina } from '../../lib/supabaseAdapter';
+import { supabaseGetRecibosNomina, checkIsSistemas } from '../../lib/supabaseAdapter';
 import { exportarReciboNominaPDF } from '../../lib/pdfExportNomina';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
@@ -33,8 +33,9 @@ export default function ModuloNominaEmpleado() {
   const fetchMisRecibos = async () => {
     setLoading(true);
     try {
-      // Filtrar estrictamente por el nombre del usuario conectado
-      const data = await supabaseGetRecibosNomina(currentUserName);
+      // Filtrar por el nombre del usuario conectado (si es Óscar/Sistemas, usar 'oscar' para match exacto con su ficha)
+      const filterTarget = checkIsSistemas(currentUserName) ? 'oscar' : currentUserName;
+      const data = await supabaseGetRecibosNomina(filterTarget);
       // Solo mostrar aquellos en estado 'pagado'
       const pagados = data.filter(r => r.estado === 'pagado');
       setRecibos(pagados);

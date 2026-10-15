@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu, Eye } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -13,6 +13,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaJefatura from './nomina/ModuloNominaJefatura';
+import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
 import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
@@ -304,6 +305,84 @@ export default function AdminDashboard() {
       sessionStorage.setItem('rd_admin_active_view', 'bitacoras');
     }
   }, [isSistemas, activeView]);
+
+  // Subvista para el área de Nómina (para que Óscar alterne entre Mis Recibos y Liquidación General)
+  const [nominaSubView, setNominaSubView] = useState<'recibos' | 'liquidacion'>(() => {
+    return isSistemas ? 'recibos' : 'liquidacion';
+  });
+
+  // Notificación de Pago de Nómina para Óscar (recibir y ver cuando le paguen)
+  const [paymentNotif, setPaymentNotif] = useState<any | null>(null);
+
+  const checkPaymentNotification = useCallback(async () => {
+    try {
+      const curUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+      if (!checkIsSistemas(curUser)) return;
+
+      // 1. Memoria local
+      try {
+        const notifsRaw = localStorage.getItem('rd_local_employee_notifications');
+        if (notifsRaw) {
+          const list = JSON.parse(notifsRaw);
+          if (Array.isArray(list)) {
+            const myPayment = list.find((item: any) => {
+              if (!item || item.type !== 'pago') return false;
+              const target = (item.target_user || '').toLowerCase().trim();
+              const isMine = !target || target.includes('oscar') || curUser.includes(target) || target.includes(curUser);
+              const isRead = item.read || localStorage.getItem(`rd_notif_read_${item.id}`) === 'true';
+              return isMine && !isRead;
+            });
+            if (myPayment) {
+              setPaymentNotif(myPayment);
+              return;
+            }
+          }
+        }
+      } catch (e) {}
+
+      // 2. Nube Supabase (investigaciones_kant)
+      const { data: cloudNotifs } = await supabase
+        .from('investigaciones_kant')
+        .select('*')
+        .eq('categoria', 'notificacion_empleado')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (Array.isArray(cloudNotifs)) {
+        for (const inv of cloudNotifs) {
+          if (inv.contenido) {
+            try {
+              const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+              if (parsed && parsed.id && parsed.type === 'pago') {
+                const target = (parsed.target_user || '').toLowerCase().trim();
+                const isMine = !target || target.includes('oscar') || curUser.includes(target) || target.includes(curUser);
+                const isRead = parsed.read || localStorage.getItem(`rd_notif_read_${parsed.id}`) === 'true';
+                if (isMine && !isRead) {
+                  setPaymentNotif(parsed);
+                  return;
+                }
+              }
+            } catch (e) {}
+          }
+        }
+      }
+
+      setPaymentNotif(null);
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    checkPaymentNotification();
+    const interval = setInterval(checkPaymentNotification, 20000);
+    return () => clearInterval(interval);
+  }, [checkPaymentNotification]);
+
+  const markPaymentRead = (notifId: string) => {
+    try {
+      localStorage.setItem(`rd_notif_read_${notifId}`, 'true');
+    } catch (e) {}
+    setPaymentNotif(null);
+  };
   const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [chatToast, setChatToast] = useState<{
     isOpen: boolean;
@@ -1534,6 +1613,49 @@ export default function AdminDashboard() {
         </div>
       </div>
 
+      {/* BANNER DE NOTIFICACIÓN DE PAGO DE NÓMINA PARA ÓSCAR (SISTEMAS TI) */}
+      {isSistemas && paymentNotif && (
+        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/40 p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white animate-in slide-in-from-top duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+              <Wallet className="w-5 h-5 animate-bounce" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full">
+                  Nómina Pagada
+                </span>
+                <span className="text-xs sm:text-sm font-bold text-emerald-300">
+                  {paymentNotif.title || '¡Pago de Nómina Realizado!'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+                {paymentNotif.message}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              onClick={() => {
+                setActiveView('nomina');
+                setNominaSubView('recibos');
+                markPaymentRead(paymentNotif.id);
+              }}
+              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+            >
+              <Eye className="w-3.5 h-3.5" /> Ver Mi Recibo
+            </button>
+            <button
+              onClick={() => markPaymentRead(paymentNotif.id)}
+              className="p-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+              title="Cerrar aviso"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Tabs Vistas con Segmented Control Moderno, Compacto y Glow */}
       <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-md scrollbar-none relative z-10 mx-auto w-full">
         {/* 1. MI BITÁCORA PERSONAL (JEFATURA - DIRECTORES / ABOGADOS) */}
@@ -1624,14 +1746,32 @@ export default function AdminDashboard() {
 
         {/* NÓMINA & RECIBOS DE PAGO */}
         <button
-          onClick={() => setActiveView('nomina')}
+          onClick={() => {
+            setActiveView('nomina');
+            if (isSistemas) {
+              setNominaSubView('recibos');
+            }
+          }}
           className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
             activeView === 'nomina' 
               ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white font-black shadow-[0_4px_22px_-2px_rgba(16,185,129,0.55)] ring-1 ring-emerald-400 scale-[1.02]' 
               : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/60 font-bold'
           }`}
         >
-          <Wallet className={`w-4 h-4 ${activeView === 'nomina' ? 'text-white' : 'text-emerald-600'}`} /> Nómina & Recibos
+          <div className="relative shrink-0 flex items-center justify-center">
+            <Wallet className={`w-4 h-4 ${activeView === 'nomina' ? 'text-white' : 'text-emerald-600'}`} />
+            {isSistemas && paymentNotif && (
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
+            )}
+          </div>
+          <span>{isSistemas ? 'Mis Recibos & Nómina' : 'Nómina & Recibos'}</span>
+          {isSistemas && paymentNotif && (
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] ml-1 shadow-sm animate-bounce ${
+              activeView === 'nomina' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-slate-950'
+            }`}>
+              ¡Nuevo Pago!
+            </span>
+          )}
         </button>
 
         {/* ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
@@ -2880,9 +3020,48 @@ export default function AdminDashboard() {
         <ModuloGastos isJefatura={true} />
       )}
 
-      {/* VISTA: CONTROL Y LIQUIDACIÓN DE NÓMINA (ROMÁN & DELGADO) */}
+      {/* VISTA: NÓMINA & RECIBOS DE PAGO */}
       {activeView === 'nomina' && (
-        <ModuloNominaJefatura />
+        <div className="space-y-6">
+          {isSistemas && (
+            <div className="bg-slate-900 border border-slate-800 p-1.5 rounded-2xl flex flex-wrap gap-2 max-w-md shadow-lg">
+              <button
+                type="button"
+                onClick={() => setNominaSubView('recibos')}
+                className={`flex-1 min-w-[150px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  nominaSubView === 'recibos'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-md shadow-emerald-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <Wallet className="w-4 h-4 text-emerald-400" />
+                <span>Mis Recibos de Pago</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNominaSubView('liquidacion')}
+                className={`flex-1 min-w-[150px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                  nominaSubView === 'liquidacion'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-md shadow-blue-500/20'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                }`}
+              >
+                <ShieldCheck className="w-4 h-4 text-blue-400" />
+                <span>Liquidación General</span>
+              </button>
+            </div>
+          )}
+
+          {isSistemas ? (
+            nominaSubView === 'recibos' ? (
+              <ModuloNominaEmpleado />
+            ) : (
+              <ModuloNominaJefatura />
+            )
+          ) : (
+            <ModuloNominaJefatura />
+          )}
+        </div>
       )}
 
       {/* VISTA: ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
