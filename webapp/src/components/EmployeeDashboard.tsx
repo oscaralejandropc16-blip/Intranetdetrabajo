@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet, Cpu, Sparkles, Brush } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet, Sparkles, Brush } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
@@ -13,7 +13,6 @@ import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
-import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
@@ -78,7 +77,6 @@ export default function EmployeeDashboard() {
   const currentUserName = localStorage.getItem('rd_user_name') || localStorage.getItem('rd_user_email') || '';
   const userDept = getUserDepartment(currentUserName);
   const isLegalOrBoss = userDept === 'Legal' || userDept === 'Administración';
-  const isSistemas = userDept === 'Sistemas' || currentUserName.toLowerCase().includes('oscar');
 
   const [clockIn, setClockIn] = useState<Date | null>(() => {
     const draft = getInitialDraft();
@@ -1294,11 +1292,11 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina' | 'control_usuarios'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
     if (!isLegalOrBoss && (saved === 'gastos' || saved === 'expedientes' || saved === 'biblioteca')) return 'jornada';
-    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina' || saved === 'control_usuarios') return saved;
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina') return saved;
     return 'jornada';
   });
 
@@ -1771,20 +1769,7 @@ export default function EmployeeDashboard() {
           </span>
         </button>
 
-        {/* PESTAÑA ESPECIAL EXCLUSIVA PARA EL ADMINISTRADOR DE SISTEMAS TI (ÓSCAR) */}
-        {isSistemas && (
-          <button 
-            onClick={() => setActiveTab('control_usuarios')}
-            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
-              activeTab === 'control_usuarios' 
-                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Cpu className={`w-3.5 h-3.5 ${activeTab === 'control_usuarios' ? 'text-white' : 'text-cyan-600'} shrink-0`} />
-            <span>Control de Usuarios & Roles TI</span>
-          </button>
-        )}
+
         
         <button 
           onClick={() => {
@@ -2248,10 +2233,7 @@ export default function EmployeeDashboard() {
           <ModuloBibliotecaArchivos />
         )}
 
-        {/* VISTA 6: CONTROL DE ACCESO, USUARIOS Y ROLES (EXCLUSIVO SISTEMAS TI) */}
-        {activeTab === 'control_usuarios' && isSistemas && (
-          <ModuloControlUsuarios />
-        )}
+
       </div>
 
       {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE RESPONSIVE */}

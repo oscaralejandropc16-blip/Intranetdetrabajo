@@ -10,29 +10,9 @@ import {
   type FestiveThemeId 
 } from './lib/themeManager';
 import { submitToServer } from './lib/api';
-import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase } from 'lucide-react';
-
-export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
-  if (!nameOrEmail && flag === true) return true;
-  if (!nameOrEmail) return false;
-  const lower = nameOrEmail.toLowerCase().trim();
-
-  // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
-  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'oscarpc20', 'oscar'];
-  if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
-    return false;
-  }
-
-  if (flag === true) return true;
-
-  // Jefatura confirmada
-  const bosses = [
-    'victor', 'víctor', 'victor roman', 'víctor román', 'victorroman',
-    'luis', 'luis delgado', 'luisdelgado',
-    'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com', 'info@romanydelgado.com'
-  ];
-  return bosses.some(b => lower === b || lower === `${b}@romanydelgado.com` || lower.startsWith(b));
-};
+import { Lock, CheckCircle2, X, AlertCircle, KeyRound, Shield, Briefcase, Cpu } from 'lucide-react';
+import { checkIsSistemas, checkIsJefatura } from './lib/supabaseAdapter';
+export { checkIsSistemas, checkIsJefatura };
 
 function App() {
   const [authToken, setAuthToken] = useState<string | null>(() => {
@@ -186,7 +166,12 @@ function App() {
             </div>
           </div>
           <div className="flex gap-2 sm:gap-4 items-center shrink-0">
-            {isAdmin ? (
+            {checkIsSistemas(userName) ? (
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500/20 via-cyan-500/30 to-blue-500/20 border border-cyan-400/50 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl shadow-[0_0_15px_rgba(6,182,212,0.3)]">
+                <Cpu className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="text-[11px] sm:text-xs font-black text-cyan-300 tracking-wider uppercase">Sistemas & TI</span>
+              </div>
+            ) : isAdmin ? (
               <div className="flex items-center gap-1 bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-yellow-500/15 border border-amber-500/40 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl shadow-[0_0_15px_rgba(245,158,11,0.25)] glow-amber-sm">
                 <Shield className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                 <span className="text-[11px] sm:text-xs font-black text-amber-300 tracking-wider uppercase">Jefatura</span>

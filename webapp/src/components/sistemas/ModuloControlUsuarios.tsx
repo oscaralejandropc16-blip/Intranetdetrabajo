@@ -7,11 +7,29 @@ import {
   supabaseGetSystemUsers, 
   supabaseSaveSystemUsers, 
   supabaseUpdateUserPassword,
+  checkIsSistemas,
   type SystemUser 
 } from '../../lib/supabaseAdapter';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export default function ModuloControlUsuarios() {
+  const currentUserName = localStorage.getItem('rd_user_name') || '';
+  const isSistemas = checkIsSistemas(currentUserName);
+
+  if (!isSistemas) {
+    return (
+      <div className="bg-slate-900 border border-amber-500/30 p-8 rounded-3xl text-center text-white max-w-xl mx-auto my-8 shadow-xl">
+        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto mb-4">
+          <ShieldCheck className="w-7 h-7" />
+        </div>
+        <h3 className="text-xl font-bold text-white mb-2">Módulo Restringido</h3>
+        <p className="text-slate-400 text-sm leading-relaxed">
+          El control y gestión de cuentas, roles y claves de acceso está reservado exclusivamente para el superadministrador de Sistemas & TI (Óscar).
+        </p>
+      </div>
+    );
+  }
+
   const [users, setUsers] = useState<SystemUser[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');

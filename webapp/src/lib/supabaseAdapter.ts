@@ -9,16 +9,29 @@ export interface UserSession {
   is_admin: boolean;
 }
 
-// Helper para detectar si es administrador / directivo
+// Helper para detectar si es el superadministrador de Sistemas TI (Óscar)
+export const checkIsSistemas = (nameOrEmail?: string | null): boolean => {
+  if (!nameOrEmail) return false;
+  const lower = nameOrEmail.toLowerCase().trim();
+  const sistemasList = ['oscarpc', 'oscar', 'oscarpc20', 'sistemas'];
+  return sistemasList.some(s => lower === s || lower.startsWith(s) || lower.includes(s));
+};
+
+// Helper para detectar si es administrador / directivo o superadministrador
 export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
   if (!nameOrEmail && flag === true) return true;
   if (!nameOrEmail) return false;
   const lower = nameOrEmail.toLowerCase().trim();
 
-  // Empleados que JAMÁS deben ser jefatura (exclusión irrevocable)
-  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'oscarpc20', 'oscar'];
+  // Empleados que JAMÁS deben ser jefatura / admin
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'david', 'davidmoya', 'doris', 'dorisrangel'];
   if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
     return false;
+  }
+
+  // Óscar / Sistemas TI es Superadministrador y Creador del sistema KANT
+  if (checkIsSistemas(lower)) {
+    return true;
   }
 
   if (flag === true) return true;
@@ -150,31 +163,31 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
   'oscarpc20': {
     email: 'oscarpc20@romanydelgado.com',
     displayName: 'Óscar (Sistemas TI)',
-    role: 'empleado',
+    role: 'jefatura',
     department: 'Sistemas'
   },
   'oscar': {
     email: 'oscarpc20@romanydelgado.com',
     displayName: 'Óscar (Sistemas TI)',
-    role: 'empleado',
+    role: 'jefatura',
     department: 'Sistemas'
   },
   'oscarpc': {
     email: 'oscarpc@romanydelgado.com',
     displayName: 'Óscar (Sistemas TI)',
-    role: 'empleado',
+    role: 'jefatura',
     department: 'Sistemas'
   },
   'oscarpc@romanydelgado.com': {
     email: 'oscarpc@romanydelgado.com',
     displayName: 'Óscar (Sistemas TI)',
-    role: 'empleado',
+    role: 'jefatura',
     department: 'Sistemas'
   },
   'oscarpc20@romanydelgado.com': {
     email: 'oscarpc20@romanydelgado.com',
     displayName: 'Óscar (Sistemas TI)',
-    role: 'empleado',
+    role: 'jefatura',
     department: 'Sistemas'
   },
   'david': {
@@ -294,7 +307,7 @@ export async function supabaseLogin(username: string, password?: string): Promis
     );
 
     if (matchedDyn && matchedDyn.passwordHash && password && password.trim() === matchedDyn.passwordHash.trim()) {
-      const isBoss = matchedDyn.role === 'jefatura';
+      const isBoss = matchedDyn.role === 'jefatura' || matchedDyn.role === 'sistemas' || checkIsSistemas(matchedDyn.username);
       const token = `rd_session_${Date.now()}_${matchedDyn.username}`;
       return {
         success: true,

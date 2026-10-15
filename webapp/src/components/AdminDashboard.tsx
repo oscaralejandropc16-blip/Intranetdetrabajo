@@ -21,7 +21,7 @@ import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import AttendanceReportModal from './common/AttendanceReportModal';
-import { normalizeSupervisorName, formatTime12h } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, formatTime12h, checkIsSistemas } from '../lib/supabaseAdapter';
 import { cleanLocationForPdf } from '../lib/locationUtils';
 
 const ensureArray = (val: any): any[] => {
@@ -282,11 +282,28 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
+
+  // Rol de Superadministrador de Sistemas TI (Óscar) vs Jefatura (Víctor / Luis)
+  const currentLoggedUserName = localStorage.getItem('rd_user_name') || '';
+  const isSistemas = checkIsSistemas(currentLoggedUserName);
+
   const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios'>(() => {
+    const isSistemasUser = checkIsSistemas(localStorage.getItem('rd_user_name'));
     const saved = sessionStorage.getItem('rd_admin_active_view');
+    // Jefatura (Víctor / Luis) JAMÁS debe entrar a la vista de usuarios & roles
+    if (!isSistemasUser && saved === 'usuarios') return 'bitacoras';
+    if (isSistemasUser && (!saved || saved === 'mis_libros' || saved === 'historial')) return 'usuarios';
     if (saved === 'agenda') return 'bitacoras';
-    return (saved as any) || 'bitacoras';
+    return (saved as any) || (isSistemasUser ? 'usuarios' : 'bitacoras');
   });
+
+  // Redirección inmediata: Si el usuario NO es Sistemas, sacarlo de la vista 'usuarios'
+  useEffect(() => {
+    if (!isSistemas && activeView === 'usuarios') {
+      setActiveView('bitacoras');
+      sessionStorage.setItem('rd_admin_active_view', 'bitacoras');
+    }
+  }, [isSistemas, activeView]);
   const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [chatToast, setChatToast] = useState<{
     isOpen: boolean;
@@ -1455,26 +1472,46 @@ export default function AdminDashboard() {
 
 
       {/* Header Ejecutivo Compacto, Moderno y con Glow KANT */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-4 sm:p-5 text-white shadow-xl border border-amber-500/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden transition-all glow-amber-sm">
-        {/* Línea de luz superior dorada neón */}
-        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent"></div>
+      <div className={`bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-4 sm:p-5 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden transition-all ${
+        isSistemas ? 'border border-cyan-500/30' : 'border border-amber-500/30 glow-amber-sm'
+      }`}>
+        {/* Línea de luz superior dorada neón o cyan neón */}
+        <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent ${
+          isSistemas ? 'via-cyan-400' : 'via-amber-400'
+        } to-transparent`}></div>
         {/* Luz ambiental difusa */}
-        <div className="absolute -top-12 -right-12 w-64 h-24 bg-amber-500/10 blur-3xl pointer-events-none"></div>
+        <div className={`absolute -top-12 -right-12 w-64 h-24 ${
+          isSistemas ? 'bg-cyan-500/10' : 'bg-amber-500/10'
+        } blur-3xl pointer-events-none`}></div>
 
         <div className="flex items-center gap-3.5 relative z-10">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400/20 to-amber-600/30 border border-amber-400/40 flex items-center justify-center text-amber-300 shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
-            <ShieldCheck className="w-5 h-5 text-amber-400" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+            isSistemas
+              ? 'bg-gradient-to-br from-cyan-400/20 to-blue-600/30 border-cyan-400/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+              : 'bg-gradient-to-br from-amber-400/20 to-amber-600/30 border-amber-400/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
+          }`}>
+            {isSistemas ? <Cpu className="w-5 h-5 text-cyan-400" /> : <ShieldCheck className="w-5 h-5 text-amber-400" />}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-1.5">
                 Centro de Mando <span className="text-amber-400 font-black text-glow-amber">KANT</span>
               </h2>
-              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
-                Jefatura
-              </span>
+              {isSistemas ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+                  Sistemas & TI
+                </span>
+              ) : (
+                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
+                  Jefatura
+                </span>
+              )}
             </div>
-            <p className="text-xs text-slate-300/80 font-medium mt-0.5">Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.</p>
+            <p className="text-xs text-slate-300/80 font-medium mt-0.5">
+              {isSistemas
+                ? 'Superadministración tecnológica de la plataforma KANT, control de usuarios y roles.'
+                : 'Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.'}
+            </p>
           </div>
         </div>
 
@@ -1499,17 +1536,19 @@ export default function AdminDashboard() {
 
       {/* Tabs Vistas con Segmented Control Moderno, Compacto y Glow */}
       <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-md scrollbar-none relative z-10 mx-auto w-full">
-        {/* 1. MI BITÁCORA PERSONAL (JEFATURA) */}
-        <button
-          onClick={() => setActiveView('mis_libros')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'mis_libros' 
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(59,130,246,0.5)] ring-1 ring-blue-400 scale-[1.02]' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'
-          }`}
-        >
-          <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> Mi Bitácora Diaria
-        </button>
+        {/* 1. MI BITÁCORA PERSONAL (JEFATURA - DIRECTORES / ABOGADOS) */}
+        {!isSistemas && (
+          <button
+            onClick={() => setActiveView('mis_libros')}
+            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+              activeView === 'mis_libros' 
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(59,130,246,0.5)] ring-1 ring-blue-400 scale-[1.02]' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'
+            }`}
+          >
+            <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> Mi Bitácora Diaria
+          </button>
+        )}
 
         {/* 2. REVISIÓN DE BITÁCORAS DEL EQUIPO */}
         <button
@@ -1607,28 +1646,33 @@ export default function AdminDashboard() {
           <FolderSearch className={`w-4 h-4 ${activeView === 'biblioteca' ? 'text-white' : 'text-indigo-600'}`} /> Archivo & Biblioteca
         </button>
 
-        {/* 7. MI HISTORIAL DE JEFATURA */}
-        <button
-          onClick={() => setActiveView('historial')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'historial' 
-              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-950' : 'text-slate-400'}`} /> Mi Historial de Jefatura
-        </button>
+        {/* 7. MI HISTORIAL DE JEFATURA (SOLO DIRECTORES / ABOGADOS) */}
+        {!isSistemas && (
+          <button
+            onClick={() => setActiveView('historial')}
+            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+              activeView === 'historial' 
+                ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+                : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
+            }`}
+          >
+            <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-950' : 'text-slate-400'}`} /> Mi Historial de Jefatura
+          </button>
+        )}
 
-        <button
-          onClick={() => setActiveView('usuarios')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'usuarios' 
-              ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white font-black shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-cyan-50/60 font-bold'
-          }`}
-        >
-          <Cpu className={`w-4 h-4 ${activeView === 'usuarios' ? 'text-white' : 'text-cyan-600'}`} /> Usuarios & Roles TI
-        </button>
+        {/* 8. USUARIOS & ROLES TI (EXCLUSIVO PARA ÓSCAR / SISTEMAS TI) */}
+        {isSistemas && (
+          <button
+            onClick={() => setActiveView('usuarios')}
+            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+              activeView === 'usuarios' 
+                ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white font-black shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300 scale-[1.02]' 
+                : 'text-slate-500 hover:text-slate-900 hover:bg-cyan-50/60 font-bold'
+            }`}
+          >
+            <Cpu className={`w-4 h-4 ${activeView === 'usuarios' ? 'text-white' : 'text-cyan-600'}`} /> Usuarios & Roles TI
+          </button>
+        )}
       </div>
 
       {/* Main Content Area */}
@@ -2319,7 +2363,7 @@ export default function AdminDashboard() {
       )}
 
       {/* VISTA: MIS LIBROS (JEFATURA SIN HORARIO / SIN GPS) */}
-      {activeView === 'mis_libros' && (
+      {activeView === 'mis_libros' && !isSistemas && (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200">
             <div>
@@ -2849,7 +2893,7 @@ export default function AdminDashboard() {
       )}
 
       {/* VISTA: MI HISTORIAL DE JEFATURA */}
-      {activeView === 'historial' && (
+      {activeView === 'historial' && !isSistemas && (
         <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
           <div className="mb-6">
             <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
@@ -2861,8 +2905,8 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* VISTA: CONTROL DE ACCESO, USUARIOS Y ROLES (SISTEMAS TI) */}
-      {activeView === 'usuarios' && (
+      {/* VISTA: CONTROL DE ACCESO, USUARIOS Y ROLES (EXCLUSIVO SISTEMAS TI - ÓSCAR) */}
+      {activeView === 'usuarios' && isSistemas && (
         <ModuloControlUsuarios />
       )}
 
