@@ -6,7 +6,8 @@ import {
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
   Sparkles, X, UserPlus, UserMinus,
   Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar,
-  Building2, Smartphone, MessageCircle, Mail, Info, FileDown
+  Building2, Smartphone, MessageCircle, Mail, Info, FileDown,
+  FolderGit2
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -22,6 +23,7 @@ import {
   supabaseSavePlantillaNomina
 } from '../../lib/supabaseAdapter';
 import { exportarReciboNominaPDF, generarReciboNominaBlob } from '../../lib/pdfExportNomina';
+import ModalExpedienteEmpleado from './ModalExpedienteEmpleado';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export default function ModuloNominaJefatura() {
@@ -46,7 +48,9 @@ export default function ModuloNominaJefatura() {
   const [loading, setLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewFilter, setViewFilter] = useState<'todos' | 'pagados' | 'pendientes'>('todos');
-  const [activeTab, setActiveTab] = useState<'quincena_actual' | 'historial'>('quincena_actual');
+  const [activeTab, setActiveTab] = useState<'quincena_actual' | 'historial' | 'expedientes_personal'>('quincena_actual');
+  const [expedienteWorker, setExpedienteWorker] = useState<PlantillaEmpleadoNomina | null>(null);
+  const [deptFilter, setDeptFilter] = useState<string>('todos');
 
   // Plantilla dinámica de trabajadores activos
   const [plantillaPersonal, setPlantillaPersonal] = useState<PlantillaEmpleadoNomina[]>([]);
@@ -1116,6 +1120,15 @@ Jefatura — Román & Delgado`;
             >
               Historial General ({recibosHistorial.length})
             </button>
+            <button
+              onClick={() => setActiveTab('expedientes_personal')}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                activeTab === 'expedientes_personal' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FolderGit2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Expedientes & RRHH ({plantillaPersonal.length})</span>
+            </button>
           </div>
         </div>
       </div>
@@ -1361,6 +1374,15 @@ Jefatura — Román & Delgado`;
                           >
                             <Trash2 className="w-4 h-4 text-rose-500" />
                           </button>
+                          {empItem && (
+                            <button
+                              onClick={() => setExpedienteWorker(empItem)}
+                              className="min-h-[42px] px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
+                              title="Ver Expediente Digital / RRHH"
+                            >
+                              <FolderGit2 className="w-3.5 h-3.5 text-indigo-600" />
+                            </button>
+                          )}
                         </>
                       ) : (
                         <>
@@ -1375,6 +1397,15 @@ Jefatura — Román & Delgado`;
                             <CheckCheck className="w-3.5 h-3.5 text-emerald-300" />
                             <span>{isCobraFinMesQ1 ? 'Adelantar / Pagar' : 'Pagar & Emitir'}</span>
                           </button>
+                          {empItem && (
+                            <button
+                              onClick={() => setExpedienteWorker(empItem)}
+                              className="min-h-[42px] px-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1 active:scale-95 transition-all cursor-pointer"
+                              title="Ver Expediente Digital / RRHH"
+                            >
+                              <FolderGit2 className="w-3.5 h-3.5 text-indigo-600" />
+                            </button>
+                          )}
                           {empItem && (
                             <button
                               onClick={() => handleAbrirEditarTrabajador(empItem)}
@@ -1562,6 +1593,17 @@ Jefatura — Román & Delgado`;
                               </button>
                             )}
 
+                            {/* Expediente Digital / RRHH */}
+                            {empItem && (
+                              <button
+                                onClick={() => setExpedienteWorker(empItem)}
+                                className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors cursor-pointer"
+                                title="Abrir Expediente Digital / RRHH del trabajador"
+                              >
+                                <FolderGit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
                             {/* Editar datos base del trabajador */}
                             {empItem && (
                               <button
@@ -1690,6 +1732,221 @@ Jefatura — Román & Delgado`;
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* 5.1 Directorio y Expedientes Digitales de Personal (RRHH) */}
+      {activeTab === 'expedientes_personal' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100 pb-6">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-bold uppercase tracking-wider mb-2">
+                <FolderGit2 className="w-3.5 h-3.5" /> Talento Humano & Expedientes Digitales
+              </div>
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2">
+                Expedientes del Personal & Historia de Vida
+              </h3>
+              <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-3xl">
+                Dossier integral de cada trabajador: datos civiles, archivador digital (Cédula, RIF, Contrato de Honorarios o Nómina, CV, Títulos), libro cronológico de novedades y su historial de pagos.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                onClick={handleAbrirAgregarTrabajador}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black shadow-md shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-95"
+              >
+                <UserPlus className="w-4 h-4" /> + Incorporar a Nómina / RRHH
+              </button>
+            </div>
+          </div>
+
+          {/* Filtros por Departamento */}
+          <div className="flex flex-wrap items-center gap-2">
+            {[
+              { id: 'todos', label: 'Todos' },
+              { id: 'Legal', label: 'Legal (Abogados)' },
+              { id: 'Marketing', label: 'Marketing' },
+              { id: 'Contabilidad', label: 'Contabilidad & Finanzas' },
+              { id: 'Servicios Generales', label: 'Servicios Generales' },
+              { id: 'Sistemas', label: 'Sistemas & Tecnología' }
+            ].map(dept => {
+              const count = dept.id === 'todos' 
+                ? plantillaPersonal.length 
+                : plantillaPersonal.filter(p => (p.departamento || 'Legal') === dept.id).length;
+              return (
+                <button
+                  key={dept.id}
+                  type="button"
+                  onClick={() => setDeptFilter(dept.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    deptFilter === dept.id
+                      ? 'bg-slate-900 text-white shadow-sm'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                  }`}
+                >
+                  <span>{dept.label}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
+                    deptFilter === dept.id ? 'bg-indigo-500 text-white' : 'bg-slate-200 text-slate-700'
+                  }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Grid de Expedientes del Personal */}
+          {(() => {
+            const filteredPersonal = plantillaPersonal.filter(emp => {
+              if (deptFilter !== 'todos' && (emp.departamento || 'Legal') !== deptFilter) return false;
+              if (searchQuery.trim()) {
+                const q = searchQuery.toLowerCase().trim();
+                const matchName = emp.nombre.toLowerCase().includes(q);
+                const matchCedula = emp.cedula.toLowerCase().includes(q);
+                const matchCargo = emp.cargo.toLowerCase().includes(q);
+                const matchRif = emp.rif ? emp.rif.toLowerCase().includes(q) : false;
+                if (!matchName && !matchCedula && !matchCargo && !matchRif) return false;
+              }
+              return true;
+            });
+
+            if (filteredPersonal.length === 0) {
+              return (
+                <div className="text-center py-12 bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                  <FolderGit2 className="w-12 h-12 text-slate-400 mx-auto mb-3 opacity-60" />
+                  <p className="text-slate-700 font-bold text-sm">No se encontraron trabajadores en este departamento</p>
+                  <p className="text-slate-400 text-xs mt-1">Puedes incorporar un nuevo trabajador usando el botón "+ Incorporar a Nómina / RRHH".</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+                {filteredPersonal.map(emp => {
+                  const dept = emp.departamento || 'Legal';
+                  const docsCount = emp.documentos?.length || 0;
+                  const novedadesCount = emp.novedades?.length || 0;
+                  const empRecibosCount = recibosHistorial.filter(r => 
+                    r.empleadoNombre.toLowerCase().trim() === emp.nombre.toLowerCase().trim() ||
+                    (r.cedula && emp.cedula && r.cedula.trim() === emp.cedula.trim())
+                  ).length;
+
+                  // Colores temáticos por departamento
+                  const deptColor = 
+                    dept === 'Legal' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' :
+                    dept === 'Marketing' ? 'bg-pink-50 text-pink-700 border-pink-200' :
+                    dept === 'Contabilidad' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                    dept === 'Servicios Generales' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' :
+                    dept === 'Sistemas' ? 'bg-cyan-50 text-cyan-800 border-cyan-200' :
+                    'bg-slate-100 text-slate-700 border-slate-200';
+
+                  const badgeContrato = emp.tipoContratacion === 'Honorarios Profesionales'
+                    ? 'bg-sky-50 text-sky-700 border-sky-200'
+                    : 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+                  return (
+                    <div 
+                      key={emp.id} 
+                      className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs hover:shadow-md hover:border-indigo-300 transition-all flex flex-col justify-between"
+                    >
+                      <div>
+                        {/* Header de la Tarjeta */}
+                        <div className="flex items-start justify-between gap-3 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-900 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm shadow-slate-900/20">
+                              {emp.nombre.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                            </div>
+                            <div>
+                              <h4 className="font-extrabold text-slate-900 text-sm leading-tight">{emp.nombre}</h4>
+                              <p className="text-xs text-slate-500 font-medium">{emp.cargo}</p>
+                            </div>
+                          </div>
+
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider border shrink-0 ${deptColor}`}>
+                            {dept}
+                          </span>
+                        </div>
+
+                        {/* Badges de Cédula, RIF y Contrato */}
+                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-[11px]">
+                          <span className="font-mono font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                            {emp.cedula}
+                          </span>
+                          {emp.rif && (
+                            <span className="font-mono font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              RIF: {emp.rif}
+                            </span>
+                          )}
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${badgeContrato}`}>
+                            {emp.tipoContratacion || 'Nomina Interna'}
+                          </span>
+                        </div>
+
+                        {/* Datos de Pago y Contacto */}
+                        <div className="bg-slate-50/80 rounded-xl p-3 text-xs space-y-1.5 border border-slate-100 mb-4">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Sueldo Base:</span>
+                            <span className="font-extrabold text-slate-900">$ {emp.sueldoMensual.toFixed(2)} / mes</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-500">Forma de Pago:</span>
+                            <span className="font-medium text-slate-700">
+                              {emp.tipoPago} • {emp.banco}
+                            </span>
+                          </div>
+                          {emp.telefono && (
+                            <div className="flex justify-between items-center pt-1 border-t border-slate-200/60">
+                              <span className="text-slate-500">Teléfono:</span>
+                              <span className="font-mono font-bold text-slate-800">{emp.telefono}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Indicadores de Archivos y Novedades */}
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs mb-4">
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <span className="block font-black text-slate-900 text-sm">{docsCount} / 6</span>
+                            <span className="text-[10px] text-slate-500 font-medium">Documentos</span>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <span className="block font-black text-slate-900 text-sm">{novedadesCount}</span>
+                            <span className="text-[10px] text-slate-500 font-medium">Novedades</span>
+                          </div>
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100">
+                            <span className="block font-black text-emerald-700 text-sm">{empRecibosCount}</span>
+                            <span className="text-[10px] text-slate-500 font-medium">Recibos</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones de Acción */}
+                      <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setExpedienteWorker(emp)}
+                          className="flex-1 py-2.5 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95"
+                        >
+                          <FolderGit2 className="w-4 h-4" />
+                          <span>Expediente Completo</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleAbrirEditarTrabajador(emp)}
+                          className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                          title="Editar Ficha Básica"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2756,6 +3013,26 @@ Jefatura — Román & Delgado`;
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Expediente Digital del Empleado (RRHH) */}
+      {expedienteWorker && (
+        <ModalExpedienteEmpleado
+          empleado={expedienteWorker}
+          recibosHistoricos={recibos.filter(r => 
+            r.estado === 'pagado' && (
+              r.empleadoNombre.toLowerCase().trim() === expedienteWorker.nombre.toLowerCase().trim() ||
+              (r.cedula && expedienteWorker.cedula && r.cedula.trim() === expedienteWorker.cedula.trim())
+            )
+          )}
+          onClose={() => setExpedienteWorker(null)}
+          onSaveEmpleado={async (updated) => {
+            const updatedList = plantillaPersonal.map(w => w.id === updated.id ? updated : w);
+            setPlantillaPersonal(updatedList);
+            await supabaseSavePlantillaNomina(updatedList);
+            setExpedienteWorker(updated);
+          }}
+        />
       )}
 
       {/* Modal de Alerta del Sistema */}

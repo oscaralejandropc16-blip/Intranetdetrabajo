@@ -20,7 +20,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import SystemAlertModal, { type AlertType } from './common/SystemAlertModal';
 import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
-import { normalizeSupervisorName, getServerDate, formatTime12h, parseDateAndTime } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, getServerDate, formatTime12h, parseDateAndTime, getUserDepartment } from '../lib/supabaseAdapter';
 import { cleanLocationForPdf } from '../lib/locationUtils';
 
 const safeFormatTime = (dateInput: Date | string | null | undefined, fallback = 'N/A'): string => {
@@ -74,6 +74,10 @@ const isJefaturaUser = (userName: string) => {
 };
 
 export default function EmployeeDashboard() {
+  const currentUserName = localStorage.getItem('rd_user_name') || localStorage.getItem('rd_user_email') || '';
+  const userDept = getUserDepartment(currentUserName);
+  const isLegalOrBoss = userDept === 'Legal' || userDept === 'Administración';
+
   const [clockIn, setClockIn] = useState<Date | null>(() => {
     const draft = getInitialDraft();
     if (draft && draft.clockIn && isSameLocalDate(draft.clockIn)) {
@@ -1738,7 +1742,13 @@ export default function EmployeeDashboard() {
           }`}
         >
           <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span>Mi Jornada & Libros</span>
+          <span>
+            {userDept === 'Marketing' ? 'Grilla de Contenido & Marketing' :
+             userDept === 'Servicios Generales' ? 'Mantenimiento & Insumos' :
+             userDept === 'Contabilidad' ? 'Operaciones & Contabilidad' :
+             userDept === 'Sistemas' ? 'Sistemas & Plataforma KANT' :
+             'Mi Jornada & Libros'}
+          </span>
         </button>
         
         <button 
@@ -1766,17 +1776,19 @@ export default function EmployeeDashboard() {
           )}
         </button>
 
-        <button 
-          onClick={() => setActiveTab('expedientes')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
-            activeTab === 'expedientes' 
-              ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-          }`}
-        >
-          <Scale className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-          <span>Expedientes & Casos</span>
-        </button>
+        {isLegalOrBoss && (
+          <button 
+            onClick={() => setActiveTab('expedientes')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+              activeTab === 'expedientes' 
+                ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Scale className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span>Expedientes & Casos</span>
+          </button>
+        )}
 
         <button 
           onClick={() => setActiveTab('gastos')}
@@ -2059,27 +2071,35 @@ export default function EmployeeDashboard() {
                     }`}
                   >
                     <Activity className="w-4 h-4 text-blue-600" />
-                    <span>1. Libro de Actuaciones</span>
+                    <span>
+                      {userDept === 'Marketing' ? '1. Grilla de Contenido' :
+                       userDept === 'Servicios Generales' ? '1. Mantenimiento & Insumos' :
+                       userDept === 'Contabilidad' ? '1. Operaciones Contables' :
+                       userDept === 'Sistemas' ? '1. Tareas de Sistemas' :
+                       '1. Libro de Actuaciones'}
+                    </span>
                     <span className="px-2 py-0.2 bg-blue-100 text-blue-800 rounded-full text-[10px] font-black">
                       {actuaciones.length}
                     </span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => setSubTabLibro('ingresos')}
-                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-                      subTabLibro === 'ingresos'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <FileDigit className="w-4 h-4 text-emerald-600" />
-                    <span>2. Libro de Ingresos</span>
-                    <span className="px-2 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black">
-                      {ingresos.length}
-                    </span>
-                  </button>
+                  {isLegalOrBoss && (
+                    <button
+                      type="button"
+                      onClick={() => setSubTabLibro('ingresos')}
+                      className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                        subTabLibro === 'ingresos'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <FileDigit className="w-4 h-4 text-emerald-600" />
+                      <span>2. Libro de Ingresos</span>
+                      <span className="px-2 py-0.2 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-black">
+                        {ingresos.length}
+                      </span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -2091,7 +2111,7 @@ export default function EmployeeDashboard() {
                     }`}
                   >
                     <CalendarIcon className="w-4 h-4 text-amber-600" />
-                    <span>3. Libro de Programación</span>
+                    <span>{isLegalOrBoss ? '3. Libro de Programación' : '2. Agenda Futura'}</span>
                     <span className="px-2 py-0.2 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
                       {programaciones.length}
                     </span>

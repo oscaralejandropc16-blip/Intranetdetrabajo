@@ -32,118 +32,223 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
   return bosses.some(b => lower === b || lower === `${b}@romanydelgado.com` || lower.startsWith(b));
 };
 
-export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: string; role: 'jefatura' | 'empleado' }> = {
+export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: string; role: 'jefatura' | 'empleado'; department?: 'Legal' | 'Marketing' | 'Contabilidad' | 'Servicios Generales' | 'Sistemas' | 'Administración' }> = {
   'luis': {
     email: 'luisdelgado@romanydelgado.com',
     displayName: 'Luis Delgado',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'luis delgado': {
     email: 'luisdelgado@romanydelgado.com',
     displayName: 'Luis Delgado',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'luisdelgado@romanydelgado.com': {
     email: 'luisdelgado@romanydelgado.com',
     displayName: 'Luis Delgado',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'info@romanydelgado.com': {
     email: 'info@romanydelgado.com',
     displayName: 'Luis Delgado',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'victor': {
     email: 'victorroman@romanydelgado.com',
     displayName: 'Victor Román',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'victor roman': {
     email: 'victorroman@romanydelgado.com',
     displayName: 'Victor Román',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'victorroman@romanydelgado.com': {
     email: 'victorroman@romanydelgado.com',
     displayName: 'Victor Román',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'victor@romanydelgado.com': {
     email: 'victorroman@romanydelgado.com',
     displayName: 'Victor Román',
-    role: 'jefatura'
+    role: 'jefatura',
+    department: 'Administración'
   },
   'carmen': {
     email: 'abgcarmendelgado.990@gmail.com',
     displayName: 'Carmen Luisa',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'carmen luisa': {
     email: 'abgcarmendelgado.990@gmail.com',
     displayName: 'Carmen Luisa',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'abgcarmendelgado.990@gmail.com': {
     email: 'abgcarmendelgado.990@gmail.com',
     displayName: 'Carmen Luisa',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'carmen@romanydelgado.com': {
     email: 'abgcarmendelgado.990@gmail.com',
     displayName: 'Carmen Luisa',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'mariela': {
     email: 'marielaisabel2030@gmail.com',
     displayName: 'Mariela Isabel',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'mariela isabel': {
     email: 'marielaisabel2030@gmail.com',
     displayName: 'Mariela Isabel',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'marielaisabel2030@gmail.com': {
     email: 'marielaisabel2030@gmail.com',
     displayName: 'Mariela Isabel',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'mariela@romanydelgado.com': {
     email: 'marielaisabel2030@gmail.com',
     displayName: 'Mariela Isabel',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'hector': {
     email: 'hectorbann@gmail.com',
     displayName: 'Hector',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'hectorbann@gmail.com': {
     email: 'hectorbann@gmail.com',
     displayName: 'Hector',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'hector@romanydelgado.com': {
     email: 'hectorbann@gmail.com',
     displayName: 'Hector',
-    role: 'empleado'
+    role: 'empleado',
+    department: 'Legal'
   },
   'oscarpc20': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'oscarpc20',
-    role: 'empleado'
+    displayName: 'Oscar Alejandro',
+    role: 'empleado',
+    department: 'Sistemas'
   },
   'oscar': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'oscarpc20',
-    role: 'empleado'
+    displayName: 'Oscar Alejandro',
+    role: 'empleado',
+    department: 'Sistemas'
   },
   'oscarpc20@romanydelgado.com': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'oscarpc20',
-    role: 'empleado'
+    displayName: 'Oscar Alejandro',
+    role: 'empleado',
+    department: 'Sistemas'
   },
+  'david': {
+    email: 'davidmoya@romanydelgado.com',
+    displayName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing'
+  },
+  'davidmoya': {
+    email: 'davidmoya@romanydelgado.com',
+    displayName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing'
+  },
+  'david moya': {
+    email: 'davidmoya@romanydelgado.com',
+    displayName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing'
+  },
+  'anthony david moya': {
+    email: 'davidmoya@romanydelgado.com',
+    displayName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing'
+  },
+  'davidmoya@romanydelgado.com': {
+    email: 'davidmoya@romanydelgado.com',
+    displayName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing'
+  },
+  'doris': {
+    email: 'dorisrangel@romanydelgado.com',
+    displayName: 'Doris Rangel',
+    role: 'empleado',
+    department: 'Servicios Generales'
+  },
+  'doris rangel': {
+    email: 'dorisrangel@romanydelgado.com',
+    displayName: 'Doris Rangel',
+    role: 'empleado',
+    department: 'Servicios Generales'
+  },
+  'dorisrangel@romanydelgado.com': {
+    email: 'dorisrangel@romanydelgado.com',
+    displayName: 'Doris Rangel',
+    role: 'empleado',
+    department: 'Servicios Generales'
+  },
+  'contador': {
+    email: 'contabilidad@romanydelgado.com',
+    displayName: 'Contador / Asesor Contable',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
+  'finanzas': {
+    email: 'contabilidad@romanydelgado.com',
+    displayName: 'Contador / Asesor Contable',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
+  'contabilidad@romanydelgado.com': {
+    email: 'contabilidad@romanydelgado.com',
+    displayName: 'Contador / Asesor Contable',
+    role: 'empleado',
+    department: 'Contabilidad'
+  }
 };
+
+export function getUserDepartment(nameOrEmail?: string | null): 'Legal' | 'Marketing' | 'Contabilidad' | 'Servicios Generales' | 'Sistemas' | 'Administración' {
+  if (!nameOrEmail) return 'Legal';
+  const clean = nameOrEmail.toLowerCase().trim();
+  
+  if (KNOWN_USERS_DIR[clean]?.department) {
+    return KNOWN_USERS_DIR[clean].department!;
+  }
+  
+  if (clean.includes('david') || clean.includes('moya') || clean.includes('market')) return 'Marketing';
+  if (clean.includes('doris') || clean.includes('rangel') || clean.includes('mantenimiento') || clean.includes('servicio')) return 'Servicios Generales';
+  if (clean.includes('contador') || clean.includes('contab') || clean.includes('finanza')) return 'Contabilidad';
+  if (clean.includes('oscar') || clean.includes('sistemas') || clean.includes('tecnolog')) return 'Sistemas';
+  if (clean.includes('victor') || clean.includes('luis') || clean.includes('jefatura') || clean.includes('admin')) return 'Administración';
+  
+  return 'Legal';
+}
 
 // -------------------------------------------------------------
 // 1. AUTENTICACIÓN Y SESIÓN (CON SINCRONIZACIÓN DE CLAVES DE WORDPRESS)

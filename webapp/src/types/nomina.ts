@@ -56,11 +56,38 @@ export interface ReciboNomina {
   createdAt: string;
 }
 
+export interface DocumentoPersonal {
+  id: string;
+  tipo: 'cedula' | 'rif' | 'residencia' | 'contrato' | 'cv' | 'titulo' | 'otro';
+  nombre: string;
+  url?: string;
+  base64?: string;
+  formato?: string;
+  tamanio?: string;
+  uploadedAt: string;
+}
+
+export interface NovedadPersonal {
+  id: string;
+  fecha: string;
+  tipo: 'aumento' | 'permiso' | 'reposo' | 'observacion' | 'felicitacion' | 'acuerdo';
+  titulo: string;
+  descripcion: string;
+  registradoPor: string;
+}
+
+export type DepartamentoPersonal = 'Legal' | 'Marketing' | 'Contabilidad' | 'Servicios Generales' | 'Sistemas' | 'Administración';
+export type TipoContratacion = 'Nomina Interna' | 'Honorarios Profesionales' | 'Servicios Externos';
+
 export interface PlantillaEmpleadoNomina {
   id: string;
   nombre: string;
   cedula: string;
+  rif?: string;
   cargo: string;
+  departamento?: DepartamentoPersonal;
+  tipoContratacion?: TipoContratacion;
+  fechaIngreso?: string;
   sueldoMensual: number;
   banco: string;
   tipoPago: 'Transferencia' | 'Pago Móvil' | 'Efectivo' | 'Zelle' | 'Otro';
@@ -68,15 +95,107 @@ export interface PlantillaEmpleadoNomina {
   numeroCuenta?: string; // Número de cuenta bancaria (20 dígitos)
   tipoCuenta?: 'Corriente' | 'Ahorro';
   telefono?: string;
+  telefonoEmergencia?: string;
   email?: string;
+  direccionHabitacion?: string;
+  resumenPerfil?: string;
+  documentos?: DocumentoPersonal[];
+  novedades?: NovedadPersonal[];
 }
 
 // Plantilla oficial del Despacho Román & Delgado (Personal Empleado y Asociados)
 export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
-  { id: 'emp_oscar', nombre: 'Oscar Alejandro Pérez Calzadilla', cedula: 'V-24.891.023', cargo: 'Sistemas & Tecnología', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0414-1234567', email: 'oscarpc' },
-  { id: 'emp_carmen', nombre: 'Carmen Luisa Delgado', cedula: 'V-12.338.408', cargo: 'Abogada / Gestión de Despacho', sueldoMensual: 200, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0414-9876543', email: 'abgcarmendelgado.990@gmail.com' },
-  { id: 'emp_mariela', nombre: 'Mariela Isabel', cedula: 'V-15.421.890', cargo: 'Abogada Asociada', sueldoMensual: 250, banco: 'Banesco', tipoPago: 'Pago Móvil', telefono: '0412-5556677' },
-  { id: 'emp_hector', nombre: 'Héctor', cedula: 'V-22.189.543', cargo: 'Asistente Legal / Procurador', sueldoMensual: 200, banco: 'Venezuela', tipoPago: 'Pago Móvil', telefono: '0416-1112233' },
+  { 
+    id: 'emp_oscar', 
+    nombre: 'Oscar Alejandro Pérez Calzadilla', 
+    cedula: 'V-26.946.187', 
+    cargo: 'Sistemas & Tecnología', 
+    departamento: 'Sistemas',
+    tipoContratacion: 'Honorarios Profesionales',
+    sueldoMensual: 100, 
+    banco: 'Banesco', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0414-1234567', 
+    email: 'oscarpc20@romanydelgado.com' 
+  },
+  { 
+    id: 'emp_carmen', 
+    nombre: 'Carmen Luisa Delgado', 
+    cedula: 'V-20.444.081', 
+    cargo: 'Abogada / Gestión de Despacho', 
+    departamento: 'Legal',
+    tipoContratacion: 'Nomina Interna',
+    sueldoMensual: 440, 
+    banco: 'Venezuela', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0414-9876543', 
+    email: 'abgcarmendelgado.990@gmail.com' 
+  },
+  { 
+    id: 'emp_mariela', 
+    nombre: 'Mariela Isabel', 
+    cedula: 'V-15.421.890', 
+    cargo: 'Asistente', 
+    departamento: 'Legal',
+    tipoContratacion: 'Nomina Interna',
+    sueldoMensual: 80, 
+    banco: 'Banesco', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0412-5556677',
+    email: 'marielaisabel2030@gmail.com'
+  },
+  { 
+    id: 'emp_hector', 
+    nombre: 'Héctor Ramos', 
+    cedula: 'V-22.189.543', 
+    cargo: 'Asistente Legal / Procurador', 
+    departamento: 'Legal',
+    tipoContratacion: 'Nomina Interna',
+    sueldoMensual: 64, 
+    banco: 'Venezuela', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0416-1112233',
+    email: 'hectorbann@gmail.com'
+  },
+  { 
+    id: 'emp_doris', 
+    nombre: 'Doris Rangel', 
+    cedula: 'V-13.988.872', 
+    cargo: 'Coordinador de Servicio & Mantenimiento', 
+    departamento: 'Servicios Generales',
+    tipoContratacion: 'Nomina Interna',
+    sueldoMensual: 350, 
+    banco: 'Tesoro', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0414-0000000',
+    email: 'dorisrangel@romanydelgado.com'
+  },
+  { 
+    id: 'emp_david', 
+    nombre: 'Anthony David Moya', 
+    cedula: 'V-27.123.456', 
+    cargo: 'Asesor de Marketing & Redes Sociales', 
+    departamento: 'Marketing',
+    tipoContratacion: 'Honorarios Profesionales',
+    sueldoMensual: 140, 
+    banco: 'Tesoro', 
+    tipoPago: 'Pago Móvil', 
+    telefono: '0412-5415895',
+    email: 'davidmoya@romanydelgado.com'
+  },
+  { 
+    id: 'emp_contador', 
+    nombre: 'Contador / Asesor Contable', 
+    cedula: 'V-10.555.777', 
+    cargo: 'Contador Público / Finanzas', 
+    departamento: 'Contabilidad',
+    tipoContratacion: 'Honorarios Profesionales',
+    sueldoMensual: 200, 
+    banco: 'Banesco', 
+    tipoPago: 'Transferencia', 
+    telefono: '0414-7778899',
+    email: 'contabilidad@romanydelgado.com'
+  }
 ];
 
 // Plantilla de Ejemplo Solcargo (Modelo de referencia opcional)

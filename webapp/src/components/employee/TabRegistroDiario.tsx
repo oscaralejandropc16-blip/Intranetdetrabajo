@@ -3,7 +3,7 @@ import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, MessageSquare, Tras
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
-import { supabaseUploadFile } from '../../lib/supabaseAdapter';
+import { supabaseUploadFile, getUserDepartment } from '../../lib/supabaseAdapter';
 import ExpedienteSelectorModal from '../common/ExpedienteSelectorModal';
 
 interface TabRegistroDiarioProps {
@@ -25,6 +25,104 @@ export default function TabRegistroDiario({
   globalExpedientes = [],
   ingresosActivos = []
 }: TabRegistroDiarioProps) {
+
+  const currentUserName = localStorage.getItem('rd_user_name') || localStorage.getItem('rd_user_email') || '';
+  const userDept = useMemo(() => getUserDepartment(currentUserName), [currentUserName]);
+
+  const deptConfig = useMemo(() => {
+    switch (userDept) {
+      case 'Marketing':
+        return {
+          title: 'Grilla de Contenido & Marketing Digital',
+          subtitle: 'Registra los contenidos a trabajar, copies, formatos y enlaces de Drive para revisión y aprobación de Jefatura.',
+          btnNew: '+ Nuevo Contenido / Publicación',
+          col1: 'Hora',
+          col2: 'Canal / Red Social *',
+          col2Placeholder: 'Ej: Instagram, TikTok, LinkedIn, Web...',
+          col3: 'Formato / Tema',
+          col3Placeholder: 'Ej: Reel, Carrusel, Historia, Blog...',
+          col4: 'Copywriting / Enlace Drive / Pieza *',
+          col4Placeholder: 'Texto del copy, enlaces al arte de Drive o material visual...',
+          col5: 'Estatus',
+          col6: 'Feedback / Aprobación Jefatura',
+          col6Placeholder: 'Observaciones de Víctor/Luis, fecha de publicación...',
+          emptyText: 'No has registrado ningún contenido hoy. Haz clic en "+ Nuevo Contenido / Publicación".',
+          showExpedienteSelector: false
+        };
+      case 'Servicios Generales':
+        return {
+          title: 'Bitácora de Servicios Generales, Sede & Mantenimiento',
+          subtitle: 'Control de mantenimiento, limpieza, insumos, compras y estado de las instalaciones del despacho.',
+          btnNew: '+ Nueva Tarea / Mantenimiento',
+          col1: 'Hora',
+          col2: 'Área / Espacio *',
+          col2Placeholder: 'Ej: Sala de Juntas, Oficinas, Cocina, Baños...',
+          col3: 'Insumo / Tipo',
+          col3Placeholder: 'Ej: Limpieza profunda, Reparación, Insumos café...',
+          col4: 'Detalle de Labor / Insumo Requerido *',
+          col4Placeholder: 'Qué labor se realizó o qué insumos hace falta reponer...',
+          col5: 'Estatus',
+          col6: 'Prioridad / Observaciones',
+          col6Placeholder: 'Notas para Jefatura, urgencia o estado de compra...',
+          emptyText: 'No has registrado ninguna labor hoy. Haz clic en "+ Nueva Tarea / Mantenimiento".',
+          showExpedienteSelector: false
+        };
+      case 'Contabilidad':
+        return {
+          title: 'Bitácora de Contabilidad, Finanzas & SENIAT',
+          subtitle: 'Registro diario de conciliaciones bancarias, cierres, impuestos SENIAT, retenciones y balances.',
+          btnNew: '+ Nueva Operación / Asiento',
+          col1: 'Hora',
+          col2: 'Cuenta / Entidad *',
+          col2Placeholder: 'Ej: Banesco, SENIAT, Facturación, Nómina...',
+          col3: 'Partida / Proveedor',
+          col3Placeholder: 'Ej: Declaración IVA, ISLR, Pago Servicios...',
+          col4: 'Detalle Contable / Monto *',
+          col4Placeholder: 'Descripción de la operación, monto o trámite fiscal...',
+          col5: 'Estatus',
+          col6: 'Comprobantes / Notas',
+          col6Placeholder: 'N° de transferencia, observaciones para Jefatura...',
+          emptyText: 'No has registrado ninguna operación hoy. Haz clic en "+ Nueva Operación / Asiento".',
+          showExpedienteSelector: false
+        };
+      case 'Sistemas':
+        return {
+          title: 'Bitácora de Sistemas, Plataforma KANT & Infraestructura',
+          subtitle: 'Registro de desarrollo web, servidores, base de datos Supabase, integraciones y soporte técnico.',
+          btnNew: '+ Nueva Tarea de Sistemas',
+          col1: 'Hora',
+          col2: 'Módulo / Servidor *',
+          col2Placeholder: 'Ej: Nómina, Supabase, Bitácoras, Auth, Backup...',
+          col3: 'Componente / Tarea',
+          col3Placeholder: 'Ej: Bugfix, Feature, Optimización, Script...',
+          col4: 'Detalle Técnico / Cambios *',
+          col4Placeholder: 'Descripción de los cambios o solución implementada...',
+          col5: 'Estatus',
+          col6: 'Notas de Despliegue',
+          col6Placeholder: 'Commit, pull request o notas técnicas...',
+          emptyText: 'No has registrado ninguna tarea técnica hoy. Haz clic en "+ Nueva Tarea de Sistemas".',
+          showExpedienteSelector: false
+        };
+      default:
+        return {
+          title: 'Libro de Actuaciones',
+          subtitle: 'Registra detalladamente tus gestiones y actuaciones de hoy.',
+          btnNew: 'Nueva Actuación',
+          col1: 'Hora',
+          col2: 'N° Asunto *',
+          col2Placeholder: 'Ej. RD-J-2026...',
+          col3: 'Partes',
+          col3Placeholder: 'Ej. Parte A vs. Parte B',
+          col4: 'Actuación *',
+          col4Placeholder: 'Describe qué se hizo *',
+          col5: 'Estado',
+          col6: 'Observaciones',
+          col6Placeholder: 'Notas o estatus',
+          emptyText: 'No has registrado ninguna actuación. Haz clic en "Nueva Actuación".',
+          showExpedienteSelector: true
+        };
+    }
+  }, [userDept]);
 
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [activeSelectorRowId, setActiveSelectorRowId] = useState<string | null>(null);
@@ -277,10 +375,10 @@ export default function TabRegistroDiario({
               <div>
                 <div className="flex items-center gap-3 mb-1">
                   <FileText className="w-6 h-6 text-blue-600" />
-                  <h3 className="text-xl font-bold text-slate-800">Libro de Actuaciones</h3>
+                  <h3 className="text-xl font-bold text-slate-800">{deptConfig.title}</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm text-slate-500 font-medium">Registra detalladamente tus gestiones y actuaciones de hoy.</p>
+                  <p className="text-sm text-slate-500 font-medium">{deptConfig.subtitle}</p>
                   {saveStatus && (
                     <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-md border border-emerald-300 animate-in fade-in duration-200">
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {saveStatus}
@@ -294,7 +392,7 @@ export default function TabRegistroDiario({
                     type="button"
                     onClick={handlePreguardarBorrador}
                     className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
-                    title="Guarda de inmediato tus actuaciones localmente para que no se borren si refrescas la página"
+                    title="Guarda de inmediato tus avances localmente para que no se borren si refrescas la página"
                   >
                     <Save className="w-4 h-4" /> Preguardar Borrador
                   </button>
@@ -304,7 +402,7 @@ export default function TabRegistroDiario({
                     onClick={handleAddActuacion}
                     className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 px-4 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
                   >
-                    <Plus className="w-4 h-4" /> Nueva Actuación
+                    <Plus className="w-4 h-4" /> {deptConfig.btnNew}
                   </button>
                 </div>
               )}
@@ -314,12 +412,12 @@ export default function TabRegistroDiario({
               <table className="w-full text-sm text-left">
                 <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
                   <tr>
-                    <th className="px-3 py-3 w-28">Hora</th>
-                    <th className="px-3 py-3 min-w-[200px]">N° Asunto <span className="text-rose-500 font-black">*</span></th>
-                    <th className="px-3 py-3 min-w-[160px]">Partes</th>
-                    <th className="px-3 py-3 min-w-[200px]">Actuación</th>
-                    <th className="px-3 py-3 w-36">Estado</th>
-                    <th className="px-3 py-3 min-w-[180px]">Observaciones</th>
+                    <th className="px-3 py-3 w-28">{deptConfig.col1}</th>
+                    <th className="px-3 py-3 min-w-[200px]">{deptConfig.col2} <span className="text-rose-500 font-black">*</span></th>
+                    <th className="px-3 py-3 min-w-[160px]">{deptConfig.col3}</th>
+                    <th className="px-3 py-3 min-w-[200px]">{deptConfig.col4}</th>
+                    <th className="px-3 py-3 w-36">{deptConfig.col5}</th>
+                    <th className="px-3 py-3 min-w-[180px]">{deptConfig.col6}</th>
                     {!reportSubmitted && <th className="px-3 py-3 w-12 text-center"></th>}
                   </tr>
                 </thead>
@@ -327,7 +425,7 @@ export default function TabRegistroDiario({
                   {actuaciones.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-slate-500 font-medium">
-                        No has registrado ninguna actuación. Haz clic en "Nueva Actuación".
+                        {deptConfig.emptyText}
                       </td>
                     </tr>
                   ) : (
@@ -350,25 +448,25 @@ export default function TabRegistroDiario({
                               disabled={reportSubmitted}
                               required
                               onChange={(e) => updateActuacionField(actuacion.id, 'numeroAsunto', e.target.value)}
-                              className={`w-full p-2 border rounded-l-lg focus:ring-2 outline-none font-semibold text-slate-800 transition-colors ${
+                              className={`w-full p-2 border ${deptConfig.showExpedienteSelector ? 'rounded-l-lg' : 'rounded-lg'} focus:ring-2 outline-none font-semibold text-slate-800 transition-colors ${
                                 !actuacion.numeroAsunto || actuacion.numeroAsunto.trim() === ''
-                                  ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
-                                  : 'border-slate-200 focus:ring-blue-500/50 bg-white'
+                                    ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
+                                    : 'border-slate-200 focus:ring-blue-500/50 bg-white'
                               }`}
-                              placeholder="Ej. RD-J-2026..."
+                              placeholder={deptConfig.col2Placeholder}
                             />
-                            {!reportSubmitted && (
+                            {!reportSubmitted && deptConfig.showExpedienteSelector && (
                               <button
                                 type="button"
                                 onClick={() => setActiveSelectorRowId(actuacion.id)}
                                 className="px-2.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-r-lg border border-l-0 border-slate-200 transition-all flex items-center justify-center cursor-pointer shrink-0 hover:scale-105 active:scale-95 group/bicho"
-                                title="Abrir catálogo de expedientes registrados para seleccionar (El bichito de expedientes)"
+                                title="Abrir catálogo de expedientes registrados para seleccionar"
                               >
                                 <FolderSearch className="w-4 h-4 text-blue-600 group-hover/bicho:text-blue-700" />
                               </button>
                             )}
                           </div>
-                          {!reportSubmitted && (
+                          {!reportSubmitted && deptConfig.showExpedienteSelector && (
                             <button
                               type="button"
                               onClick={() => setActiveSelectorRowId(actuacion.id)}
@@ -385,7 +483,7 @@ export default function TabRegistroDiario({
                             onChange={(e) => updateActuacionField(actuacion.id, 'partes', e.target.value)}
                             rows={2}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 resize-none bg-white"
-                            placeholder="Ej. Parte A vs. Parte B"
+                            placeholder={deptConfig.col3Placeholder}
                           />
                         </td>
                         <td className="px-3 py-3 align-top">
@@ -399,7 +497,7 @@ export default function TabRegistroDiario({
                                 ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
                                 : 'border-slate-200 focus:ring-blue-500/50 bg-white'
                             }`}
-                            placeholder="Describe qué se hizo *"
+                            placeholder={deptConfig.col4Placeholder}
                           />
                         </td>
                         <td className="px-3 py-3 align-top">
@@ -445,7 +543,7 @@ export default function TabRegistroDiario({
                             onChange={(e) => updateActuacionField(actuacion.id, 'observaciones', e.target.value)}
                             rows={3}
                             className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-700 resize-none bg-white"
-                            placeholder="Notas o estatus"
+                            placeholder={deptConfig.col6Placeholder}
                           />
                         </td>
                         {!reportSubmitted && (
