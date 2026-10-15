@@ -6,6 +6,7 @@ import { fileToDataUrl } from '../../lib/api';
 import { supabaseUploadFile, getUserDepartment } from '../../lib/supabaseAdapter';
 import ExpedienteSelectorModal from '../common/ExpedienteSelectorModal';
 import EstudioMarketingGrilla from '../marketing/EstudioMarketingGrilla';
+import EstudioMantenimientoSede from '../mantenimiento/EstudioMantenimientoSede';
 
 interface TabRegistroDiarioProps {
   reportSubmitted: boolean;
@@ -338,6 +339,71 @@ export default function TabRegistroDiario({
                   <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
                     <div className="flex items-center gap-2 truncate">
                       <FileText className="w-4 h-4 text-purple-600 shrink-0" />
+                      <span className="font-bold text-slate-800 truncate">{file.name || file.file?.name}</span>
+                    </div>
+                    {!reportSubmitted && (
+                      <button type="button" onClick={() => removeFile(idx)} className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (userDept === 'Servicios Generales') {
+    return (
+      <div className="animate-in fade-in zoom-in-95 duration-300 space-y-6">
+        <EstudioMantenimientoSede 
+          actuaciones={actuaciones}
+          setActuaciones={setActuaciones}
+          pendingTasks={pendingTasks}
+          setPendingTasks={setPendingTasks}
+          reportSubmitted={reportSubmitted}
+        />
+
+        {/* Sección: Fotos de Comprobantes, Insumos y Evidencias de Mantenimiento */}
+        <div className="bg-white p-6 lg:p-8 rounded-3xl border border-slate-200 shadow-xs">
+          <div className="flex items-center justify-between gap-4 mb-2">
+            <div className="flex items-center gap-3">
+              <UploadCloud className="w-6 h-6 text-teal-600" />
+              <h3 className="text-xl font-bold text-slate-800">
+                Fotos de Áreas, Insumos & Facturas de Compras
+                <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200 ml-2">Opcional</span>
+              </h3>
+            </div>
+          </div>
+          <p className="text-sm text-slate-500 font-medium mb-4">
+            Anexa fotografías de las áreas atendidas, compras de insumos para cafetería o comprobantes de la sede para que queden archivados formalmente en tu bitácora de hoy.
+          </p>
+
+          <div className="border-2 border-dashed border-teal-200 bg-teal-50/20 rounded-2xl p-8 text-center hover:bg-teal-50/50 hover:border-teal-300 transition-all group mb-6 relative">
+            <input type="file" id="evidencia_mantenimiento" disabled={reportSubmitted} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileUpload} />
+            <div className="flex flex-col items-center gap-3 pointer-events-none">
+              <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-xs border border-teal-200 text-teal-600">
+                <UploadCloud className="w-7 h-7" />
+              </div>
+              <div>
+                <span className="font-bold text-base block text-slate-700">Arrastra fotos de áreas o facturas de compras aquí</span>
+                <span className="text-xs text-slate-400 font-bold mt-0.5 block">Admite imágenes JPG, PNG, recibos o facturas</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Listado de archivos adjuntos */}
+          {attachedFiles.length > 0 && (
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider">Archivos y Evidencias Adjuntas ({attachedFiles.length}):</h4>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {attachedFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-200 text-xs">
+                    <div className="flex items-center gap-2 truncate">
+                      <FileText className="w-4 h-4 text-teal-600 shrink-0" />
                       <span className="font-bold text-slate-800 truncate">{file.name || file.file?.name}</span>
                     </div>
                     {!reportSubmitted && (
