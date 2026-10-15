@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -13,6 +13,7 @@ import ModuloExpedientes from './expedientes/ModuloExpedientes';
 import ModuloGastos from './gastos/ModuloGastos';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaJefatura from './nomina/ModuloNominaJefatura';
+import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
@@ -281,7 +282,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('Todos');
   const [datePreset, setDatePreset] = useState('Todos');
   const [showDateFilter, setShowDateFilter] = useState(false);
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios'>(() => {
     const saved = sessionStorage.getItem('rd_admin_active_view');
     if (saved === 'agenda') return 'bitacoras';
     return (saved as any) || 'bitacoras';
@@ -1617,6 +1618,17 @@ export default function AdminDashboard() {
         >
           <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-950' : 'text-slate-400'}`} /> Mi Historial de Jefatura
         </button>
+
+        <button
+          onClick={() => setActiveView('usuarios')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'usuarios' 
+              ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white font-black shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300 scale-[1.02]' 
+              : 'text-slate-500 hover:text-slate-900 hover:bg-cyan-50/60 font-bold'
+          }`}
+        >
+          <Cpu className={`w-4 h-4 ${activeView === 'usuarios' ? 'text-white' : 'text-cyan-600'}`} /> Usuarios & Roles TI
+        </button>
       </div>
 
       {/* Main Content Area */}
@@ -2847,6 +2859,11 @@ export default function AdminDashboard() {
           </div>
           <TabHistorial />
         </div>
+      )}
+
+      {/* VISTA: CONTROL DE ACCESO, USUARIOS Y ROLES (SISTEMAS TI) */}
+      {activeView === 'usuarios' && (
+        <ModuloControlUsuarios />
       )}
 
       {/* Modal de Revisión y Edición con Glassmorphism Responsive */}

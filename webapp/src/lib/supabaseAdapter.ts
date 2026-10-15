@@ -149,19 +149,31 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
   },
   'oscarpc20': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'Oscar Alejandro',
+    displayName: 'Óscar (Sistemas TI)',
     role: 'empleado',
     department: 'Sistemas'
   },
   'oscar': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'Oscar Alejandro',
+    displayName: 'Óscar (Sistemas TI)',
+    role: 'empleado',
+    department: 'Sistemas'
+  },
+  'oscarpc': {
+    email: 'oscarpc@romanydelgado.com',
+    displayName: 'Óscar (Sistemas TI)',
+    role: 'empleado',
+    department: 'Sistemas'
+  },
+  'oscarpc@romanydelgado.com': {
+    email: 'oscarpc@romanydelgado.com',
+    displayName: 'Óscar (Sistemas TI)',
     role: 'empleado',
     department: 'Sistemas'
   },
   'oscarpc20@romanydelgado.com': {
     email: 'oscarpc20@romanydelgado.com',
-    displayName: 'Oscar Alejandro',
+    displayName: 'Óscar (Sistemas TI)',
     role: 'empleado',
     department: 'Sistemas'
   },
@@ -237,6 +249,20 @@ export function getUserDepartment(nameOrEmail?: string | null): 'Legal' | 'Marke
   if (!nameOrEmail) return 'Legal';
   const clean = nameOrEmail.toLowerCase().trim();
   
+  // 1. Revisar directorio dinámico gestionado por Sistemas
+  try {
+    const cached = localStorage.getItem('rd_system_users_directory');
+    if (cached) {
+      const list: SystemUser[] = JSON.parse(cached);
+      const match = list.find(u => 
+        u.username.toLowerCase() === clean || 
+        u.email.toLowerCase() === clean ||
+        u.fullName.toLowerCase() === clean
+      );
+      if (match?.department) return match.department;
+    }
+  } catch (e) {}
+  
   if (KNOWN_USERS_DIR[clean]?.department) {
     return KNOWN_USERS_DIR[clean].department!;
   }
@@ -251,10 +277,38 @@ export function getUserDepartment(nameOrEmail?: string | null): 'Legal' | 'Marke
 }
 
 // -------------------------------------------------------------
-// 1. AUTENTICACIÓN Y SESIÓN (CON SINCRONIZACIÓN DE CLAVES DE WORDPRESS)
+// 1. AUTENTICACIÓN Y SESIÓN (CON SINCRONIZACIÓN DE CLAVES DE WORDPRESS Y SISTEMAS)
 // -------------------------------------------------------------
 export async function supabaseLogin(username: string, password?: string): Promise<any> {
   const cleanUser = username.trim().toLowerCase();
+
+  // 0. Validar primero contra el Directorio Dinámico de Usuarios gestionado por Sistemas
+  try {
+    const dynUsers = await supabaseGetSystemUsers();
+    const matchedDyn = dynUsers.find(u => 
+      u.active !== false && (
+        u.username.toLowerCase() === cleanUser || 
+        u.email.toLowerCase() === cleanUser ||
+        u.fullName.toLowerCase() === cleanUser
+      )
+    );
+
+    if (matchedDyn && matchedDyn.passwordHash && password && password.trim() === matchedDyn.passwordHash.trim()) {
+      const isBoss = matchedDyn.role === 'jefatura';
+      const token = `rd_session_${Date.now()}_${matchedDyn.username}`;
+      return {
+        success: true,
+        token,
+        user_email: matchedDyn.email,
+        user_display_name: matchedDyn.fullName,
+        user_nicename: matchedDyn.username,
+        is_admin: isBoss
+      };
+    }
+  } catch (errDyn) {
+    console.warn('Fallback al motor Auth estándar:', errDyn);
+  }
+
   const known = KNOWN_USERS_DIR[cleanUser];
 
   const email = known ? known.email : (cleanUser.includes('@') ? cleanUser : `${cleanUser}@romanydelgado.com`);
@@ -2230,5 +2284,228 @@ export async function supabaseLimpiarTodosRecibosNomina(): Promise<{ success: bo
 
   return { success: true };
 }
+
+// =============================================================
+// GESTIÓN Y CONTROL DE USUARIOS, ROLES Y ACCESOS (SISTEMAS TI)
+// =============================================================
+
+export interface SystemUser {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  role: 'jefatura' | 'empleado' | 'sistemas';
+  department: 'Legal' | 'Marketing' | 'Contabilidad' | 'Servicios Generales' | 'Sistemas' | 'Administración';
+  passwordHash?: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
+  {
+    id: 'usr_victor',
+    username: 'victor',
+    email: 'victor@romanydelgado.com',
+    fullName: 'Víctor Román',
+    role: 'jefatura',
+    department: 'Administración',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-09-25T15:18:42.000Z'
+  },
+  {
+    id: 'usr_luis',
+    username: 'luis',
+    email: 'luisdelgado@romanydelgado.com',
+    fullName: 'Luis Delgado',
+    role: 'jefatura',
+    department: 'Administración',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-09-25T15:24:57.000Z'
+  },
+  {
+    id: 'usr_oscar',
+    username: 'oscarpc',
+    email: 'oscarpc@romanydelgado.com',
+    fullName: 'Óscar (Sistemas TI)',
+    role: 'sistemas',
+    department: 'Sistemas',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-10-06T18:40:00.000Z'
+  },
+  {
+    id: 'usr_carmen',
+    username: 'carmen',
+    email: 'abgcarmendelgado.990@gmail.com',
+    fullName: 'Carmen Luisa Delgado',
+    role: 'empleado',
+    department: 'Legal',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-09-25T15:24:57.000Z'
+  },
+  {
+    id: 'usr_mariela',
+    username: 'mariela',
+    email: 'marielaisabel2030@gmail.com',
+    fullName: 'Mariela Isabel',
+    role: 'empleado',
+    department: 'Legal',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-09-25T15:24:57.000Z'
+  },
+  {
+    id: 'usr_hector',
+    username: 'hector',
+    email: 'hectorbann@gmail.com',
+    fullName: 'Héctor Ramos',
+    role: 'empleado',
+    department: 'Legal',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-09-25T15:24:57.000Z'
+  },
+  {
+    id: 'usr_david',
+    username: 'davidmoya',
+    email: 'davidmoya@romanydelgado.com',
+    fullName: 'Anthony David Moya',
+    role: 'empleado',
+    department: 'Marketing',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-10-14T10:00:00.000Z'
+  },
+  {
+    id: 'usr_doris',
+    username: 'dorisrangel',
+    email: 'dorisrangel@romanydelgado.com',
+    fullName: 'Doris Rangel',
+    role: 'empleado',
+    department: 'Servicios Generales',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-10-14T10:00:00.000Z'
+  },
+  {
+    id: 'usr_contador',
+    username: 'contador',
+    email: 'contabilidad@romanydelgado.com',
+    fullName: 'Contador / Asesor Contable',
+    role: 'empleado',
+    department: 'Contabilidad',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-10-14T10:00:00.000Z'
+  }
+];
+
+export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
+  try {
+    const cached = localStorage.getItem('rd_system_users_directory');
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          fetchRemoteSystemUsers();
+          return parsed;
+        }
+      } catch (e) {}
+    }
+
+    const { data: existing } = await supabase
+      .from('investigaciones_kant')
+      .select('contenido')
+      .eq('categoria', 'system_users_directory')
+      .limit(1);
+
+    if (existing && existing.length > 0 && existing[0].contenido) {
+      const parsed = JSON.parse(existing[0].contenido);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+
+    await supabaseSaveSystemUsers(DEFAULT_SYSTEM_USERS);
+    return DEFAULT_SYSTEM_USERS;
+  } catch (err) {
+    console.warn('Error leyendo directorio de usuarios de Supabase, usando predeterminado:', err);
+    return DEFAULT_SYSTEM_USERS;
+  }
+}
+
+async function fetchRemoteSystemUsers() {
+  try {
+    const { data } = await supabase
+      .from('investigaciones_kant')
+      .select('contenido')
+      .eq('categoria', 'system_users_directory')
+      .limit(1);
+    if (data && data.length > 0 && data[0].contenido) {
+      const parsed = JSON.parse(data[0].contenido);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {}
+}
+
+export async function supabaseSaveSystemUsers(users: SystemUser[]): Promise<boolean> {
+  try {
+    localStorage.setItem('rd_system_users_directory', JSON.stringify(users));
+  } catch (e) {}
+
+  try {
+    const { data: existing } = await supabase
+      .from('investigaciones_kant')
+      .select('id')
+      .eq('categoria', 'system_users_directory')
+      .limit(1);
+
+    if (existing && existing.length > 0) {
+      await supabase
+        .from('investigaciones_kant')
+        .update({
+          contenido: JSON.stringify(users),
+          created_at: new Date().toISOString()
+        })
+        .eq('id', existing[0].id);
+    } else {
+      await supabase.from('investigaciones_kant').insert({
+        titulo: 'DIRECTORIO_USUARIOS_KANT',
+        categoria: 'system_users_directory',
+        autor: 'Sistemas',
+        contenido: JSON.stringify(users),
+        tags: ['usuarios', 'roles', 'sistemas', 'credenciales']
+      });
+    }
+    return true;
+  } catch (err) {
+    console.warn('Error guardando directorio de usuarios en Supabase:', err);
+    return false;
+  }
+}
+
+export async function supabaseUpdateUserPassword(userId: string, newPassword: string): Promise<boolean> {
+  try {
+    const users = await supabaseGetSystemUsers();
+    const updated = users.map(u => {
+      if (u.id === userId) {
+        return { ...u, passwordHash: newPassword.trim(), updatedAt: new Date().toISOString() };
+      }
+      return u;
+    });
+    return await supabaseSaveSystemUsers(updated);
+  } catch (err) {
+    console.error('Error al actualizar contraseña de usuario:', err);
+    return false;
+  }
+}
+
 
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
 import { supabase } from '../lib/supabase';
-import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet } from 'lucide-react';
+import { Calendar as CalendarIcon, Activity, MessageSquare, FileDigit, Clock, CheckCircle2, AlertCircle, History, Lock, Scale, MapPin, Receipt, RefreshCw, FolderSearch, X, Wallet, Cpu } from 'lucide-react';
 import { format } from 'date-fns';
 import NotificationPanel from './employee/NotificationPanel';
 import TabRegistroDiario from './employee/TabRegistroDiario';
@@ -13,6 +13,7 @@ import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
+import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
@@ -77,6 +78,7 @@ export default function EmployeeDashboard() {
   const currentUserName = localStorage.getItem('rd_user_name') || localStorage.getItem('rd_user_email') || '';
   const userDept = getUserDepartment(currentUserName);
   const isLegalOrBoss = userDept === 'Legal' || userDept === 'Administración';
+  const isSistemas = userDept === 'Sistemas' || currentUserName.toLowerCase().includes('oscar');
 
   const [clockIn, setClockIn] = useState<Date | null>(() => {
     const draft = getInitialDraft();
@@ -1292,12 +1294,19 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina' | 'control_usuarios'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina') return saved;
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina' || saved === 'control_usuarios') return saved;
     return 'jornada';
   });
+
+  // Redirección de seguridad: empleados no legales no tienen acceso a expedientes ni biblioteca judicial
+  useEffect(() => {
+    if (!isLegalOrBoss && (activeTab === 'biblioteca' || activeTab === 'expedientes')) {
+      setActiveTab('jornada');
+    }
+  }, [isLegalOrBoss, activeTab]);
   const [unreadChatLive, setUnreadChatLive] = useState(0);
   const [chatToast, setChatToast] = useState<{
     isOpen: boolean;
@@ -1750,6 +1759,21 @@ export default function EmployeeDashboard() {
              'Mi Jornada & Libros'}
           </span>
         </button>
+
+        {/* PESTAÑA ESPECIAL EXCLUSIVA PARA EL ADMINISTRADOR DE SISTEMAS TI (ÓSCAR) */}
+        {isSistemas && (
+          <button 
+            onClick={() => setActiveTab('control_usuarios')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+              activeTab === 'control_usuarios' 
+                ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-black shadow-md shadow-cyan-500/20 ring-1 ring-cyan-400' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Cpu className={`w-3.5 h-3.5 ${activeTab === 'control_usuarios' ? 'text-white' : 'text-cyan-600'} shrink-0`} />
+            <span>Control de Usuarios & Roles TI</span>
+          </button>
+        )}
         
         <button 
           onClick={() => {
@@ -1846,17 +1870,19 @@ export default function EmployeeDashboard() {
           <span>Mi Historial</span>
         </button>
 
-        <button 
-          onClick={() => setActiveTab('biblioteca')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
-            activeTab === 'biblioteca' 
-              ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-          }`}
-        >
-          <FolderSearch className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-          <span>Archivo & Expedientes</span>
-        </button>
+        {isLegalOrBoss && (
+          <button 
+            onClick={() => setActiveTab('biblioteca')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+              activeTab === 'biblioteca' 
+                ? 'bg-white text-slate-950 font-black shadow-md shadow-blue-500/10 ring-1 ring-blue-400' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <FolderSearch className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <span>Archivo & Expedientes</span>
+          </button>
+        )}
       </div>
 
       {/* CONTENEDOR PRINCIPAL */}
@@ -2044,7 +2070,15 @@ export default function EmployeeDashboard() {
                 <div className="max-w-md space-y-2">
                   <h3 className="text-2xl font-black text-slate-800 tracking-tight">Marca tu Hora de Entrada</h3>
                   <p className="text-slate-500 text-xs sm:text-sm font-medium leading-relaxed">
-                    Para comenzar a registrar tus actuaciones, ingresos o programar tu agenda diaria en la Intranet KANT, primero debes registrar tu hora de entrada.
+                    {userDept === 'Marketing'
+                      ? 'Para comenzar a registrar tu grilla de contenidos, publicaciones y tareas de marketing en KANT, primero debes registrar tu hora de entrada.'
+                      : userDept === 'Sistemas'
+                      ? 'Para comenzar a registrar tareas técnicas, infraestructura y soporte en KANT, primero debes registrar tu hora de entrada.'
+                      : userDept === 'Servicios Generales'
+                      ? 'Para comenzar a registrar las labores de mantenimiento, limpieza e insumos en KANT, primero debes registrar tu hora de entrada.'
+                      : userDept === 'Contabilidad'
+                      ? 'Para comenzar a registrar la gestión contable, retenciones y declaraciones en KANT, primero debes registrar tu hora de entrada.'
+                      : 'Para comenzar a registrar tus actuaciones, ingresos o programar tu agenda diaria en la Intranet KANT, primero debes registrar tu hora de entrada.'}
                   </p>
                 </div>
                 <button
@@ -2059,31 +2093,25 @@ export default function EmployeeDashboard() {
             ) : (
               <div className="space-y-6">
                 
-                {/* SUB-PESTAÑAS DE LOS 3 LIBROS */}
-                <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setSubTabLibro('actuaciones')}
-                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-                      subTabLibro === 'actuaciones'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <Activity className="w-4 h-4 text-blue-600" />
-                    <span>
-                      {userDept === 'Marketing' ? '1. Grilla de Contenido' :
-                       userDept === 'Servicios Generales' ? '1. Mantenimiento & Insumos' :
-                       userDept === 'Contabilidad' ? '1. Operaciones Contables' :
-                       userDept === 'Sistemas' ? '1. Tareas de Sistemas' :
-                       '1. Libro de Actuaciones'}
-                    </span>
-                    <span className="px-2 py-0.2 bg-blue-100 text-blue-800 rounded-full text-[10px] font-black">
-                      {actuaciones.length}
-                    </span>
-                  </button>
+                {/* SUB-PESTAÑAS DE LOS 3 LIBROS (SOLO PARA PERSONAL LEGAL Y JEFATURA) */}
+                {isLegalOrBoss && (
+                  <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setSubTabLibro('actuaciones')}
+                      className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                        subTabLibro === 'actuaciones'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <Activity className="w-4 h-4 text-blue-600" />
+                      <span>1. Libro de Actuaciones</span>
+                      <span className="px-2 py-0.2 bg-blue-100 text-blue-800 rounded-full text-[10px] font-black">
+                        {actuaciones.length}
+                      </span>
+                    </button>
 
-                  {isLegalOrBoss && (
                     <button
                       type="button"
                       onClick={() => setSubTabLibro('ingresos')}
@@ -2099,28 +2127,28 @@ export default function EmployeeDashboard() {
                         {ingresos.length}
                       </span>
                     </button>
-                  )}
 
-                  <button
-                    type="button"
-                    onClick={() => setSubTabLibro('programacion')}
-                    className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
-                      subTabLibro === 'programacion'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                  >
-                    <CalendarIcon className="w-4 h-4 text-amber-600" />
-                    <span>{isLegalOrBoss ? '3. Libro de Programación' : '2. Agenda Futura'}</span>
-                    <span className="px-2 py-0.2 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
-                      {programaciones.length}
-                    </span>
-                  </button>
-                </div>
+                    <button
+                      type="button"
+                      onClick={() => setSubTabLibro('programacion')}
+                      className={`px-5 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer ${
+                        subTabLibro === 'programacion'
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      <CalendarIcon className="w-4 h-4 text-amber-600" />
+                      <span>3. Libro de Programación</span>
+                      <span className="px-2 py-0.2 bg-amber-100 text-amber-800 rounded-full text-[10px] font-black">
+                        {programaciones.length}
+                      </span>
+                    </button>
+                  </div>
+                )}
 
                 {/* CONTENIDO DEL LIBRO SELECCIONADO */}
                 <div className="animate-in fade-in duration-200">
-                  {subTabLibro === 'actuaciones' && (
+                  {(!isLegalOrBoss || subTabLibro === 'actuaciones') && (
                     <TabRegistroDiario 
                       reportSubmitted={reportSubmitted}
                       actuaciones={actuaciones}
@@ -2134,7 +2162,7 @@ export default function EmployeeDashboard() {
                     />
                   )}
 
-                  {subTabLibro === 'ingresos' && (
+                  {isLegalOrBoss && subTabLibro === 'ingresos' && (
                     <TabLibroIngresos 
                       ingresos={ingresos}
                       setIngresos={setIngresos}
@@ -2142,7 +2170,7 @@ export default function EmployeeDashboard() {
                     />
                   )}
 
-                  {subTabLibro === 'programacion' && (
+                  {isLegalOrBoss && subTabLibro === 'programacion' && (
                     <TabAgenda 
                       programaciones={programaciones}
                       setProgramaciones={setProgramaciones}
@@ -2171,8 +2199,8 @@ export default function EmployeeDashboard() {
           </div>
         )}
 
-        {/* VISTA 2: EXPEDIENTES & CASOS (ANCHO COMPLETO) */}
-        {activeTab === 'expedientes' && (
+        {/* VISTA 2: EXPEDIENTES & CASOS (SOLO PARA PERSONAL LEGAL) */}
+        {activeTab === 'expedientes' && isLegalOrBoss && (
           <ModuloExpedientes isAdmin={false} />
         )}
 
@@ -2202,9 +2230,14 @@ export default function EmployeeDashboard() {
           <TabHistorial />
         )}
 
-        {/* VISTA 5: ARCHIVO & BIBLIOTECA GENERAL DE DOCUMENTOS */}
-        {activeTab === 'biblioteca' && (
+        {/* VISTA 5: ARCHIVO & BIBLIOTECA GENERAL DE DOCUMENTOS (SOLO PARA PERSONAL LEGAL) */}
+        {activeTab === 'biblioteca' && isLegalOrBoss && (
           <ModuloBibliotecaArchivos />
+        )}
+
+        {/* VISTA 6: CONTROL DE ACCESO, USUARIOS Y ROLES (EXCLUSIVO SISTEMAS TI) */}
+        {activeTab === 'control_usuarios' && isSistemas && (
+          <ModuloControlUsuarios />
         )}
       </div>
 

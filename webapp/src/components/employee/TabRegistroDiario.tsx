@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, MessageSquare, Trash2, FileText, Save, AlertCircle, RotateCw, FolderSearch, ExternalLink, Loader2 } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Plus, X, UploadCloud, MessageSquare, Trash2, FileText, AlertCircle, RotateCw, FolderSearch, ExternalLink, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Actuacion } from '../../types/libros';
 import { fileToDataUrl } from '../../lib/api';
@@ -35,19 +35,22 @@ export default function TabRegistroDiario({
         return {
           title: 'Grilla de Contenido & Marketing Digital',
           subtitle: 'Registra los contenidos a trabajar, copies, formatos y enlaces de Drive para revisión y aprobación de Jefatura.',
-          btnNew: '+ Nuevo Contenido / Publicación',
+          btnNew: '+ Nuevo Contenido de Marketing',
           col1: 'Hora',
           col2: 'Canal / Red Social *',
-          col2Placeholder: 'Ej: Instagram, TikTok, LinkedIn, Web...',
-          col3: 'Formato / Tema',
-          col3Placeholder: 'Ej: Reel, Carrusel, Historia, Blog...',
-          col4: 'Copywriting / Enlace Drive / Pieza *',
-          col4Placeholder: 'Texto del copy, enlaces al arte de Drive o material visual...',
+          col2Placeholder: 'Ej: Instagram (@romanydelgado), TikTok, LinkedIn, Web...',
+          col3: 'Formato / Tipo',
+          col3Placeholder: 'Ej: Reel, Carrusel, Historia, Post, Guion...',
+          col4: 'Copywriting / Enlace Drive / Pieza Visual *',
+          col4Placeholder: 'Texto del copy, guión o enlace a la carpeta de Google Drive...',
           col5: 'Estatus',
           col6: 'Feedback / Aprobación Jefatura',
-          col6Placeholder: 'Observaciones de Víctor/Luis, fecha de publicación...',
-          emptyText: 'No has registrado ningún contenido hoy. Haz clic en "+ Nuevo Contenido / Publicación".',
-          showExpedienteSelector: false
+          col6Placeholder: 'Observaciones de Víctor Román / Luis Delgado, fecha de publicación...',
+          emptyText: 'No has registrado ningún contenido hoy. Haz clic en "+ Nuevo Contenido de Marketing".',
+          showExpedienteSelector: false,
+          attachmentsTitle: 'Material Visual & Archivos de Marketing',
+          attachmentsSubtitle: 'Anexa piezas gráficas, capturas de métricas, guiones o videos de referencia para tus publicaciones de hoy.',
+          attachmentsDropzoneText: 'Haz clic o arrastra imágenes, videos o guiones para anexar a la grilla'
         };
       case 'Servicios Generales':
         return {
@@ -65,7 +68,10 @@ export default function TabRegistroDiario({
           col6: 'Prioridad / Observaciones',
           col6Placeholder: 'Notas para Jefatura, urgencia o estado de compra...',
           emptyText: 'No has registrado ninguna labor hoy. Haz clic en "+ Nueva Tarea / Mantenimiento".',
-          showExpedienteSelector: false
+          showExpedienteSelector: false,
+          attachmentsTitle: 'Comprobantes & Fotos de Mantenimiento',
+          attachmentsSubtitle: 'Anexa fotografías de las áreas atendidas, facturas de compras o comprobantes de insumos de hoy.',
+          attachmentsDropzoneText: 'Haz clic o arrastra fotos o facturas para anexar a la bitácora'
         };
       case 'Contabilidad':
         return {
@@ -83,7 +89,10 @@ export default function TabRegistroDiario({
           col6: 'Comprobantes / Notas',
           col6Placeholder: 'N° de transferencia, observaciones para Jefatura...',
           emptyText: 'No has registrado ninguna operación hoy. Haz clic en "+ Nueva Operación / Asiento".',
-          showExpedienteSelector: false
+          showExpedienteSelector: false,
+          attachmentsTitle: 'Soportes Contables & Facturas SENIAT',
+          attachmentsSubtitle: 'Anexa facturas, planillas de pago SENIAT, comprobantes de retención o estados de cuenta bancarios.',
+          attachmentsDropzoneText: 'Haz clic o arrastra facturas, planillas o soportes para anexar'
         };
       case 'Sistemas':
         return {
@@ -92,16 +101,19 @@ export default function TabRegistroDiario({
           btnNew: '+ Nueva Tarea de Sistemas',
           col1: 'Hora',
           col2: 'Módulo / Servidor *',
-          col2Placeholder: 'Ej: Nómina, Supabase, Bitácoras, Auth, Backup...',
+          col2Placeholder: 'Ej: Nómina, Supabase, Bitácoras, Auth, Servidores...',
           col3: 'Componente / Tarea',
-          col3Placeholder: 'Ej: Bugfix, Feature, Optimización, Script...',
-          col4: 'Detalle Técnico / Cambios *',
+          col3Placeholder: 'Ej: Bugfix, Feature, Optimización, Script, Backup...',
+          col4: 'Detalle Técnico / Cambios Implementados *',
           col4Placeholder: 'Descripción de los cambios o solución implementada...',
           col5: 'Estatus',
           col6: 'Notas de Despliegue',
           col6Placeholder: 'Commit, pull request o notas técnicas...',
           emptyText: 'No has registrado ninguna tarea técnica hoy. Haz clic en "+ Nueva Tarea de Sistemas".',
-          showExpedienteSelector: false
+          showExpedienteSelector: false,
+          attachmentsTitle: 'Archivos & Soportes Técnicos',
+          attachmentsSubtitle: 'Anexa logs de error, capturas de pantalla, diagramas de arquitectura o scripts de soporte para tus tareas de hoy.',
+          attachmentsDropzoneText: 'Haz clic o arrastra capturas, logs o archivos técnicos para anexar'
         };
       default:
         return {
@@ -119,44 +131,15 @@ export default function TabRegistroDiario({
           col6: 'Observaciones',
           col6Placeholder: 'Notas o estatus',
           emptyText: 'No has registrado ninguna actuación. Haz clic en "Nueva Actuación".',
-          showExpedienteSelector: true
+          showExpedienteSelector: true,
+          attachmentsTitle: 'Archivos Adjuntos a las Actuaciones',
+          attachmentsSubtitle: 'Anexa documentos o imágenes de soporte para tus actuaciones de hoy. Quedarán archivados y podrás consultarlos (tú y la jefatura) en cualquier momento desde el historial.',
+          attachmentsDropzoneText: 'Haz clic o arrastra archivos aquí para anexar a la bitácora'
         };
     }
   }, [userDept]);
 
-  const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [activeSelectorRowId, setActiveSelectorRowId] = useState<string | null>(null);
-
-  const handlePreguardarBorrador = () => {
-    try {
-      const userName = (localStorage.getItem('rd_user_name') || 'unknown').toLowerCase().trim();
-      const storageKey = `rd_intranet_draft_${userName}`;
-      const backupKey = `rd_actuaciones_backup_${userName}`;
-
-      const draftObj = {
-        actuaciones,
-        attachedFiles: attachedFiles.map(f => ({
-          name: f.name || f.file?.name,
-          type: f.type || f.file?.type,
-          size: f.size || f.file?.size,
-          url: f.url || '',
-          dataUrl: f.url ? '' : (f.dataUrl || ''),
-          note: f.note || '',
-          uploaded_at: f.uploaded_at || new Date().toISOString()
-        })),
-        savedAt: new Date().toISOString()
-      };
-
-      localStorage.setItem(storageKey, JSON.stringify(draftObj));
-      localStorage.setItem(backupKey, JSON.stringify(actuaciones));
-
-      const timeStr = format(new Date(), 'hh:mm:ss a');
-      setSaveStatus(`Borrador guardado a las ${timeStr}`);
-      setTimeout(() => setSaveStatus(null), 6000);
-    } catch (e) {
-      console.error('Error guardando borrador', e);
-    }
-  };
 
   const handleToggleTask = (id: number) => {
     if (reportSubmitted) return;
@@ -377,30 +360,16 @@ export default function TabRegistroDiario({
                   <FileText className="w-6 h-6 text-blue-600" />
                   <h3 className="text-xl font-bold text-slate-800">{deptConfig.title}</h3>
                 </div>
-                <div className="flex items-center gap-2">
+                <div>
                   <p className="text-sm text-slate-500 font-medium">{deptConfig.subtitle}</p>
-                  {saveStatus && (
-                    <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-800 text-xs font-bold px-2.5 py-0.5 rounded-md border border-emerald-300 animate-in fade-in duration-200">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> {saveStatus}
-                    </span>
-                  )}
                 </div>
               </div>
               {!reportSubmitted && (
-                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                  <button 
-                    type="button"
-                    onClick={handlePreguardarBorrador}
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-2.5 px-4 rounded-xl transition-all shadow-md flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
-                    title="Guarda de inmediato tus avances localmente para que no se borren si refrescas la página"
-                  >
-                    <Save className="w-4 h-4" /> Preguardar Borrador
-                  </button>
-
+                <div className="flex items-center gap-2">
                   <button 
                     type="button"
                     onClick={handleAddActuacion}
-                    className="bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold py-2.5 px-4 rounded-xl transition-all shadow-sm flex items-center gap-2 text-xs sm:text-sm cursor-pointer"
+                    className="bg-blue-600 hover:bg-blue-700 text-white font-black py-2.5 px-5 rounded-xl transition-all shadow-md shadow-blue-600/20 flex items-center gap-2 text-xs sm:text-sm cursor-pointer active:scale-95"
                   >
                     <Plus className="w-4 h-4" /> {deptConfig.btnNew}
                   </button>
@@ -573,10 +542,10 @@ export default function TabRegistroDiario({
             <div className="flex items-center justify-between gap-4 mb-2">
               <div className="flex items-center gap-3">
                 <UploadCloud className="w-6 h-6 text-blue-600" />
-                <h3 className="text-xl font-bold text-slate-800">Archivos Adjuntos a las Actuaciones <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200 ml-2">Opcional</span></h3>
+                <h3 className="text-xl font-bold text-slate-800">{deptConfig.attachmentsTitle} <span className="text-xs px-2.5 py-1 bg-slate-100 text-slate-600 rounded-full font-semibold border border-slate-200 ml-2">Opcional</span></h3>
               </div>
             </div>
-            <p className="text-sm text-slate-500 font-medium mb-4">Anexa documentos o imágenes de soporte para tus actuaciones de hoy. Quedarán archivados y podrás consultarlos (tú y la jefatura) en cualquier momento desde el historial.</p>
+            <p className="text-sm text-slate-500 font-medium mb-4">{deptConfig.attachmentsSubtitle}</p>
 
             <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-2xl p-8 text-center hover:bg-slate-100 hover:border-slate-400 transition-all group mb-6 relative">
               <input type="file" id="evidencia" disabled={reportSubmitted} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" multiple onChange={handleFileUpload} />
@@ -585,7 +554,7 @@ export default function TabRegistroDiario({
                   <UploadCloud className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
-                  <span className="font-bold text-lg block text-slate-700">Haz clic o arrastra archivos aquí para anexar a la bitácora</span>
+                  <span className="font-bold text-lg block text-slate-700">{deptConfig.attachmentsDropzoneText}</span>
                   <span className="text-sm text-slate-500 font-bold mt-1 block">Admite PDF, Word (.doc, .docx), Imágenes (JPG, PNG), Excel (.xlsx), TXT</span>
                 </div>
               </div>
