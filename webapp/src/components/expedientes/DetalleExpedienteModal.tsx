@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, User, Building, FileText, Plus, CheckCircle2, History, Send, BadgeCheck, Trash2 } from 'lucide-react';
 import type { ExpedienteJudicial, ActuacionHistorial } from '../../types/expedientes';
+import SystemAlertModal from '../common/SystemAlertModal';
 
 interface DetalleExpedienteModalProps {
   expediente: ExpedienteJudicial;
@@ -21,6 +22,7 @@ export default function DetalleExpedienteModal({
   const [registradoPor] = useState(() => localStorage.getItem('rd_user_name') || 'Usuario');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   const handleAddActuacion = (e: React.FormEvent) => {
     e.preventDefault();
@@ -283,12 +285,7 @@ export default function DetalleExpedienteModal({
           {onDeleteExpediente ? (
             <button
               type="button"
-              onClick={() => {
-                if (window.confirm(`¿Estás seguro de que deseas eliminar permanentemente el expediente #${expediente.numeroExpediente}?`)) {
-                  onDeleteExpediente(expediente);
-                  onClose();
-                }
-              }}
+              onClick={() => setConfirmDeleteOpen(true)}
               className="bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/30 font-bold px-3.5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <Trash2 className="w-4 h-4" /> Eliminar Expediente
@@ -304,6 +301,27 @@ export default function DetalleExpedienteModal({
         </div>
 
       </div>
+
+      {/* Modal de confirmación profesional para eliminar expediente */}
+      <SystemAlertModal
+        isOpen={confirmDeleteOpen}
+        type="warning"
+        title="¿Eliminar Expediente Definitivamente?"
+        message={`¿Estás seguro de que deseas eliminar permanentemente el expediente #${expediente.numeroExpediente}?\n\nPartes: ${expediente.partes}\nTribunal: ${expediente.juzgado || 'No especificado'}\n\n¿Qué pasará al confirmar? Se borrará este expediente y su historial de actuaciones de la base de datos de Román & Delgado. Esta acción es irreversible.`}
+        showCancel={true}
+        confirmText="Sí, eliminar definitivamente"
+        cancelText="Conservar expediente"
+        isDestructive={true}
+        badgeText="eliminación permanente"
+        onClose={() => setConfirmDeleteOpen(false)}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false);
+          if (onDeleteExpediente) {
+            onDeleteExpediente(expediente);
+          }
+          onClose();
+        }}
+      />
     </div>
   );
 }

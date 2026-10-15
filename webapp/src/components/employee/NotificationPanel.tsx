@@ -524,7 +524,6 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                                     if (reciboToExport) {
                                       await exportarReciboNominaPDF(reciboToExport);
                                     } else {
-                                      alert('Abriendo sección de nómina...');
                                       if (onNavigate) onNavigate('nomina');
                                     }
                                   } catch (e) {

@@ -12,6 +12,8 @@ export interface SystemAlertModalProps {
   onConfirm?: () => void;
   confirmText?: string;
   cancelText?: string;
+  isDestructive?: boolean;
+  badgeText?: string;
 }
 
 export default function SystemAlertModal({
@@ -23,7 +25,9 @@ export default function SystemAlertModal({
   showCancel = false,
   onConfirm,
   confirmText = 'Entendido',
-  cancelText = 'Cancelar'
+  cancelText = 'Cancelar',
+  isDestructive = false,
+  badgeText
 }: SystemAlertModalProps) {
   if (!isOpen) return null;
 
@@ -69,6 +73,10 @@ export default function SystemAlertModal({
   };
 
   const config = getConfig();
+  const finalBadgeText = badgeText || config.badgeText;
+  const finalButtonBg = isDestructive
+    ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
+    : config.buttonBg;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -97,7 +105,7 @@ export default function SystemAlertModal({
           <span
             className={`px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest ${config.badgeBg}`}
           >
-            {config.badgeText}
+            {finalBadgeText}
           </span>
 
           <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">
@@ -124,7 +132,7 @@ export default function SystemAlertModal({
               if (onConfirm) onConfirm();
               else onClose();
             }}
-            className={`w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all duration-200 shadow-lg cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 ${config.buttonBg}`}
+            className={`w-full py-4 px-6 rounded-2xl font-extrabold text-base transition-all duration-200 shadow-lg cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 ${finalButtonBg}`}
           >
             {confirmText}
           </button>

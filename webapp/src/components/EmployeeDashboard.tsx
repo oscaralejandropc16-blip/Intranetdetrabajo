@@ -1297,13 +1297,14 @@ export default function EmployeeDashboard() {
   const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina' | 'control_usuarios'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
+    if (!isLegalOrBoss && (saved === 'gastos' || saved === 'expedientes' || saved === 'biblioteca')) return 'jornada';
     if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina' || saved === 'control_usuarios') return saved;
     return 'jornada';
   });
 
-  // Redirección de seguridad: empleados no legales no tienen acceso a expedientes ni biblioteca judicial
+  // Redirección de seguridad: empleados no legales (marketing, sistemas, servicios generales) no tienen acceso a expedientes, biblioteca ni gastos judiciales
   useEffect(() => {
-    if (!isLegalOrBoss && (activeTab === 'biblioteca' || activeTab === 'expedientes')) {
+    if (!isLegalOrBoss && (activeTab === 'biblioteca' || activeTab === 'expedientes' || activeTab === 'gastos')) {
       setActiveTab('jornada');
     }
   }, [isLegalOrBoss, activeTab]);
@@ -1820,17 +1821,19 @@ export default function EmployeeDashboard() {
           </button>
         )}
 
-        <button 
-          onClick={() => setActiveTab('gastos')}
-          className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
-            activeTab === 'gastos' 
-              ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-          }`}
-        >
-          <Receipt className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-          <span>Gastos & Reembolsos</span>
-        </button>
+        {isLegalOrBoss && (
+          <button 
+            onClick={() => setActiveTab('gastos')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+              activeTab === 'gastos' 
+                ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            <span>Gastos & Reembolsos</span>
+          </button>
+        )}
 
         <button 
           onClick={() => setActiveTab('nomina')}
@@ -2210,8 +2213,8 @@ export default function EmployeeDashboard() {
           <ModuloExpedientes isAdmin={false} />
         )}
 
-        {/* VISTA: GASTOS & REEMBOLSOS (ANCHO COMPLETO) */}
-        {activeTab === 'gastos' && (
+        {/* VISTA: GASTOS & REEMBOLSOS (EXCLUSIVO ABOGADOS Y JEFATURA) */}
+        {activeTab === 'gastos' && isLegalOrBoss && (
           <ModuloGastos isJefatura={false} globalExpedientes={globalExpedientes} />
         )}
 

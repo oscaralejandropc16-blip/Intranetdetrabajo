@@ -522,7 +522,12 @@ export default function ModuloNominaJefatura() {
     const file = e.target.files?.[0];
     if (!file || !editingRecibo) return;
     if (file.size > 5 * 1024 * 1024) {
-      alert('La imagen no debe superar los 5MB.');
+      setSystemAlert({
+        isOpen: true,
+        type: 'warning',
+        title: 'Comprobante Demasiado Grande',
+        message: 'La imagen del comprobante bancario no debe superar los 5 MB para optimizar el almacenamiento y la velocidad del sistema.'
+      });
       return;
     }
     const reader = new FileReader();

@@ -222,7 +222,8 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   // Manejar eliminación de expediente (exclusivo para jefatura)
   const handleDeleteExpediente = async (exp: ExpedienteJudicial) => {
     if (!isJefe) {
-      alert('Acción restringida: Solo el personal de jefatura tiene permisos para eliminar expedientes del sistema.');
+      setActionFeedback('Acción restringida: Solo el personal de jefatura tiene permisos para eliminar expedientes del sistema.');
+      setTimeout(() => setActionFeedback(null), 4000);
       return;
     }
     // 1. Actualización optimista local
