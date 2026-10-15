@@ -37,7 +37,7 @@ function formatMonto(monto?: number, moneda: string = 'USD'): string {
   return moneda === 'USD' ? `$ ${formatted}` : `Bs. ${formatted}`;
 }
 
-export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<void> {
+export async function generarReciboNominaBlob(recibo: ReciboNomina): Promise<{ blob: Blob; fileName: string }> {
   const doc = new jsPDF({ format: 'letter', unit: 'mm', compress: true });
   const pageWidth = doc.internal.pageSize.getWidth(); // 215.9 mm
   const marginX = 14;
@@ -300,8 +300,21 @@ export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<voi
   // Dibujar Talón 2: COPIA (Abajo)
   drawVoucher(144, true);
 
-  // Guardar archivo PDF
   const cleanName = recibo.empleadoNombre.replace(/[^a-zA-Z0-9]/g, '_');
   const fileName = `Recibo_Nomina_${cleanName}_Q${recibo.quincena}_${recibo.mes}_${recibo.anio}.pdf`;
-  doc.save(fileName);
+  const blob = doc.output('blob');
+
+  return { blob, fileName };
+}
+
+export async function exportarReciboNominaPDF(recibo: ReciboNomina): Promise<void> {
+  const { blob, fileName } = await generarReciboNominaBlob(recibo);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }

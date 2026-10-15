@@ -6,7 +6,7 @@ import {
   TrendingUp, Users, ArrowUpRight, ArrowDownRight, CheckCheck,
   Sparkles, X, UserPlus, UserMinus,
   Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar,
-  Building2, Smartphone, MessageCircle, Mail
+  Building2, Smartphone, MessageCircle, Mail, Info, FileDown
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -21,7 +21,7 @@ import {
   supabaseGetPlantillaNomina,
   supabaseSavePlantillaNomina
 } from '../../lib/supabaseAdapter';
-import { exportarReciboNominaPDF } from '../../lib/pdfExportNomina';
+import { exportarReciboNominaPDF, generarReciboNominaBlob } from '../../lib/pdfExportNomina';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
 export default function ModuloNominaJefatura() {
@@ -747,8 +747,8 @@ Atentamente,
 Jefatura — Román & Delgado`;
   };
 
-  // Enviar notificación formal por WhatsApp a 1 clic (sin necesidad de tener usuario)
-  const handleEnviarWhatsApp = (recibo: ReciboNomina) => {
+  // Enviar notificación formal por WhatsApp a 1 clic (con adjunto en móviles y descarga automática en PC)
+  const handleEnviarWhatsApp = async (recibo: ReciboNomina) => {
     const empItem = plantillaPersonal.find(p => 
       p.nombre.toLowerCase().trim() === recibo.empleadoNombre.toLowerCase().trim() ||
       (p.cedula && recibo.cedula && p.cedula.trim() === recibo.cedula.trim())
@@ -768,7 +768,34 @@ Jefatura — Román & Delgado`;
       finalPhone = '58' + finalPhone;
     }
 
-    const text = encodeURIComponent(generarTextoNotificacion(recibo));
+    const textMsg = generarTextoNotificacion(recibo);
+
+    // 1. En teléfonos móviles (iPhone / Android): Intentar compartir nativamente con el PDF adjunto
+    try {
+      if (navigator.share && navigator.canShare) {
+        const { blob, fileName } = await generarReciboNominaBlob(recibo);
+        const pdfFile = new File([blob], fileName, { type: 'application/pdf' });
+        if (navigator.canShare({ files: [pdfFile] })) {
+          await navigator.share({
+            title: `Recibo de Nómina - ${recibo.empleadoNombre}`,
+            text: textMsg,
+            files: [pdfFile]
+          });
+          return;
+        }
+      }
+    } catch (shareErr: any) {
+      if (shareErr?.name === 'AbortError') return; // Cancelado por el usuario
+    }
+
+    // 2. En PC / Navegadores de escritorio:
+    // WhatsApp Web no permite inyectar archivos automáticamente vía enlace web por políticas de seguridad de Meta.
+    // Por ende, aseguramos que el PDF esté descargado en el equipo del usuario para que lo adjunte al chat fácilmente.
+    try {
+      await exportarReciboNominaPDF(recibo);
+    } catch (e) {}
+
+    const text = encodeURIComponent(textMsg);
     window.open(`https://wa.me/${finalPhone}?text=${text}`, '_blank');
   };
 
@@ -2677,9 +2704,14 @@ Jefatura — Román & Delgado`;
                 )}
               </div>
 
-              <p className="text-xs text-slate-600 font-medium">
-                El comprobante en PDF ya ha sido descargado en tu dispositivo. Puedes enviar la notificación detallada al trabajador a través de:
-              </p>
+              <div className="bg-amber-50 border border-amber-200/80 rounded-2xl p-3 text-[11px] text-amber-900 flex items-start gap-2.5 leading-relaxed">
+                <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold text-amber-950 mb-0.5">Nota importante sobre el envío por WhatsApp:</strong>
+                  WhatsApp Web en computadoras solo permite abrir el chat con el texto prellenado (por seguridad de WhatsApp ningún sitio web puede inyectar archivos por URL).
+                  El archivo PDF <strong>ya está descargado en tu carpeta de Descargas</strong>. Al abrirse WhatsApp, solo arrastra el PDF al chat o usa el icono de clip (adjuntar documento). En teléfonos móviles se adjunta automáticamente.
+                </div>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <button
@@ -2693,11 +2725,22 @@ Jefatura — Román & Delgado`;
 
                 <button
                   type="button"
+                  onClick={() => exportarReciboNominaPDF(notificacionModal)}
+                  className="w-full py-3 px-4 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-slate-800/25 transition-all cursor-pointer active:scale-95"
+                >
+                  <FileDown className="w-4 h-4 text-emerald-400" />
+                  <span>Descargar PDF</span>
+                </button>
+              </div>
+
+              <div className="pt-1">
+                <button
+                  type="button"
                   onClick={() => handleEnviarEmail(notificacionModal)}
-                  className="w-full py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl text-xs font-black flex items-center justify-center gap-2 shadow-md shadow-sky-600/25 transition-all cursor-pointer active:scale-95"
+                  className="w-full py-2.5 px-4 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >
                   <Mail className="w-4 h-4" />
-                  <span>Enviar por Correo</span>
+                  <span>Enviar por Correo Electrónico</span>
                 </button>
               </div>
             </div>
