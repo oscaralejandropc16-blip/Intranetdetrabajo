@@ -1662,16 +1662,6 @@ Jefatura — Román & Delgado`;
                               </button>
                             )}
 
-                            {/* Quitar de nómina */}
-                            {empItem && (
-                              <button
-                                onClick={() => handleQuitarTrabajador(empItem)}
-                                className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
-                                title="Quitar este trabajador de la nómina"
-                              >
-                                <UserMinus className="w-3.5 h-3.5" />
-                              </button>
-                            )}
 
                             {isPagado && (
                               <button
@@ -3128,19 +3118,46 @@ Jefatura — Román & Delgado`;
 
               {/* Modal Footer */}
               <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setWorkerModalOpen(false)}
-                  className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <UserPlus className="w-4 h-4" /> {editingWorker ? 'Actualizar Ficha' : 'Guardar e Incorporar'}
-                </button>
+                {editingWorker ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const emp = editingWorker;
+                      setWorkerModalOpen(false);
+                      handleQuitarTrabajador(emp);
+                    }}
+                    className="px-3.5 py-2.5 rounded-xl text-rose-600 hover:bg-rose-100 hover:text-rose-700 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-200"
+                    title="Dar de baja o remover este colaborador de la nómina activa"
+                  >
+                    <UserMinus className="w-3.5 h-3.5" />
+                    <span>Dar de baja / Quitar de Nómina</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setWorkerModalOpen(false)}
+                    className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                )}
+                <div className="flex items-center gap-2">
+                  {editingWorker && (
+                    <button
+                      type="button"
+                      onClick={() => setWorkerModalOpen(false)}
+                      className="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-600/30 flex items-center gap-2 transition-all cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" /> {editingWorker ? 'Actualizar Ficha' : 'Guardar e Incorporar'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
