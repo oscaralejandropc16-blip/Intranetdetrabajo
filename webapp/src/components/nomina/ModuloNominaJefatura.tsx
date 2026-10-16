@@ -7,7 +7,7 @@ import {
   Sparkles, X, UserPlus, UserMinus,
   Eye, Image as ImageIcon, Upload, Copy, Check, ChevronDown, ChevronUp, Calendar,
   Building2, Smartphone, MessageCircle, Mail, Info, FileDown,
-  FolderGit2
+  FolderGit2, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { 
   type ReciboNomina, 
@@ -53,6 +53,15 @@ export default function ModuloNominaJefatura() {
   const [deptFilter, setDeptFilter] = useState<string>('todos');
   const [historialWorkerFilter, setHistorialWorkerFilter] = useState<string>('todos');
   const [historialSearch, setHistorialSearch] = useState<string>('');
+
+  // Filtros de fecha para el Historial de Pagos
+  const [historialFechaPreset, setHistorialFechaPreset] = useState<string>('todos');
+  const [historialFechaDesde, setHistorialFechaDesde] = useState<string>('');
+  const [historialFechaHasta, setHistorialFechaHasta] = useState<string>('');
+
+  // Paginación del Historial de Pagos
+  const [historialCurrentPage, setHistorialCurrentPage] = useState<number>(1);
+  const [historialPageSize, setHistorialPageSize] = useState<number>(10);
 
   // Plantilla dinámica de trabajadores activos
   const [plantillaPersonal, setPlantillaPersonal] = useState<PlantillaEmpleadoNomina[]>([]);
@@ -1023,20 +1032,56 @@ Lo que se mantendrá 100% seguro e intacto:
     });
   };
 
+  // Extraer fecha normalizada YYYY-MM-DD para comparación estricta
+  const getReciboComparableDate = (r: ReciboNomina): string => {
+    if (r.fechaPago) {
+      const slashMatch = r.fechaPago.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (slashMatch) {
+        const day = slashMatch[1].padStart(2, '0');
+        const month = slashMatch[2].padStart(2, '0');
+        const year = slashMatch[3];
+        return `${year}-${month}-${day}`;
+      }
+      const dashMatch = r.fechaPago.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (dashMatch) {
+        return `${dashMatch[1]}-${dashMatch[2]}-${dashMatch[3]}`;
+      }
+    }
+    if (r.createdAt) {
+      const dashMatch = r.createdAt.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (dashMatch) {
+        return `${dashMatch[1]}-${dashMatch[2]}-${dashMatch[3]}`;
+      }
+    }
+    if (r.periodoFin) {
+      const dashMatch = r.periodoFin.match(/(\d{4})-(\d{2})-(\d{2})/);
+      if (dashMatch) {
+        return `${dashMatch[1]}-${dashMatch[2]}-${dashMatch[3]}`;
+      }
+    }
+    if (r.anio && r.mes) {
+      return `${r.anio}-${String(r.mes).padStart(2, '0')}-15`;
+    }
+    return '';
+  };
+
   // Historial global de recibos emitidos (todas las quincenas)
   const recibosHistorial = useMemo(() => {
     return recibos.filter(r => r.estado === 'pagado');
   }, [recibos]);
 
-  // Historial filtrado por trabajador o búsqueda
+  // Historial filtrado por trabajador, búsqueda y fecha
   const filteredHistorial = useMemo(() => {
     return recibosHistorial.filter(r => {
+      // 1. Filtro por colaborador
       if (historialWorkerFilter !== 'todos') {
         const cleanFilter = historialWorkerFilter.toLowerCase().trim();
         const matchName = r.empleadoNombre.toLowerCase().trim() === cleanFilter;
         const matchCedula = r.cedula && cleanFilter.includes(r.cedula.toLowerCase().trim());
         if (!matchName && !matchCedula) return false;
       }
+
+      // 2. Buscador por texto
       if (historialSearch.trim()) {
         const q = historialSearch.toLowerCase().trim();
         const matchName = r.empleadoNombre.toLowerCase().includes(q);
@@ -1045,9 +1090,97 @@ Lo que se mantendrá 100% seguro e intacto:
         const matchCedula = r.cedula ? r.cedula.toLowerCase().includes(q) : false;
         if (!matchName && !matchRecibo && !matchRef && !matchCedula) return false;
       }
+
+      // 3. Filtro por fecha (Desde - Hasta)
+      if (historialFechaDesde || historialFechaHasta) {
+        const itemDate = getReciboComparableDate(r);
+        if (itemDate) {
+          if (historialFechaDesde && itemDate < historialFechaDesde) return false;
+          if (historialFechaHasta && itemDate > historialFechaHasta) return false;
+        }
+      }
+
       return true;
     });
-  }, [recibosHistorial, historialWorkerFilter, historialSearch]);
+  }, [recibosHistorial, historialWorkerFilter, historialSearch, historialFechaDesde, historialFechaHasta]);
+
+  // Manejador de presets rápidos de fechas
+  const handleFechaPresetChange = (preset: string) => {
+    setHistorialFechaPreset(preset);
+    setHistorialCurrentPage(1);
+
+    const today = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const toYmd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (preset === 'todos') {
+      setHistorialFechaDesde('');
+      setHistorialFechaHasta('');
+    } else if (preset === 'hoy') {
+      const dStr = toYmd(today);
+      setHistorialFechaDesde(dStr);
+      setHistorialFechaHasta(dStr);
+    } else if (preset === 'esta_quincena') {
+      const year = today.getFullYear();
+      const month = today.getMonth() + 1;
+      const day = today.getDate();
+      if (day <= 15) {
+        setHistorialFechaDesde(`${year}-${pad(month)}-01`);
+        setHistorialFechaHasta(`${year}-${pad(month)}-15`);
+      } else {
+        const lastDay = new Date(year, month, 0).getDate();
+        setHistorialFechaDesde(`${year}-${pad(month)}-16`);
+        setHistorialFechaHasta(`${year}-${pad(month)}-${pad(lastDay)}`);
+      }
+    } else if (preset === 'este_mes') {
+      const year = today.getFullYear();
+      const month = today.getMonth() + 1;
+      const lastDay = new Date(year, month, 0).getDate();
+      setHistorialFechaDesde(`${year}-${pad(month)}-01`);
+      setHistorialFechaHasta(`${year}-${pad(month)}-${pad(lastDay)}`);
+    } else if (preset === 'mes_anterior') {
+      const prevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const year = prevMonth.getFullYear();
+      const month = prevMonth.getMonth() + 1;
+      const lastDay = new Date(year, month, 0).getDate();
+      setHistorialFechaDesde(`${year}-${pad(month)}-01`);
+      setHistorialFechaHasta(`${year}-${pad(month)}-${pad(lastDay)}`);
+    } else if (preset === 'ultimos_30') {
+      const past30 = new Date(today);
+      past30.setDate(today.getDate() - 30);
+      setHistorialFechaDesde(toYmd(past30));
+      setHistorialFechaHasta(toYmd(today));
+    } else if (preset === 'este_anio') {
+      const year = today.getFullYear();
+      setHistorialFechaDesde(`${year}-01-01`);
+      setHistorialFechaHasta(`${year}-12-31`);
+    }
+  };
+
+  // Paginación del Historial
+  const totalHistorialPages = Math.max(1, Math.ceil(filteredHistorial.length / historialPageSize));
+
+  const paginatedHistorial = useMemo(() => {
+    const startIndex = (historialCurrentPage - 1) * historialPageSize;
+    return filteredHistorial.slice(startIndex, startIndex + historialPageSize);
+  }, [filteredHistorial, historialCurrentPage, historialPageSize]);
+
+  // Lista de páginas visibles para paginación
+  const visiblePages = useMemo(() => {
+    const pages: (number | string)[] = [];
+    if (totalHistorialPages <= 7) {
+      for (let i = 1; i <= totalHistorialPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (historialCurrentPage > 3) pages.push('...');
+      const start = Math.max(2, historialCurrentPage - 1);
+      const end = Math.min(totalHistorialPages - 1, historialCurrentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (historialCurrentPage < totalHistorialPages - 2) pages.push('...');
+      pages.push(totalHistorialPages);
+    }
+    return pages;
+  }, [totalHistorialPages, historialCurrentPage]);
 
   const statsHistorial = useMemo(() => {
     let usd = 0;
@@ -1753,74 +1886,155 @@ Lo que se mantendrá 100% seguro e intacto:
             </button>
           </div>
 
-          {/* Filtros de Historial: Selector por Colaborador y Buscador Rápido */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-            {/* Selector por Empleado Específico */}
-            <div className="flex-1 sm:max-w-xs">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                Filtrar por Colaborador:
-              </label>
-              <select
-                value={historialWorkerFilter}
-                onChange={(e) => setHistorialWorkerFilter(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
-              >
-                <option value="todos">Todos los Colaboradores ({recibosHistorial.length} pagos globales)</option>
-                {plantillaPersonal.map(p => {
-                  const count = recibosHistorial.filter(r => 
-                    r.empleadoNombre.toLowerCase().trim() === p.nombre.toLowerCase().trim() ||
-                    (r.cedula && p.cedula && r.cedula.trim() === p.cedula.trim())
-                  ).length;
-                  return (
-                    <option key={p.id} value={p.nombre}>
-                      {p.nombre} ({count} recibos pagados)
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+          {/* Filtros de Historial: Selector por Colaborador, Filtro por Fecha y Buscador Rápido */}
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {/* 1. Selector por Empleado Específico */}
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                  Filtrar por Colaborador:
+                </label>
+                <select
+                  value={historialWorkerFilter}
+                  onChange={(e) => {
+                    setHistorialWorkerFilter(e.target.value);
+                    setHistorialCurrentPage(1);
+                  }}
+                  className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl px-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
+                >
+                  <option value="todos">Todos los Colaboradores ({recibosHistorial.length} pagos globales)</option>
+                  {plantillaPersonal.map(p => {
+                    const count = recibosHistorial.filter(r => 
+                      r.empleadoNombre.toLowerCase().trim() === p.nombre.toLowerCase().trim() ||
+                      (r.cedula && p.cedula && r.cedula.trim() === p.cedula.trim())
+                    ).length;
+                    return (
+                      <option key={p.id} value={p.nombre}>
+                        {p.nombre} ({count} recibos pagados)
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
 
-            {/* Buscador de Recibo o Referencia */}
-            <div className="flex-1 sm:max-w-sm">
-              <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
-                Buscar por Recibo, Ref. o Nombre:
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  value={historialSearch}
-                  onChange={(e) => setHistorialSearch(e.target.value)}
-                  placeholder="Ej: Carmen, R-2026-..., ref: 9482..."
-                  className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                {historialSearch && (
-                  <button
-                    type="button"
-                    onClick={() => setHistorialSearch('')}
-                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+              {/* 2. Filtro Rápido por Período / Fecha */}
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                  Filtrar por Fecha / Período:
+                </label>
+                <div className="relative">
+                  <select
+                    value={historialFechaPreset}
+                    onChange={(e) => handleFechaPresetChange(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs font-bold outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 cursor-pointer"
                   >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
+                    <option value="todos">Todas las Fechas (Historial Completo)</option>
+                    <option value="hoy">Hoy</option>
+                    <option value="esta_quincena">Esta Quincena Actual</option>
+                    <option value="este_mes">Este Mes en Curso</option>
+                    <option value="mes_anterior">Mes Anterior</option>
+                    <option value="ultimos_30">Últimos 30 Días</option>
+                    <option value="este_anio">Año en Curso</option>
+                    <option value="personalizado">Rango Personalizado (Desde / Hasta)</option>
+                  </select>
+                  <Calendar className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 3. Buscador de Recibo o Referencia */}
+              <div>
+                <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 mb-1">
+                  Buscar por Recibo, Ref. o Nombre:
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={historialSearch}
+                    onChange={(e) => {
+                      setHistorialSearch(e.target.value);
+                      setHistorialCurrentPage(1);
+                    }}
+                    placeholder="Ej: Carmen, R-2026-..., ref: 9482..."
+                    className="w-full bg-slate-50 border border-slate-200 hover:border-blue-400 text-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs font-medium outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  {historialSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHistorialSearch('');
+                        setHistorialCurrentPage(1);
+                      }}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Botón Restablecer si hay filtro */}
-            {(historialWorkerFilter !== 'todos' || historialSearch) && (
-              <div className="self-end pb-0.5">
+            {/* Fila secundaria: Fechas personalizadas Desde / Hasta */}
+            <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-2xl border border-slate-200/70">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  Rango Específico:
+                </span>
+                
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">Desde:</span>
+                  <input
+                    type="date"
+                    value={historialFechaDesde}
+                    onChange={(e) => {
+                      setHistorialFechaDesde(e.target.value);
+                      setHistorialFechaPreset('personalizado');
+                      setHistorialCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-200 hover:border-blue-400 text-slate-800 rounded-lg px-2.5 py-1 text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-slate-500">Hasta:</span>
+                  <input
+                    type="date"
+                    value={historialFechaHasta}
+                    onChange={(e) => {
+                      setHistorialFechaHasta(e.target.value);
+                      setHistorialFechaPreset('personalizado');
+                      setHistorialCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-200 hover:border-blue-400 text-slate-800 rounded-lg px-2.5 py-1 text-xs font-semibold outline-none focus:border-blue-500 cursor-pointer"
+                  />
+                </div>
+
+                {(historialFechaDesde || historialFechaHasta) && (
+                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 border border-blue-200">
+                    Filtrando: {historialFechaDesde || 'Inicio'} → {historialFechaHasta || 'Hoy'}
+                  </span>
+                )}
+              </div>
+
+              {/* Botón Limpiar Todos los Filtros si hay alguno activo */}
+              {(historialWorkerFilter !== 'todos' || historialSearch || historialFechaDesde || historialFechaHasta || historialFechaPreset !== 'todos') && (
                 <button
                   type="button"
                   onClick={() => {
                     setHistorialWorkerFilter('todos');
                     setHistorialSearch('');
+                    setHistorialFechaPreset('todos');
+                    setHistorialFechaDesde('');
+                    setHistorialFechaHasta('');
+                    setHistorialCurrentPage(1);
                   }}
-                  className="px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer"
+                  className="px-3 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
                 >
-                  Limpiar Filtros
+                  <X className="w-3.5 h-3.5" /> Limpiar Filtros
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Tarjetas de Resumen (KPIs del filtro seleccionado) */}
@@ -1883,7 +2097,7 @@ Lo que se mantendrá 100% seguro e intacto:
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredHistorial.map(r => {
+                  {paginatedHistorial.map(r => {
                     const empItem = plantillaPersonal.find(p => 
                       p.nombre.toLowerCase().trim() === r.empleadoNombre.toLowerCase().trim() ||
                       (p.cedula && r.cedula && p.cedula.trim() === r.cedula.trim())
@@ -1975,6 +2189,89 @@ Lo que se mantendrá 100% seguro e intacto:
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Controles de Paginación Inteligente */}
+          {filteredHistorial.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100 text-xs">
+              {/* Información de Registros Mostrados */}
+              <div className="text-slate-500 font-medium flex flex-wrap items-center gap-2">
+                <span>
+                  Mostrando <strong className="text-slate-800 font-bold">{Math.min(filteredHistorial.length, (historialCurrentPage - 1) * historialPageSize + 1)}</strong> a <strong className="text-slate-800 font-bold">{Math.min(filteredHistorial.length, historialCurrentPage * historialPageSize)}</strong> de <strong className="text-slate-800 font-bold">{filteredHistorial.length}</strong> recibos pagados
+                </span>
+
+                {/* Selector de cantidad por página */}
+                <div className="flex items-center gap-1.5 ml-2 pl-3 border-l border-slate-200">
+                  <span className="text-slate-400">Por pág:</span>
+                  <select
+                    value={historialPageSize}
+                    onChange={(e) => {
+                      setHistorialPageSize(Number(e.target.value));
+                      setHistorialCurrentPage(1);
+                    }}
+                    className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Botones de Navegación de Páginas */}
+              {totalHistorialPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  {/* Botón Anterior */}
+                  <button
+                    type="button"
+                    disabled={historialCurrentPage === 1}
+                    onClick={() => setHistorialCurrentPage(prev => Math.max(1, prev - 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" /> Anterior
+                  </button>
+
+                  {/* Números de Página */}
+                  <div className="flex items-center gap-1">
+                    {visiblePages.map((page, idx) => {
+                      if (page === '...') {
+                        return (
+                          <span key={`dots-${idx}`} className="px-2 py-1 text-slate-400 font-bold">
+                            …
+                          </span>
+                        );
+                      }
+                      const isCurrent = page === historialCurrentPage;
+                      return (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setHistorialCurrentPage(Number(page))}
+                          className={`min-w-[32px] h-8 rounded-xl font-bold transition-all cursor-pointer text-xs flex items-center justify-center ${
+                            isCurrent 
+                              ? 'bg-slate-900 text-white shadow-xs' 
+                              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Botón Siguiente */}
+                  <button
+                    type="button"
+                    disabled={historialCurrentPage === totalHistorialPages}
+                    onClick={() => setHistorialCurrentPage(prev => Math.min(totalHistorialPages, prev + 1))}
+                    className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-1 transition-all cursor-pointer"
+                  >
+                    Siguiente <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
