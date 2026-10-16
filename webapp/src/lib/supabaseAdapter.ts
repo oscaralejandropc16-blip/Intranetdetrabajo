@@ -262,12 +262,6 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
     role: 'empleado',
     department: 'Contabilidad'
   },
-  'contador': {
-    email: 'martindelgado@romanydelgado.com',
-    displayName: 'Martín Delgado',
-    role: 'empleado',
-    department: 'Contabilidad'
-  },
   'finanzas': {
     email: 'martindelgado@romanydelgado.com',
     displayName: 'Martín Delgado',
@@ -2556,17 +2550,6 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
     passwordHash: '123456',
     active: true,
     createdAt: '2026-10-14T10:00:00.000Z'
-  },
-  {
-    id: 'usr_contador',
-    username: 'contador',
-    email: 'martindelgado@romanydelgado.com',
-    fullName: 'Martín Delgado',
-    role: 'empleado',
-    department: 'Contabilidad',
-    passwordHash: '123456',
-    active: true,
-    createdAt: '2026-10-14T10:00:00.000Z'
   }
 ];
 
@@ -2577,15 +2560,14 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
-          if (missing.length > 0) {
-            const merged = [...parsed, ...missing];
-            localStorage.setItem('rd_system_users_directory', JSON.stringify(merged));
-            fetchRemoteSystemUsers();
-            return merged;
+          // Filtrar 'contador' para asegurar que no vuelva a aparecer
+          const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+          if (cleaned.length !== parsed.length) {
+            localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
+            supabaseSaveSystemUsers(cleaned);
           }
           fetchRemoteSystemUsers();
-          return parsed;
+          return cleaned;
         }
       } catch (e) {}
     }
@@ -2599,10 +2581,18 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
     if (existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
-        const finalUsers = missing.length > 0 ? [...parsed, ...missing] : parsed;
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(finalUsers));
-        return finalUsers;
+        // Filtrar 'contador' tanto local como remotamente
+        const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+        // Asegurar que martindelgado exista
+        if (!cleaned.some((u: any) => u.username === 'martindelgado')) {
+          const martinDef = DEFAULT_SYSTEM_USERS.find(u => u.username === 'martindelgado');
+          if (martinDef) cleaned.push(martinDef);
+        }
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
+        if (cleaned.length !== parsed.length) {
+          supabaseSaveSystemUsers(cleaned);
+        }
+        return cleaned;
       }
     }
 
@@ -2624,9 +2614,11 @@ async function fetchRemoteSystemUsers() {
     if (data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
-        const finalUsers = missing.length > 0 ? [...parsed, ...missing] : parsed;
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(finalUsers));
+        const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
+        if (cleaned.length !== parsed.length) {
+          supabaseSaveSystemUsers(cleaned);
+        }
       }
     }
   } catch (e) {}

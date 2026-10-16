@@ -299,7 +299,7 @@ Consecuencias:
       confirmText: 'Sí, Eliminar Usuario',
       cancelText: 'Cancelar',
       onConfirm: async () => {
-        const updated = users.filter(u => u.id !== user.id);
+        const updated = users.filter(u => u.id !== user.id && u.username.toLowerCase() !== user.username.toLowerCase());
         setUsers(updated);
         await supabaseSaveSystemUsers(updated);
         setSystemAlert({
