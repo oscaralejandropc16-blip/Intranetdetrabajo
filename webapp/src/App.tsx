@@ -63,6 +63,11 @@ function App() {
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('rd_user_name');
+      const cleanStored = (storedUser || '').toLowerCase().trim();
+      if (cleanStored === 'contador' || cleanStored === 'contador@romanydelgado.com') {
+        handleLogout();
+        return;
+      }
       const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
       if (storedUser) {
         setUserName(storedUser);
