@@ -184,8 +184,8 @@ export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
     email: 'davidmoya@romanydelgado.com'
   },
   { 
-    id: 'emp_contador', 
-    nombre: 'Contador / Asesor Contable', 
+    id: 'emp_martin', 
+    nombre: 'Martín Delgado', 
     cedula: 'V-10.555.777', 
     cargo: 'Contador Público / Finanzas', 
     departamento: 'Contabilidad',
@@ -194,7 +194,7 @@ export const EMPLEADOS_NOMINA_DEFAULT: PlantillaEmpleadoNomina[] = [
     banco: 'Banesco', 
     tipoPago: 'Transferencia', 
     telefono: '0414-7778899',
-    email: 'contabilidad@romanydelgado.com'
+    email: 'martindelgado@romanydelgado.com'
   }
 ];
 

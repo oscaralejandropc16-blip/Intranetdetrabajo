@@ -238,21 +238,45 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
     role: 'empleado',
     department: 'Servicios Generales'
   },
+  'martindelgado': {
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
+  'martin delgado': {
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
+  'martin': {
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
+  'martindelgado@romanydelgado.com': {
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
+    role: 'empleado',
+    department: 'Contabilidad'
+  },
   'contador': {
-    email: 'contabilidad@romanydelgado.com',
-    displayName: 'Contador / Asesor Contable',
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
     role: 'empleado',
     department: 'Contabilidad'
   },
   'finanzas': {
-    email: 'contabilidad@romanydelgado.com',
-    displayName: 'Contador / Asesor Contable',
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
     role: 'empleado',
     department: 'Contabilidad'
   },
   'contabilidad@romanydelgado.com': {
-    email: 'contabilidad@romanydelgado.com',
-    displayName: 'Contador / Asesor Contable',
+    email: 'martindelgado@romanydelgado.com',
+    displayName: 'Martín Delgado',
     role: 'empleado',
     department: 'Contabilidad'
   }
@@ -282,7 +306,7 @@ export function getUserDepartment(nameOrEmail?: string | null): 'Legal' | 'Marke
   
   if (clean.includes('david') || clean.includes('moya') || clean.includes('market')) return 'Marketing';
   if (clean.includes('doris') || clean.includes('rangel') || clean.includes('mantenimiento') || clean.includes('servicio')) return 'Servicios Generales';
-  if (clean.includes('contador') || clean.includes('contab') || clean.includes('finanza')) return 'Contabilidad';
+  if (clean.includes('martin') || clean.includes('martindelgado') || clean.includes('contador') || clean.includes('contab') || clean.includes('finanza')) return 'Contabilidad';
   if (clean.includes('oscar') || clean.includes('sistemas') || clean.includes('tecnolog')) return 'Sistemas';
   if (clean.includes('victor') || clean.includes('luis') || clean.includes('jefatura') || clean.includes('admin')) return 'Administración';
   
@@ -2523,10 +2547,21 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
     createdAt: '2026-10-14T10:00:00.000Z'
   },
   {
+    id: 'usr_martindelgado',
+    username: 'martindelgado',
+    email: 'martindelgado@romanydelgado.com',
+    fullName: 'Martín Delgado',
+    role: 'empleado',
+    department: 'Contabilidad',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-10-14T10:00:00.000Z'
+  },
+  {
     id: 'usr_contador',
     username: 'contador',
-    email: 'contabilidad@romanydelgado.com',
-    fullName: 'Contador / Asesor Contable',
+    email: 'martindelgado@romanydelgado.com',
+    fullName: 'Martín Delgado',
     role: 'empleado',
     department: 'Contabilidad',
     passwordHash: '123456',
@@ -2542,6 +2577,13 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
+          if (missing.length > 0) {
+            const merged = [...parsed, ...missing];
+            localStorage.setItem('rd_system_users_directory', JSON.stringify(merged));
+            fetchRemoteSystemUsers();
+            return merged;
+          }
           fetchRemoteSystemUsers();
           return parsed;
         }
@@ -2557,8 +2599,10 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
     if (existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(parsed));
-        return parsed;
+        const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
+        const finalUsers = missing.length > 0 ? [...parsed, ...missing] : parsed;
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(finalUsers));
+        return finalUsers;
       }
     }
 
@@ -2580,7 +2624,9 @@ async function fetchRemoteSystemUsers() {
     if (data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(parsed));
+        const missing = DEFAULT_SYSTEM_USERS.filter(def => !parsed.some((p: any) => p.username === def.username));
+        const finalUsers = missing.length > 0 ? [...parsed, ...missing] : parsed;
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(finalUsers));
       }
     }
   } catch (e) {}
