@@ -334,8 +334,53 @@ export async function uploadEvidenceFile(postId: string | number, file: File, no
 
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
+    // Si no es imagen o no estamos en navegador, leer normalmente
+    if (!file.type.startsWith('image/') || typeof document === 'undefined') {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = (err) => reject(err);
+      reader.readAsDataURL(file);
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
+    reader.onload = (e) => {
+      const rawDataUrl = e.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const maxDim = 1024;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(rawDataUrl);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          // Comprimir a JPEG con calidad 0.65 para reducir de 4MB a ~50-80KB sin perder legibilidad
+          const compressed = canvas.toDataURL('image/jpeg', 0.65);
+          resolve(compressed);
+        } catch {
+          resolve(rawDataUrl);
+        }
+      };
+      img.onerror = () => resolve(rawDataUrl);
+      img.src = rawDataUrl;
+    };
     reader.onerror = (err) => reject(err);
     reader.readAsDataURL(file);
   });

@@ -1583,9 +1583,10 @@ export async function supabaseEliminarGasto(id: string): Promise<any> {
 export async function supabaseGetInvestigaciones(): Promise<any[]> {
   const { data, error } = await supabase
     .from('investigaciones_kant')
-    .select('*')
-    .neq('categoria', 'recibo_nomina')
-    .order('created_at', { ascending: false });
+    .select('id, titulo, categoria, contenido, autor, tags, created_at, archivos_url')
+    .not('categoria', 'in', '("recibo_nomina","notificacion_empleado")')
+    .order('created_at', { ascending: false })
+    .limit(30);
 
   if (error) return [];
   return data || [];
@@ -2186,6 +2187,7 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
     // Respaldo de notificación en la nube (Supabase) para sincronización multidispositivo
     try {
       const notifTitulo = `NOTIF-PAGO-${recibo.id}-${recibo.empleadoNombre}`;
+      const cloudNotifPayload = { ...notifItem, comprobanteBase64: undefined };
       const { data: existingNotifs } = await supabase
         .from('investigaciones_kant')
         .select('id')
@@ -2197,7 +2199,7 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
         await supabase
           .from('investigaciones_kant')
           .update({
-            contenido: JSON.stringify(notifItem),
+            contenido: JSON.stringify(cloudNotifPayload),
             created_at: new Date().toISOString()
           })
           .eq('id', existingNotifs[0].id);
@@ -2206,7 +2208,7 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
           titulo: notifTitulo,
           categoria: 'notificacion_empleado',
           autor: recibo.emitidoPor || 'Jefatura',
-          contenido: JSON.stringify(notifItem),
+          contenido: JSON.stringify(cloudNotifPayload),
           tags: [recibo.empleadoNombre.toLowerCase(), 'pago_nomina', recibo.id]
         });
       }

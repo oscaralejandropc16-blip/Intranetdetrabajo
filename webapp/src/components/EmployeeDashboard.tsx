@@ -564,13 +564,13 @@ export default function EmployeeDashboard() {
           }
         }
 
-        // 5.2 Cargar notificaciones de pago desde la Nube Supabase
+        // 5.2 Cargar notificaciones de pago desde la Nube Supabase (consulta ligera)
         const { data: cloudNotifs } = await supabase
           .from('investigaciones_kant')
-          .select('*')
+          .select('id, titulo, categoria, contenido, created_at')
           .eq('categoria', 'notificacion_empleado')
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(5);
 
         if (Array.isArray(cloudNotifs)) {
           cloudNotifs.forEach((inv: any) => {
@@ -795,7 +795,7 @@ export default function EmployeeDashboard() {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       refreshTasksAndNotifications();
-    }, 60000);
+    }, 90000);
 
     const handleFocus = () => {
       refreshTasksAndNotifications();

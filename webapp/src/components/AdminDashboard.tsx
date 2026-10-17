@@ -315,6 +315,7 @@ export default function AdminDashboard() {
   const [paymentNotif, setPaymentNotif] = useState<any | null>(null);
 
   const checkPaymentNotification = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const curUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
       if (!checkIsSistemas(curUser)) return;
@@ -340,13 +341,13 @@ export default function AdminDashboard() {
         }
       } catch (e) {}
 
-      // 2. Nube Supabase (investigaciones_kant)
+      // 2. Nube Supabase (investigaciones_kant) - Consulta optimizada y ligera
       const { data: cloudNotifs } = await supabase
         .from('investigaciones_kant')
-        .select('*')
+        .select('id, titulo, categoria, contenido, created_at')
         .eq('categoria', 'notificacion_empleado')
         .order('created_at', { ascending: false })
-        .limit(10);
+        .limit(5);
 
       if (Array.isArray(cloudNotifs)) {
         for (const inv of cloudNotifs) {
@@ -373,8 +374,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     checkPaymentNotification();
-    const interval = setInterval(checkPaymentNotification, 20000);
-    return () => clearInterval(interval);
+    const interval = setInterval(checkPaymentNotification, 90000);
+    const handleFocus = () => checkPaymentNotification();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [checkPaymentNotification]);
 
   const markPaymentRead = (notifId: string) => {
@@ -472,8 +478,32 @@ export default function AdminDashboard() {
       clearInterval(pollInterval);
     };
   }, [fetchUnreadChatCount]);
+  const [pendingGastosCount, setPendingGastosCount] = useState<number>(0);
 
-  const [allGastos, setAllGastos] = useState<any[]>([]);
+  const fetchPendingGastosCount = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    try {
+      const { count } = await supabase
+        .from('gastos')
+        .select('id', { count: 'exact', head: true })
+        .ilike('estado', '%pendiente%');
+      if (typeof count === 'number') {
+        setPendingGastosCount(count);
+      }
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    fetchPendingGastosCount();
+    const interval = setInterval(fetchPendingGastosCount, 90000);
+    const handleFocus = () => fetchPendingGastosCount();
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [fetchPendingGastosCount]);
+
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>(() => {
     const saved = sessionStorage.getItem('rd_admin_boss_sub_tab');
@@ -887,15 +917,6 @@ export default function AdminDashboard() {
           setAllInvestigaciones(invesRes.data);
         }
 
-        // Obtener relaciones de gastos globales
-        try {
-          const gastosRes = await api.get('/rd-intranet/v1/gastos');
-          if (gastosRes.data && Array.isArray(gastosRes.data)) {
-            setAllGastos(gastosRes.data);
-          }
-        } catch (e) {}
-
-
       } catch (error) {
         console.error('Error fetching bitacoras', error);
         if (!isRetry) {
@@ -922,7 +943,7 @@ export default function AdminDashboard() {
     const intervalId = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchBitacoras(true);
-    }, 60000);
+    }, 90000);
     return () => {
       clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);
@@ -1529,8 +1550,7 @@ export default function AdminDashboard() {
     !dismissedNotifs.includes(r.id)
   );
 
-  const pendingGastosList = allGastos.filter(g => g.estatus === 'Pendiente');
-  const pendingGastosCount = pendingGastosList.length;
+  // Contador de gastos pendientes sincronizado por consulta HEAD (0 bytes de payload)
 
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500 pb-24 sm:pb-16">
