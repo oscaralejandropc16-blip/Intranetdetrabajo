@@ -383,13 +383,58 @@ export async function supabaseLogin(username: string, password?: string): Promis
         user_nicename: matchedDyn.username,
         is_admin: isBoss
       };
-    } else {
+    }
+
+    // Si no coincide con la clave asignada en memoria, validar contra WordPress oficial o Supabase Auth
+    let verifiedAlternative = false;
+    try {
+      const wpRes = await fetch('https://romanydelgado.com/wp-json/rd-intranet/v1/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: matchedDyn.username, password: inputPass })
+      });
+      const wpData = await wpRes.json();
+      if (wpData && wpData.success) {
+        verifiedAlternative = true;
+        matchedDyn.passwordHash = inputPass;
+        supabaseSaveSystemUsers(dynUsers);
+      }
+    } catch (wpErr) {
+      console.warn('WP Auth fallback skip:', wpErr);
+    }
+
+    if (!verifiedAlternative) {
+      try {
+        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
+          email: matchedDyn.email,
+          password: inputPass
+        });
+        if (authData?.session && !authErr) {
+          verifiedAlternative = true;
+          matchedDyn.passwordHash = inputPass;
+          supabaseSaveSystemUsers(dynUsers);
+        }
+      } catch (authErr) {}
+    }
+
+    if (verifiedAlternative) {
+      const isBoss = matchedDyn.role === 'jefatura' || matchedDyn.role === 'sistemas' || checkIsSistemas(matchedDyn.username);
+      const token = `rd_session_${Date.now()}_${matchedDyn.username}`;
       return {
-        success: false,
-        error: 'Contraseña incorrecta. Por favor verifique su clave de acceso o consulte a Sistemas & TI.',
-        message: 'Contraseña incorrecta.'
+        success: true,
+        token,
+        user_email: matchedDyn.email,
+        user_display_name: matchedDyn.fullName,
+        user_nicename: matchedDyn.username,
+        is_admin: isBoss
       };
     }
+
+    return {
+      success: false,
+      error: 'Contraseña incorrecta. Por favor verifique su clave de acceso o consulte a Sistemas & TI.',
+      message: 'Contraseña incorrecta.'
+    };
   }
 
   // Si es un superadministrador conocido (Víctor, Luis o Óscar)
