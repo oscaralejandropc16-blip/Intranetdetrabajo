@@ -260,8 +260,14 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
                     )}
 
                     {t.respuesta_empleado && (
-                      <div className="bg-emerald-950/40 border border-emerald-500/30 p-2.5 rounded-xl text-xs text-emerald-200">
-                        <strong>Tu reporte:</strong> {t.respuesta_empleado}
+                      <div className="bg-emerald-950/50 border border-emerald-500/40 p-3 rounded-2xl text-xs text-emerald-200 space-y-1.5">
+                        <div className="flex items-center gap-1.5 font-bold text-emerald-300">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Tu reporte de cumplimiento enviado a Jefatura:</span>
+                        </div>
+                        <p className="italic text-emerald-100 bg-emerald-900/40 px-3 py-2 rounded-xl border border-emerald-500/25">
+                          "{t.respuesta_empleado}"
+                        </p>
                       </div>
                     )}
 

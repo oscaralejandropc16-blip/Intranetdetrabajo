@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { 
   CheckSquare, Plus, Search, Filter, RefreshCw, Clock, 
   CheckCircle2, MessageCircle, Trash2, Calendar, 
-  User, Scale, X, Send
+  User, Scale, X, Send, FileText
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { supabaseGetSystemUsers, type SystemUser } from '../../lib/supabaseAdapter';
@@ -364,24 +364,24 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
               }
             })() : '';
 
-            // Mensaje de WhatsApp para recordar al empleado
+            // Mensaje de WhatsApp ejecutivo y elegante para el empleado
             const msgWhatsApp = encodeURIComponent(
-              `Hola ${t.asignado_a_nombre || t.asignado_a}, te recuerdo la tarea asignada: "${t.titulo}". Favor mantener actualizado el estatus en tu KANT.`
+              `⚖️ *Román & Delgado — Intranet KANT*\n\nHola *${t.asignado_a_nombre || t.asignado_a}*, te saluda *${bossName}*.\n\n📌 *Tarea asignada:* ${t.titulo}${t.expediente_asociado ? `\n📂 *Expediente:* ${t.expediente_asociado}` : ''}${t.fecha_limite ? `\n⏳ *Fecha límite:* ${fechaLimiteFormateada}` : ''}${t.descripcion ? `\n📝 *Instrucciones:* ${t.descripcion}` : ''}\n\nFavor mantener actualizado el estatus en la plataforma KANT: https://kant.romanydelgado.com`
             );
 
             return (
               <div
                 key={t.id}
-                className={`bg-white rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
+                className={`bg-white rounded-3xl border transition-all duration-200 shadow-xs hover:shadow-md p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
                   t.prioridad === 'urgente' && t.estado !== 'completada'
                     ? 'border-rose-300 bg-rose-50/20'
                     : t.estado === 'completada'
-                    ? 'border-emerald-200/80 bg-emerald-50/15'
+                    ? 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/20 via-white to-white'
                     : 'border-slate-200/90'
                 }`}
               >
                 {/* INFORMACIÓN DE LA TAREA */}
-                <div className="space-y-2 flex-1">
+                <div className="space-y-3 flex-1 min-w-0">
                   
                   {/* BADGES SUPERIORES */}
                   <div className="flex flex-wrap items-center gap-2">
@@ -414,8 +414,8 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                       </span>
                     )}
                     {t.estado === 'completada' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Completada
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Completada
                       </span>
                     )}
 
@@ -429,25 +429,53 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   </div>
 
                   {/* Título de la Tarea */}
-                  <h4 className="text-base font-bold text-slate-900 leading-snug">
+                  <h4 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
                     {t.titulo}
                   </h4>
 
-                  {/* Descripción o Instrucciones */}
+                  {/* Descripción o Instrucciones de Jefatura */}
                   {t.descripcion && (
-                    <p className="text-sm text-slate-600 bg-slate-50/80 border border-slate-200/60 p-3 rounded-xl whitespace-pre-line">
-                      {t.descripcion}
-                    </p>
+                    <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 space-y-1">
+                      <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        <FileText className="w-3 h-3 text-slate-400" />
+                        <span>Instrucciones de Jefatura:</span>
+                      </div>
+                      <p className="text-xs sm:text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">
+                        {t.descripcion}
+                      </p>
+                    </div>
                   )}
 
-                  {/* Reporte de Culminación del Empleado */}
+                  {/* REPORTE DE CULMINACIÓN DEL EMPLEADO (ESTILO ELEGANTE KANT) */}
                   {t.respuesta_empleado && (
-                    <div className="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-950 space-y-1">
-                      <div className="flex items-center gap-1 font-bold text-emerald-800">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Reporte de cumplimiento del empleado:</span>
+                    <div className="bg-gradient-to-br from-emerald-50/90 via-teal-50/30 to-white border-l-4 border-l-emerald-600 border border-emerald-200/90 rounded-2xl p-4 shadow-xs space-y-2 mt-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-xs">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          </div>
+                          <span className="font-extrabold text-xs text-emerald-950 flex items-center gap-1.5">
+                            Reporte de Cumplimiento &bull; <span className="text-emerald-700 capitalize font-black">{t.asignado_a_nombre || t.asignado_a}</span>
+                          </span>
+                        </div>
+                        {t.completada_en && (
+                          <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs">
+                            <Clock className="w-3 h-3 text-emerald-600" />
+                            {(() => {
+                              try {
+                                return format(new Date(t.completada_en), "d MMM, h:mm a", { locale: es });
+                              } catch {
+                                return '';
+                              }
+                            })()}
+                          </span>
+                        )}
                       </div>
-                      <p className="text-emerald-900 whitespace-pre-line">{t.respuesta_empleado}</p>
+                      <div className="bg-white/80 border border-emerald-200/60 rounded-xl p-3 shadow-2xs">
+                        <p className="text-xs sm:text-sm text-slate-800 font-medium italic whitespace-pre-line leading-relaxed">
+                          "{t.respuesta_empleado}"
+                        </p>
+                      </div>
                     </div>
                   )}
 
