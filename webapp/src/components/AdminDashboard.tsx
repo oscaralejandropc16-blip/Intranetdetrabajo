@@ -2135,7 +2135,11 @@ export default function AdminDashboard() {
                       {report.progress !== undefined ? (
                         <div className="w-full">
                           <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Tareas Hoy</span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              {(report.date === format(new Date(), 'yyyy-MM-dd') || report.fecha === format(new Date(), 'yyyy-MM-dd')) 
+                                ? 'Tareas Hoy' 
+                                : 'Tareas del Día'}
+                            </span>
                             <span className="text-[11px] font-bold text-slate-700">{report.progress}%</span>
                           </div>
                           <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
