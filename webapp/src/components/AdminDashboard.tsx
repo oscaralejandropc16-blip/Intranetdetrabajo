@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu, Eye } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu, Eye, Briefcase } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -15,6 +15,7 @@ import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaJefatura from './nomina/ModuloNominaJefatura';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
 import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
+import ModuloBolsaEmpleo from './talento/ModuloBolsaEmpleo';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
@@ -288,7 +289,7 @@ export default function AdminDashboard() {
   const currentLoggedUserName = localStorage.getItem('rd_user_name') || '';
   const isSistemas = checkIsSistemas(currentLoggedUserName);
 
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios' | 'bolsa_empleo'>(() => {
     const isSistemasUser = checkIsSistemas(localStorage.getItem('rd_user_name'));
     const saved = sessionStorage.getItem('rd_admin_active_view');
     // Jefatura (Víctor / Luis) JAMÁS debe entrar a la vista de usuarios & roles
@@ -479,6 +480,20 @@ export default function AdminDashboard() {
     };
   }, [fetchUnreadChatCount]);
   const [pendingGastosCount, setPendingGastosCount] = useState<number>(0);
+  const [nuevosCandidatosCount, setNuevosCandidatosCount] = useState<number>(0);
+
+  const fetchNuevosCandidatosCount = useCallback(async () => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    try {
+      const { count } = await supabase
+        .from('candidatos_bolsa')
+        .select('id', { count: 'exact', head: true })
+        .eq('estado', 'nuevo');
+      if (typeof count === 'number') {
+        setNuevosCandidatosCount(count);
+      }
+    } catch (e) {}
+  }, []);
 
   const fetchPendingGastosCount = useCallback(async () => {
     if (typeof document !== 'undefined' && document.hidden) return;
@@ -495,14 +510,21 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     fetchPendingGastosCount();
-    const interval = setInterval(fetchPendingGastosCount, 90000);
-    const handleFocus = () => fetchPendingGastosCount();
+    fetchNuevosCandidatosCount();
+    const interval = setInterval(() => {
+      fetchPendingGastosCount();
+      fetchNuevosCandidatosCount();
+    }, 90000);
+    const handleFocus = () => {
+      fetchPendingGastosCount();
+      fetchNuevosCandidatosCount();
+    };
     window.addEventListener('focus', handleFocus);
     return () => {
       clearInterval(interval);
       window.removeEventListener('focus', handleFocus);
     };
-  }, [fetchPendingGastosCount]);
+  }, [fetchPendingGastosCount, fetchNuevosCandidatosCount]);
 
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
   const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>(() => {
@@ -1806,6 +1828,26 @@ export default function AdminDashboard() {
           <FolderSearch className={`w-4 h-4 ${activeView === 'biblioteca' ? 'text-white' : 'text-indigo-600'}`} /> Archivo & Biblioteca
         </button>
 
+        {/* BOLSA DE EMPLEO / TALENTO HUMANO (SOLO JEFATURA Y SISTEMAS) */}
+        <button
+          onClick={() => setActiveView('bolsa_empleo')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'bolsa_empleo'
+              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
+          }`}
+        >
+          <Briefcase className={`w-4 h-4 ${activeView === 'bolsa_empleo' ? 'text-slate-950' : 'text-amber-600'}`} />
+          <span>Bolsa de Empleo</span>
+          {nuevosCandidatosCount > 0 && (
+            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] ml-1 shadow-sm animate-pulse ${
+              activeView === 'bolsa_empleo' ? 'bg-slate-950 text-amber-300' : 'bg-amber-500 text-slate-900'
+            }`}>
+              {nuevosCandidatosCount}
+            </span>
+          )}
+        </button>
+
         {/* 7. MI HISTORIAL DE JEFATURA (SOLO DIRECTORES / ABOGADOS) */}
         {!isSistemas && (
           <button
@@ -3088,6 +3130,13 @@ export default function AdminDashboard() {
       {activeView === 'biblioteca' && (
         <div className="animate-in fade-in duration-200">
           <ModuloBibliotecaArchivos />
+        </div>
+      )}
+
+      {/* VISTA: BOLSA DE EMPLEO / TALENTO HUMANO (SOLO JEFATURA Y SISTEMAS) */}
+      {activeView === 'bolsa_empleo' && (
+        <div className="animate-in fade-in duration-200">
+          <ModuloBolsaEmpleo />
         </div>
       )}
 
