@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu, Eye, Briefcase } from 'lucide-react';
+import { Search, Filter, AlertCircle, FileText, CheckCircle2, MessageSquare, X, Clock, Calendar as CalendarIcon, CheckCircle, Activity, MapPin, BookOpen, History, Send, Download, ChevronDown, ChevronUp, Zap, Loader2, Trash2, ShieldCheck, Lock, Paperclip, File, Scale, RotateCcw, ChevronLeft, ChevronRight, Receipt, FolderSearch, Wallet, Cpu, Eye, Briefcase, CheckSquare } from 'lucide-react';
 import { format, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 import api, { uploadPdfInChunks, uploadEvidenceFile, submitToServer, dataUrlToFile } from '../lib/api';
@@ -16,6 +16,7 @@ import ModuloNominaJefatura from './nomina/ModuloNominaJefatura';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
 import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import ModuloBolsaEmpleo from './talento/ModuloBolsaEmpleo';
+import ModuloAsignacionTareas from './tareas/ModuloAsignacionTareas';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
@@ -289,7 +290,7 @@ export default function AdminDashboard() {
   const currentLoggedUserName = localStorage.getItem('rd_user_name') || '';
   const isSistemas = checkIsSistemas(currentLoggedUserName);
 
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios' | 'bolsa_empleo'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios' | 'bolsa_empleo' | 'tareas_asignadas'>(() => {
     const isSistemasUser = checkIsSistemas(localStorage.getItem('rd_user_name'));
     const saved = sessionStorage.getItem('rd_admin_active_view');
     // Jefatura (Víctor / Luis) JAMÁS debe entrar a la vista de usuarios & roles
@@ -1848,6 +1849,19 @@ export default function AdminDashboard() {
           )}
         </button>
 
+        {/* ASIGNAR TAREAS A EMPLEADOS (JEFATURA Y SISTEMAS) */}
+        <button
+          onClick={() => setActiveView('tareas_asignadas')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'tareas_asignadas'
+              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
+          }`}
+        >
+          <CheckSquare className={`w-4 h-4 ${activeView === 'tareas_asignadas' ? 'text-slate-950' : 'text-amber-600'}`} />
+          <span>Asignar Tareas</span>
+        </button>
+
         {/* 7. MI HISTORIAL DE JEFATURA (SOLO DIRECTORES / ABOGADOS) */}
         {!isSistemas && (
           <button
@@ -3141,6 +3155,13 @@ export default function AdminDashboard() {
       {activeView === 'bolsa_empleo' && (
         <div className="animate-in fade-in duration-200">
           <ModuloBolsaEmpleo />
+        </div>
+      )}
+
+      {/* VISTA: ASIGNACIÓN Y DELEGACIÓN DE TAREAS A EMPLEADOS */}
+      {activeView === 'tareas_asignadas' && (
+        <div className="animate-in fade-in duration-200">
+          <ModuloAsignacionTareas currentBossName={currentLoggedUserName} />
         </div>
       )}
 

@@ -13,6 +13,7 @@ import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
+import BannerTareasEmpleado from './tareas/BannerTareasEmpleado';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import type { Actuacion, Ingreso, Programacion } from '../types/libros';
@@ -1663,6 +1664,25 @@ export default function EmployeeDashboard() {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const isLateClosure = clockInDateStr && clockInDateStr < todayStr;
 
+  const handleCopiarTareaABitacora = (act: Partial<Actuacion>) => {
+    const newAct: Actuacion = {
+      id: 'act_' + Date.now(),
+      hora: act.hora || format(new Date(), 'hh:mm a'),
+      numeroAsunto: act.numeroAsunto || 'Instrucción de Jefatura',
+      partes: act.partes || 'Dirección',
+      actuacion: act.actuacion || '',
+      observaciones: act.observaciones || '',
+      estado: act.estado || 'En trámite'
+    };
+    setActuaciones(prev => [newAct, ...prev]);
+    setSystemAlert({
+      isOpen: true,
+      type: 'success',
+      title: '¡Tarea Copiada a tu Bitácora!',
+      message: 'La instrucción de Jefatura ha sido agregada exitosamente a tu Libro de Actuaciones de hoy.'
+    });
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-300 pb-24 sm:pb-16">
       <SystemAlertModal
@@ -2062,6 +2082,12 @@ export default function EmployeeDashboard() {
                 )}
               </div>
             </div>
+
+            {/* BANNER DE TAREAS ASIGNADAS POR JEFATURA */}
+            <BannerTareasEmpleado 
+              currentUserName={currentUserName}
+              onCopiarABitacora={handleCopiarTareaABitacora}
+            />
 
             {/* SI NO HA MARCADO ENTRADA: PANTALLA DE ACCESO */}
             {clockIn === null && !reportSubmitted && !loadingDraft ? (
