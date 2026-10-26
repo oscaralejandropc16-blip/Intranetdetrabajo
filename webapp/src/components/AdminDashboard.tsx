@@ -1418,7 +1418,6 @@ export default function AdminDashboard() {
   const paginatedReports = filteredReports.slice((validCurrentPage - 1) * itemsPerPage, validCurrentPage * itemsPerPage);
 
   const pendingReview = reports.filter(r => !r.isJefatura && r.status === 'Enviado').length;
-  const inProgress = reports.filter(r => !r.isJefatura && r.status === 'En Curso').length;
 
   const handleConfirmReset = async () => {
     setIsResetting(true);
@@ -1591,70 +1590,6 @@ export default function AdminDashboard() {
 
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
-
-
-      {/* Header Ejecutivo Compacto, Moderno y con Glow KANT */}
-      <div className={`bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-4 sm:p-5 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 relative overflow-hidden transition-all ${
-        isSistemas ? 'border border-cyan-500/30' : 'border border-amber-500/30 glow-amber-sm'
-      }`}>
-        {/* Línea de luz superior dorada neón o cyan neón */}
-        <div className={`absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent ${
-          isSistemas ? 'via-cyan-400' : 'via-amber-400'
-        } to-transparent`}></div>
-        {/* Luz ambiental difusa */}
-        <div className={`absolute -top-12 -right-12 w-64 h-24 ${
-          isSistemas ? 'bg-cyan-500/10' : 'bg-amber-500/10'
-        } blur-3xl pointer-events-none`}></div>
-
-        <div className="flex items-center gap-3.5 relative z-10">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-            isSistemas
-              ? 'bg-gradient-to-br from-cyan-400/20 to-blue-600/30 border-cyan-400/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-              : 'bg-gradient-to-br from-amber-400/20 to-amber-600/30 border-amber-400/40 text-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.3)]'
-          }`}>
-            {isSistemas ? <Cpu className="w-5 h-5 text-cyan-400" /> : <ShieldCheck className="w-5 h-5 text-amber-400" />}
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center gap-1.5">
-                Centro de Mando <span className="text-amber-400 font-black text-glow-amber">KANT</span>
-              </h2>
-              {isSistemas ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-                  Sistemas & TI
-                </span>
-              ) : (
-                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-[0_0_10px_rgba(245,158,11,0.25)]">
-                  Jefatura
-                </span>
-              )}
-            </div>
-            <p className="text-xs text-slate-300/80 font-medium mt-0.5">
-              {isSistemas
-                ? 'Superadministración tecnológica de la plataforma KANT, control de usuarios y roles.'
-                : 'Supervisión en tiempo real de bitácoras, agenda y asistencia del equipo.'}
-            </p>
-          </div>
-        </div>
-
-        {/* Badges de Estado y Notificaciones Compactas con Glow */}
-        <div className="flex items-center gap-2.5 self-end md:self-center shrink-0 flex-wrap relative z-10">
-          <div className="px-3 py-1.5 bg-emerald-950/40 border border-emerald-500/40 hover:border-emerald-400 rounded-xl flex items-center gap-2 text-xs shadow-[0_0_12px_rgba(16,185,129,0.2)] transition-all">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="text-slate-400 font-bold text-[11px]">Activos:</span>
-            <span className="font-black text-white font-mono">{inProgress}</span>
-          </div>
-
-          <div className="px-3 py-1.5 bg-amber-950/40 border border-amber-500/40 hover:border-amber-400 rounded-xl flex items-center gap-2 text-xs shadow-[0_0_15px_rgba(245,158,11,0.25)] transition-all">
-            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-            <span className="text-amber-300 font-bold text-[11px]">Por Revisar:</span>
-            <span className="font-black text-amber-300 font-mono">{pendingReview}</span>
-          </div>
-        </div>
-      </div>
 
       {/* BANNER DE NOTIFICACIÓN DE PAGO DE NÓMINA PARA ÓSCAR (SISTEMAS TI) */}
       {isSistemas && paymentNotif && (
