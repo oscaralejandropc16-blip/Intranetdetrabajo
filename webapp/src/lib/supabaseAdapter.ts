@@ -184,19 +184,25 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
     department: 'Sistemas'
   },
   'oscarpc': {
-    email: 'oscarpc@romanydelgado.com',
+    email: 'oscaralejandropc16@gmail.com',
+    displayName: 'Óscar (Sistemas TI)',
+    role: 'jefatura',
+    department: 'Sistemas'
+  },
+  'oscaralejandropc16@gmail.com': {
+    email: 'oscaralejandropc16@gmail.com',
     displayName: 'Óscar (Sistemas TI)',
     role: 'jefatura',
     department: 'Sistemas'
   },
   'oscarpc@romanydelgado.com': {
-    email: 'oscarpc@romanydelgado.com',
+    email: 'oscaralejandropc16@gmail.com',
     displayName: 'Óscar (Sistemas TI)',
     role: 'jefatura',
     department: 'Sistemas'
   },
   'oscarpc20@romanydelgado.com': {
-    email: 'oscarpc20@romanydelgado.com',
+    email: 'oscaralejandropc16@gmail.com',
     displayName: 'Óscar (Sistemas TI)',
     role: 'jefatura',
     department: 'Sistemas'
@@ -2596,7 +2602,7 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
   {
     id: 'usr_oscar',
     username: 'oscarpc',
-    email: 'oscarpc@romanydelgado.com',
+    email: 'oscaralejandropc16@gmail.com',
     fullName: 'Óscar (Sistemas TI)',
     role: 'sistemas',
     department: 'Sistemas',

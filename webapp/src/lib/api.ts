@@ -32,7 +32,9 @@ import {
   checkIsJefatura,
   supabaseGetRecibosNomina,
   supabaseSaveReciboNomina,
-  supabaseEliminarReciboNomina
+  supabaseEliminarReciboNomina,
+  supabaseGetSystemUsers,
+  supabaseUpdateUserPassword
 } from './supabaseAdapter';
 import { supabase } from './supabase';
 
@@ -152,8 +154,20 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
       return { success: true, message: 'Se han enviado las instrucciones al correo registrado.' };
     }
     if (cleanEndpoint.endsWith('/change-password')) {
+      const user = localStorage.getItem('rd_current_user') || '';
       if (data.new_password) {
-        await supabase.auth.updateUser({ password: data.new_password });
+        try {
+          await supabase.auth.updateUser({ password: data.new_password });
+        } catch (e) {}
+        if (user) {
+          try {
+            const users = await supabaseGetSystemUsers();
+            const target = users.find(u => u.username.toLowerCase() === user.toLowerCase());
+            if (target) {
+              await supabaseUpdateUserPassword(target.id, data.new_password);
+            }
+          } catch (e) {}
+        }
       }
       return { success: true, message: 'Contraseña actualizada exitosamente.' };
     }
