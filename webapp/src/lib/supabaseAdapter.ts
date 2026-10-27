@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { type ReciboNomina, type PlantillaEmpleadoNomina, EMPLEADOS_NOMINA_DEFAULT } from '../types/nomina';
+import type { ReciboCliente } from '../types/recibos';
 
 export interface UserSession {
   token: string;
@@ -1629,7 +1630,7 @@ export async function supabaseGetInvestigaciones(): Promise<any[]> {
   const { data, error } = await supabase
     .from('investigaciones_kant')
     .select('id, titulo, categoria, contenido, autor, tags, created_at, archivos_url')
-    .not('categoria', 'in', '("recibo_nomina","notificacion_empleado")')
+    .not('categoria', 'in', '("recibo_nomina","notificacion_empleado","recibo_honorario")')
     .order('created_at', { ascending: false })
     .limit(30);
 
@@ -2918,6 +2919,149 @@ export async function supabasePurgarUsuarioDefinitivo(deletedId: string): Promis
   } catch (err) {
     console.error('Error al purgar usuario definitivamente:', err);
     return false;
+  }
+}
+
+// -------------------------------------------------------------
+// 14. RECIBOS DE HONORARIOS Y CLIENTES (ROMÁN & DELGADO)
+// -------------------------------------------------------------
+const STORAGE_KEY_RECIBOS_CLIENTES = 'rd_recibos_clientes_v1';
+
+export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
+  const recibosMap = new Map<string, ReciboCliente>();
+
+  // 1. Cargar desde almacenamiento local
+  try {
+    const localRaw = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
+    if (localRaw) {
+      const parsed: ReciboCliente[] = JSON.parse(localRaw);
+      if (Array.isArray(parsed)) {
+        parsed.forEach(r => {
+          if (r && (r.id || r.numeroRecibo)) recibosMap.set(r.id || r.numeroRecibo, r);
+        });
+      }
+    }
+  } catch (e) {}
+
+  // 2. Cargar desde la nube (investigaciones_kant con categoria 'recibo_honorario')
+  try {
+    const { data, error } = await supabase
+      .from('investigaciones_kant')
+      .select('id, titulo, contenido, created_at, autor')
+      .eq('categoria', 'recibo_honorario')
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    if (!error && Array.isArray(data)) {
+      data.forEach(item => {
+        try {
+          if (item.contenido) {
+            const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
+            if (parsed && (parsed.id || parsed.numeroRecibo)) {
+              recibosMap.set(parsed.id || parsed.numeroRecibo, parsed);
+            }
+          }
+        } catch (e) {}
+      });
+    }
+  } catch (e) {
+    console.warn('Error sincronizando recibos de clientes desde Supabase:', e);
+  }
+
+  // 3. Ordenar cronológicamente (más recientes primero)
+  const lista = Array.from(recibosMap.values()).sort((a, b) => {
+    const tA = new Date(a.created_at || a.fecha).getTime();
+    const tB = new Date(b.created_at || b.fecha).getTime();
+    return tB - tA;
+  });
+
+  try {
+    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(lista));
+  } catch (e) {}
+
+  return lista;
+}
+
+export async function supabaseSaveReciboCliente(recibo: ReciboCliente): Promise<boolean> {
+  try {
+    // 1. Guardar localmente de inmediato
+    const current = await supabaseGetRecibosClientes();
+    const filtered = current.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo);
+    filtered.unshift(recibo);
+    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+
+    // 2. Guardar en Supabase (investigaciones_kant categoria 'recibo_honorario')
+    const invPayload = {
+      titulo: `${recibo.numeroRecibo} - ${recibo.clienteNombre} (${recibo.moneda} ${recibo.monto})`,
+      categoria: 'recibo_honorario',
+      contenido: JSON.stringify(recibo),
+      autor: recibo.abogadoReceptor || 'Román & Delgado',
+      tags: ['recibo', recibo.moneda, recibo.tipoRecibo, recibo.clienteNombre]
+    };
+
+    const { error } = await supabase.from('investigaciones_kant').insert(invPayload);
+    if (error) {
+      console.warn('Recibo guardado localmente (nube en espera):', error.message);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error al guardar recibo de cliente:', err);
+    return false;
+  }
+}
+
+export async function supabaseDeleteReciboCliente(reciboId: string, numeroRecibo?: string): Promise<boolean> {
+  try {
+    // 1. Actualizar localmente
+    const current = await supabaseGetRecibosClientes();
+    const filtered = current.filter(r => r.id !== reciboId && r.numeroRecibo !== numeroRecibo);
+    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+
+    // 2. Eliminar de Supabase
+    if (numeroRecibo) {
+      await supabase
+        .from('investigaciones_kant')
+        .delete()
+        .eq('categoria', 'recibo_honorario')
+        .ilike('titulo', `%${numeroRecibo}%`);
+    }
+
+    return true;
+  } catch (err) {
+    console.error('Error al eliminar recibo de cliente:', err);
+    return false;
+  }
+}
+
+/**
+ * Calcula el siguiente número correlativo oficial de recibo para el año actual
+ * Formato: RD-REC-YYYY-001, RD-REC-YYYY-002...
+ */
+export async function supabaseGetNextCorrelativoRecibo(targetYear?: number): Promise<string> {
+  const year = targetYear || new Date().getFullYear();
+  const prefix = `RD-REC-${year}-`;
+
+  try {
+    const recibos = await supabaseGetRecibosClientes();
+    let maxNum = 0;
+
+    recibos.forEach(r => {
+      const numStr = r.numeroRecibo || '';
+      if (numStr.startsWith(prefix)) {
+        const parts = numStr.split('-');
+        const lastPart = parts[parts.length - 1];
+        const num = parseInt(lastPart, 10);
+        if (!isNaN(num) && num > maxNum) {
+          maxNum = num;
+        }
+      }
+    });
+
+    const nextSeq = (maxNum + 1).toString().padStart(3, '0');
+    return `${prefix}${nextSeq}`;
+  } catch (e) {
+    return `${prefix}001`;
   }
 }
 

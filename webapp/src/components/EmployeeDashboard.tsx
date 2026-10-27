@@ -13,6 +13,7 @@ import ModuloGastos from './gastos/ModuloGastos';
 import { getStoredExpedientes } from './expedientes/mockExpedientesData';
 import ModuloBibliotecaArchivos from './expedientes/ModuloBibliotecaArchivos';
 import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
+import ModuloRecibosHonorarios from './recibos/ModuloRecibosHonorarios';
 import BannerTareasEmpleado from './tareas/BannerTareasEmpleado';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
@@ -1293,17 +1294,17 @@ export default function EmployeeDashboard() {
     ? Math.round((totalCompleted / totalItems) * 100) 
     : (reportSubmitted ? 100 : 0);
 
-  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina'>(() => {
+  const [activeTab, setActiveTab] = useState<'jornada' | 'chat' | 'expedientes' | 'gastos' | 'recibos' | 'biblioteca' | 'notificaciones' | 'historial' | 'nomina'>(() => {
     const saved = sessionStorage.getItem('rd_emp_active_tab');
     if (saved === 'registro' || saved === 'ingresos' || saved === 'agenda') return 'jornada';
-    if (!isLegalOrBoss && (saved === 'gastos' || saved === 'expedientes' || saved === 'biblioteca')) return 'jornada';
-    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina') return saved;
+    if (!isLegalOrBoss && (saved === 'gastos' || saved === 'expedientes' || saved === 'biblioteca' || saved === 'recibos')) return 'jornada';
+    if (saved === 'chat' || saved === 'expedientes' || saved === 'gastos' || saved === 'recibos' || saved === 'biblioteca' || saved === 'notificaciones' || saved === 'historial' || saved === 'nomina') return saved;
     return 'jornada';
   });
 
-  // Redirección de seguridad: empleados no legales (marketing, sistemas, servicios generales) no tienen acceso a expedientes, biblioteca ni gastos judiciales
+  // Redirección de seguridad: empleados no legales (marketing, sistemas, servicios generales) no tienen acceso a expedientes, biblioteca, gastos ni recibos
   useEffect(() => {
-    if (!isLegalOrBoss && (activeTab === 'biblioteca' || activeTab === 'expedientes' || activeTab === 'gastos')) {
+    if (!isLegalOrBoss && (activeTab === 'biblioteca' || activeTab === 'expedientes' || activeTab === 'gastos' || activeTab === 'recibos')) {
       setActiveTab('jornada');
     }
   }, [isLegalOrBoss, activeTab]);
@@ -1848,6 +1849,20 @@ export default function EmployeeDashboard() {
           </button>
         )}
 
+        {isLegalOrBoss && (
+          <button 
+            onClick={() => setActiveTab('recibos')}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
+              activeTab === 'recibos' 
+                ? 'bg-white text-slate-950 font-black shadow-md shadow-amber-500/10 ring-1 ring-amber-400' 
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>Recibos & Honorarios</span>
+          </button>
+        )}
+
         <button 
           onClick={() => setActiveTab('nomina')}
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex-shrink-0 cursor-pointer active:scale-95 ${
@@ -2235,6 +2250,16 @@ export default function EmployeeDashboard() {
         {/* VISTA: GASTOS & REEMBOLSOS (EXCLUSIVO ABOGADOS Y JEFATURA) */}
         {activeTab === 'gastos' && isLegalOrBoss && (
           <ModuloGastos isJefatura={false} globalExpedientes={globalExpedientes} />
+        )}
+
+        {/* VISTA: RECIBOS DE HONORARIOS Y CLIENTES (EXCLUSIVO ABOGADOS Y JEFATURA) */}
+        {activeTab === 'recibos' && isLegalOrBoss && (
+          <div className="animate-in fade-in duration-200">
+            <ModuloRecibosHonorarios 
+              currentUser={currentUserName || 'Carmen Luisa'} 
+              isJefatura={false} 
+            />
+          </div>
         )}
 
         {/* VISTA: MIS RECIBOS DE NÓMINA (ROMÁN & DELGADO) */}

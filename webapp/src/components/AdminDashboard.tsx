@@ -17,6 +17,7 @@ import ModuloNominaEmpleado from './nomina/ModuloNominaEmpleado';
 import ModuloControlUsuarios from './sistemas/ModuloControlUsuarios';
 import ModuloBolsaEmpleo from './talento/ModuloBolsaEmpleo';
 import ModuloAsignacionTareas from './tareas/ModuloAsignacionTareas';
+import ModuloRecibosHonorarios from './recibos/ModuloRecibosHonorarios';
 import LiveStatusBar from './common/LiveStatusBar';
 import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
@@ -290,7 +291,7 @@ export default function AdminDashboard() {
   const currentLoggedUserName = localStorage.getItem('rd_user_name') || '';
   const isSistemas = checkIsSistemas(currentLoggedUserName);
 
-  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios' | 'bolsa_empleo' | 'tareas_asignadas'>(() => {
+  const [activeView, setActiveView] = useState<'bitacoras' | 'chat' | 'buzon' | 'agenda' | 'expedientes' | 'gastos' | 'recibos_honorarios' | 'mis_libros' | 'historial' | 'biblioteca' | 'nomina' | 'usuarios' | 'bolsa_empleo' | 'tareas_asignadas'>(() => {
     const isSistemasUser = checkIsSistemas(localStorage.getItem('rd_user_name'));
     const saved = sessionStorage.getItem('rd_admin_active_view');
     // Jefatura (Víctor / Luis) JAMÁS debe entrar a la vista de usuarios & roles
@@ -1752,6 +1753,19 @@ export default function AdminDashboard() {
           )}
         </button>
 
+        {/* RECIBOS DE HONORARIOS & CLIENTES (CORRELATIVO & FACTURACIÓN) */}
+        <button
+          onClick={() => setActiveView('recibos_honorarios')}
+          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
+            activeView === 'recibos_honorarios' 
+              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
+              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
+          }`}
+        >
+          <Receipt className={`w-4 h-4 ${activeView === 'recibos_honorarios' ? 'text-slate-950' : 'text-amber-600'}`} />
+          <span>Recibos & Honorarios</span>
+        </button>
+
         {/* ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
         <button
           onClick={() => setActiveView('biblioteca')}
@@ -3083,6 +3097,16 @@ export default function AdminDashboard() {
       {activeView === 'biblioteca' && (
         <div className="animate-in fade-in duration-200">
           <ModuloBibliotecaArchivos />
+        </div>
+      )}
+
+      {/* VISTA: RECIBOS DE HONORARIOS Y COBROS A CLIENTES */}
+      {activeView === 'recibos_honorarios' && (
+        <div className="animate-in fade-in duration-200">
+          <ModuloRecibosHonorarios 
+            currentUser={currentLoggedUserName || 'Luis Delgado'} 
+            isJefatura={true} 
+          />
         </div>
       )}
 
