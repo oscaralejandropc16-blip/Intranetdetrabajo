@@ -1317,7 +1317,7 @@ export default function EmployeeDashboard() {
 
   const fetchUnreadChatCount = useCallback(async () => {
     try {
-      const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
+      const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
       const { data, error } = await supabase
         .from('chat_messages')
         .select('id, sender_name, recipient_name, mensaje, created_at, leido')
@@ -1326,9 +1326,15 @@ export default function EmployeeDashboard() {
 
       if (error || !data) return;
 
+      let deletedList: string[] = [];
+      try {
+        deletedList = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+      } catch (e) {}
+
       const unreadForMe = data.filter((m: any) => {
-        const sender = (m.sender_name || '').toLowerCase().trim();
-        const recipient = (m.recipient_name || '').toLowerCase().trim();
+        if (deletedList.includes(m.id)) return false;
+        const sender = (m.sender_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const recipient = (m.recipient_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
         const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
         if (isSelf) return false;
 
@@ -1340,7 +1346,7 @@ export default function EmployeeDashboard() {
     } catch (e) {
       console.warn('Error fetching unread chat count:', e);
     }
-  }, []);
+  }, [currentUserName]);
 
   // Suscripción Realtime en segundo plano para notificar mensajes nuevos de jefatura
   useEffect(() => {
@@ -1355,9 +1361,9 @@ export default function EmployeeDashboard() {
           const newMsg = payload.new;
           if (!newMsg) return;
 
-          const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
-          const sender = (newMsg.sender_name || '').toLowerCase().trim();
-          const recipient = (newMsg.recipient_name || '').toLowerCase().trim();
+          const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+          const sender = (newMsg.sender_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+          const recipient = (newMsg.recipient_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
           const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
           if (isSelf) return;

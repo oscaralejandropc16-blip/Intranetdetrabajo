@@ -24,6 +24,7 @@ import {
   supabaseGetChatConversations,
   supabaseSendChatMessage,
   supabaseMarkChatRead,
+  supabaseMarkAllChatRead,
   supabaseDeleteChatMessage,
   supabaseUploadFile,
   supabaseResetUserDay,
@@ -218,7 +219,10 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
       return await supabaseSendChatMessage(data);
     }
     if (cleanEndpoint.endsWith('/chat/mark-read') || cleanEndpoint.endsWith('/marcar-mensaje-leido-jefe')) {
-      return await supabaseMarkChatRead(data.contact || data.employee);
+      return await supabaseMarkChatRead(data.contact || data.employee, data.user || data.currentUser);
+    }
+    if (cleanEndpoint.endsWith('/chat/mark-all-read')) {
+      return await supabaseMarkAllChatRead(data.user || data.currentUser);
     }
     if (cleanEndpoint.endsWith('/chat/delete') || cleanEndpoint.endsWith('/eliminar-mensaje-chat')) {
       return await supabaseDeleteChatMessage(data.id, data.mensaje);

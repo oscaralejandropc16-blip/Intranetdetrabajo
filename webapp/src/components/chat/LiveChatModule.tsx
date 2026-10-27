@@ -72,7 +72,7 @@ interface LiveChatModuleProps {
 
 // Determinar si un autor/rol corresponde a Jefatura
 export const isUserBoss = (author?: string, role?: string): boolean => {
-  const clean = (author || '').toLowerCase().trim();
+  const clean = (author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (clean.includes('carmen') || clean.includes('mariela') || clean.includes('hector') || clean.includes('oscar') || role === 'empleado') return false;
   if (role === 'jefatura' || role === 'admin') return true;
   return clean.includes('roman') || 
@@ -349,8 +349,20 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
         submitToServer('/rd-intranet/v1/chat/mark-read', {
           is_jefatura: isJefatura,
-          employee: activeEmployee
+          employee: activeEmployee,
+          user: effectiveCurrentUser
         }).catch(() => {});
+
+        // Directamente actualizar Supabase para asegurar leido = true inmediato
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const validUuids = unattendedIds.filter(id => uuidRegex.test(id));
+        if (validUuids.length > 0) {
+          supabase
+            .from('chat_messages')
+            .update({ leido: true })
+            .in('id', validUuids)
+            .then(() => {});
+        }
 
         window.dispatchEvent(new CustomEvent('rd_chat_read', { detail: { employee: activeEmployee, ids: unattendedIds } }));
         window.dispatchEvent(new Event('rd_employee_messages_updated'));
@@ -406,6 +418,16 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       if (Array.isArray(res.data) && res.data.length > 0) {
         setConversations(res.data);
 
+        // Si no hay conversación abierta activa, sincronizar el contador global con las conversaciones
+        if (!activeEmployeeRef.current) {
+          const totalUnread = res.data.reduce((acc: number, conv: any) => {
+            return acc + (isJefatura ? (conv.unreadCountJefe || 0) : (conv.unreadCountEmpleado || 0));
+          }, 0);
+          if (onUnreadCountChange) {
+            onUnreadCountChange(totalUnread);
+          }
+        }
+
         // Si el usuario ya tenía una conversación activa abierta, verificar que siga en la lista
         const curActive = (activeEmployeeRef.current || '').toLowerCase().trim();
         if (curActive) {
@@ -419,7 +441,27 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     } catch (e) {
       // ignore
     }
-  }, [effectiveCurrentUser]);
+  }, [effectiveCurrentUser, isJefatura, onUnreadCountChange]);
+
+  // Marcar todos los chats como leídos
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await submitToServer('/rd-intranet/v1/chat/mark-all-read', {
+        user: effectiveCurrentUser
+      });
+      setConversations(prev => prev.map(c => ({
+        ...c,
+        unreadCountJefe: 0,
+        unreadCountEmpleado: 0,
+        unreadCount: 0
+      })));
+      if (onUnreadCountChange) {
+        onUnreadCountChange(0);
+      }
+    } catch (e) {
+      console.warn('Error marcando todos los chats como leídos:', e);
+    }
+  }, [effectiveCurrentUser, onUnreadCountChange]);
 
   // Marcar automáticamente como leídos los mensajes que veo en pantalla
   const markAsRead = useCallback(async () => {
@@ -427,9 +469,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     if (currentMsgs.length === 0) return;
 
     let needsUpdate = false;
-    const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
+    const cleanCurrent = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const updated = currentMsgs.map(m => {
-      const author = (m.author || '').toLowerCase().trim();
+      const author = (m.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
       const isFromMe = author.includes(cleanCurrent) || cleanCurrent.includes(author);
       if (!isFromMe) {
         if (isJefatura && !m.leido_por_jefe) {
@@ -452,7 +494,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           const qList = JSON.parse(qRaw);
           if (Array.isArray(qList)) {
             const updatedQ = qList.map((item: any) => {
-              const author = (item.author || '').toLowerCase().trim();
+              const author = (item.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
               const isFromMe = author.includes(cleanCurrent) || cleanCurrent.includes(author);
               if (!isFromMe) {
                 if (isJefatura) return { ...item, leido_por_jefe: true };
@@ -464,10 +506,11 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           }
         }
 
-        // Llamar al backend para persistir doble check azul en WordPress
+        // Llamar al backend para persistir doble check azul en Supabase
         await submitToServer('/rd-intranet/v1/chat/mark-read', {
           is_jefatura: isJefatura,
-          employee: activeEmployee
+          employee: activeEmployee,
+          user: effectiveCurrentUser
         });
       } catch (e) {}
     }
@@ -761,16 +804,22 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   const attendedCount = messages.filter(m => m.atendido).length;
 
+  const totalDirectoryUnread = useMemo(() => {
+    return (conversations || []).reduce((acc, c) => {
+      return acc + (isJefatura ? (c.unreadCountJefe || 0) : (c.unreadCountEmpleado || 0));
+    }, 0);
+  }, [conversations, isJefatura]);
+
   // Filtrado de contactos excluyendo al usuario actualmente logueado
   const filteredConversations = (conversations || []).filter(c => {
     if (!c || !c.employee) return false;
-    const empLower = (c.employee || '').toLowerCase();
-    const currLower = (effectiveCurrentUser || '').toLowerCase();
+    const empLower = (c.employee || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const currLower = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const isSelf = (empLower && currLower) ? (empLower.includes(currLower) || currLower.includes(empLower)) : false;
     if (isSelf) return false;
     if (!searchConversation) return true;
-    const searchLow = (searchConversation || '').toLowerCase();
-    return empLower.includes(searchLow) || ((c.lastMessage || '').toLowerCase().includes(searchLow));
+    const searchLow = (searchConversation || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    return empLower.includes(searchLow) || ((c.lastMessage || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(searchLow));
   });
 
   return (
@@ -800,13 +849,28 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={() => fetchMessages(false)}
-            title="Actualizar mensajes"
-            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
-          >
-            <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
-          </button>
+          <div className="flex items-center gap-1">
+            {totalDirectoryUnread > 0 && (
+              <button
+                onClick={handleMarkAllRead}
+                title="Marcar todos los chats como leídos"
+                className="px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+              >
+                <CheckCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Marcar Leído</span>
+              </button>
+            )}
+            <button
+              onClick={() => {
+                fetchConversations();
+                if (activeEmployee) fetchMessages(false);
+              }}
+              title="Actualizar mensajes"
+              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* Buscador de Empleados / Chats */}
@@ -832,6 +896,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         <div className="flex-1 overflow-y-auto divide-y divide-white/5">
           {filteredConversations.map((conv, cIdx) => {
             const isActive = (activeEmployee || '').toLowerCase() === (conv.employee || '').toLowerCase();
+            const contactUnread = isJefatura ? conv.unreadCountJefe : conv.unreadCountEmpleado;
+
             return (
               <button
                 key={cIdx}
@@ -841,6 +907,11 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   setConversations(prev => prev.map(c => 
                     c.employee === conv.employee ? { ...c, unreadCountJefe: 0, unreadCountEmpleado: 0, unreadCount: 0 } : c
                   ));
+                  submitToServer('/rd-intranet/v1/chat/mark-read', {
+                    is_jefatura: isJefatura,
+                    employee: conv.employee,
+                    user: effectiveCurrentUser
+                  }).catch(() => {});
                 }}
                 className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${
                   isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
@@ -869,9 +940,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   </p>
                 </div>
 
-                {!isActive && conv.unreadCountJefe > 0 && (
-                  <span className="px-1.5 py-0.5 bg-emerald-500 text-slate-950 font-black rounded-full text-[10px] shadow-sm shrink-0 self-center">
-                    {conv.unreadCountJefe}
+                {!isActive && contactUnread > 0 && (
+                  <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 font-black rounded-full text-[10px] shadow-sm shrink-0 self-center animate-pulse">
+                    {contactUnread}
                   </span>
                 )}
               </button>
@@ -885,12 +956,17 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             <Users className="w-3.5 h-3.5 text-emerald-400" />
             <span>{filteredConversations.length} Contacto(s)</span>
           </span>
-          {pendingCount > 0 && (
+          {totalDirectoryUnread > 0 ? (
+            <span className="text-emerald-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              {totalDirectoryUnread} sin leer
+            </span>
+          ) : pendingCount > 0 ? (
             <span className="text-amber-400 font-bold flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-              {pendingCount} sin leer
+              {pendingCount} pendientes
             </span>
-          )}
+          ) : null}
         </div>
       </div>
 

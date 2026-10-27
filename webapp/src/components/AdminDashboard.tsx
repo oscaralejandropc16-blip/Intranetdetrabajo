@@ -401,7 +401,7 @@ export default function AdminDashboard() {
 
   const fetchUnreadChatCount = useCallback(async () => {
     try {
-      const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').toLowerCase().trim();
+      const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
       const { data, error } = await supabase
         .from('chat_messages')
         .select('id, sender_name, recipient_name, mensaje, created_at, leido')
@@ -410,9 +410,15 @@ export default function AdminDashboard() {
 
       if (error || !data) return;
 
+      let deletedList: string[] = [];
+      try {
+        deletedList = JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]');
+      } catch (e) {}
+
       const unreadForMe = data.filter((m: any) => {
-        const sender = (m.sender_name || '').toLowerCase().trim();
-        const recipient = (m.recipient_name || '').toLowerCase().trim();
+        if (deletedList.includes(m.id)) return false;
+        const sender = (m.sender_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const recipient = (m.recipient_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
         const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
         if (isSelf) return false;
 
@@ -439,9 +445,9 @@ export default function AdminDashboard() {
           const newMsg = payload.new;
           if (!newMsg) return;
 
-          const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').toLowerCase().trim();
-          const sender = (newMsg.sender_name || '').toLowerCase().trim();
-          const recipient = (newMsg.recipient_name || '').toLowerCase().trim();
+          const curUser = (localStorage.getItem('rd_user_name') || 'Luis Delgado').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+          const sender = (newMsg.sender_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+          const recipient = (newMsg.recipient_name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
           const isSelf = sender === curUser || sender.includes(curUser) || curUser.includes(sender);
           if (isSelf) return;

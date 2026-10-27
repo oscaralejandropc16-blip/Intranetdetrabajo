@@ -18,11 +18,21 @@ export const checkIsSistemas = (nameOrEmail?: string | null): boolean => {
   return sistemasList.some(s => lower === s || lower.startsWith(s) || lower.includes(s));
 };
 
+// Normalizador universal de nombres para comparar sin importar acentos, tildes ni mayúsculas
+export function normalizeName(str?: string | null): string {
+  if (!str) return '';
+  return str
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
 // Helper para detectar si es administrador / directivo o superadministrador
 export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): boolean => {
   if (!nameOrEmail && flag === true) return true;
   if (!nameOrEmail) return false;
-  const lower = nameOrEmail.toLowerCase().trim();
+  const lower = normalizeName(nameOrEmail);
 
   // Empleados que JAMÁS deben ser jefatura / admin
   const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'david', 'davidmoya', 'doris', 'dorisrangel'];
@@ -39,7 +49,7 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
 
   // Jefatura confirmada
   const bosses = [
-    'victor', 'víctor', 'victor roman', 'víctor román', 'victorroman',
+    'victor', 'victor roman', 'victorroman',
     'luis', 'luis delgado', 'luisdelgado',
     'admin', 'jefatura', 'romanydelgado', 'romanydelgado@gmail.com', 'info@romanydelgado.com'
   ];
@@ -1664,8 +1674,8 @@ export async function supabaseDeleteInvestigacion(id: string): Promise<any> {
 // 8. CHAT EN VIVO Y MENSAJERÍA (DIRECTORIO Y SUPRESIÓN COMPLETA)
 // -------------------------------------------------------------
 export async function supabaseGetChatMessages(contact?: string): Promise<any[]> {
-  const currentUser = (localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
-  const targetContact = (contact || '').toLowerCase().trim();
+  const currentUser = normalizeName(localStorage.getItem('rd_user_name') || '');
+  const targetContact = normalizeName(contact || '');
 
   const { data, error } = await supabase
     .from('chat_messages')
@@ -1692,21 +1702,19 @@ export async function supabaseGetChatMessages(contact?: string): Promise<any[]> 
 
   if (!targetContact) return msgs;
 
-  // Filtrar estrictamente para el chat entre currentUser y targetContact
+  // Filtrar estrictamente para el chat entre currentUser y targetContact con normalización de acentos
   return msgs.filter((m: any) => {
-    const a = (m.author || '').toLowerCase().trim();
-    const r = (m.recipient || '').toLowerCase().trim();
-    const cur = currentUser.toLowerCase().trim();
-    const tgt = targetContact.toLowerCase().trim();
+    const a = normalizeName(m.author);
+    const r = normalizeName(m.recipient);
 
-    return (a.includes(cur) && (r.includes(tgt) || tgt.includes(r))) ||
-           (a.includes(tgt) && (r.includes(cur) || cur.includes(r)));
+    return (a.includes(currentUser) && (r.includes(targetContact) || targetContact.includes(r))) ||
+           (a.includes(targetContact) && (r.includes(currentUser) || currentUser.includes(r)));
   });
 }
 
 export async function supabaseGetChatConversations(paramUser?: string): Promise<any[]> {
   const currentUser = (paramUser || localStorage.getItem('rd_user_name') || 'Usuario').trim();
-  const currentLower = currentUser.toLowerCase();
+  const currentLower = normalizeName(currentUser);
   const isBossU = checkIsJefatura(currentUser);
 
   // Lista canónica de contactos del bufete (deduplicada y con roles exactos)
@@ -1723,15 +1731,15 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
   
   // Unificar contactos canónicos con perfiles de BD sin duplicados
   const contactsMap = new Map<string, { full_name: string; role: string }>();
-  canonicalContacts.forEach(c => contactsMap.set(c.full_name.toLowerCase(), c));
+  canonicalContacts.forEach(c => contactsMap.set(normalizeName(c.full_name), c));
   
   if (profiles && profiles.length > 0) {
     for (const p of profiles) {
       const name = (p.full_name || p.email || '').trim();
-      const nLower = name.toLowerCase();
+      const nLower = normalizeName(name);
       // Mapear nombres duplicados a la versión canónica
       if (nLower.includes('luis')) contactsMap.set('luis delgado', { full_name: 'Luis Delgado', role: 'jefatura' });
-      else if (nLower.includes('victor')) contactsMap.set('victor roman', { full_name: 'Victor Roman', role: 'jefatura' });
+      else if (nLower.includes('victor') || nLower.includes('roman')) contactsMap.set('victor roman', { full_name: 'Victor Roman', role: 'jefatura' });
       else if (nLower.includes('carmen')) contactsMap.set('carmen luisa', { full_name: 'Carmen Luisa', role: 'empleado' });
       else if (nLower.includes('mariela')) contactsMap.set('mariela isabel', { full_name: 'Mariela Isabel', role: 'empleado' });
       else if (nLower.includes('hector')) contactsMap.set('hector', { full_name: 'Hector', role: 'empleado' });
@@ -1753,7 +1761,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
 
   for (const c of contactsList) {
     const contactName = c.full_name;
-    const cLower = contactName.toLowerCase();
+    const cLower = normalizeName(contactName);
     const isBossC = c.role === 'jefatura' || checkIsJefatura(contactName);
 
     // Excluirse a sí mismo
@@ -1766,18 +1774,19 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
       continue;
     }
 
-    // Filtrar mensajes entre currentUser y este contacto
+    // Filtrar mensajes entre currentUser y este contacto con normalización de acentos y caracteres
     const relMsgs = allMsgs.filter((m: any) => {
-      const a = (m.sender_name || '').toLowerCase().trim();
-      const r = (m.recipient_name || '').toLowerCase().trim();
+      const a = normalizeName(m.sender_name);
+      const r = normalizeName(m.recipient_name);
       return (a.includes(currentLower) && (r.includes(cLower) || cLower.includes(r))) ||
              (a.includes(cLower) && (r.includes(currentLower) || currentLower.includes(r)));
     });
 
     const lastMsg = relMsgs[0];
     const unreadCount = relMsgs.filter((m: any) => {
-      const a = (m.sender_name || '').toLowerCase();
-      return a.includes(cLower) && !m.leido;
+      const a = normalizeName(m.sender_name);
+      const r = normalizeName(m.recipient_name);
+      return a.includes(cLower) && (r.includes(currentLower) || currentLower.includes(r)) && !m.leido;
     }).length;
 
     conversations.push({
@@ -1787,7 +1796,7 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
       unreadCountEmpleado: isBossC ? unreadCount : 0,
       lastMessage: lastMsg ? lastMsg.mensaje : 'Sin mensajes aún',
       lastMessageTime: lastMsg ? formatTime12h(new Date(lastMsg.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })) : '',
-      lastMessageIsMe: lastMsg ? (lastMsg.sender_name || '').toLowerCase().includes(currentLower) : false,
+      lastMessageIsMe: lastMsg ? normalizeName(lastMsg.sender_name).includes(currentLower) : false,
       totalMessages: relMsgs.length
     });
   }
@@ -1834,12 +1843,71 @@ export async function supabaseSendChatMessage(payload: any): Promise<any> {
   };
 }
 
-export async function supabaseMarkChatRead(contact?: string): Promise<any> {
-  if (contact) {
-    await supabase
+export async function supabaseMarkChatRead(contact?: string, currentUser?: string): Promise<any> {
+  try {
+    const curUser = currentUser || localStorage.getItem('rd_user_name') || '';
+    const normCur = normalizeName(curUser);
+    const normContact = normalizeName(contact || '');
+
+    const { data } = await supabase
       .from('chat_messages')
-      .update({ leido: true })
-      .ilike('sender_name', `%${contact}%`);
+      .select('id, sender_name, recipient_name')
+      .eq('leido', false);
+
+    if (data && data.length > 0) {
+      const idsToMark = data.filter((m: any) => {
+        const sNorm = normalizeName(m.sender_name);
+        const rNorm = normalizeName(m.recipient_name);
+
+        if (normContact) {
+          const matchSender = sNorm.includes(normContact) || normContact.includes(sNorm);
+          const matchRecipient = !normCur || rNorm.includes(normCur) || normCur.includes(rNorm);
+          return matchSender && matchRecipient;
+        } else if (normCur) {
+          return rNorm.includes(normCur) || normCur.includes(rNorm);
+        }
+        return false;
+      }).map((m: any) => m.id);
+
+      if (idsToMark.length > 0) {
+        await supabase
+          .from('chat_messages')
+          .update({ leido: true })
+          .in('id', idsToMark);
+      }
+    }
+  } catch (err) {
+    console.warn('Error en supabaseMarkChatRead:', err);
+  }
+  return { success: true };
+}
+
+export async function supabaseMarkAllChatRead(currentUser?: string): Promise<any> {
+  try {
+    const curUser = currentUser || localStorage.getItem('rd_user_name') || '';
+    const normCur = normalizeName(curUser);
+    if (!normCur) return { success: true };
+
+    const { data } = await supabase
+      .from('chat_messages')
+      .select('id, recipient_name')
+      .eq('leido', false);
+
+    if (data && data.length > 0) {
+      const idsToMark = data.filter((m: any) => {
+        const rNorm = normalizeName(m.recipient_name);
+        return rNorm.includes(normCur) || normCur.includes(rNorm);
+      }).map((m: any) => m.id);
+
+      if (idsToMark.length > 0) {
+        await supabase
+          .from('chat_messages')
+          .update({ leido: true })
+          .in('id', idsToMark);
+      }
+    }
+  } catch (err) {
+    console.warn('Error en supabaseMarkAllChatRead:', err);
   }
   return { success: true };
 }
