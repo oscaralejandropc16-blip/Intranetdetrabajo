@@ -15,7 +15,10 @@ import {
   Check, 
   Coins, 
   User, 
-  X
+  X,
+  Scale,
+  FileDown,
+  Eye
 } from 'lucide-react';
 import type { ReciboCliente, TipoReciboCliente, MetodoPagoCliente } from '../../types/recibos';
 import { 
@@ -94,6 +97,121 @@ RECIBIDO POR EL BUFETE:                      ENTREGADO CONFORME POR EL CLIENTE:
 Firma: ________________________              Firma: __________________________
 Abg. Responsable: _____________              C.I. V-__________________________`;
 
+const CONTRATO_HTML = `
+<div class='membrete'>
+  <h2 style='margin:0; font-size:14pt; letter-spacing:1px;'>ROMÁN & DELGADO — ESCRITORIO JURÍDICO</h2>
+  <p style='margin:3px 0 0 0; font-size:10pt; color:#666;'>Valencia, Estado Carabobo • RIF: J-40892839-1 • Inpreabogado: 184.290 / 201.442</p>
+</div>
+<h1>CONTRATO DE PRESTACIÓN DE SERVICIOS PROFESIONALES</h1>
+<p>Entre la firma jurídica <strong>ROMÁN & DELGADO</strong>, domiciliada en Valencia, Estado Carabobo, representada en este acto por los abogados en ejercicio <strong>VÍCTOR ROMÁN</strong> y <strong>LUIS DELGADO</strong>, inscritos en el Inpreabogado, en lo sucesivo denominados <strong>"LOS ABOGADOS"</strong>, por una parte; y por la otra el ciudadano(a):</p>
+<p class='no-indent'>
+<strong>NOMBRE COMPLETO:</strong> [Nombre del Cliente]<br>
+<strong>CÉDULA DE IDENTIDAD / RIF:</strong> [V-__________]<br>
+<strong>DOMICILIO:</strong> [Dirección de habitación o comercial]<br>
+<strong>TELÉFONO / CORREO:</strong> [Teléfono y email]
+</p>
+<p>En lo sucesivo denominado <strong>"EL CLIENTE"</strong>, se ha convenido celebrar el presente Contrato de Servicios Profesionales sujeto a las siguientes cláusulas:</p>
+<p><span class='clausula'>PRIMERA (OBJETO):</span> "LOS ABOGADOS" se comprometen a prestar sus servicios profesionales de asesoría, representación y asistencia jurídica a favor de "EL CLIENTE" en el asunto relativo a: [Describir el caso o trámite].</p>
+<p><span class='clausula'>SEGUNDA (HONORARIOS PACTADOS):</span> De conformidad con lo dispuesto en el artículo 22 de la Ley de Abogados y las normas de ética profesional, las partes acuerdan fijar la suma de: MONTO TOTAL: _________________ DÓLARES DE LOS ESTADOS UNIDOS DE AMÉRICA ($ USD) [o su equivalente en Bolívares a la tasa oficial del Banco Central de Venezuela a la fecha efectiva del pago].</p>
+<p><span class='clausula'>TERCERA (FORMA DE PAGO):</span> El monto de los honorarios antes estipulado será cancelado por "EL CLIENTE" de la siguiente manera: [  ] Pago Único de Contado a la suscripción. [  ] Pago Fraccionado: Un anticipo y saldo restante pagadero en cuotas.</p>
+<p><span class='clausula'>CUARTA (GASTOS OPERATIVOS Y JUDICIALES):</span> Queda expresamente convenido que los honorarios profesionales pactados en la Cláusula Segunda NO incluyen los gastos de tramitación, aranceles judiciales, timbres fiscales, copias fotostáticas, traslados, expensas de registros, notarías o tribunales. Dichos conceptos serán cubiertos íntegramente por "EL CLIENTE" mediante los correspondientes recibos de anticipo o rendición de gastos (Anexo A).</p>
+<p><span class='clausula'>QUINTA (CONFIDENCIALIDAD Y DEBER DE INFORMACIÓN):</span> "LOS ABOGADOS" guardarán estricto secreto profesional sobre todos los hechos y documentos suministrados por "EL CLIENTE", obligándose a mantenerlo debidamente informado sobre el estado y avance de las gestiones encomendadas.</p>
+<p><span class='clausula'>SEXTA (JURISDICCIÓN):</span> Para todos los efectos legales derivados de este contrato, las partes eligen como domicilio especial y excluyente la ciudad de Valencia, Estado Carabobo, a la jurisdicción de cuyos tribunales declaran someterse.</p>
+<p>Se firman dos (2) ejemplares de un mismo tenor y a un solo efecto, en Valencia, a los _____ días del mes de _____________ de 2026.</p>
+<table class='firmas'>
+  <tr>
+    <td>
+      <div class='linea-firma'></div>
+      <strong>POR ROMÁN & DELGADO</strong><br>
+      Abg. Víctor Román / Luis Delgado
+    </td>
+    <td>
+      <div class='linea-firma'></div>
+      <strong>EL CLIENTE</strong><br>
+      C.I. V-_________________
+    </td>
+  </tr>
+</table>
+`;
+
+const ANEXO_GASTOS_HTML = `
+<div class='membrete'>
+  <h2 style='margin:0; font-size:14pt; letter-spacing:1px;'>ROMÁN & DELGADO — ESCRITORIO JURÍDICO</h2>
+  <p style='margin:3px 0 0 0; font-size:10pt; color:#666;'>RECIBO Y ANEXO DE FONDOS PARA GASTOS (ANEXO A) • RIF: J-40892839-1</p>
+</div>
+<h1>RECIBO Y ANEXO DE FONDOS PARA GASTOS DE GESTIÓN</h1>
+<p class='no-indent'>
+<strong>RECIBO NRO:</strong> RD-GST-2026-______ &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <strong>FECHA:</strong> ___/___/2026<br><br>
+<strong>HEMOS RECIBIDO DEL CLIENTE:</strong> _____________________________________________<br>
+<strong>CÉDULA DE IDENTIDAD / RIF:</strong> V-_________________ &nbsp;&nbsp;&nbsp;&nbsp; <strong>EXPEDIENTE:</strong> ____________<br><br>
+<strong>LA CANTIDAD DE:</strong> __________________________ [USD $ / Bs.]<br>
+<strong>EN LETRAS:</strong> _____________________________________________________________<br>
+<strong>FORMA DE RECEPCIÓN:</strong> [  ] Efectivo Divisas &nbsp;&nbsp; [  ] Cuenta / Transf. &nbsp;&nbsp; [  ] Pago Móvil<br>
+<strong>REFERENCIA BANCARIA:</strong> ___________________________________________________
+</p>
+<p class='no-indent'>
+<strong>DESTINADO EXCLUSIVAMENTE A LOS SIGUIENTES GASTOS DE GESTIÓN:</strong><br>
+[  ] Aranceles y tasas judiciales / tribunales competentes.<br>
+[  ] Gastos de Notaría Pública / Registro Principal o Mercantil.<br>
+[  ] Timbres fiscales, estampillas y papel sellado oficial.<br>
+[  ] Fotocopias certificadas, traslados y movilización operativa.<br>
+[  ] Otras expensas procesales justificadas.
+</p>
+<div class='alerta-legal'>
+<strong>NOTA LEGAL:</strong> De conformidad con los Artículos 22 y 25 de la Ley de Abogados, este monto NO constituye pago de honorarios profesionales de los abogados; representa una provisión para gastos de tramitación sujeta a soporte y rendición de cuentas.
+</div>
+<table class='firmas'>
+  <tr>
+    <td>
+      <div class='linea-firma'></div>
+      <strong>RECIBIDO POR EL BUFETE</strong><br>
+      Abg. Responsable
+    </td>
+    <td>
+      <div class='linea-firma'></div>
+      <strong>ENTREGADO CONFORME POR EL CLIENTE</strong><br>
+      C.I. V-__________________________
+    </td>
+  </tr>
+</table>
+`;
+
+const downloadDocFile = (filename: string, title: string, htmlBody: string) => {
+  const fullHtml = `<!DOCTYPE html>
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+<head>
+<meta charset='utf-8'>
+<title>${title}</title>
+<style>
+  body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.6; color: #111; margin: 2.5cm; }
+  h1 { text-align: center; font-size: 13pt; font-weight: bold; text-transform: uppercase; margin: 15px 0 25px 0; }
+  h2 { text-align: center; font-size: 12pt; font-weight: bold; text-transform: uppercase; margin: 15px 0; }
+  p { text-align: justify; margin-bottom: 14px; text-indent: 25px; }
+  p.no-indent { text-indent: 0; }
+  .membrete { text-align: center; font-size: 10pt; line-height: 1.3; margin-bottom: 25px; border-bottom: 2px solid #8b6b23; padding-bottom: 12px; }
+  .clausula { font-weight: bold; }
+  .alerta-legal { background: #fdf8eb; border: 1px solid #d4a737; padding: 10px; margin: 15px 0; font-size: 10.5pt; }
+  .firmas { margin-top: 60px; width: 100%; border-collapse: collapse; }
+  .firmas td { width: 50%; text-align: center; vertical-align: top; padding: 10px; }
+  .linea-firma { width: 75%; border-top: 1px solid #111; margin: 45px auto 8px auto; }
+</style>
+</head>
+<body>
+${htmlBody}
+</body>
+</html>`;
+
+  const blob = new Blob(['\ufeff' + fullHtml], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
 const getInitialBcvRate = (): string => {
   try {
     const saved = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
@@ -169,9 +287,11 @@ export default function ModuloRecibosHonorarios({
     message: ''
   });
 
-  // Estado para copiar plantillas
+  // Estado para copiar plantillas y modos de visualización
   const [copiedContract, setCopiedContract] = useState(false);
   const [copiedGastos, setCopiedGastos] = useState(false);
+  const [viewModeContract, setViewModeContract] = useState<'documento' | 'texto'>('documento');
+  const [viewModeGastos, setViewModeGastos] = useState<'documento' | 'texto'>('documento');
 
   // Cargar datos al montar
   const loadRecibos = async () => {
@@ -1141,74 +1261,376 @@ export default function ModuloRecibosHonorarios({
 
       {/* PESTAÑA 3: MODELOS DE CONTRATOS Y ANEXOS DE GASTOS */}
       {subTab === 'contratos' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          
-          {/* FORMATO 1: CONTRATO DE SERVICIOS PROFESIONALES */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-3 gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold shrink-0">
-                    ⚖️
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900">Contrato de Prestación de Servicios</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">Modelo oficial para clientes y causas</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => handleCopyTemplate(CONTRATO_TEMPLATE, true)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto"
-                >
-                  {copiedContract ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
-                  <span>{copiedContract ? '¡Copiado!' : 'Copiar Texto'}</span>
-                </button>
+        <div className="space-y-6">
+          {/* Banner de bienvenida y directrices de la sección */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-50/60 to-blue-50/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-amber-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-sm shrink-0">
+                <Scale className="w-6 h-6" />
               </div>
-
-              <div className="bg-slate-950 text-slate-200 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-mono text-xs sm:text-[11px] leading-relaxed max-h-72 sm:max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
-                {CONTRATO_TEMPLATE}
+              <div>
+                <h3 className="text-base sm:text-lg font-black text-slate-900">
+                  Modelos Jurídicos Institucionales
+                </h3>
+                <p className="text-xs text-slate-600 font-medium">
+                  Documentos oficiales listos conforme a la Ley de Abogados y el Código de Ética de Venezuela.
+                </p>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 font-medium">
-              💡 <strong>Recomendación:</strong> Haz clic en <strong>Copiar Texto</strong> y pégalo en Word o Google Docs para personalizar las cláusulas y montos según el caso.
-            </p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+                Papel Membretado Oficial
+              </span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+                <FileDown className="w-3.5 h-3.5 text-blue-600" />
+                Descarga en Word (.doc)
+              </span>
+            </div>
           </div>
 
-          {/* FORMATO 2: RECIBO Y ANEXO DE GASTOS JUDICIALES */}
-          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
-            <div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-3 gap-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
-                    📑
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
+            
+            {/* FORMATO 1: CONTRATO DE PRESTACIÓN DE SERVICIOS */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3.5">
+                {/* Header de la tarjeta */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0 border border-amber-200">
+                      ⚖️
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">Contrato de Prestación de Servicios</h4>
+                      <span className="text-[10px] text-slate-500 font-medium">Modelo oficial para causas legales y clientes</span>
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-sm font-black text-slate-900">Anexo y Provisión de Gastos</h4>
-                    <span className="text-[10px] text-slate-400 font-medium">Comprobante de aranceles y movilización</span>
+
+                  {/* Acciones: Alternar vista, Descargar Word y Copiar */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setViewModeContract(prev => prev === 'documento' ? 'texto' : 'documento')}
+                      title="Alternar entre vista de documento membretado o texto plano"
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      {viewModeContract === 'documento' ? <FileText className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{viewModeContract === 'documento' ? 'Ver Texto' : 'Ver Hoja'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => downloadDocFile(
+                        'Contrato_Servicios_Profesionales_Roman_y_Delgado.doc',
+                        'Contrato de Servicios Profesionales - Román & Delgado',
+                        CONTRATO_HTML
+                      )}
+                      title="Descargar editable en Microsoft Word (.doc)"
+                      className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <FileDown className="w-3.5 h-3.5 shrink-0" />
+                      <span>Word (.doc)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTemplate(CONTRATO_TEMPLATE, true)}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                    >
+                      {copiedContract ? <Check className="w-3.5 h-3.5 text-slate-950 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                      <span>{copiedContract ? '¡Copiado!' : 'Copiar'}</span>
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleCopyTemplate(ANEXO_GASTOS_TEMPLATE, false)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto"
-                >
-                  {copiedGastos ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
-                  <span>{copiedGastos ? '¡Copiado!' : 'Copiar Texto'}</span>
-                </button>
+                {/* VISTA HOJA MEMBRETADA (DEFAULT) vs VISTA TEXTO PLANO */}
+                {viewModeContract === 'documento' ? (
+                  <div className="bg-slate-100/70 p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-inner">
+                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
+                      
+                      {/* Membrete Oficial */}
+                      <div className="text-center pb-3 border-b-2 border-amber-500/30 space-y-0.5">
+                        <div className="flex items-center justify-center gap-1.5 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
+                          <span>⚖️ ROMÁN & DELGADO</span>
+                        </div>
+                        <p className="text-[10px] tracking-wider uppercase font-bold text-amber-700">
+                          Escritorio Jurídico & Asesoría Corporativa
+                        </p>
+                        <p className="text-[9px] text-slate-400">
+                          Valencia, Estado Carabobo • RIF: J-40892839-1 • Inpreabogado: 184.290 / 201.442
+                        </p>
+                      </div>
+
+                      {/* Título Oficial */}
+                      <h5 className="text-center font-black text-slate-900 text-xs sm:text-sm tracking-wide uppercase pt-1">
+                        CONTRATO DE PRESTACIÓN DE SERVICIOS PROFESIONALES LEGALES
+                      </h5>
+
+                      {/* Preámbulo */}
+                      <p className="text-justify text-slate-700">
+                        Entre la firma jurídica <strong>ROMÁN & DELGADO</strong>, domiciliada en Valencia, Estado Carabobo, representada en este acto por los abogados en ejercicio <strong>VÍCTOR ROMÁN</strong> y <strong>LUIS DELGADO</strong>, en lo sucesivo denominados <strong>«LOS ABOGADOS»</strong>, por una parte; y por la otra el ciudadano(a):
+                      </p>
+
+                      {/* Tarjeta de Datos del Cliente */}
+                      <div className="bg-amber-50/40 rounded-xl p-3 border border-amber-200/60 space-y-1.5 text-[11.5px]">
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-amber-950">Nombre Completo:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Nombre del Cliente]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-amber-950">Cédula / RIF:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[V-__________]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-amber-950">Domicilio:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Dirección de habitación o mercantil]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-amber-950">Teléfono / Correo:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Teléfono y correo electrónico]</span>
+                        </div>
+                      </div>
+
+                      <p className="text-justify text-slate-700">
+                        En lo sucesivo denominado <strong>«EL CLIENTE»</strong>, se ha convenido celebrar el presente Contrato de Servicios Profesionales sujeto a las siguientes cláusulas:
+                      </p>
+
+                      {/* Cláusulas */}
+                      <div className="space-y-2.5 pt-1">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA PRIMERA (OBJETO):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            «LOS ABOGADOS» se comprometen a prestar sus servicios profesionales de asesoría, representación y asistencia jurídica a favor de «EL CLIENTE» en el asunto relativo a la causa, juicio o redacción encomendada.
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA SEGUNDA (HONORARIOS PACTADOS):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            De conformidad con el artículo 22 de la Ley de Abogados y normas de ética profesional, las partes fijan de mutuo acuerdo la remuneración estipulada en dólares ($ USD) o su equivalente en bolívares a la tasa oficial del Banco Central de Venezuela a la fecha de pago.
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA TERCERA (FORMA DE PAGO):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            El monto pactado será cancelado mediante Pago Único de Contado a la suscripción del instrumento, o de forma Fraccionada en un anticipo y cuotas sucesivas a través de los canales bancarios oficiales del bufete.
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA CUARTA (GASTOS OPERATIVOS Y JUDICIALES):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            Queda convenido que los honorarios profesionales pactados NO incluyen aranceles judiciales, timbres fiscales, traslados, fotocopias ni expensas de registros o notarías, los cuales son cubiertos por «EL CLIENTE» mediante el Anexo de Provisión de Gastos (Anexo A).
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA QUINTA (SECRETO PROFESIONAL):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            «LOS ABOGADOS» guardarán estricto secreto profesional sobre todos los hechos y documentos aportados, manteniendo informado permanentemente a «EL CLIENTE».
+                          </p>
+                        </div>
+
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                          <strong className="text-amber-900 block mb-1">CLÁUSULA SEXTA (JURISDICCIÓN):</strong>
+                          <p className="text-slate-600 text-[11.5px]">
+                            Para todos los efectos legales, las partes eligen como domicilio especial y excluyente los tribunales de la ciudad de Valencia, Estado Carabobo.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Firmas Oficiales */}
+                      <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-4 text-center">
+                        <div className="space-y-1">
+                          <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
+                          <p className="font-bold text-slate-800 text-[11px]">POR ROMÁN & DELGADO</p>
+                          <p className="text-[9.5px] text-slate-400">Abg. Víctor Román / Luis Delgado</p>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
+                          <p className="font-bold text-slate-800 text-[11px]">EL CLIENTE</p>
+                          <p className="text-[9.5px] text-slate-400">C.I. V-_________________</p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-slate-800 shadow-inner">
+                    {CONTRATO_TEMPLATE}
+                  </div>
+                )}
               </div>
 
-              <div className="bg-slate-950 text-slate-200 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-mono text-xs sm:text-[11px] leading-relaxed max-h-72 sm:max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
-                {ANEXO_GASTOS_TEMPLATE}
+              {/* Pie de recomendación */}
+              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                <span>💡 Haz clic en <strong>Copiar</strong> o descarga en <strong>Word (.doc)</strong> para editar e imprimir.</span>
               </div>
             </div>
 
-            <p className="text-[11px] text-slate-500 font-medium">
-              💡 <strong>Regla Jurídica:</strong> La Ley de Abogados exige separar los honorarios profesionales de los gastos de trámite (copias, traslados, aranceles) para mantener cuentas claras.
-            </p>
-          </div>
+            {/* FORMATO 2: RECIBO Y ANEXO DE GASTOS JUDICIALES */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-3.5">
+                {/* Header de la tarjeta */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-2.5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0 border border-emerald-200">
+                      📑
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black text-slate-900">Anexo y Provisión de Gastos</h4>
+                      <span className="text-[10px] text-slate-500 font-medium">Comprobante oficial de fondos para aranceles y movilización</span>
+                    </div>
+                  </div>
 
+                  {/* Acciones */}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setViewModeGastos(prev => prev === 'documento' ? 'texto' : 'documento')}
+                      title="Alternar entre vista de comprobante membretado o texto plano"
+                      className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      {viewModeGastos === 'documento' ? <FileText className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      <span>{viewModeGastos === 'documento' ? 'Ver Texto' : 'Ver Hoja'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => downloadDocFile(
+                        'Anexo_Provision_Gastos_Roman_y_Delgado.doc',
+                        'Anexo y Provisión de Gastos - Román & Delgado',
+                        ANEXO_GASTOS_HTML
+                      )}
+                      title="Descargar editable en Microsoft Word (.doc)"
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                    >
+                      <FileDown className="w-3.5 h-3.5 shrink-0" />
+                      <span>Word (.doc)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyTemplate(ANEXO_GASTOS_TEMPLATE, false)}
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                    >
+                      {copiedGastos ? <Check className="w-3.5 h-3.5 text-white shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                      <span>{copiedGastos ? '¡Copiado!' : 'Copiar'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* VISTA HOJA MEMBRETADA (DEFAULT) vs VISTA TEXTO PLANO */}
+                {viewModeGastos === 'documento' ? (
+                  <div className="bg-slate-100/70 p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-inner">
+                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
+                      
+                      {/* Membrete Oficial */}
+                      <div className="text-center pb-3 border-b-2 border-emerald-500/30 space-y-0.5">
+                        <div className="flex items-center justify-center gap-1.5 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
+                          <span>📑 ROMÁN & DELGADO</span>
+                        </div>
+                        <p className="text-[10px] tracking-wider uppercase font-bold text-emerald-700">
+                          Recibo y Anexo 'A': Provisión de Fondos para Gastos
+                        </p>
+                        <p className="text-[9px] text-slate-400">
+                          Valencia, Estado Carabobo • RIF: J-40892839-1
+                        </p>
+                      </div>
+
+                      {/* Datos del Comprobante */}
+                      <div className="flex items-center justify-between text-[11px] font-bold text-slate-600 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200/70">
+                        <span>Recibo Nº: <strong className="text-slate-900 font-mono">RD-GST-2026-______</strong></span>
+                        <span>Fecha: <strong className="text-slate-900">___/___/2026</strong></span>
+                      </div>
+
+                      {/* Cuadro de Información del Cliente */}
+                      <div className="bg-emerald-50/40 rounded-xl p-3 border border-emerald-200/60 space-y-1.5 text-[11.5px]">
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-emerald-950">Cliente Receptor:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-900 font-semibold">[Nombre del Cliente]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-emerald-950">Cédula / RIF:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-900 font-semibold">[V-__________]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-emerald-950">Expediente Asignado:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-900 font-semibold">[Nº Expediente / Asunto]</span>
+                        </div>
+                        <div className="flex items-center justify-between flex-wrap gap-1">
+                          <span className="font-bold text-emerald-950">Monto Recibido:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-emerald-200 text-emerald-900 font-bold">[USD $ / Bs. _______]</span>
+                        </div>
+                      </div>
+
+                      {/* Lista de Gastos Autorizados */}
+                      <div>
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 block mb-2">
+                          Destinado Exclusivamente a los Siguientes Gastos de Gestión:
+                        </span>
+                        <div className="space-y-1.5 text-[11.5px]">
+                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <span className="text-emerald-600 font-bold">☑️</span>
+                            <span className="text-slate-700 font-medium">Aranceles y tasas judiciales de Tribunales de la República.</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <span className="text-emerald-600 font-bold">☑️</span>
+                            <span className="text-slate-700 font-medium">Derechos y aranceles de Notaría Pública y Registros.</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <span className="text-emerald-600 font-bold">☑️</span>
+                            <span className="text-slate-700 font-medium">Timbres fiscales, estampillas tributarias y papel sellado.</span>
+                          </div>
+                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <span className="text-emerald-600 font-bold">☑️</span>
+                            <span className="text-slate-700 font-medium">Fotocopias certificadas, traslados y movilización operativa.</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Nota Legal Destacada */}
+                      <div className="bg-amber-50/80 rounded-xl p-3 border border-amber-300/80 text-[11px] text-amber-900 space-y-1">
+                        <strong className="block font-black text-amber-950 uppercase tracking-wide">
+                          ⚖️ Advertencia Jurídica (Ley de Abogados):
+                        </strong>
+                        <p className="leading-relaxed">
+                          Este monto <strong>NO constituye pago de honorarios profesionales</strong> de los abogados de la firma. Corresponde exclusivamente a una provisión para gastos de tramitación sujeta a presentación de soportes, facturas y rendición de cuentas.
+                        </p>
+                      </div>
+
+                      {/* Firmas Oficiales */}
+                      <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-4 text-center">
+                        <div className="space-y-1">
+                          <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
+                          <p className="font-bold text-slate-800 text-[11px]">RECIBIDO POR EL BUFETE</p>
+                          <p className="text-[9.5px] text-slate-400">Abg. Responsable</p>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
+                          <p className="font-bold text-slate-800 text-[11px]">ENTREGADO CONFORME</p>
+                          <p className="text-[9.5px] text-slate-400">Firma del Cliente • C.I.</p>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-slate-800 shadow-inner">
+                    {ANEXO_GASTOS_TEMPLATE}
+                  </div>
+                )}
+              </div>
+
+              {/* Pie de recomendación */}
+              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                <span>💡 Separa siempre los gastos de los honorarios para rendición contable clara.</span>
+              </div>
+            </div>
+
+          </div>
         </div>
       )}
 
