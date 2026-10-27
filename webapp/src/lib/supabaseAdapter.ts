@@ -1673,8 +1673,8 @@ export async function supabaseDeleteInvestigacion(id: string): Promise<any> {
 // -------------------------------------------------------------
 // 8. CHAT EN VIVO Y MENSAJERÍA (DIRECTORIO Y SUPRESIÓN COMPLETA)
 // -------------------------------------------------------------
-export async function supabaseGetChatMessages(contact?: string): Promise<any[]> {
-  const currentUser = normalizeName(localStorage.getItem('rd_user_name') || '');
+export async function supabaseGetChatMessages(contact?: string, user?: string): Promise<any[]> {
+  const currentUser = normalizeName(user || localStorage.getItem('rd_user_name') || '');
   const targetContact = normalizeName(contact || '');
 
   const { data, error } = await supabase
@@ -1707,8 +1707,15 @@ export async function supabaseGetChatMessages(contact?: string): Promise<any[]> 
     const a = normalizeName(m.author);
     const r = normalizeName(m.recipient);
 
-    return (a.includes(currentUser) && (r.includes(targetContact) || targetContact.includes(r))) ||
-           (a.includes(targetContact) && (r.includes(currentUser) || currentUser.includes(r)));
+    const fromCurrentToTarget = 
+      (a.includes(currentUser) || currentUser.includes(a)) &&
+      (r.includes(targetContact) || targetContact.includes(r) || (checkIsJefatura(targetContact) && r.includes('jefatura')));
+
+    const fromTargetToCurrent =
+      (a.includes(targetContact) || targetContact.includes(a)) &&
+      (r.includes(currentUser) || currentUser.includes(r) || !r || (checkIsJefatura(currentUser) && r.includes('jefatura')));
+
+    return fromCurrentToTarget || fromTargetToCurrent;
   });
 }
 

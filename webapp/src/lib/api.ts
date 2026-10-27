@@ -110,7 +110,8 @@ api.get = async function (url: string, config?: any) {
     // 6. Chat y Mensajería
     if (cleanUrl.endsWith('/chat/messages')) {
       const contact = params.contact || params.employee || '';
-      const msgs = await supabaseGetChatMessages(contact);
+      const user = params.user || params.currentUser || '';
+      const msgs = await supabaseGetChatMessages(contact, user);
       return { data: msgs, status: 200 };
     }
     if (cleanUrl.endsWith('/chat/conversations')) {

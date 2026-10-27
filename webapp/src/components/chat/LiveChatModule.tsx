@@ -687,8 +687,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   // Filtrado y ordenamiento cronológico (más antiguos arriba, más recientes abajo)
   const filteredMessages = useMemo(() => {
-    const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
-    const cleanActive = (activeEmployee || '').toLowerCase().trim();
+    const cleanCurrent = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    const cleanActive = (activeEmployee || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
     return messages
       .filter(m => {
@@ -697,18 +697,18 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           return false;
         }
 
-        const author = (m.author || '').toLowerCase().trim();
-        const recipient = (m.recipient || '').toLowerCase().trim();
+        const author = (m.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+        const recipient = (m.recipient || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
         // 1. Mensaje de mí para el contacto activo
         const isFromCurrentToActive = 
           (author.includes(cleanCurrent) || cleanCurrent.includes(author)) &&
-          (recipient.includes(cleanActive) || cleanActive.includes(recipient));
+          (recipient.includes(cleanActive) || cleanActive.includes(recipient) || (isUserBoss(cleanActive) && recipient.includes('jefatura')));
 
         // 2. Mensaje del contacto activo para mí
         const isFromActiveToCurrent = 
           (author.includes(cleanActive) || cleanActive.includes(author)) &&
-          (recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient));
+          (recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient) || !recipient || (isUserBoss(cleanCurrent) && recipient.includes('jefatura')));
 
         if (!isFromCurrentToActive && !isFromActiveToCurrent) {
           return false;
@@ -1148,8 +1148,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             </div>
           ) : (
             filteredMessages.map((msg, index) => {
-              const cleanAuthor = (msg.author || '').toLowerCase().trim();
-              const cleanCurrent = (effectiveCurrentUser || '').toLowerCase().trim();
+              const cleanAuthor = (msg.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+              const cleanCurrent = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
               
               const isSystemNotification = (msg as any).tipo_alerta === 'gasto' || 
                                            (msg.mensaje || '').toLowerCase().includes('relación de gastos') || 
