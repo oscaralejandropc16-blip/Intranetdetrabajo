@@ -375,196 +375,196 @@ export default function ModuloRecibosHonorarios({
   }, [recibos]);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
       
       {/* HEADER SUPERIOR CON LOGO Y TÍTULO */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative overflow-hidden">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-600 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 shrink-0">
-            <Receipt className="w-7 h-7" />
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 sm:gap-5 relative overflow-hidden">
+        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-600 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 shrink-0">
+            <Receipt className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-700 border border-amber-500/20">
                 Román & Delgado • Facturación
               </span>
-              <span className="text-xs text-slate-400 font-medium">Sistema KANT</span>
+              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Sistema KANT</span>
             </div>
-            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1">
+            <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight mt-1 truncate">
               Recibos de Honorarios & Clientes
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">
+            <p className="text-xs sm:text-sm text-slate-500 font-medium line-clamp-2 sm:line-clamp-none">
               Emisión de comprobantes oficiales con correlativo automático, talón de cliente y modelos contractuales.
             </p>
           </div>
         </div>
 
-        {/* SELECTOR DE PESTAÑAS PRINCIPALES */}
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 rounded-2xl border border-slate-200 self-stretch md:self-auto">
+        {/* SELECTOR DE PESTAÑAS PRINCIPALES (RESPONSIVE TOUCH & SCROLL) */}
+        <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto scrollbar-none flex-nowrap shrink-0">
           <button
             type="button"
             onClick={() => setSubTab('emitir')}
-            className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
               subTab === 'emitir' 
                 ? 'bg-amber-500 text-slate-950 shadow-sm font-black' 
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Emitir Recibo</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('historial')}
-            className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
               subTab === 'historial' 
                 ? 'bg-slate-900 text-white shadow-sm font-black' 
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <Receipt className="w-4 h-4" />
+            <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Historial ({recibos.length})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSubTab('contratos')}
-            className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
+            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
               subTab === 'contratos' 
                 ? 'bg-blue-600 text-white shadow-sm font-black' 
                 : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
             }`}
           >
-            <FileText className="w-4 h-4" />
+            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Contratos & Modelos</span>
           </button>
         </div>
       </div>
 
-      {/* MÉTRICAS RÁPIDAS DE FACTURACIÓN */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
+      {/* MÉTRICAS RÁPIDAS DE FACTURACIÓN (RESPONSIVE FLUID GRID) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
             <span>Total Recaudado ($)</span>
-            <DollarSign className="w-4 h-4 text-emerald-600" />
+            <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900">
+          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
             $ {totals.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
           </p>
-          <span className="text-[10px] text-slate-400 font-medium">En divisas USD de contado / Zelle</span>
+          <span className="text-[10px] text-slate-400 font-medium block truncate">En divisas USD / Zelle</span>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
             <span>Total en Bolívares</span>
-            <Coins className="w-4 h-4 text-blue-600" />
+            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900">
+          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
             Bs. {totals.totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
           </p>
-          <span className="text-[10px] text-slate-400 font-medium">Pago Móvil y transferencias</span>
+          <span className="text-[10px] text-slate-400 font-medium block truncate">Pago Móvil y transferencias</span>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
             <span>Recibos Emitidos</span>
-            <Receipt className="w-4 h-4 text-amber-600" />
+            <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
           </div>
-          <p className="text-xl sm:text-2xl font-black text-slate-900">
+          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
             {totals.count}
           </p>
-          <span className="text-[10px] text-slate-400 font-medium">Comprobantes en el registro</span>
+          <span className="text-[10px] text-slate-400 font-medium block truncate">Comprobantes en registro</span>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-bold mb-1">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
+          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
             <span>Siguiente Correlativo</span>
-            <ShieldCheck className="w-4 h-4 text-purple-600" />
+            <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 shrink-0" />
           </div>
-          <p className="text-base sm:text-lg font-black text-amber-700 tracking-tight">
+          <p className="text-sm sm:text-lg font-black text-amber-700 tracking-tight font-mono truncate">
             {nextCorrelativo}
           </p>
-          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Secuencia automática activa
+          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 truncate">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+            Secuencia activa
           </span>
         </div>
       </div>
 
       {/* PESTAÑA 1: FORMULARIO DE EMISIÓN DE RECIBO */}
       {subTab === 'emitir' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm space-y-5 sm:space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-amber-600" />
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-amber-600 shrink-0" />
                 Emitir Nuevo Recibo Oficial
               </h3>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Llena los datos del cliente y el monto. El correlativo se asigna de forma automática y se descarga el PDF en dos talones.
               </p>
             </div>
 
-            <div className="flex items-center gap-2 bg-amber-50 border border-amber-200/80 px-3.5 py-1.5 rounded-xl">
+            <div className="flex items-center justify-between sm:justify-start gap-2 bg-amber-50 border border-amber-200/80 px-3 py-1.5 rounded-xl w-full sm:w-auto">
               <span className="text-xs font-bold text-amber-800">Nº Asignado:</span>
-              <span className="text-sm font-black text-amber-950 font-mono tracking-wider">{nextCorrelativo}</span>
+              <span className="text-xs sm:text-sm font-black text-amber-950 font-mono tracking-wider">{nextCorrelativo}</span>
             </div>
           </div>
 
-          <form onSubmit={handleEmitirRecibo} className="space-y-6">
+          <form onSubmit={handleEmitirRecibo} className="space-y-5 sm:space-y-6">
             
             {/* SELECTOR DE TIPO DE RECIBO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Honorarios Profesionales' }))}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3.5 ${
+                className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 sm:gap-3.5 active:scale-95 ${
                   formData.tipoRecibo === 'Honorarios Profesionales'
                     ? 'bg-amber-50/70 border-amber-400 ring-2 ring-amber-400/30'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                   formData.tipoRecibo === 'Honorarios Profesionales' ? 'bg-amber-500 text-slate-950' : 'bg-white text-slate-600 border border-slate-200'
                 }`}>
                   ⚖️
                 </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Honorarios Profesionales</h4>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Asesorías, consultas, redacción de documentos y juicios.</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Honorarios Profesionales</h4>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1 sm:line-clamp-none">Asesorías, consultas, redacción de documentos y juicios.</p>
                 </div>
               </button>
 
               <button
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Provisión de Gastos' }))}
-                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3.5 ${
+                className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 sm:gap-3.5 active:scale-95 ${
                   formData.tipoRecibo === 'Provisión de Gastos'
                     ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-400/30'
                     : 'bg-slate-50 border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
                   formData.tipoRecibo === 'Provisión de Gastos' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
                 }`}>
                   📑
                 </div>
-                <div>
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Provisión de Gastos</h4>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">Aranceles de tribunal, notaría, timbres fiscales y copias.</p>
+                <div className="min-w-0">
+                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Provisión de Gastos</h4>
+                  <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1 sm:line-clamp-none">Aranceles de tribunal, notaría, timbres fiscales y copias.</p>
                 </div>
               </button>
             </div>
 
             {/* SECCIÓN 1: DATOS DEL CLIENTE */}
-            <div className="bg-slate-50/60 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4">
+            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3.5 sm:space-y-4">
               <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-600" />
+                <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
                 1. Datos del Cliente y Asunto Legal
               </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 <div className="sm:col-span-2">
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Nombre Completo del Cliente *</label>
                   <input
@@ -573,7 +573,7 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: Aquiles Pérez / Inversiones Los Llanos C.A."
                     value={formData.clienteNombre}
                     onChange={(e) => setFormData(prev => ({ ...prev, clienteNombre: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
 
@@ -585,7 +585,7 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: V-14.892.450 / J-40182938-1"
                     value={formData.clienteCedula}
                     onChange={(e) => setFormData(prev => ({ ...prev, clienteCedula: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
 
@@ -596,12 +596,12 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: 0414-1234567"
                     value={formData.clienteTelefono}
                     onChange={(e) => setFormData(prev => ({ ...prev, clienteTelefono: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 pt-0.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Expediente o Caso Relacionado (Opcional)</label>
                   <input
@@ -609,7 +609,7 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: RD-J-2026-004 • Divorcio 148-A"
                     value={formData.expedienteRelacionado}
                     onChange={(e) => setFormData(prev => ({ ...prev, expedienteRelacionado: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
 
@@ -620,26 +620,26 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: cliente@correo.com"
                     value={formData.clienteEmail}
                     onChange={(e) => setFormData(prev => ({ ...prev, clienteEmail: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
               </div>
             </div>
 
             {/* SECCIÓN 2: DETALLES ECONÓMICOS Y FORMA DE PAGO */}
-            <div className="bg-slate-50/60 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-4">
+            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3.5 sm:space-y-4">
               <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+                <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                 2. Monto y Forma de Pago
               </h4>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Moneda *</label>
                   <select
                     value={formData.moneda}
                     onChange={(e) => setFormData(prev => ({ ...prev, moneda: e.target.value as 'USD' | 'VES' }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   >
                     <option value="USD">Dólares ($ USD)</option>
                     <option value="VES">Bolívares (Bs. VES)</option>
@@ -658,7 +658,7 @@ export default function ModuloRecibosHonorarios({
                       placeholder="100.00"
                       value={formData.monto}
                       onChange={(e) => setFormData(prev => ({ ...prev, monto: e.target.value }))}
-                      className="w-full pl-8 pr-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-black text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                      className="w-full pl-8 pr-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-black text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                     />
                   </div>
                 </div>
@@ -668,7 +668,7 @@ export default function ModuloRecibosHonorarios({
                   <select
                     value={formData.metodoPago}
                     onChange={(e) => setFormData(prev => ({ ...prev, metodoPago: e.target.value as MetodoPagoCliente }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   >
                     <option value="Efectivo Divisas ($)">Efectivo Divisas ($)</option>
                     <option value="Efectivo Bolívares (Bs.)">Efectivo Bolívares (Bs.)</option>
@@ -686,13 +686,13 @@ export default function ModuloRecibosHonorarios({
                     required
                     value={formData.fecha}
                     onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   />
                 </div>
               </div>
 
               {/* Fila extra: Banco y Referencia bancaria */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5 pt-0.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Banco / Cuenta de Destino</label>
                   <input
@@ -700,7 +700,7 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: Banesco / Banco de Venezuela / Zelle"
                     value={formData.bancoDestino}
                     onChange={(e) => setFormData(prev => ({ ...prev, bancoDestino: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   />
                 </div>
 
@@ -711,7 +711,7 @@ export default function ModuloRecibosHonorarios({
                     placeholder="Ej: Ref. 00892839 / Comprobante Zelle"
                     value={formData.referenciaPago}
                     onChange={(e) => setFormData(prev => ({ ...prev, referenciaPago: e.target.value }))}
-                    className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   />
                 </div>
 
@@ -723,7 +723,7 @@ export default function ModuloRecibosHonorarios({
                       placeholder="45.50"
                       value={formData.tasaBcv}
                       onChange={(e) => setFormData(prev => ({ ...prev, tasaBcv: e.target.value }))}
-                      className="w-full px-3.5 py-2 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                      className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
                     />
                   </div>
                 )}
@@ -731,39 +731,39 @@ export default function ModuloRecibosHonorarios({
             </div>
 
             {/* SECCIÓN 3: CONCEPTO DETALLADO Y SUGERENCIAS RÁPIDAS */}
-            <div className="bg-slate-50/60 rounded-2xl p-4 sm:p-5 border border-slate-200 space-y-3">
-              <div className="flex items-center justify-between">
+            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                 <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
                   3. Concepto Detallado del Pago
                 </label>
                 <span className="text-[10px] text-slate-400 font-medium">Se imprimirá textualmente en el recibo</span>
               </div>
 
-              {/* Botones de sugerencias rápidas */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1">
+              {/* Botones de sugerencias rápidas (Scrollable en móviles pequeños) */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
                   <Sparkles className="w-3 h-3 text-amber-500" /> Rápidas:
                 </span>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset('Abono a honorarios profesionales por redacción de documento y trámites legales.')}
-                  className="px-2.5 py-1 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
+                  className="px-2.5 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
                 >
-                  Abono Honorarios Redacción
+                  Abono Redacción
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset('Pago de honorarios profesionales por consulta legal personalizada y estudio de expediente.')}
-                  className="px-2.5 py-1 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
+                  className="px-2.5 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
                 >
-                  Consulta Legal y Asesoría
+                  Consulta Legal
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSelectPreset('Provisión de fondos para aranceles judiciales, timbres fiscales y copias certificadas en tribunal.')}
-                  className="px-2.5 py-1 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer"
+                  className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
                 >
-                  Gastos de Tribunal / Aranceles
+                  Gastos Tribunal / Copias
                 </button>
               </div>
 
@@ -772,13 +772,13 @@ export default function ModuloRecibosHonorarios({
                 placeholder="Describe el concepto de los honorarios o gastos recibidos..."
                 value={formData.concepto}
                 onChange={(e) => setFormData(prev => ({ ...prev, concepto: e.target.value }))}
-                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all leading-relaxed"
+                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all leading-relaxed"
               />
             </div>
 
             {/* BOTÓN DE ACCIÓN FINAL */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3.5 sm:gap-4">
+              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium w-full sm:w-auto justify-center sm:justify-start">
                 <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                 <span>Atendido por: <strong className="text-slate-800">{loggedUser}</strong></span>
               </div>
@@ -786,16 +786,16 @@ export default function ModuloRecibosHonorarios({
               <button
                 type="submit"
                 disabled={isSaving}
-                className="w-full sm:w-auto px-8 py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-slate-950 font-black text-sm rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:scale-[1.01] active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                className="w-full sm:w-auto px-6 sm:px-8 py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-slate-950 font-black text-sm rounded-xl sm:rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
               >
                 {isSaving ? (
                   <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                     <span>Emitiendo y Descargando PDF...</span>
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4" />
+                    <Download className="w-4 h-4 shrink-0" />
                     <span>Emitir Recibo Oficial y Descargar PDF</span>
                   </>
                 )}
@@ -808,28 +808,28 @@ export default function ModuloRecibosHonorarios({
 
       {/* PESTAÑA 2: HISTORIAL DE RECIBOS EMITIDOS */}
       {subTab === 'historial' && (
-        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-slate-100">
+        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3.5 sm:gap-4 pb-4 border-b border-slate-100">
             <div>
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-amber-600" />
+              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-amber-600 shrink-0" />
                 Historial de Recibos Emitidos
               </h3>
-              <p className="text-xs text-slate-500 font-medium">
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
                 Registro oficial con búsqueda por cliente, cédula o número de recibo correlativo.
               </p>
             </div>
 
-            {/* Buscador y Filtros */}
-            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full md:w-auto">
-              <div className="relative w-full sm:w-64">
+            {/* Buscador y Filtros Responsive */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+              <div className="relative flex-1 sm:w-60">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Buscar cliente, cédula o Nº..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-3.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                  className="w-full pl-9 pr-8 py-2 bg-slate-50 rounded-xl border border-slate-200 text-sm sm:text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all"
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
@@ -838,30 +838,32 @@ export default function ModuloRecibosHonorarios({
                 )}
               </div>
 
-              <select
-                value={filterMoneda}
-                onChange={(e) => setFilterMoneda(e.target.value as any)}
-                className="w-full sm:w-auto px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
-              >
-                <option value="todas">Moneda: Todas</option>
-                <option value="USD">Solo Dólares ($)</option>
-                <option value="VES">Solo Bolívares (Bs.)</option>
-              </select>
+              <div className="grid grid-cols-2 sm:flex items-center gap-2">
+                <select
+                  value={filterMoneda}
+                  onChange={(e) => setFilterMoneda(e.target.value as any)}
+                  className="w-full sm:w-auto px-2.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
+                >
+                  <option value="todas">Moneda: Todas</option>
+                  <option value="USD">Solo Dólares ($)</option>
+                  <option value="VES">Solo Bolívares (Bs.)</option>
+                </select>
 
-              <select
-                value={filterTipo}
-                onChange={(e) => setFilterTipo(e.target.value as any)}
-                className="w-full sm:w-auto px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
-              >
-                <option value="todos">Tipo: Todos</option>
-                <option value="Honorarios Profesionales">Honorarios</option>
-                <option value="Provisión de Gastos">Gastos</option>
-              </select>
+                <select
+                  value={filterTipo}
+                  onChange={(e) => setFilterTipo(e.target.value as any)}
+                  className="w-full sm:w-auto px-2.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
+                >
+                  <option value="todos">Tipo: Todos</option>
+                  <option value="Honorarios Profesionales">Honorarios</option>
+                  <option value="Provisión de Gastos">Gastos</option>
+                </select>
+              </div>
 
               <button
                 onClick={loadRecibos}
                 title="Actualizar lista"
-                className="p-2 text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer"
+                className="p-2 text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer self-end sm:self-auto"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-600' : ''}`} />
               </button>
@@ -869,7 +871,7 @@ export default function ModuloRecibosHonorarios({
           </div>
 
           {filteredRecibos.length === 0 ? (
-            <div className="py-16 text-center text-slate-400 space-y-3 bg-slate-50/60 rounded-3xl border border-slate-200/60">
+            <div className="py-12 sm:py-16 text-center text-slate-400 space-y-3 bg-slate-50/60 rounded-2xl border border-slate-200/60">
               <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mx-auto text-slate-400 shadow-xs border border-slate-200">
                 <Receipt className="w-6 h-6 text-amber-500" />
               </div>
@@ -885,27 +887,27 @@ export default function ModuloRecibosHonorarios({
                 return (
                   <div
                     key={recibo.id}
-                    className="p-4 sm:p-5 rounded-2xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs"
+                    className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3.5 sm:gap-4 shadow-2xs"
                   >
-                    <div className="flex items-start gap-3.5 min-w-0">
-                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 shadow-xs ${
+                    <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
+                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs ${
                         isUSD ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-blue-100 text-blue-800 border border-blue-300'
                       }`}>
                         {isUSD ? '$' : 'Bs'}
                       </div>
 
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
-                          <span className="font-mono text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
+                          <span className="font-mono text-[11px] sm:text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
                             {recibo.numeroRecibo}
                           </span>
-                          <span className="text-xs font-black text-slate-900 truncate">
+                          <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
                             {recibo.clienteNombre}
                           </span>
-                          <span className="text-[11px] text-slate-500 font-semibold">
+                          <span className="text-[10px] sm:text-[11px] text-slate-500 font-semibold">
                             ({recibo.clienteCedula})
                           </span>
-                          <span className={`px-2 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                             recibo.tipoRecibo === 'Honorarios Profesionales'
                               ? 'bg-amber-100 text-amber-800'
                               : 'bg-emerald-100 text-emerald-800'
@@ -914,18 +916,18 @@ export default function ModuloRecibosHonorarios({
                           </span>
                         </div>
 
-                        <p className="text-xs text-slate-600 line-clamp-1 mb-1 font-normal">
+                        <p className="text-xs text-slate-600 line-clamp-2 sm:line-clamp-1 mb-1 font-normal">
                           {recibo.concepto}
                         </p>
 
-                        <div className="flex items-center gap-3 text-[11px] text-slate-400 font-medium flex-wrap">
+                        <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-slate-400 font-medium flex-wrap">
                           <span>Fecha: <strong className="text-slate-600">{recibo.fecha}</strong></span>
                           <span>•</span>
                           <span>Método: <strong className="text-slate-600">{recibo.metodoPago}</strong></span>
                           {recibo.referenciaPago && (
                             <>
                               <span>•</span>
-                              <span>Ref: <strong className="text-slate-600">{recibo.referenciaPago}</strong></span>
+                              <span className="truncate max-w-[120px] sm:max-w-none">Ref: <strong className="text-slate-600">{recibo.referenciaPago}</strong></span>
                             </>
                           )}
                           <span>•</span>
@@ -934,7 +936,7 @@ export default function ModuloRecibosHonorarios({
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 pt-2.5 md:pt-0 border-t md:border-t-0 border-slate-100">
                       <div className="text-left md:text-right">
                         <span className="text-base sm:text-lg font-black text-slate-900 block">
                           {isUSD ? `$ ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` : `Bs. ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`}
@@ -950,27 +952,27 @@ export default function ModuloRecibosHonorarios({
                         <button
                           onClick={() => exportarReciboClientePDF(recibo)}
                           title="Descargar PDF Oficial"
-                          className="p-2.5 rounded-xl bg-slate-100 hover:bg-amber-500 hover:text-slate-950 text-slate-700 transition-all cursor-pointer font-bold text-xs flex items-center gap-1 shadow-2xs"
+                          className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-amber-500 hover:text-slate-950 text-slate-700 transition-all cursor-pointer font-bold text-xs flex items-center gap-1 shadow-2xs active:scale-95"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           <span className="hidden sm:inline">PDF</span>
                         </button>
 
                         <button
                           onClick={() => handleShareWhatsApp(recibo)}
                           title="Compartir por WhatsApp"
-                          className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer"
+                          className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer active:scale-95"
                         >
-                          <Share2 className="w-4 h-4" />
+                          <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
 
                         {isJefatura && (
                           <button
                             onClick={() => handleAnular(recibo)}
                             title="Anular / Eliminar recibo"
-                            className="p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all cursor-pointer"
+                            className="p-2 sm:p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all cursor-pointer active:scale-95"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           </button>
                         )}
                       </div>
@@ -985,14 +987,14 @@ export default function ModuloRecibosHonorarios({
 
       {/* PESTAÑA 3: MODELOS DE CONTRATOS Y ANEXOS DE GASTOS */}
       {subTab === 'contratos' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           
           {/* FORMATO 1: CONTRATO DE SERVICIOS PROFESIONALES */}
-          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-3 gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold shrink-0">
                     ⚖️
                   </div>
                   <div>
@@ -1003,14 +1005,14 @@ export default function ModuloRecibosHonorarios({
 
                 <button
                   onClick={() => handleCopyTemplate(CONTRATO_TEMPLATE, true)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto"
                 >
-                  {copiedContract ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedContract ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
                   <span>{copiedContract ? '¡Copiado!' : 'Copiar Texto'}</span>
                 </button>
               </div>
 
-              <div className="bg-slate-950 text-slate-200 p-4 rounded-2xl font-mono text-[11px] leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
+              <div className="bg-slate-950 text-slate-200 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-mono text-xs sm:text-[11px] leading-relaxed max-h-72 sm:max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
                 {CONTRATO_TEMPLATE}
               </div>
             </div>
@@ -1021,11 +1023,11 @@ export default function ModuloRecibosHonorarios({
           </div>
 
           {/* FORMATO 2: RECIBO Y ANEXO DE GASTOS JUDICIALES */}
-          <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
+          <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 border border-slate-200 shadow-sm space-y-4 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 mb-3 gap-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0">
                     📑
                   </div>
                   <div>
@@ -1036,14 +1038,14 @@ export default function ModuloRecibosHonorarios({
 
                 <button
                   onClick={() => handleCopyTemplate(ANEXO_GASTOS_TEMPLATE, false)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-emerald-600 hover:text-white text-slate-700 text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 w-full sm:w-auto"
                 >
-                  {copiedGastos ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedGastos ? <Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
                   <span>{copiedGastos ? '¡Copiado!' : 'Copiar Texto'}</span>
                 </button>
               </div>
 
-              <div className="bg-slate-950 text-slate-200 p-4 rounded-2xl font-mono text-[11px] leading-relaxed max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
+              <div className="bg-slate-950 text-slate-200 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl font-mono text-xs sm:text-[11px] leading-relaxed max-h-72 sm:max-h-96 overflow-y-auto whitespace-pre-wrap select-all border border-slate-800">
                 {ANEXO_GASTOS_TEMPLATE}
               </div>
             </div>
