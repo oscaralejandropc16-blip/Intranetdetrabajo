@@ -190,13 +190,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     if (initialEmployee && !curClean.includes(initialEmployee.toLowerCase().trim())) {
       return initialEmployee;
     }
-    // Si no es jefatura (es empleado como Mariela Isabel, Héctor, etc.), su interlocutor por defecto es Jefatura
-    if (!isJefatura) {
-      return 'Luis Delgado';
-    }
-    if (curClean.includes('victor')) return 'Luis Delgado';
-    if (curClean.includes('luis')) return 'Victor Roman';
-    return 'Carmen Luisa';
+    // Por defecto ningún chat abierto: el usuario debe seleccionar de la lista a quién escribirle
+    return '';
   });
 
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
@@ -235,6 +230,10 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   // Función para obtener la lista de mensajes del backend y sincronizar localStorage
   const fetchMessages = useCallback(async (silent = true) => {
+    if (!activeEmployee) {
+      setMessages([]);
+      return;
+    }
     if (!silent) setIsRefreshing(true);
     try {
       // 1. Obtener mensajes del servidor para la conversación entre el usuario actual y el contacto seleccionado
@@ -407,19 +406,20 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       if (Array.isArray(res.data) && res.data.length > 0) {
         setConversations(res.data);
 
-        // Validar que activeEmployee esté dentro de las conversaciones disponibles
+        // Si el usuario ya tenía una conversación activa abierta, verificar que siga en la lista
         const curActive = (activeEmployeeRef.current || '').toLowerCase().trim();
-        const exists = res.data.some((c: any) => (c.employee || '').toLowerCase().trim() === curActive);
-        if (!exists) {
-          const firstValid = res.data[0]?.employee || (!isJefatura ? 'Luis Delgado' : 'Carmen Luisa');
-          setActiveEmployee(firstValid);
-          activeEmployeeRef.current = firstValid;
+        if (curActive) {
+          const exists = res.data.some((c: any) => (c.employee || '').toLowerCase().trim() === curActive);
+          if (!exists) {
+            setActiveEmployee('');
+            activeEmployeeRef.current = '';
+          }
         }
       }
     } catch (e) {
       // ignore
     }
-  }, [effectiveCurrentUser, isJefatura]);
+  }, [effectiveCurrentUser]);
 
   // Marcar automáticamente como leídos los mensajes que veo en pantalla
   const markAsRead = useCallback(async () => {
@@ -898,13 +898,17 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#0b141a] relative ${!activeEmployee ? 'hidden md:flex' : 'flex'}`}>
         {!activeEmployee ? (
           <div className="flex-1 hidden md:flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-[#0b141a]">
-            <div className="w-16 h-16 rounded-3xl bg-[#111b21] border border-white/10 flex items-center justify-center mb-4 text-emerald-400 shadow-xl">
-              <MessageSquare className="w-8 h-8" />
+            <div className="w-20 h-20 rounded-3xl bg-[#111b21] border border-white/10 flex items-center justify-center mb-5 text-emerald-400 shadow-2xl ring-1 ring-emerald-500/20">
+              <MessageSquare className="w-10 h-10" />
             </div>
-            <h3 className="text-base font-bold text-white mb-1">Directorio KANT</h3>
-            <p className="text-xs text-slate-400 max-w-xs">
-              Selecciona una conversación del directorio para interactuar en tiempo real.
+            <h3 className="text-lg font-bold text-white mb-2 tracking-tight">Directorio KANT</h3>
+            <p className="text-xs text-slate-400 max-w-sm leading-relaxed mb-6 font-normal">
+              Selecciona una conversación del panel izquierdo para comenzar a chatear en tiempo real con Jefatura o tu equipo.
             </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#182229] border border-white/5 text-[11px] text-amber-300/80 shadow-md">
+              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Canal oficial confidencial de Román & Delgado • Encriptación interna</span>
+            </div>
           </div>
         ) : (
           <>
