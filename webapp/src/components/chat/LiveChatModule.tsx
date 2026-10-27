@@ -112,7 +112,7 @@ export const playNotificationSound = () => {
 export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   isJefatura,
   currentUser,
-  initialEmployee = 'Carmen Luisa',
+  initialEmployee,
   onUnreadCountChange,
   className = '',
   compactMode = false
@@ -180,19 +180,23 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }
   ];
 
-  const effectiveCurrentUser = currentUser || localStorage.getItem('rd_user_name') || (isJefatura ? 'Victor Roman' : 'Carmen Luisa');
+  const effectiveCurrentUser = currentUser || localStorage.getItem('rd_user_name') || (isJefatura ? 'Victor Roman' : 'Mariela Isabel');
 
   // Inicializar contacto activo asegurando que no sea el mismo usuario
   const [conversations, setConversations] = useState<ConversationItem[]>(DEFAULT_CONTACTS);
 
   const [activeEmployee, setActiveEmployee] = useState<string>(() => {
-    const curClean = (effectiveCurrentUser || '').toLowerCase();
-    if (initialEmployee && !curClean.includes((initialEmployee || '').toLowerCase())) {
+    const curClean = (effectiveCurrentUser || '').toLowerCase().trim();
+    if (initialEmployee && !curClean.includes(initialEmployee.toLowerCase().trim())) {
       return initialEmployee;
     }
+    // Si no es jefatura (es empleado como Mariela Isabel, Héctor, etc.), su interlocutor por defecto es Jefatura
+    if (!isJefatura) {
+      return 'Luis Delgado';
+    }
     if (curClean.includes('victor')) return 'Luis Delgado';
-    if (curClean.includes('luis') && !curClean.includes('carmen')) return 'Victor Roman';
-    return 'Luis Delgado';
+    if (curClean.includes('luis')) return 'Victor Roman';
+    return 'Carmen Luisa';
   });
 
   const [messages, setMessages] = useState<LiveChatMessage[]>([]);
@@ -209,14 +213,16 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   });
 
   const chatContainerRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeEmployeeRef = useRef<string>(activeEmployee);
   const initialFetchDoneRef = useRef(false);
   const prevMessagesCountRef = useRef(0);
   const messagesRef = useRef<LiveChatMessage[]>([]);
   messagesRef.current = messages;
+  const isUserTouchingRef = useRef(false);
+  const isUserScrolledUpRef = useRef(false);
 
   const scrollToBottom = useCallback((smooth = false) => {
+    if (isUserTouchingRef.current) return;
     if (chatContainerRef.current) {
       const el = chatContainerRef.current;
       if (smooth) {
@@ -224,14 +230,6 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       } else {
         el.scrollTop = el.scrollHeight;
       }
-    }
-    if (messagesEndRef.current) {
-      try {
-        messagesEndRef.current.scrollIntoView({
-          behavior: smooth ? 'smooth' : 'auto',
-          block: 'end'
-        });
-      } catch {}
     }
   }, []);
 
@@ -372,6 +370,13 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       initialFetchDoneRef.current = true;
       setMessages(markedCombined);
 
+      // Auto scroll inmediato al cargar mensajes si el usuario no está leyendo arriba
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current && !isUserTouchingRef.current && !isUserScrolledUpRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      });
+
       // Calcular no leídos restantes
       let unread = 0;
       markedCombined.forEach(m => {
@@ -401,11 +406,20 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       });
       if (Array.isArray(res.data) && res.data.length > 0) {
         setConversations(res.data);
+
+        // Validar que activeEmployee esté dentro de las conversaciones disponibles
+        const curActive = (activeEmployeeRef.current || '').toLowerCase().trim();
+        const exists = res.data.some((c: any) => (c.employee || '').toLowerCase().trim() === curActive);
+        if (!exists) {
+          const firstValid = res.data[0]?.employee || (!isJefatura ? 'Luis Delgado' : 'Carmen Luisa');
+          setActiveEmployee(firstValid);
+          activeEmployeeRef.current = firstValid;
+        }
       }
     } catch (e) {
       // ignore
     }
-  }, [effectiveCurrentUser]);
+  }, [effectiveCurrentUser, isJefatura]);
 
   // Marcar automáticamente como leídos los mensajes que veo en pantalla
   const markAsRead = useCallback(async () => {
@@ -686,37 +700,43 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       });
   }, [activeEmployee, effectiveCurrentUser, filterMode, messages, searchQuery]);
 
-  // Scroll automático robusto al fondo (al último mensaje que llegó, tipo WhatsApp)
+  // Scroll automático fluido al fondo al cambiar de conversación o recibir mensajes
   useEffect(() => {
     activeEmployeeRef.current = activeEmployee;
-    const doScroll = () => scrollToBottom(false);
+    isUserScrolledUpRef.current = false;
 
-    doScroll();
-    const rAF = requestAnimationFrame(doScroll);
-    const t1 = setTimeout(doScroll, 40);
-    const t2 = setTimeout(doScroll, 120);
-    const t3 = setTimeout(doScroll, 300);
-    const t4 = setTimeout(doScroll, 600);
+    // Ejecutar scroll inmediato en el siguiente frame de renderizado
+    const rAF = requestAnimationFrame(() => {
+      if (chatContainerRef.current && !isUserTouchingRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    });
+
+    // Un único respaldo breve a 60ms para cuando las fuentes o layout terminen de asentarse
+    const t = setTimeout(() => {
+      if (chatContainerRef.current && !isUserTouchingRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    }, 60);
 
     return () => {
       cancelAnimationFrame(rAF);
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-      clearTimeout(t4);
+      clearTimeout(t);
     };
-  }, [activeEmployee, filteredMessages.length, scrollToBottom]);
+  }, [activeEmployee, filteredMessages.length]);
 
-  // Asegurar scroll al fondo al montar o cuando el contenedor toma sus dimensiones reales en pantalla
+  // Asegurar scroll al fondo al montar o cuando el contenedor cambia dimensiones
   useEffect(() => {
     const el = chatContainerRef.current;
     if (!el) return;
     const ro = new ResizeObserver(() => {
-      scrollToBottom(false);
+      if (!isUserTouchingRef.current && !isUserScrolledUpRef.current && el) {
+        el.scrollTop = el.scrollHeight;
+      }
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [scrollToBottom]);
+  }, []);
 
   // Presets de respuestas rápidas
   const quickPresets = isJefatura ? [
@@ -755,8 +775,11 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   return (
     <div 
-      className={`bg-[#0b141a] rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white ${className}`} 
-      style={{ height: compactMode ? '580px' : 'calc(100vh - 210px)', minHeight: '520px', maxHeight: '820px' }}
+      className={`bg-[#0b141a] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white h-[calc(100dvh-175px)] sm:h-[calc(100vh-210px)] min-h-[460px] md:min-h-[520px] max-h-[850px] ${className}`} 
+      style={{ 
+        height: compactMode ? '580px' : undefined,
+        minHeight: compactMode ? '580px' : undefined
+      }}
     >
       
       {/* SIDEBAR DE CONVERSACIONES / DIRECTORIO DE LA FIRMA */}
@@ -873,126 +896,158 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
       {/* ÁREA PRINCIPAL DE CHAT (VENTANA DE CONVERSACIÓN) */}
       <div className={`flex-1 flex flex-col h-full overflow-hidden bg-[#0b141a] relative ${!activeEmployee ? 'hidden md:flex' : 'flex'}`}>
-        
-        {/* WHATSAPP-STYLE HEADER */}
-        <div className="bg-[#1f2c34] px-4 py-3 sm:px-5 sm:py-3.5 border-b border-white/5 flex items-center justify-between gap-3 text-white">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Back button for mobile */}
-            <button 
-              onClick={() => setActiveEmployee('')}
-              className="md:hidden p-1.5 -ml-2 text-slate-300 hover:text-white rounded-full hover:bg-white/5 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="relative shrink-0">
-              <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-emerald-400/30">
-                {isUserBoss(activeEmployee) ? <ShieldCheck className="w-5 h-5" /> : <User className="w-5 h-5" />}
-              </div>
-              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-400 border-2 border-[#1f2c34] rounded-full"></span>
+        {!activeEmployee ? (
+          <div className="flex-1 hidden md:flex flex-col items-center justify-center p-8 text-center text-slate-400 bg-[#0b141a]">
+            <div className="w-16 h-16 rounded-3xl bg-[#111b21] border border-white/10 flex items-center justify-center mb-4 text-emerald-400 shadow-xl">
+              <MessageSquare className="w-8 h-8" />
             </div>
-
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-sm sm:text-base font-bold text-white truncate">
-                  {activeEmployee}
-                </h3>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  isUserBoss(activeEmployee) 
-                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                }`}>
-                  {isUserBoss(activeEmployee) ? 'Jefatura / Socio' : 'Equipo'}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-emerald-300 font-medium">En línea en la Intranet</span>
-              </p>
-            </div>
+            <h3 className="text-base font-bold text-white mb-1">Directorio KANT</h3>
+            <p className="text-xs text-slate-400 max-w-xs">
+              Selecciona una conversación del directorio para interactuar en tiempo real.
+            </p>
           </div>
+        ) : (
+          <>
+            {/* WHATSAPP-STYLE HEADER */}
+            <div className="bg-[#1f2c34] px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-white/5 flex items-center justify-between gap-3 text-white">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                {/* Back button for mobile */}
+                <button 
+                  onClick={() => setActiveEmployee('')}
+                  className="md:hidden p-1.5 -ml-1 text-slate-300 hover:text-white rounded-full hover:bg-white/5 transition-colors cursor-pointer"
+                  title="Volver al Directorio"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div className="relative shrink-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md ring-2 ring-emerald-400/30">
+                    {isUserBoss(activeEmployee) ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  </div>
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-400 border-2 border-[#1f2c34] rounded-full"></span>
+                </div>
 
-          {/* Botones de Control y Filtros */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            {/* Segmented Filter Pills */}
-            <div className="hidden sm:flex items-center bg-[#111b21] p-0.5 rounded-xl border border-white/5 text-[11px]">
-              <button
-                type="button"
-                onClick={() => setFilterMode('todos')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  filterMode === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Todos ({filteredMessages.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('pendientes')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  filterMode === 'pendientes' ? 'bg-[#2a3942] text-amber-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Pendientes ({pendingCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setFilterMode('atendidos')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  filterMode === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Atendidos ({attendedCount})
-              </button>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    <h3 className="text-xs sm:text-base font-bold text-white truncate max-w-[140px] sm:max-w-xs">
+                      {activeEmployee}
+                    </h3>
+                    <span className={`px-2 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider ${
+                      isUserBoss(activeEmployee) 
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}>
+                      {isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo'}
+                    </span>
+                  </div>
+                  <p className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-emerald-300 font-medium">En línea en la Intranet</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de Control y Filtros */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                {/* Segmented Filter Pills */}
+                <div className="hidden sm:flex items-center bg-[#111b21] p-0.5 rounded-xl border border-white/5 text-[11px]">
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('todos')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      filterMode === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Todos ({filteredMessages.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('pendientes')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                      filterMode === 'pendientes' ? 'bg-[#2a3942] text-amber-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Pendientes ({pendingCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilterMode('atendidos')}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                      filterMode === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    Atendidos ({attendedCount})
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setSearchQuery(searchQuery ? '' : ' ')}
+                  title="Buscar en mensajes"
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${
+                    searchQuery ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                  }`}
+                >
+                  <Search className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => fetchMessages(false)}
+                  title="Sincronizar mensajes"
+                  className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={() => setSearchQuery(searchQuery ? '' : ' ')}
-              title="Buscar en mensajes"
-              className={`p-2 rounded-full transition-colors cursor-pointer ${
-                searchQuery ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <Search className="w-4 h-4" />
-            </button>
-
-            <button
-              onClick={() => fetchMessages(false)}
-              title="Sincronizar mensajes"
-              className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-full transition-colors cursor-pointer"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-emerald-400' : ''}`} />
-            </button>
-          </div>
-        </div>
-
-        {/* SEARCH BAR ACTIVA */}
-        {searchQuery !== '' && (
-          <div className="bg-[#111b21] px-4 py-2 border-b border-white/5 flex items-center gap-2 animate-in slide-in-from-top-1">
-            <Search className="w-3.5 h-3.5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar en esta conversación..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent text-xs text-white placeholder-slate-500 outline-none"
-            />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white text-xs">
-                <X className="w-3.5 h-3.5" />
-              </button>
+            {/* SEARCH BAR ACTIVA */}
+            {searchQuery !== '' && (
+              <div className="bg-[#111b21] px-4 py-2 border-b border-white/5 flex items-center gap-2 animate-in slide-in-from-top-1">
+                <Search className="w-3.5 h-3.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar en esta conversación..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-transparent text-xs text-white placeholder-slate-500 outline-none"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-white text-xs">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             )}
-          </div>
-        )}
 
-        {/* CHAT MESSAGES BODY */}
-        <div 
-          ref={chatContainerRef}
-          className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 relative"
-          style={{
-            backgroundColor: '#0b141a',
-            backgroundImage: 'radial-gradient(#1f2c34 1px, transparent 1px)',
-            backgroundSize: '20px 20px'
-          }}
-        >
+            {/* CHAT MESSAGES BODY */}
+            <div 
+              ref={chatContainerRef}
+              onScroll={() => {
+                const el = chatContainerRef.current;
+                if (!el) return;
+                const dist = el.scrollHeight - el.scrollTop - el.clientHeight;
+                isUserScrolledUpRef.current = dist > 120;
+              }}
+              onTouchStart={() => {
+                isUserTouchingRef.current = true;
+              }}
+              onTouchEnd={() => {
+                setTimeout(() => {
+                  isUserTouchingRef.current = false;
+                }, 120);
+              }}
+              onTouchCancel={() => {
+                isUserTouchingRef.current = false;
+              }}
+              className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-3 relative overscroll-contain"
+              style={{
+                backgroundColor: '#0b141a',
+                backgroundImage: 'radial-gradient(#1f2c34 1px, transparent 1px)',
+                backgroundSize: '20px 20px',
+                WebkitOverflowScrolling: 'touch',
+                overscrollBehaviorY: 'contain',
+                touchAction: 'pan-y'
+              }}
+            >
           {/* Security & Confidentiality notice */}
           <div className="flex justify-center">
             <div className="bg-[#182229] border border-white/5 rounded-xl px-3.5 py-1.5 text-center shadow-sm max-w-sm">
@@ -1157,8 +1212,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               );
             })
           )}
-          {/* Ancla para auto-scroll suave al último mensaje */}
-          <div ref={messagesEndRef} className="h-1 w-full pointer-events-none" />
+          {/* Espaciador inferior */}
+          <div className="h-1 w-full pointer-events-none" />
         </div>
 
         {/* QUICK REPLY PRESETS */}
@@ -1181,7 +1236,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         <div className="bg-[#1f2c34] p-3 sm:p-3.5 border-t border-white/5 flex items-center gap-2">
           <input
             type="text"
-            placeholder={isJefatura ? `Escribe un mensaje a ${activeEmployee}...` : "Escribe tu mensaje a Jefatura..."}
+            placeholder={activeEmployee ? `Escribe un mensaje a ${activeEmployee}...` : "Escribe tu mensaje..."}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => {
@@ -1206,6 +1261,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             <Send className="w-4 h-4 ml-0.5" />
           </button>
         </div>
+          </>
+        )}
 
       </div>
 

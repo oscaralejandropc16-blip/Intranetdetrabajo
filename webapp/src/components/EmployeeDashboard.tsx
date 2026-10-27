@@ -1316,7 +1316,7 @@ export default function EmployeeDashboard() {
 
   const fetchUnreadChatCount = useCallback(async () => {
     try {
-      const curUser = (localStorage.getItem('rd_user_name') || 'Carmen Luisa').toLowerCase().trim();
+      const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
       const { data, error } = await supabase
         .from('chat_messages')
         .select('id, sender_name, recipient_name, mensaje, created_at, leido')
@@ -1354,7 +1354,7 @@ export default function EmployeeDashboard() {
           const newMsg = payload.new;
           if (!newMsg) return;
 
-          const curUser = (localStorage.getItem('rd_user_name') || 'Carmen Luisa').toLowerCase().trim();
+          const curUser = (currentUserName || localStorage.getItem('rd_user_name') || '').toLowerCase().trim();
           const sender = (newMsg.sender_name || '').toLowerCase().trim();
           const recipient = (newMsg.recipient_name || '').toLowerCase().trim();
 
@@ -2221,7 +2221,7 @@ export default function EmployeeDashboard() {
           <div className="animate-in fade-in duration-200">
             <LiveChatModule
               isJefatura={false}
-              currentUser={localStorage.getItem('rd_user_name') || 'Carmen Luisa'}
+              currentUser={currentUserName || localStorage.getItem('rd_user_name') || ''}
               onUnreadCountChange={setUnreadChatLive}
             />
           </div>
