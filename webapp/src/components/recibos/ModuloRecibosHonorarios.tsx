@@ -476,6 +476,9 @@ export default function ModuloRecibosHonorarios({
     setFormData(prev => ({ ...prev, concepto: conceptoText }));
   };
 
+  // Forma de pago en efectivo físico (divisas o bolívares)
+  const isEfectivo = formData.metodoPago === 'Efectivo Divisas ($)' || formData.metodoPago === 'Efectivo Bolívares (Bs.)';
+
   // Guardar y emitir recibo
   const handleEmitirRecibo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -521,8 +524,8 @@ export default function ModuloRecibosHonorarios({
         tasaBcv: tasaNum,
         montoEquivalente: (formData.moneda === 'USD' && tasaNum) ? montoNum * tasaNum : undefined,
         metodoPago: formData.metodoPago,
-        bancoDestino: formData.bancoDestino.trim() || undefined,
-        referenciaPago: formData.referenciaPago.trim() || undefined,
+        bancoDestino: isEfectivo ? undefined : (formData.bancoDestino.trim() || undefined),
+        referenciaPago: isEfectivo ? undefined : (formData.referenciaPago.trim() || undefined),
         fecha: formData.fecha || now.toISOString().split('T')[0],
         hora: horaStr,
         abogadoReceptor: loggedUser,
@@ -997,11 +1000,17 @@ export default function ModuloRecibosHonorarios({
                   <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        moneda: 'USD',
-                        metodoPago: prev.metodoPago === 'Pago Móvil' || prev.metodoPago === 'Efectivo Bolívares (Bs.)' ? 'Efectivo Divisas ($)' : prev.metodoPago
-                      }))}
+                      onClick={() => setFormData(prev => {
+                        const currentMetodo = prev.metodoPago as string;
+                        const newMetodo: MetodoPagoCliente = currentMetodo === 'Pago Móvil' || currentMetodo === 'Efectivo Bolívares (Bs.)' ? 'Efectivo Divisas ($)' : prev.metodoPago;
+                        const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                        return {
+                          ...prev, 
+                          moneda: 'USD',
+                          metodoPago: newMetodo,
+                          ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                        };
+                      })}
                       className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         formData.moneda === 'USD'
                           ? 'bg-amber-500 text-slate-950 shadow-xs'
@@ -1013,11 +1022,17 @@ export default function ModuloRecibosHonorarios({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        moneda: 'VES',
-                        metodoPago: prev.metodoPago === 'Efectivo Divisas ($)' || prev.metodoPago === 'Zelle' ? 'Pago Móvil' : prev.metodoPago
-                      }))}
+                      onClick={() => setFormData(prev => {
+                        const currentMetodo = prev.metodoPago as string;
+                        const newMetodo: MetodoPagoCliente = currentMetodo === 'Efectivo Divisas ($)' || currentMetodo === 'Zelle' ? 'Pago Móvil' : prev.metodoPago;
+                        const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                        return {
+                          ...prev, 
+                          moneda: 'VES',
+                          metodoPago: newMetodo,
+                          ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                        };
+                      })}
                       className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
                         formData.moneda === 'VES'
                           ? 'bg-blue-600 text-white shadow-xs'
@@ -1051,7 +1066,15 @@ export default function ModuloRecibosHonorarios({
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Forma de Pago *</label>
                   <select
                     value={formData.metodoPago}
-                    onChange={(e) => setFormData(prev => ({ ...prev, metodoPago: e.target.value as MetodoPagoCliente }))}
+                    onChange={(e) => {
+                      const newMetodo = e.target.value as MetodoPagoCliente;
+                      const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        metodoPago: newMetodo,
+                        ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                      }));
+                    }}
                     className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   >
                     {formData.moneda === 'USD' ? (
@@ -1084,29 +1107,50 @@ export default function ModuloRecibosHonorarios({
                 </div>
               </div>
 
-              {/* Fila extra: Banco y Referencia bancaria */}
+              {/* Fila extra: Banco y Referencia bancaria (se oculta automáticamente en pagos en efectivo) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5 pt-0.5">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Banco / Cuenta de Destino</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Banesco / Banco de Venezuela / Zelle"
-                    value={formData.bancoDestino}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bancoDestino: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                  />
-                </div>
+                {isEfectivo ? (
+                  <div className={`col-span-1 ${formData.moneda === 'USD' ? 'sm:col-span-2' : 'sm:col-span-2 lg:col-span-3'} p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center gap-3 text-xs text-emerald-950 shadow-2xs`}>
+                    <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200/80 flex items-center justify-center shrink-0 text-lg shadow-2xs">
+                      💵
+                    </div>
+                    <div>
+                      <p className="font-bold text-emerald-950 flex items-center gap-2">
+                        <span>Pago en Efectivo Físico</span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 uppercase tracking-wide">
+                          {formData.moneda === 'USD' ? 'Divisas ($)' : 'Bolívares (Bs.)'}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-emerald-800/90 mt-0.5 font-medium">
+                        Recepción directa en físico. No requiere banco de destino ni número de referencia bancaria.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Banco / Cuenta de Destino</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Banesco / Banco de Venezuela / Zelle"
+                        value={formData.bancoDestino}
+                        onChange={(e) => setFormData(prev => ({ ...prev, bancoDestino: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                      />
+                    </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Nº Referencia / Comprobante</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: Ref. 00892839 / Comprobante Zelle"
-                    value={formData.referenciaPago}
-                    onChange={(e) => setFormData(prev => ({ ...prev, referenciaPago: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                  />
-                </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Nº Referencia / Comprobante</label>
+                      <input
+                        type="text"
+                        placeholder="Ej: Ref. 00892839 / Comprobante Zelle"
+                        value={formData.referenciaPago}
+                        onChange={(e) => setFormData(prev => ({ ...prev, referenciaPago: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                      />
+                    </div>
+                  </>
+                )}
 
                 {formData.moneda === 'USD' && (
                   <div>
