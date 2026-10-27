@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Receipt, 
   Plus, 
@@ -22,7 +22,8 @@ import {
   supabaseGetRecibosClientes, 
   supabaseSaveReciboCliente, 
   supabaseDeleteReciboCliente, 
-  supabaseGetNextCorrelativoRecibo
+  supabaseGetNextCorrelativoRecibo,
+  supabaseGetExpedientes
 } from '../../lib/supabaseAdapter';
 import { exportarReciboClientePDF } from '../../lib/pdfExportReciboCliente';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -30,6 +31,7 @@ import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 interface ModuloRecibosHonorariosProps {
   currentUser?: string;
   isJefatura?: boolean;
+  globalExpedientes?: any[];
 }
 
 const CONTRATO_TEMPLATE = `CONTRATO DE PRESTACIÓN DE SERVICIOS PROFESIONALES LEGALES
@@ -92,9 +94,20 @@ RECIBIDO POR EL BUFETE:                      ENTREGADO CONFORME POR EL CLIENTE:
 Firma: ________________________              Firma: __________________________
 Abg. Responsable: _____________              C.I. V-__________________________`;
 
+const getInitialBcvRate = (): string => {
+  try {
+    const saved = localStorage.getItem('rd_bcv_usd') || localStorage.getItem('rd_live_bcv_rate');
+    if (saved && !isNaN(parseFloat(saved)) && parseFloat(saved) > 0) {
+      return parseFloat(saved).toFixed(2);
+    }
+  } catch {}
+  return '887.30';
+};
+
 export default function ModuloRecibosHonorarios({
   currentUser,
-  isJefatura = false
+  isJefatura = false,
+  globalExpedientes = []
 }: ModuloRecibosHonorariosProps) {
   const loggedUser = currentUser || localStorage.getItem('rd_user_name') || 'Román & Delgado';
 
@@ -106,6 +119,16 @@ export default function ModuloRecibosHonorarios({
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [nextCorrelativo, setNextCorrelativo] = useState<string>('RD-REC-2026-001');
+
+  // Expedientes de la firma
+  const [expedientesList, setExpedientesList] = useState<any[]>(() => {
+    if (Array.isArray(globalExpedientes) && globalExpedientes.length > 0) {
+      return globalExpedientes;
+    }
+    return [];
+  });
+  const [isCustomExpediente, setIsCustomExpediente] = useState(false);
+  const [loadingBcv, setLoadingBcv] = useState(false);
 
   // Filtros de búsqueda
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,7 +146,7 @@ export default function ModuloRecibosHonorarios({
     concepto: '',
     monto: '',
     moneda: 'USD' as 'USD' | 'VES',
-    tasaBcv: '45.50',
+    tasaBcv: getInitialBcvRate(),
     metodoPago: 'Efectivo Divisas ($)' as MetodoPagoCliente,
     bancoDestino: '',
     referenciaPago: '',
@@ -165,9 +188,84 @@ export default function ModuloRecibosHonorarios({
     }
   };
 
+  // Refrescar Tasa Oficial BCV en vivo
+  const refreshLiveBcv = useCallback(async () => {
+    setLoadingBcv(true);
+    try {
+      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.promedio) {
+          const rateStr = Number(data.promedio).toFixed(2);
+          setFormData(prev => ({ ...prev, tasaBcv: rateStr }));
+          try {
+            localStorage.setItem('rd_bcv_usd', data.promedio.toString());
+            localStorage.setItem('rd_live_bcv_rate', data.promedio.toString());
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.warn('Error obteniendo tasa BCV en vivo:', e);
+    } finally {
+      setLoadingBcv(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadRecibos();
-  }, []);
+
+    // Cargar expedientes si no fueron provistos en props
+    if (!globalExpedientes || globalExpedientes.length === 0) {
+      supabaseGetExpedientes().then(res => {
+        if (res && res.expedientes && Array.isArray(res.expedientes)) {
+          setExpedientesList(res.expedientes);
+        }
+      }).catch(err => {
+        console.warn('Error cargando expedientes para recibos:', err);
+      });
+    } else {
+      setExpedientesList(globalExpedientes);
+    }
+
+    // Refrescar tasa oficial BCV
+    refreshLiveBcv();
+
+    const handleBcvUpdate = (e: any) => {
+      const rate = e.detail;
+      if (rate && !isNaN(rate) && rate > 0) {
+        setFormData(prev => ({ ...prev, tasaBcv: Number(rate).toFixed(2) }));
+      }
+    };
+    window.addEventListener('rd_bcv_updated', handleBcvUpdate);
+    return () => window.removeEventListener('rd_bcv_updated', handleBcvUpdate);
+  }, [globalExpedientes, refreshLiveBcv]);
+
+  // Selección inteligente de expediente desde la lista
+  const handleSelectExpediente = (val: string) => {
+    if (val === '__custom__') {
+      setIsCustomExpediente(true);
+      setFormData(prev => ({ ...prev, expedienteRelacionado: '' }));
+      return;
+    }
+    setIsCustomExpediente(false);
+    setFormData(prev => {
+      const next = { ...prev, expedienteRelacionado: val };
+      if (val) {
+        const found = expedientesList.find(x => {
+          const num = x.numeroExpediente || x.numero || '';
+          const tit = x.partes || x.titulo || x.cliente || '';
+          const label = num ? `${num} • ${tit}` : tit;
+          return label === val || (num && val.startsWith(num));
+        });
+        if (found) {
+          if (!prev.clienteNombre && found.cliente && found.cliente !== 'Román & Delgado') {
+            next.clienteNombre = found.cliente;
+          }
+        }
+      }
+      return next;
+    });
+  };
 
   // Presets de conceptos rápidos
   const handleSelectPreset = (conceptoText: string) => {
@@ -252,13 +350,14 @@ export default function ModuloRecibosHonorarios({
         concepto: '',
         monto: '',
         moneda: 'USD',
-        tasaBcv: '45.50',
+        tasaBcv: getInitialBcvRate(),
         metodoPago: 'Efectivo Divisas ($)',
         bancoDestino: '',
         referenciaPago: '',
         fecha: new Date().toISOString().split('T')[0],
         notasInternas: ''
       });
+      setIsCustomExpediente(false);
 
       setAlert({
         isOpen: true,
@@ -603,14 +702,48 @@ export default function ModuloRecibosHonorarios({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 pt-0.5">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Expediente o Caso Relacionado (Opcional)</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: RD-J-2026-004 • Divorcio 148-A"
-                    value={formData.expedienteRelacionado}
-                    onChange={(e) => setFormData(prev => ({ ...prev, expedienteRelacionado: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-600 block">
+                      Expediente o Caso Relacionado (Opcional)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsCustomExpediente(!isCustomExpediente)}
+                      className="text-[10.5px] font-bold text-amber-600 hover:text-amber-700 underline cursor-pointer"
+                    >
+                      {isCustomExpediente ? '← Ver lista' : '✍️ Escribir manual'}
+                    </button>
+                  </div>
+
+                  {isCustomExpediente ? (
+                    <input
+                      type="text"
+                      placeholder="Ej: RD-J-2026-004 • Divorcio 148-A"
+                      value={formData.expedienteRelacionado}
+                      onChange={(e) => setFormData(prev => ({ ...prev, expedienteRelacionado: e.target.value }))}
+                      className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-amber-300 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    />
+                  ) : (
+                    <select
+                      value={formData.expedienteRelacionado}
+                      onChange={(e) => handleSelectExpediente(e.target.value)}
+                      className="w-full px-3 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    >
+                      <option value="">-- Seleccionar de la lista ({expedientesList.length} disponibles) --</option>
+                      {expedientesList.map((exp: any, idx: number) => {
+                        const num = exp.numeroExpediente || exp.numero || `EXP-${idx + 1}`;
+                        const tit = exp.partes || exp.titulo || exp.cliente || 'Sin título';
+                        const cliente = exp.cliente ? ` (${exp.cliente})` : '';
+                        const fullVal = `${num} • ${tit}`;
+                        return (
+                          <option key={exp.id || idx} value={fullVal}>
+                            📁 {num} - {tit.slice(0, 45)}{tit.length > 45 ? '...' : ''}{cliente}
+                          </option>
+                        );
+                      })}
+                      <option value="__custom__">✍️ Escribir otro expediente manualmente...</option>
+                    </select>
+                  )}
                 </div>
 
                 <div>
@@ -717,14 +850,35 @@ export default function ModuloRecibosHonorarios({
 
                 {formData.moneda === 'USD' && (
                   <div>
-                    <label className="text-[11px] font-bold text-slate-600 block mb-1">Tasa Oficial BCV Referencial</label>
-                    <input
-                      type="text"
-                      placeholder="45.50"
-                      value={formData.tasaBcv}
-                      onChange={(e) => setFormData(prev => ({ ...prev, tasaBcv: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                    />
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-600 block">
+                        Tasa Oficial BCV Referencial
+                      </label>
+                      <button
+                        type="button"
+                        onClick={refreshLiveBcv}
+                        disabled={loadingBcv}
+                        title="Actualizar tasa oficial BCV en vivo"
+                        className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 hover:text-amber-700 transition-colors cursor-pointer"
+                      >
+                        <RefreshCw className={`w-2.5 h-2.5 ${loadingBcv ? 'animate-spin' : ''}`} />
+                        {loadingBcv ? 'Actualizando...' : 'Actualizar BCV'}
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="887.30"
+                        value={formData.tasaBcv}
+                        onChange={(e) => setFormData(prev => ({ ...prev, tasaBcv: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
+                      />
+                    </div>
+                    {formData.monto && Number(formData.monto) > 0 && formData.tasaBcv && Number(formData.tasaBcv) > 0 && (
+                      <span className="text-[10.5px] text-emerald-600 font-bold block mt-1">
+                        ≈ Bs. {(Number(formData.monto) * Number(formData.tasaBcv)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    )}
                   </div>
                 )}
               </div>
