@@ -291,16 +291,24 @@ export default function AdminDashboard() {
     const saved = sessionStorage.getItem('rd_admin_active_view');
     // Jefatura (Víctor / Luis) JAMÁS debe entrar a la vista de usuarios & roles
     if (!isSistemasUser && saved === 'usuarios') return 'bitacoras';
+    if (!isSistemasUser && saved === 'historial') return 'mis_libros';
     if (isSistemasUser && (!saved || saved === 'mis_libros' || saved === 'historial')) return 'usuarios';
     if (saved === 'agenda') return 'bitacoras';
     return (saved as any) || (isSistemasUser ? 'usuarios' : 'bitacoras');
   });
 
   // Redirección inmediata: Si el usuario NO es Sistemas, sacarlo de la vista 'usuarios'
+  // Si entra a 'historial', redirigir automáticamente a 'mis_libros' con el sub-tab 'historial'
   useEffect(() => {
     if (!isSistemas && activeView === 'usuarios') {
       setActiveView('bitacoras');
       sessionStorage.setItem('rd_admin_active_view', 'bitacoras');
+    }
+    if (activeView === 'historial') {
+      setActiveView('mis_libros');
+      setBossSubTab('historial');
+      sessionStorage.setItem('rd_admin_active_view', 'mis_libros');
+      sessionStorage.setItem('rd_admin_boss_sub_tab', 'historial');
     }
   }, [isSistemas, activeView]);
 
@@ -530,7 +538,9 @@ export default function AdminDashboard() {
   }, [fetchPendingGastosCount, fetchNuevosCandidatosCount]);
 
   const [globalExpedientes, setGlobalExpedientes] = useState<any[]>([]);
-  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'cierre'>(() => {
+  const [bossSubTab, setBossSubTab] = useState<'actuaciones' | 'ingresos' | 'programacion' | 'historial' | 'cierre'>(() => {
+    const savedView = sessionStorage.getItem('rd_admin_active_view');
+    if (savedView === 'historial') return 'historial';
     const saved = sessionStorage.getItem('rd_admin_boss_sub_tab');
     if (saved === 'investigaciones' || !saved) return 'actuaciones';
     return (saved as any) || 'actuaciones';
@@ -1802,20 +1812,6 @@ export default function AdminDashboard() {
           <span>Asignar Tareas</span>
         </button>
 
-        {/* 7. MI HISTORIAL DE JEFATURA (SOLO DIRECTORES / ABOGADOS) */}
-        {!isSistemas && (
-          <button
-            onClick={() => setActiveView('historial')}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-              activeView === 'historial' 
-                ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-                : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-            }`}
-          >
-            <History className={`w-4 h-4 ${activeView === 'historial' ? 'text-slate-950' : 'text-slate-400'}`} /> Mi Historial de Jefatura
-          </button>
-        )}
-
         {/* 8. USUARIOS & ROLES TI (EXCLUSIVO PARA ÓSCAR / SISTEMAS TI) */}
         {isSistemas && (
           <button
@@ -2560,6 +2556,12 @@ export default function AdminDashboard() {
                 <CalendarIcon className="w-4 h-4" /> Programación
               </button>
               <button
+                onClick={() => setBossSubTab('historial')}
+                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'historial' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+              >
+                <History className="w-4 h-4" /> Mi Historial de Bitácoras
+              </button>
+              <button
                 onClick={() => setBossSubTab('cierre')}
                 className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
               >
@@ -2664,6 +2666,10 @@ export default function AdminDashboard() {
               reportSubmitted={jefeReportSubmitted}
               isAdmin={true}
             />
+          )}
+
+          {bossSubTab === 'historial' && (
+            <TabHistorial />
           )}
 
           {bossSubTab === 'cierre' && (
@@ -3115,18 +3121,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* VISTA: MI HISTORIAL DE JEFATURA */}
-      {activeView === 'historial' && !isSistemas && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-              <History className="w-7 h-7 text-blue-600" /> Mi Historial de Bitácoras de Jefatura
-            </h3>
-            <p className="text-slate-500 font-medium mt-1">Consulta y descarga los reportes PDF de gestión que has generado anteriormente.</p>
-          </div>
-          <TabHistorial />
-        </div>
-      )}
+
 
       {/* VISTA: CONTROL DE ACCESO, USUARIOS Y ROLES (EXCLUSIVO SISTEMAS TI - ÓSCAR) */}
       {activeView === 'usuarios' && isSistemas && (
