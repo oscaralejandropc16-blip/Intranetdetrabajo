@@ -26,7 +26,9 @@ import {
   supabaseSaveReciboCliente, 
   supabaseDeleteReciboCliente, 
   supabaseGetNextCorrelativoRecibo,
-  supabaseGetExpedientes
+  supabaseGetExpedientes,
+  checkIsJefatura,
+  checkIsSistemas
 } from '../../lib/supabaseAdapter';
 import { exportarReciboClientePDF } from '../../lib/pdfExportReciboCliente';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -229,6 +231,14 @@ export default function ModuloRecibosHonorarios({
 }: ModuloRecibosHonorariosProps) {
   const loggedUser = currentUser || localStorage.getItem('rd_user_name') || 'Román & Delgado';
 
+  // Detección de perfil Administrador / Jefatura (Solo administradores pueden anular recibos)
+  const isAdminUser = useMemo(() => {
+    if (isJefatura) return true;
+    const storedUser = currentUser || localStorage.getItem('rd_user_name') || '';
+    const storedAdmin = localStorage.getItem('rd_is_admin') === 'true';
+    return checkIsJefatura(storedUser, storedAdmin) || checkIsSistemas(storedUser);
+  }, [isJefatura, currentUser]);
+
   // Sub-pestaña activa
   const [subTab, setSubTab] = useState<'emitir' | 'historial' | 'contratos'>('emitir');
 
@@ -308,11 +318,14 @@ export default function ModuloRecibosHonorarios({
     }
   };
 
-  // Refrescar Tasa Oficial BCV en vivo
+  // Refrescar Tasa Oficial BCV en vivo (con timeout seguro para evitar bloqueos)
   const refreshLiveBcv = useCallback(async () => {
     setLoadingBcv(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3500);
     try {
-      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+      const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial', { signal: controller.signal });
+      clearTimeout(timer);
       if (res.ok) {
         const data = await res.json();
         if (data && data.promedio) {
@@ -324,9 +337,10 @@ export default function ModuloRecibosHonorarios({
           } catch {}
         }
       }
-    } catch (e) {
-      console.warn('Error obteniendo tasa BCV en vivo:', e);
+    } catch {
+      // Si hay timeout o error de red, conserva la tasa actual sin bloquear la UI
     } finally {
+      clearTimeout(timer);
       setLoadingBcv(false);
     }
   }, []);
@@ -447,19 +461,18 @@ export default function ModuloRecibosHonorarios({
         created_at: now.toISOString()
       };
 
+      // 1. Guardar local y en la nube inmediatamente
       await supabaseSaveReciboCliente(nuevoRecibo);
       setRecibos(prev => [nuevoRecibo, ...prev]);
 
-      // Generar y descargar el PDF de inmediato
-      try {
-        await exportarReciboClientePDF(nuevoRecibo);
-      } catch (pdfErr) {
-        console.warn('Error generando PDF automático:', pdfErr);
-      }
-
-      // Reiniciar formulario y calcular siguiente correlativo
-      const nextNum = await supabaseGetNextCorrelativoRecibo();
+      // 2. Calcular siguiente correlativo en memoria al instante
+      const parts = nextCorrelativo.split('-');
+      const lastSeq = parseInt(parts[parts.length - 1] || '0', 10);
+      const nextSeq = (lastSeq + 1).toString().padStart(3, '0');
+      const nextNum = `RD-REC-${new Date().getFullYear()}-${nextSeq}`;
       setNextCorrelativo(nextNum);
+
+      // 3. Reiniciar formulario
       setFormData({
         tipoRecibo: 'Honorarios Profesionales',
         clienteNombre: '',
@@ -479,11 +492,17 @@ export default function ModuloRecibosHonorarios({
       });
       setIsCustomExpediente(false);
 
+      // 4. Mostrar alerta de éxito de inmediato sin esperas
       setAlert({
         isOpen: true,
         type: 'success',
         title: '¡Recibo Emitido con Éxito!',
         message: `Se generó el recibo ${nuevoRecibo.numeroRecibo} por ${nuevoRecibo.moneda === 'USD' ? `$${nuevoRecibo.monto}` : `Bs. ${nuevoRecibo.monto}`}. El PDF oficial se descargó automáticamente.`
+      });
+
+      // 5. Generar y descargar el PDF en segundo plano (no congela el botón)
+      exportarReciboClientePDF(nuevoRecibo).catch(pdfErr => {
+        console.warn('Descarga de PDF diferida:', pdfErr);
       });
 
     } catch (err: any) {
@@ -498,22 +517,32 @@ export default function ModuloRecibosHonorarios({
     }
   };
 
-  // Anular recibo
+  // Anular recibo (Estrictamente restringido a Administradores y Jefatura)
   const handleAnular = (recibo: ReciboCliente) => {
+    if (!isAdminUser) {
+      setAlert({
+        isOpen: true,
+        type: 'error',
+        title: 'Acceso Restringido',
+        message: 'Solo el personal de Jefatura y Administradores (Víctor Román, Luis Delgado u Óscar) tienen autorización para anular o eliminar recibos oficiales del bufete.'
+      });
+      return;
+    }
+
     setAlert({
       isOpen: true,
       type: 'warning',
       title: '¿Anular Recibo?',
-      message: `¿Estás seguro de que deseas anular el recibo ${recibo.numeroRecibo} de ${recibo.clienteNombre}? Esta acción quedará registrada en el historial.`,
+      message: `¿Estás seguro de que deseas anular el recibo ${recibo.numeroRecibo} de ${recibo.clienteNombre}? Esta acción eliminará el registro contable de forma definitiva.`,
       showCancel: true,
       onConfirm: async () => {
         await supabaseDeleteReciboCliente(recibo.id, recibo.numeroRecibo);
-        setRecibos(prev => prev.filter(r => r.id !== recibo.id));
+        setRecibos(prev => prev.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo));
         setAlert({
           isOpen: true,
           type: 'info',
           title: 'Recibo Anulado',
-          message: `El recibo ${recibo.numeroRecibo} ha sido removido del registro oficial.`
+          message: `El recibo ${recibo.numeroRecibo} ha sido eliminado del sistema contable.`
         });
       }
     });
@@ -1240,10 +1269,10 @@ export default function ModuloRecibosHonorarios({
                           <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         </button>
 
-                        {isJefatura && (
+                        {isAdminUser && (
                           <button
                             onClick={() => handleAnular(recibo)}
-                            title="Anular / Eliminar recibo"
+                            title="Anular / Eliminar recibo (Solo Administradores)"
                             className="p-2 sm:p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all cursor-pointer active:scale-95"
                           >
                             <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />

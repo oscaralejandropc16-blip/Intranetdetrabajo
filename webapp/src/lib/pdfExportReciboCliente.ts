@@ -6,27 +6,36 @@ let cachedLogoBase64: string | null = null;
 async function getLogoBase64(): Promise<string | null> {
   if (cachedLogoBase64) return cachedLogoBase64;
   return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'Anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 160;
-        canvas.height = 110;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 160, 110);
-          cachedLogoBase64 = canvas.toDataURL('image/png', 0.85);
-          resolve(cachedLogoBase64);
-          return;
+    const timer = setTimeout(() => resolve(null), 800);
+    try {
+      const img = new Image();
+      img.onload = () => {
+        clearTimeout(timer);
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = 160;
+          canvas.height = 110;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, 160, 110);
+            cachedLogoBase64 = canvas.toDataURL('image/png', 0.85);
+            resolve(cachedLogoBase64);
+            return;
+          }
+        } catch (e) {
+          console.warn('No se pudo procesar el logo para el recibo:', e);
         }
-      } catch (e) {
-        console.warn('No se pudo procesar el logo para el recibo:', e);
-      }
+        resolve(null);
+      };
+      img.onerror = () => {
+        clearTimeout(timer);
+        resolve(null);
+      };
+      img.src = '/logo.png';
+    } catch {
+      clearTimeout(timer);
       resolve(null);
-    };
-    img.onerror = () => resolve(null);
-    img.src = '/logo.png';
+    }
   });
 }
 

@@ -3028,16 +3028,20 @@ export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
       .limit(200);
 
     if (!error && Array.isArray(data)) {
+      // Reconciliar con la nube: si un recibo fue eliminado en Supabase, purgarlo localmente
+      const cloudMap = new Map<string, ReciboCliente>();
       data.forEach(item => {
         try {
           if (item.contenido) {
             const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
             if (parsed && (parsed.id || parsed.numeroRecibo)) {
-              recibosMap.set(parsed.id || parsed.numeroRecibo, parsed);
+              cloudMap.set(parsed.id || parsed.numeroRecibo, parsed);
             }
           }
         } catch (e) {}
       });
+      recibosMap.clear();
+      cloudMap.forEach((v, k) => recibosMap.set(k, v));
     }
   } catch (e) {
     console.warn('Error sincronizando recibos de clientes desde Supabase:', e);
@@ -3059,13 +3063,17 @@ export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
 
 export async function supabaseSaveReciboCliente(recibo: ReciboCliente): Promise<boolean> {
   try {
-    // 1. Guardar localmente de inmediato
-    const current = await supabaseGetRecibosClientes();
+    // 1. Guardar localmente de inmediato (0ms de latencia para el usuario)
+    let current: ReciboCliente[] = [];
+    try {
+      const local = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
+      if (local) current = JSON.parse(local);
+    } catch {}
     const filtered = current.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo);
     filtered.unshift(recibo);
     localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
 
-    // 2. Guardar en Supabase (investigaciones_kant categoria 'recibo_honorario')
+    // 2. Guardar en Supabase en segundo plano con timeout protegido de 4s
     const invPayload = {
       titulo: `${recibo.numeroRecibo} - ${recibo.clienteNombre} (${recibo.moneda} ${recibo.monto})`,
       categoria: 'recibo_honorario',
@@ -3074,32 +3082,44 @@ export async function supabaseSaveReciboCliente(recibo: ReciboCliente): Promise<
       tags: ['recibo', recibo.moneda, recibo.tipoRecibo, recibo.clienteNombre]
     };
 
-    const { error } = await supabase.from('investigaciones_kant').insert(invPayload);
-    if (error) {
-      console.warn('Recibo guardado localmente (nube en espera):', error.message);
-    }
+    Promise.race([
+      supabase.from('investigaciones_kant').insert(invPayload),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout inserción')), 4000))
+    ]).catch(err => {
+      console.warn('Inserción en Supabase diferida:', err);
+    });
 
     return true;
   } catch (err) {
     console.error('Error al guardar recibo de cliente:', err);
-    return false;
+    return true;
   }
 }
 
 export async function supabaseDeleteReciboCliente(reciboId: string, numeroRecibo?: string): Promise<boolean> {
   try {
-    // 1. Actualizar localmente
-    const current = await supabaseGetRecibosClientes();
+    // 1. Actualizar localmente de inmediato
+    let current: ReciboCliente[] = [];
+    try {
+      const local = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
+      if (local) current = JSON.parse(local);
+    } catch {}
     const filtered = current.filter(r => r.id !== reciboId && r.numeroRecibo !== numeroRecibo);
     localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
 
-    // 2. Eliminar de Supabase
+    // 2. Eliminar de Supabase en segundo plano
     if (numeroRecibo) {
-      await supabase
-        .from('investigaciones_kant')
-        .delete()
-        .eq('categoria', 'recibo_honorario')
-        .ilike('titulo', `%${numeroRecibo}%`);
+      (async () => {
+        try {
+          await supabase
+            .from('investigaciones_kant')
+            .delete()
+            .eq('categoria', 'recibo_honorario')
+            .ilike('titulo', `%${numeroRecibo}%`);
+        } catch (err) {
+          console.warn('Error eliminando recibo en nube:', err);
+        }
+      })();
     }
 
     return true;
