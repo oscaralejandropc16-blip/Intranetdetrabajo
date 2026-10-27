@@ -892,6 +892,15 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
   const horaSalidaOficial = venezuela.time12;
   const horaEntradaOficial = formatTime12h(params.hora_entrada) || venezuela.time12;
 
+  const cleanEvidences = evidences.map((e: any) => ({
+    name: e.name || 'evidencia.pdf',
+    size: e.size || 0,
+    type: e.type || 'application/pdf',
+    url: e.url || '',
+    note: e.note || '',
+    uploaded_at: e.uploaded_at || new Date().toISOString()
+  }));
+
   const newBitacora = {
     user_name: currentUser,
     fecha,
@@ -904,7 +913,7 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     actuaciones,
     ingresos,
     programaciones,
-    evidences,
+    evidences: cleanEvidences,
     pdf_base64: params.pdf_base64 || '',
     estado: 'pendiente'
   };
@@ -912,7 +921,7 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
   const { data, error } = await supabase
     .from('bitacoras')
     .insert(newBitacora)
-    .select()
+    .select('id')
     .single();
 
   if (error) {
@@ -920,28 +929,30 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     throw new Error(error.message);
   }
 
-  // Limpiar cualquier borrador del usuario para hoy o remanente
-  const { data: draftRows } = await supabase
-    .from('bitacora_drafts')
-    .select('id, draft_data');
-
+  // Limpiar cualquier borrador del usuario para hoy o remanente (filtrado directo en servidor para evitar timeouts)
   const cleanCurrent = currentUser.toLowerCase().trim();
-  const rowsToDelete = (draftRows || []).filter(r => {
-    const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();
-    if (cleanCurrent.includes('carmen')) return u.includes('carmen');
-    if (cleanCurrent.includes('mariela')) return u.includes('mariela');
-    if (cleanCurrent.includes('hector')) return u.includes('hector');
-    if (cleanCurrent.includes('oscar')) return u.includes('oscar');
-    if (cleanCurrent.includes('luis')) return u.includes('luis') && !u.includes('carmen');
-    if (cleanCurrent.includes('victor')) return u.includes('victor');
-    return u === cleanCurrent;
-  });
+  let userKeyword = cleanCurrent;
+  if (cleanCurrent.includes('mariela')) userKeyword = 'mariela';
+  else if (cleanCurrent.includes('carmen')) userKeyword = 'carmen';
+  else if (cleanCurrent.includes('hector')) userKeyword = 'hector';
+  else if (cleanCurrent.includes('oscar')) userKeyword = 'oscar';
+  else if (cleanCurrent.includes('luis')) userKeyword = 'luis';
+  else if (cleanCurrent.includes('victor')) userKeyword = 'victor';
 
-  for (const row of rowsToDelete) {
-    await supabase
+  try {
+    const { data: userDrafts } = await supabase
       .from('bitacora_drafts')
-      .delete()
-      .eq('id', row.id);
+      .select('id')
+      .or(`draft_data->>user.ilike.%${userKeyword}%,draft_data->>user_name.ilike.%${userKeyword}%`);
+
+    if (userDrafts && userDrafts.length > 0) {
+      await supabase
+        .from('bitacora_drafts')
+        .delete()
+        .in('id', userDrafts.map(r => r.id));
+    }
+  } catch (draftCleanErr) {
+    console.warn('Advertencia al limpiar borrador tras envío:', draftCleanErr);
   }
 
   return {
@@ -1072,11 +1083,20 @@ export async function supabaseGetDraft(): Promise<any> {
     };
   }
 
-  // 2. Si no ha cerrado, buscar el borrador activo
+  let userKeyword = cleanCur;
+  if (cleanCur.includes('mariela')) userKeyword = 'mariela';
+  else if (cleanCur.includes('carmen')) userKeyword = 'carmen';
+  else if (cleanCur.includes('hector')) userKeyword = 'hector';
+  else if (cleanCur.includes('oscar')) userKeyword = 'oscar';
+  else if (cleanCur.includes('luis')) userKeyword = 'luis';
+  else if (cleanCur.includes('victor')) userKeyword = 'victor';
+
+  // 2. Si no ha cerrado, buscar el borrador activo (filtrado en servidor para máxima velocidad)
   const { data: rows, error } = await supabase
     .from('bitacora_drafts')
     .select('id, draft_data, updated_at, fecha')
     .in('fecha', candidateDates)
+    .or(`draft_data->>user.ilike.%${userKeyword}%,draft_data->>user_name.ilike.%${userKeyword}%`)
     .order('updated_at', { ascending: false });
 
   if (error || !rows || rows.length === 0) {
@@ -1129,18 +1149,40 @@ export async function supabaseSaveDraft(draftData: any): Promise<any> {
     return { success: true, message: 'Jornada ya cerrada. No se guarda borrador.' };
   }
 
+  // Sanitizar archivos para no enviar dataUrls pesados a la base de datos
+  const sanitizedAttachedFiles = Array.isArray(draftData.attachedFiles)
+    ? draftData.attachedFiles.map((f: any) => ({
+        name: f.name || f.file?.name || 'archivo.pdf',
+        size: f.size || f.file?.size || 0,
+        type: f.type || f.file?.type || 'application/pdf',
+        url: f.url || '',
+        note: f.note || '',
+        uploaded_at: f.uploaded_at || new Date().toISOString()
+      }))
+    : [];
+
   const fullDraftData = {
     ...draftData,
+    attachedFiles: sanitizedAttachedFiles,
     user: currentUser,
     user_name: currentUser,
     lastUpdated: draftData.lastUpdated || Date.now()
   };
 
-  // 2. Buscar si ya existe un borrador de hoy para este empleado
+  let userKeyword = cleanCur;
+  if (cleanCur.includes('mariela')) userKeyword = 'mariela';
+  else if (cleanCur.includes('carmen')) userKeyword = 'carmen';
+  else if (cleanCur.includes('hector')) userKeyword = 'hector';
+  else if (cleanCur.includes('oscar')) userKeyword = 'oscar';
+  else if (cleanCur.includes('luis')) userKeyword = 'luis';
+  else if (cleanCur.includes('victor')) userKeyword = 'victor';
+
+  // 2. Buscar si ya existe un borrador de hoy para este empleado (filtrado en el servidor)
   const { data: rows } = await supabase
     .from('bitacora_drafts')
     .select('id, draft_data, fecha')
-    .in('fecha', candidateDates);
+    .in('fecha', candidateDates)
+    .or(`draft_data->>user.ilike.%${userKeyword}%,draft_data->>user_name.ilike.%${userKeyword}%`);
 
   const existingRow = (rows || []).find(r => {
     const u = (r.draft_data?.user || r.draft_data?.user_name || '').toLowerCase().trim();

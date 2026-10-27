@@ -1192,7 +1192,6 @@ export default function EmployeeDashboard() {
         size: f.size || f.file?.size || 0,
         url: f.url || '',
         note: f.note || '',
-        dataUrl: f.url ? '' : (f.dataUrl || ''),
         uploaded_at: f.uploaded_at || new Date().toISOString()
       }));
 
