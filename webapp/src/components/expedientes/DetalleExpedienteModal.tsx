@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Calendar, Clock, User, Building, FileText, Plus, CheckCircle2, History, Send, BadgeCheck, Trash2 } from 'lucide-react';
 import type { ExpedienteJudicial, ActuacionHistorial } from '../../types/expedientes';
+import { sortHistoryDesc } from '../../lib/supabaseAdapter';
 import SystemAlertModal from '../common/SystemAlertModal';
 
 interface DetalleExpedienteModalProps {
@@ -236,7 +237,7 @@ export default function DetalleExpedienteModal({
               </div>
             ) : (
               <div className="relative border-l-2 border-slate-800 ml-4 pl-6 space-y-6">
-                {expediente.actuaciones.map((act) => (
+                {[...expediente.actuaciones].sort(sortHistoryDesc).map((act) => (
                   <div key={act.id} className="relative group">
                     {/* Punto del Timeline */}
                     <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-amber-400 group-hover:bg-amber-400 transition-colors"></div>

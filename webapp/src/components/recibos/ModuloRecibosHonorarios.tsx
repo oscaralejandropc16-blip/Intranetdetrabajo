@@ -28,7 +28,8 @@ import {
   supabaseGetNextCorrelativoRecibo,
   supabaseGetExpedientes,
   checkIsJefatura,
-  checkIsSistemas
+  checkIsSistemas,
+  sortHistoryDesc
 } from '../../lib/supabaseAdapter';
 import { exportarReciboClientePDF } from '../../lib/pdfExportReciboCliente';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
@@ -651,24 +652,26 @@ export default function ModuloRecibosHonorarios({
     }
   };
 
-  // Filtrado de recibos para historial
+  // Filtrado de recibos para historial (ordenados de la fecha más reciente a la más vieja)
   const filteredRecibos = useMemo(() => {
-    return recibos.filter(r => {
-      // Filtro por moneda
-      if (filterMoneda !== 'todas' && r.moneda !== filterMoneda) return false;
-      // Filtro por tipo
-      if (filterTipo !== 'todos' && r.tipoRecibo !== filterTipo) return false;
-      // Filtro por texto
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchName = (r.clienteNombre || '').toLowerCase().includes(q);
-        const matchCed = (r.clienteCedula || '').toLowerCase().includes(q);
-        const matchNum = (r.numeroRecibo || '').toLowerCase().includes(q);
-        const matchConcepto = (r.concepto || '').toLowerCase().includes(q);
-        return matchName || matchCed || matchNum || matchConcepto;
-      }
-      return true;
-    });
+    return recibos
+      .filter(r => {
+        // Filtro por moneda
+        if (filterMoneda !== 'todas' && r.moneda !== filterMoneda) return false;
+        // Filtro por tipo
+        if (filterTipo !== 'todos' && r.tipoRecibo !== filterTipo) return false;
+        // Filtro por texto
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase().trim();
+          const matchName = (r.clienteNombre || '').toLowerCase().includes(q);
+          const matchCed = (r.clienteCedula || '').toLowerCase().includes(q);
+          const matchNum = (r.numeroRecibo || '').toLowerCase().includes(q);
+          const matchConcepto = (r.concepto || '').toLowerCase().includes(q);
+          return matchName || matchCed || matchNum || matchConcepto;
+        }
+        return true;
+      })
+      .sort(sortHistoryDesc);
   }, [filterMoneda, filterTipo, recibos, searchQuery]);
 
   // Resumen de totales

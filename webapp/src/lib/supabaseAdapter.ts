@@ -780,12 +780,48 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
         respuestas_hilo: b.respuestas_hilo || []
       };
     })
-    .sort((a: any, b: any) => {
-      const dateA = a.date || a.fecha || '';
-      const dateB = b.date || b.fecha || '';
-      if (dateA !== dateB) return dateB.localeCompare(dateA);
-      return (Number(b.id) || 0) - (Number(a.id) || 0);
-    });
+    .sort(sortHistoryDesc);
+}
+
+export function parseDateSafe(dateVal: any): number {
+  if (!dateVal) return 0;
+  if (typeof dateVal === 'number') return dateVal;
+  const s = String(dateVal).trim();
+  if (!s) return 0;
+  // Si viene en formato DD/MM/YYYY o DD-MM-YYYY
+  const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})/);
+  if (dmyMatch) {
+    const [, d, m, y] = dmyMatch;
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const t = new Date(iso).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  // Si viene en formato YYYY/MM/DD o YYYY-MM-DD
+  const ymdMatch = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+  if (ymdMatch) {
+    const [, y, m, d] = ymdMatch;
+    const iso = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+    const t = new Date(iso).getTime();
+    return isNaN(t) ? 0 : t;
+  }
+  const t = new Date(s).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+export function sortHistoryDesc(a: any, b: any): number {
+  const timeA = parseDateSafe(a.date || a.fecha || a.created_at);
+  const timeB = parseDateSafe(b.date || b.fecha || b.created_at);
+  if (timeA !== timeB) return timeB - timeA;
+
+  // Desempate 1: created_at si existe
+  const createdA = parseDateSafe(a.created_at);
+  const createdB = parseDateSafe(b.created_at);
+  if (createdA !== createdB) return createdB - createdA;
+
+  // Desempate 2: ID seguro (compatible con UUID strings y números)
+  const idA = String(a.id || '');
+  const idB = String(b.id || '');
+  return idB.localeCompare(idA);
 }
 
 export function getLocalTodayString(): string {

@@ -25,7 +25,7 @@ import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
 import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import AttendanceReportModal from './common/AttendanceReportModal';
-import { normalizeSupervisorName, formatTime12h, checkIsSistemas } from '../lib/supabaseAdapter';
+import { normalizeSupervisorName, formatTime12h, checkIsSistemas, sortHistoryDesc } from '../lib/supabaseAdapter';
 import { cleanLocationForPdf } from '../lib/locationUtils';
 
 const ensureArray = (val: any): any[] => {
@@ -60,12 +60,7 @@ export default function AdminDashboard() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          return parsed.sort((a: any, b: any) => {
-            const dateA = a.date || a.fecha || '';
-            const dateB = b.date || b.fecha || '';
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return (Number(b.id) || 0) - (Number(a.id) || 0);
-          });
+          return parsed.sort(sortHistoryDesc);
         }
       }
       return [];
@@ -868,12 +863,7 @@ export default function AdminDashboard() {
           });
           
           // Ordenar siempre del más reciente al más viejo (DESC)
-          dedupedData.sort((a: any, b: any) => {
-            const dateA = a.date || a.fecha || '';
-            const dateB = b.date || b.fecha || '';
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return (Number(b.id) || 0) - (Number(a.id) || 0);
-          });
+          dedupedData.sort(sortHistoryDesc);
 
           if (dedupedData.length > 0) {
             setReports(dedupedData);
@@ -1413,12 +1403,7 @@ export default function AdminDashboard() {
   }
 
   // Ordenar siempre del más reciente al más viejo (DESC)
-  filteredReports.sort((a, b) => {
-    const dateA = a.date || a.fecha || '';
-    const dateB = b.date || b.fecha || '';
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
-    return (Number(b.id) || 0) - (Number(a.id) || 0);
-  });
+  filteredReports.sort(sortHistoryDesc);
 
   const totalPages = Math.max(1, Math.ceil(filteredReports.length / itemsPerPage));
   const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);

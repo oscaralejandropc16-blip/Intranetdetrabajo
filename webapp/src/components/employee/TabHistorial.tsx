@@ -1,7 +1,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { History, Download, CheckCircle2, AlertCircle, Clock, MapPin, FileText, Paperclip, ExternalLink, File, ChevronDown, ChevronUp, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import api from '../../lib/api';
-import { normalizeSupervisorName, formatTime12h, checkIsJefatura } from '../../lib/supabaseAdapter';
+import { normalizeSupervisorName, formatTime12h, checkIsJefatura, sortHistoryDesc } from '../../lib/supabaseAdapter';
 import { cleanLocationForPdf } from '../../lib/locationUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -68,12 +68,7 @@ export default function TabHistorial() {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed)) {
-          return parsed.filter(isBitacoraOfCurrentUser).sort((a: any, b: any) => {
-            const dateA = a.date || a.fecha || '';
-            const dateB = b.date || b.fecha || '';
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return (Number(b.id) || 0) - (Number(a.id) || 0);
-          });
+          return parsed.filter(isBitacoraOfCurrentUser).sort(sortHistoryDesc);
         }
       }
       return [];
@@ -118,12 +113,7 @@ export default function TabHistorial() {
           });
 
           // Filtrar rigurosamente que solo pertenezcan al usuario logueado y ordenar del más reciente al más viejo (DESC)
-          const strictlyMyData = parsedData.filter(isBitacoraOfCurrentUser).sort((a: any, b: any) => {
-            const dateA = a.date || a.fecha || '';
-            const dateB = b.date || b.fecha || '';
-            if (dateA !== dateB) return dateB.localeCompare(dateA);
-            return (Number(b.id) || 0) - (Number(a.id) || 0);
-          });
+          const strictlyMyData = parsedData.filter(isBitacoraOfCurrentUser).sort(sortHistoryDesc);
           setHistorial(strictlyMyData);
           try {
             localStorage.setItem(userCacheKey, JSON.stringify(strictlyMyData));
@@ -418,12 +408,7 @@ export default function TabHistorial() {
     }
   };
 
-  const sortedHistorial = [...historial].sort((a: any, b: any) => {
-    const dateA = a.date || a.fecha || '';
-    const dateB = b.date || b.fecha || '';
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
-    return (Number(b.id) || 0) - (Number(a.id) || 0);
-  });
+  const sortedHistorial = [...historial].sort(sortHistoryDesc);
 
   return (
     <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
