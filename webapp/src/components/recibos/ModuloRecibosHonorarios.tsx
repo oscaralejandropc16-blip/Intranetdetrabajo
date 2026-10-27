@@ -224,6 +224,76 @@ const getInitialBcvRate = (): string => {
   return '887.30';
 };
 
+// Formateador inteligente de Cédula y RIF (V-, J-, E-, G-)
+const formatCedulaRifInput = (raw: string, prev: string = ''): string => {
+  if (!raw) return '';
+  const trimmed = raw.trim();
+  if (!trimmed) return '';
+
+  // Si el usuario está borrando hacia atrás y quedó solo el prefijo, permitir vaciarlo
+  if (trimmed.length < prev.length) {
+    if (['V', 'J', 'E', 'G', 'P'].includes(trimmed.toUpperCase())) {
+      return '';
+    }
+    return trimmed.toUpperCase();
+  }
+
+  const upper = trimmed.toUpperCase();
+
+  // Si escribió una sola letra válida: V, J, E, G, P -> autocolocar guión
+  if (['V', 'J', 'E', 'G', 'P'].includes(upper)) {
+    return `${upper}-`;
+  }
+
+  // Si empezó escribiendo números directamente -> asumir V-
+  if (/^[0-9]/.test(upper)) {
+    const digits = upper.replace(/[^0-9]/g, '');
+    return `V-${digits}`;
+  }
+
+  // Si tiene prefijo
+  const match = upper.match(/^([VJEGP])[-_\s]*(.*)$/);
+  if (match) {
+    const prefix = match[1];
+    let digits = match[2].replace(/[^0-9]/g, '');
+    if (!digits) return `${prefix}-`;
+
+    // Si es RIF jurídico (J o G) y tiene 9 dígitos -> J-40892839-1
+    if ((prefix === 'J' || prefix === 'G' || prefix === 'P') && digits.length >= 9) {
+      const cuerpo = digits.slice(0, 8);
+      const verificador = digits.slice(8, 9);
+      return `${prefix}-${cuerpo}-${verificador}`;
+    }
+
+    if (digits.length > 9) {
+      digits = digits.slice(0, 9);
+    }
+    return `${prefix}-${digits}`;
+  }
+
+  return upper;
+};
+
+// Formateador inteligente de Teléfono
+const formatTelefonoInput = (raw: string, prev: string = ''): string => {
+  if (!raw) return '';
+  if (raw.length < prev.length) return raw;
+
+  let digits = raw.replace(/[^0-9]/g, '');
+  if (!digits) return '';
+
+  // Si escribió 414, 424, 412... sin el 0 inicial, autocompletar el 0
+  if (/^[42][1246]/.test(digits) && digits.length >= 3) {
+    digits = '0' + digits;
+  }
+
+  if (digits.length > 4) {
+    return `${digits.slice(0, 4)}-${digits.slice(4, 11)}`;
+  }
+
+  return digits;
+};
+
 export default function ModuloRecibosHonorarios({
   currentUser,
   isJefatura = false,
@@ -830,10 +900,13 @@ export default function ModuloRecibosHonorarios({
                   <input
                     type="text"
                     required
-                    placeholder="Ej: V-14.892.450 / J-40182938-1"
+                    placeholder="Ej: V-14566378 / J-40182938-1"
                     value={formData.clienteCedula}
-                    onChange={(e) => setFormData(prev => ({ ...prev, clienteCedula: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                    onChange={(e) => {
+                      const formatted = formatCedulaRifInput(e.target.value, formData.clienteCedula);
+                      setFormData(prev => ({ ...prev, clienteCedula: formatted }));
+                    }}
+                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all font-mono"
                   />
                 </div>
 
@@ -843,7 +916,10 @@ export default function ModuloRecibosHonorarios({
                     type="text"
                     placeholder="Ej: 0414-1234567"
                     value={formData.clienteTelefono}
-                    onChange={(e) => setFormData(prev => ({ ...prev, clienteTelefono: e.target.value }))}
+                    onChange={(e) => {
+                      const formatted = formatTelefonoInput(e.target.value, formData.clienteTelefono);
+                      setFormData(prev => ({ ...prev, clienteTelefono: formatted }));
+                    }}
                     className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
                   />
                 </div>
@@ -918,14 +994,40 @@ export default function ModuloRecibosHonorarios({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
                 <div>
                   <label className="text-[11px] font-bold text-slate-600 block mb-1">Moneda *</label>
-                  <select
-                    value={formData.moneda}
-                    onChange={(e) => setFormData(prev => ({ ...prev, moneda: e.target.value as 'USD' | 'VES' }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                  >
-                    <option value="USD">Dólares ($ USD)</option>
-                    <option value="VES">Bolívares (Bs. VES)</option>
-                  </select>
+                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ 
+                        ...prev, 
+                        moneda: 'USD',
+                        metodoPago: prev.metodoPago === 'Pago Móvil' || prev.metodoPago === 'Efectivo Bolívares (Bs.)' ? 'Efectivo Divisas ($)' : prev.metodoPago
+                      }))}
+                      className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                        formData.moneda === 'USD'
+                          ? 'bg-amber-500 text-slate-950 shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      <span className="text-sm">💵</span>
+                      <span>Dólares ($)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ 
+                        ...prev, 
+                        moneda: 'VES',
+                        metodoPago: prev.metodoPago === 'Efectivo Divisas ($)' || prev.metodoPago === 'Zelle' ? 'Pago Móvil' : prev.metodoPago
+                      }))}
+                      className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
+                        formData.moneda === 'VES'
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                      }`}
+                    >
+                      <span className="text-sm">🇻🇪</span>
+                      <span>Bolívares (Bs.)</span>
+                    </button>
+                  </div>
                 </div>
 
                 <div>
@@ -952,12 +1054,21 @@ export default function ModuloRecibosHonorarios({
                     onChange={(e) => setFormData(prev => ({ ...prev, metodoPago: e.target.value as MetodoPagoCliente }))}
                     className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   >
-                    <option value="Efectivo Divisas ($)">Efectivo Divisas ($)</option>
-                    <option value="Efectivo Bolívares (Bs.)">Efectivo Bolívares (Bs.)</option>
-                    <option value="Transferencia Bancaria">Transferencia Bancaria</option>
-                    <option value="Pago Móvil">Pago Móvil</option>
-                    <option value="Zelle">Zelle</option>
-                    <option value="Otro">Otro medio</option>
+                    {formData.moneda === 'USD' ? (
+                      <>
+                        <option value="Efectivo Divisas ($)">Efectivo Divisas ($)</option>
+                        <option value="Zelle">Zelle</option>
+                        <option value="Transferencia Bancaria">Transferencia Internacional</option>
+                        <option value="Otro">Otro medio en divisas</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="Pago Móvil">Pago Móvil</option>
+                        <option value="Transferencia Bancaria">Transferencia Bancaria (Bs.)</option>
+                        <option value="Efectivo Bolívares (Bs.)">Efectivo Bolívares (Bs.)</option>
+                        <option value="Otro">Otro medio en Bs.</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
