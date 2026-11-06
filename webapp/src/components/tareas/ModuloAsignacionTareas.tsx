@@ -327,9 +327,9 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
               className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
             >
               <option value="Todos">Todos los estados</option>
-              <option value="pendiente">🟡 Pendientes</option>
-              <option value="en_proceso">🔵 En Progreso</option>
-              <option value="completada">🟢 Completadas</option>
+              <option value="pendiente">Pendientes</option>
+              <option value="en_proceso">En Progreso</option>
+              <option value="completada">Completadas</option>
             </select>
           </div>
 
@@ -341,9 +341,9 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
               className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
             >
               <option value="Todos">Todas las prioridades</option>
-              <option value="urgente">🔴 Urgentes</option>
-              <option value="alta">🟠 Altas</option>
-              <option value="normal">🔵 Normales</option>
+              <option value="urgente">Urgentes</option>
+              <option value="alta">Altas</option>
+              <option value="normal">Normales</option>
             </select>
           </div>
         </div>
@@ -414,13 +414,13 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Prioridad */}
                     {t.prioridad === 'urgente' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white shadow-sm animate-pulse">
-                        🔥 URGENTE
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white shadow-sm">
+                        URGENTE
                       </span>
                     )}
                     {t.prioridad === 'alta' && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
-                        ⚡ Alta
+                        Alta
                       </span>
                     )}
                     {t.prioridad === 'normal' && (
@@ -432,12 +432,12 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                     {/* Estado */}
                     {t.estado === 'pendiente' && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
-                        🟡 Pendiente
+                        Pendiente
                       </span>
                     )}
                     {t.estado === 'en_proceso' && (
                       <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-300">
-                        🔵 En Progreso
+                        En Progreso
                       </span>
                     )}
                     {t.estado === 'completada' && (
@@ -545,9 +545,9 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                     onChange={e => handleStatusChange(t.id, e.target.value as TareaAsignada['estado'])}
                     className="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 rounded-xl px-2.5 py-2 outline-none cursor-pointer"
                   >
-                    <option value="pendiente">🟡 Pendiente</option>
-                    <option value="en_proceso">🔵 En Progreso</option>
-                    <option value="completada">🟢 Completada</option>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="en_proceso">En Progreso</option>
+                    <option value="completada">Completada</option>
                   </select>
 
                   {/* ELIMINAR */}
