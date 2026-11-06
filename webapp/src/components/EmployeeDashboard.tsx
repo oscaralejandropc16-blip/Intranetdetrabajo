@@ -1689,14 +1689,15 @@ export default function EmployeeDashboard() {
       partes: act.partes || 'Dirección',
       actuacion: act.actuacion || '',
       observaciones: act.observaciones || '',
-      estado: act.estado || 'En trámite'
+      estado: act.estado || 'Completada'
     };
     setActuaciones(prev => [newAct, ...prev]);
+    setSubTabLibro('actuaciones');
     setSystemAlert({
       isOpen: true,
       type: 'success',
-      title: '¡Tarea Copiada a tu Bitácora!',
-      message: 'La instrucción de Jefatura ha sido agregada exitosamente a tu Libro de Actuaciones de hoy.'
+      title: '¡Tarea Agregada a tu Bitácora Diaria!',
+      message: 'La instrucción culminada ha sido integrada exitosamente a tu Libro de Actuaciones de hoy.'
     });
   };
 
