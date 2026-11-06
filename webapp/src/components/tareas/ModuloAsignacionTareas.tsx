@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CheckSquare, Plus, Search, Filter, RefreshCw, Clock, 
   CheckCircle2, MessageCircle, Trash2, Calendar, 
-  User, Scale, X, Send, FileText
+  User, Scale, X, Send, FileText,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { supabaseGetSystemUsers, type SystemUser } from '../../lib/supabaseAdapter';
@@ -28,6 +29,15 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
   const [filtroEmpleado, setFiltroEmpleado] = useState('Todos');
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [filtroPrioridad, setFiltroPrioridad] = useState('Todos');
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(5);
+
+  // Resetear a página 1 cuando cambian los filtros o búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filtroEmpleado, filtroEstado, filtroPrioridad]);
 
   // Modal Nueva Tarea
   const [modalOpen, setModalOpen] = useState(false);
@@ -198,6 +208,22 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
   const enProgresoCount = tareas.filter(t => t.estado === 'en_proceso').length;
   const completadasCount = tareas.filter(t => t.estado === 'completada').length;
 
+  // Cálculos de Paginación
+  const totalPages = Math.max(1, Math.ceil(tareasFiltradas.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, tareasFiltradas.length);
+  const tareasPaginadas = tareasFiltradas.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (newPage: number) => {
+    const validPage = Math.max(1, Math.min(totalPages, newPage));
+    setCurrentPage(validPage);
+    const el = document.getElementById('listado-tareas-jefatura');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
@@ -262,7 +288,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <div id="listado-tareas-jefatura" className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between scroll-mt-6">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -346,8 +372,9 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {tareasFiltradas.map(t => {
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            {tareasPaginadas.map(t => {
             const fechaLimiteFormateada = t.fecha_limite ? (() => {
               try {
                 return format(new Date(t.fecha_limite + 'T12:00:00'), "d 'de' MMMM", { locale: es });
@@ -538,6 +565,111 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
             );
           })}
         </div>
+
+        {/* BARRA DE PAGINACIÓN */}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          
+          {/* Selector de cantidad por página y resumen */}
+          <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-slate-600">Mostrar:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-amber-500 transition-colors"
+              >
+                <option value={5}>5 tareas</option>
+                <option value={10}>10 tareas</option>
+                <option value={20}>20 tareas</option>
+                <option value={50}>50 tareas</option>
+                <option value={9999}>Ver todas ({tareasFiltradas.length})</option>
+              </select>
+            </div>
+
+            <span className="text-slate-300">|</span>
+
+            <span className="text-slate-600 font-medium">
+              Mostrando <strong className="text-slate-900 font-bold">{tareasFiltradas.length === 0 ? 0 : startIndex + 1}</strong> a <strong className="text-slate-900 font-bold">{endIndex}</strong> de <strong className="text-amber-600 font-bold">{tareasFiltradas.length}</strong> tareas
+            </span>
+          </div>
+
+          {/* Controles de navegación */}
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5 flex-wrap justify-center">
+              <button
+                onClick={() => handlePageChange(1)}
+                disabled={safeCurrentPage === 1}
+                title="Primera página"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                <ChevronsLeft className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handlePageChange(safeCurrentPage - 1)}
+                disabled={safeCurrentPage === 1}
+                title="Página anterior"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span className="hidden sm:inline">Anterior</span>
+              </button>
+
+              {/* Botones numéricos de página */}
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(page => {
+                  return (
+                    page === 1 ||
+                    page === totalPages ||
+                    Math.abs(page - safeCurrentPage) <= 1
+                  );
+                })
+                .map((page, idx, array) => {
+                  const prevPage = array[idx - 1];
+                  const showEllipsis = prevPage && page - prevPage > 1;
+
+                  return (
+                    <React.Fragment key={page}>
+                      {showEllipsis && (
+                        <span className="px-1 text-slate-400 text-xs font-bold">...</span>
+                      )}
+                      <button
+                        onClick={() => handlePageChange(page)}
+                        className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${
+                          safeCurrentPage === page
+                            ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                            : 'bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+
+              <button
+                onClick={() => handlePageChange(safeCurrentPage + 1)}
+                disabled={safeCurrentPage === totalPages}
+                title="Página siguiente"
+                className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                disabled={safeCurrentPage === totalPages}
+                title="Última página"
+                className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+              >
+                <ChevronsRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
       )}
 
       {/* MODAL: ASIGNAR NUEVA TAREA */}
