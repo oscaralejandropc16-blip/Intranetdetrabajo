@@ -281,21 +281,21 @@ export default function CalendarioLapsosProcesales({
           </div>
         </div>
 
-        {/* Botón Acción Rápida: Hoy no hubo despacho */}
-        <div className="flex items-center gap-2">
+        {/* Botón Acción Rápida: Hoy no hubo despacho con soporte móvil */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
           <button
             type="button"
             onClick={handleHoyNoHuboDespacho}
-            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all shadow-md ${
+            className={`w-full md:w-auto justify-center px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 transition-all shadow-md cursor-pointer ${
               sinDespachoSet.has(hoyIso)
                 ? 'bg-amber-500 hover:bg-amber-600 text-slate-950 ring-2 ring-amber-400/50'
                 : 'bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-600/40 hover:border-rose-500'
             }`}
             title="Marcar o desmarcar si el tribunal tuvo despacho el día de hoy"
           >
-            <CalendarX className="w-4 h-4" />
+            <CalendarX className="w-4 h-4 shrink-0" />
             <span>
-              {sinDespachoSet.has(hoyIso) ? 'Hoy marcado: SIN DESPACHO (Quitar)' : 'Hoy no hubo despacho'}
+              {sinDespachoSet.has(hoyIso) ? 'Hoy: SIN DESPACHO (Restablecer)' : 'Hoy no hubo despacho'}
             </span>
           </button>
         </div>
@@ -423,22 +423,22 @@ export default function CalendarioLapsosProcesales({
           </div>
         </div>
 
-        {/* Encabezados de Días de la Semana */}
-        <div className="grid grid-cols-7 gap-1.5 mb-2 text-center text-xs font-bold text-slate-400">
+        {/* Encabezados de Días de la Semana con soporte móvil */}
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5 mb-2 text-center text-[10px] sm:text-xs font-bold text-slate-400">
           <span>Lun</span>
           <span>Mar</span>
           <span>Mié</span>
           <span>Jue</span>
           <span>Vie</span>
-          <span className="text-slate-400">Sáb</span>
-          <span className="text-slate-400">Dom</span>
+          <span className="text-slate-500">Sáb</span>
+          <span className="text-slate-500">Dom</span>
         </div>
 
         {/* Celdas del Calendario */}
-        <div className="grid grid-cols-7 gap-1.5">
+        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
           {/* Espacios vacíos antes del primer día */}
           {Array.from({ length: startingCol }).map((_, i) => (
-            <div key={`empty-${i}`} className="h-14 sm:h-16 rounded-xl bg-slate-900/20 border border-slate-900/40" />
+            <div key={`empty-${i}`} className="h-12 sm:h-16 rounded-xl bg-slate-900/20 border border-slate-900/40" />
           ))}
 
           {/* Días del mes */}
@@ -454,7 +454,7 @@ export default function CalendarioLapsosProcesales({
 
             let bgClass = 'bg-slate-900/60 border-slate-800 hover:border-slate-700 text-slate-300';
             if (esFDS) {
-              bgClass = 'bg-slate-950/40 border-slate-900 text-slate-400 cursor-not-allowed';
+              bgClass = 'bg-slate-950/40 border-slate-900 text-slate-500 cursor-not-allowed';
             } else if (esSinDespacho) {
               bgClass = 'bg-amber-950/50 border-amber-500/60 text-amber-200 hover:bg-amber-900/60';
             } else if (esVencimiento) {
@@ -472,28 +472,28 @@ export default function CalendarioLapsosProcesales({
                   if (esFDS) return;
                   setDiaSeleccionadoModal(currentDayIso);
                 }}
-                className={`h-14 sm:h-16 rounded-xl border p-1 sm:p-1.5 flex flex-col justify-between transition-all relative text-left group ${bgClass} ${
+                className={`h-12 sm:h-16 rounded-xl border p-1 sm:p-1.5 flex flex-col justify-between transition-all relative text-left group ${bgClass} ${
                   esHoy ? 'ring-2 ring-sky-400' : ''
                 }`}
               >
                 {/* Cabecera del día */}
                 <div className="flex items-center justify-between w-full">
-                  <span className={`text-xs sm:text-sm font-bold ${esHoy ? 'text-sky-400 font-black' : ''}`}>
+                  <span className={`text-[11px] sm:text-sm font-bold leading-none ${esHoy ? 'text-sky-400 font-black' : ''}`}>
                     {dayNum}
                   </span>
                   {esHoy && (
-                    <span className="text-[9px] font-black uppercase px-1 rounded bg-sky-500 text-slate-950">
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.2 rounded bg-sky-500 text-slate-950 leading-tight">
                       Hoy
                     </span>
                   )}
                   {esVencimiento && (
-                    <span className="text-[9px] font-black uppercase px-1 rounded bg-rose-500 text-white animate-pulse">
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.2 rounded bg-rose-500 text-white animate-pulse leading-tight">
                       Fin
                     </span>
                   )}
                   {esInicio && !esHoy && (
-                    <span className="text-[9px] font-black uppercase px-1 rounded bg-amber-500 text-slate-950">
-                      Inicio
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.2 rounded bg-amber-500 text-slate-950 leading-tight">
+                      Ini
                     </span>
                   )}
                 </div>
@@ -501,15 +501,15 @@ export default function CalendarioLapsosProcesales({
                 {/* Contenido / Estado del día */}
                 <div className="w-full">
                   {esSinDespacho ? (
-                    <span className="text-[10px] font-extrabold text-amber-400 flex items-center gap-0.5 leading-none bg-amber-950/80 px-1 py-0.5 rounded border border-amber-500/30">
+                    <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-400 flex items-center justify-center sm:justify-start gap-0.5 leading-none bg-amber-950/80 px-0.5 sm:px-1 py-0.5 rounded border border-amber-500/30">
                       <CalendarX className="w-2.5 h-2.5 shrink-0" />
-                      <span className="truncate">Sin Desp.</span>
+                      <span className="hidden sm:inline truncate">Sin Desp.</span>
                     </span>
                   ) : esFDS ? (
-                    <span className="text-[9px] text-slate-400 block text-center">FDS</span>
+                    <span className="text-[8px] sm:text-[9px] text-slate-500 block text-center">FDS</span>
                   ) : estaEnRango ? (
-                    <span className="text-[9px] text-slate-400 group-hover:text-amber-400 transition-colors">
-                      {currentDayIso <= hoyIso ? '✓ Despacho' : 'Hábil'}
+                    <span className="text-[8px] sm:text-[9px] text-slate-400 group-hover:text-amber-400 transition-colors block truncate text-center sm:text-left">
+                      {currentDayIso <= hoyIso ? '✓' : 'Hábil'}
                     </span>
                   ) : null}
                 </div>

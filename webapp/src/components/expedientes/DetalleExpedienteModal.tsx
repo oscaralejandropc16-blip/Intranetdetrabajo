@@ -149,21 +149,21 @@ export default function DetalleExpedienteModal({
             </div>
           </div>
 
-          {/* Pestañas de Navegación del Modal */}
-          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+          {/* Pestañas de Navegación del Modal con soporte responsive móvil/tablet */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto scrollbar-none">
             <button
               type="button"
               onClick={() => setTabActiva('lapsos')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 tabActiva === 'lapsos'
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
               }`}
             >
-              <Calendar className="w-4 h-4" />
-              <span>Calendario & Lapsos Procesales</span>
+              <Calendar className="w-4 h-4 shrink-0" />
+              <span><span className="hidden sm:inline">Calendario & </span>Lapsos Procesales</span>
               {expediente.controlProcesal?.etapaActualNombre && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950/40 text-current font-black">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950/40 text-current font-black max-w-[120px] truncate">
                   {expediente.controlProcesal.etapaActualNombre}
                 </span>
               )}
@@ -172,14 +172,14 @@ export default function DetalleExpedienteModal({
             <button
               type="button"
               onClick={() => setTabActiva('actuaciones')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 tabActiva === 'actuaciones'
                   ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                   : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
               }`}
             >
-              <History className="w-4 h-4" />
-              <span>Historial de Actuaciones</span>
+              <History className="w-4 h-4 shrink-0" />
+              <span><span className="hidden sm:inline">Historial de </span>Actuaciones</span>
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">
                 {expediente.actuaciones?.length || 0}
               </span>
