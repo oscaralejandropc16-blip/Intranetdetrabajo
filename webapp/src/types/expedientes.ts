@@ -16,6 +16,7 @@ export interface ExpedienteJudicial {
   juzgado: string; // ej. Tribunal 2do
   partes: string; // ej. José Sindonio De Sousa Texeira contra Francisco Texeira
   procedimiento: string; // ej. Reconocimiento de contenido y firma
+  materia?: string; // ej. Civil Ordinario, Laboral, etc.
   estatusActual: string; // ej. SENTENCIADO, FIJADO EL CARTEL
   sede: string; // ej. Valencia, Caracas
   fechaRegistro: string;
@@ -24,6 +25,45 @@ export interface ExpedienteJudicial {
   responsableAsignado?: string;
   actuaciones: ActuacionHistorial[];
   observacionesGenerales?: string;
+  controlProcesal?: ControlProcesalExpediente;
+}
+
+export interface EtapaProcesalItem {
+  id: string;
+  nombre: string;
+  diasHabiles: number; // días de despacho
+  descripcion?: string;
+}
+
+export interface DetalleDiaSinDespacho {
+  fecha: string; // YYYY-MM-DD
+  motivo?: string; // ej. Paro judicial, Falta de juez, etc.
+  registradoPor?: string;
+  registradoEn?: string; // ISO string
+}
+
+export interface ControlProcesalExpediente {
+  materia?: string; // ej. Civil Ordinario, Procedimiento Breve, Laboral, Divorcio, Personalizado
+  etapaActualId?: string;
+  etapaActualNombre?: string;
+  fechaInicioEtapa?: string; // YYYY-MM-DD
+  diasHabilesTotales?: number; // total de días de despacho del lapso
+  diasSinDespacho?: string[]; // lista de fechas YYYY-MM-DD sin despacho
+  detallesSinDespacho?: Record<string, DetalleDiaSinDespacho>;
+  etapasPersonalizadas?: EtapaProcesalItem[];
+  notasProcesales?: string;
+  fechaLimiteEstimada?: string; // calculada automáticamente
+}
+
+export interface ComputoResultado {
+  diasConsumidos: number; // días de despacho transcurridos
+  diasTotales: number;
+  diasRestantes: number;
+  porcentajeProgreso: number;
+  estado: 'holgado' | 'alerta' | 'urgente' | 'vencido' | 'sin_iniciar';
+  fechaEstimadaVencimiento: string | null;
+  diasSinDespachoCount: number;
+  diasSinDespachoEnRango: string[];
 }
 
 export interface AudienciaSemanal {

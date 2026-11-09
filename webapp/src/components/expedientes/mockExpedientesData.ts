@@ -46,6 +46,22 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
     fechaRegistro: '2026-08-01',
     ultimaActualizacion: '2026-08-07',
     responsableAsignado: 'Abog. Luis Delgado',
+    controlProcesal: {
+      materia: 'Vía Ejecutiva / Intimación',
+      etapaActualId: 'civ_prom',
+      etapaActualNombre: 'Promoción de Pruebas',
+      fechaInicioEtapa: '2026-11-02',
+      diasHabilesTotales: 15,
+      diasSinDespacho: ['2026-11-05'],
+      detallesSinDespacho: {
+        '2026-11-05': {
+          fecha: '2026-11-05',
+          motivo: 'Suspensión de despacho por falla eléctrica en sede judicial',
+          registradoPor: 'Abog. Luis Delgado'
+        }
+      },
+      notasProcesales: '15 días de despacho para promover pruebas. 1 día descontado por corte eléctrico.'
+    },
     actuaciones: [
       {
         id: 'act-2-1',
@@ -70,6 +86,19 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
     fechaRegistro: '2026-07-15',
     ultimaActualizacion: '2026-08-06',
     responsableAsignado: 'Dr. Víctor Román',
+    controlProcesal: {
+      materia: 'Civil Ordinario (CPC)',
+      etapaActualId: 'civ_evac',
+      etapaActualNombre: 'Evacuación de Pruebas',
+      fechaInicioEtapa: '2026-10-20',
+      diasHabilesTotales: 30,
+      diasSinDespacho: ['2026-10-28', '2026-11-04'],
+      detallesSinDespacho: {
+        '2026-10-28': { fecha: '2026-10-28', motivo: 'Asamblea de trabajadores del tribunal', registradoPor: 'Dr. Víctor Román' },
+        '2026-11-04': { fecha: '2026-11-04', motivo: 'Falta de despacho por falta de Juez titular', registradoPor: 'Dr. Víctor Román' }
+      },
+      notasProcesales: 'Causa en término probatorio. 2 días inhábiles por falta de despacho.'
+    },
     actuaciones: [
       {
         id: 'act-3-1',
@@ -141,6 +170,19 @@ export const INITIAL_EXPEDIENTES: ExpedienteJudicial[] = [
     fechaRegistro: '2025-04-20',
     ultimaActualizacion: '2026-08-08',
     responsableAsignado: 'Dr. Víctor Román',
+    controlProcesal: {
+      materia: 'Familia / Divorcio',
+      etapaActualId: 'div_med',
+      etapaActualNombre: 'Audiencia de Conciliación',
+      fechaInicioEtapa: '2026-11-02',
+      diasHabilesTotales: 15,
+      diasSinDespacho: ['2026-11-04', '2026-11-06'],
+      detallesSinDespacho: {
+        '2026-11-04': { fecha: '2026-11-04', motivo: 'Falta de despacho por falta de Juez titular (Tribunal Acéfalo)', registradoPor: 'Asistente Legal' },
+        '2026-11-06': { fecha: '2026-11-06', motivo: 'Suspensión de despacho en sede judicial', registradoPor: 'Asistente Legal' }
+      },
+      notasProcesales: 'Tribunal 7mo MSE acéfalo. 2 días hábiles descontados del lapso de comparecencia.'
+    },
     actuaciones: [
       {
         id: 'act-6-1',
@@ -350,11 +392,16 @@ export function getStoredExpedientes(): ExpedienteJudicial[] {
           const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
           const defaultCorrelativo = baseMatch?.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
 
-          if (!item.codigoCorrelativo) {
+          let updatedItem = { ...item };
+          if (!updatedItem.codigoCorrelativo) {
             needsSave = true;
-            return { ...item, codigoCorrelativo: defaultCorrelativo };
+            updatedItem.codigoCorrelativo = defaultCorrelativo;
           }
-          return item;
+          if (!updatedItem.controlProcesal && baseMatch?.controlProcesal) {
+            needsSave = true;
+            updatedItem.controlProcesal = baseMatch.controlProcesal;
+          }
+          return updatedItem;
         });
 
         if (needsSave) {

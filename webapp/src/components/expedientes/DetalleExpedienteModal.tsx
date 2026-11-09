@@ -3,6 +3,7 @@ import { X, Calendar, Clock, User, Building, FileText, Plus, CheckCircle2, Histo
 import type { ExpedienteJudicial, ActuacionHistorial } from '../../types/expedientes';
 import { sortHistoryDesc } from '../../lib/supabaseAdapter';
 import SystemAlertModal from '../common/SystemAlertModal';
+import CalendarioLapsosProcesales from './CalendarioLapsosProcesales';
 
 interface DetalleExpedienteModalProps {
   expediente: ExpedienteJudicial;
@@ -17,6 +18,7 @@ export default function DetalleExpedienteModal({
   onUpdateExpediente,
   onDeleteExpediente
 }: DetalleExpedienteModalProps) {
+  const [tabActiva, setTabActiva] = useState<'lapsos' | 'actuaciones'>('lapsos');
   const [nuevaActuacion, setNuevaActuacion] = useState('');
   const [nuevoEstatus, setNuevoEstatus] = useState(expediente.estatusActual);
   const [observaciones, setObservaciones] = useState('');
@@ -147,137 +149,188 @@ export default function DetalleExpedienteModal({
             </div>
           </div>
 
-          {/* Formulario: Registrar Nueva Actuación / Novedad */}
-          <div className="bg-slate-950/90 border border-amber-500/30 p-5 rounded-2xl space-y-4 shadow-inner">
-            <div className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-amber-400" />
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                Registrar Nueva Actuación / Novedad
-              </h3>
-            </div>
+          {/* Pestañas de Navegación del Modal */}
+          <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+            <button
+              type="button"
+              onClick={() => setTabActiva('lapsos')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                tabActiva === 'lapsos'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Calendario & Lapsos Procesales</span>
+              {expediente.controlProcesal?.etapaActualNombre && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-950/40 text-current font-black">
+                  {expediente.controlProcesal.etapaActualNombre}
+                </span>
+              )}
+            </button>
 
-            {successMsg && (
-              <div className="bg-emerald-500/10 border border-emerald-500/40 p-3.5 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
-                <span>{successMsg}</span>
-              </div>
-            )}
-
-            <form onSubmit={handleAddActuacion} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
-                    Última Actuación Realizada *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej. Realizada Audiencia, Recibidos Oficios, No hubo despacho..."
-                    value={nuevaActuacion}
-                    onChange={(e) => setNuevaActuacion(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
-                    Nuevo Estatus Resultante del Expediente
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="Ej. SENTENCIADO, FIJADO EL CARTEL, POR RETIRAR COPIAS..."
-                    value={nuevoEstatus}
-                    onChange={(e) => setNuevoEstatus(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
-                  Observaciones Adicionales / Instrucciones de Seguimiento
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Detalles adicionales, números de oficio, notas para el equipo..."
-                  value={observaciones}
-                  onChange={(e) => setObservaciones(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none resize-none"
-                />
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !nuevaActuacion.trim()}
-                  className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
-                >
-                  <Send className="w-4 h-4" />
-                  {isSubmitting ? 'Guardando...' : 'Guardar Actuación'}
-                </button>
-              </div>
-            </form>
+            <button
+              type="button"
+              onClick={() => setTabActiva('actuaciones')}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+                tabActiva === 'actuaciones'
+                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800/80'
+              }`}
+            >
+              <History className="w-4 h-4" />
+              <span>Historial de Actuaciones</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 font-bold border border-slate-700">
+                {expediente.actuaciones?.length || 0}
+              </span>
+            </button>
           </div>
 
-          {/* Historial / Línea de Tiempo de Actuaciones */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History className="w-5 h-5 text-sky-400" />
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Historial de Actuaciones ({expediente.actuaciones.length})
-                </h3>
-              </div>
-              <span className="text-xs text-slate-400">Orden Cronológico Reversivo</span>
-            </div>
+          {/* Contenido Pestaña 1: Calendario & Lapsos Procesales */}
+          {tabActiva === 'lapsos' && (
+            <CalendarioLapsosProcesales
+              expediente={expediente}
+              onUpdateExpediente={onUpdateExpediente}
+              currentUser={registradoPor}
+            />
+          )}
 
-            {expediente.actuaciones.length === 0 ? (
-              <div className="bg-slate-950/40 border border-slate-800 p-6 rounded-2xl text-center text-slate-500 text-sm">
-                No hay actuaciones registradas en la bitácora aún.
-              </div>
-            ) : (
-              <div className="relative border-l-2 border-slate-800 ml-4 pl-6 space-y-6">
-                {[...expediente.actuaciones].sort(sortHistoryDesc).map((act) => (
-                  <div key={act.id} className="relative group">
-                    {/* Punto del Timeline */}
-                    <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-amber-400 group-hover:bg-amber-400 transition-colors"></div>
+          {/* Contenido Pestaña 2: Formulario & Historial de Actuaciones */}
+          {tabActiva === 'actuaciones' && (
+            <div className="space-y-6">
+              {/* Formulario: Registrar Nueva Actuación / Novedad */}
+              <div className="bg-slate-950/90 border border-amber-500/30 p-5 rounded-2xl space-y-4 shadow-inner">
+                <div className="flex items-center gap-2">
+                  <Plus className="w-5 h-5 text-amber-400" />
+                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                    Registrar Nueva Actuación / Novedad
+                  </h3>
+                </div>
 
-                    <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-2 hover:border-slate-700 transition-colors">
-                      <div className="flex items-center justify-between flex-wrap gap-2">
-                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                          <span className="font-semibold text-amber-400 flex items-center gap-1">
-                            <Calendar className="w-3.5 h-3.5" /> {act.fecha}
-                          </span>
-                          {act.hora && (
-                            <span className="flex items-center gap-1 text-slate-400">
-                              <Clock className="w-3.5 h-3.5" /> {act.hora}
-                            </span>
-                          )}
-                          {act.registradoPor && (
-                            <span className="text-slate-500">| Por: {act.registradoPor}</span>
-                          )}
-                        </div>
+                {successMsg && (
+                  <div className="bg-emerald-500/10 border border-emerald-500/40 p-3.5 rounded-xl text-emerald-300 text-xs font-semibold flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                    <span>{successMsg}</span>
+                  </div>
+                )}
 
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                          Resultante: {act.estatusResultante}
-                        </span>
-                      </div>
+                <form onSubmit={handleAddActuacion} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                        Última Actuación Realizada *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Realizada Audiencia, Recibidos Oficios, No hubo despacho..."
+                        value={nuevaActuacion}
+                        onChange={(e) => setNuevaActuacion(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none"
+                      />
+                    </div>
 
-                      <p className="text-sm font-semibold text-white leading-relaxed">
-                        {act.actuacion}
-                      </p>
-
-                      {act.observaciones && (
-                        <p className="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 italic">
-                          "{act.observaciones}"
-                        </p>
-                      )}
+                    <div>
+                      <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                        Nuevo Estatus Resultante del Expediente
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. SENTENCIADO, FIJADO EL CARTEL, POR RETIRAR COPIAS..."
+                        value={nuevoEstatus}
+                        onChange={(e) => setNuevoEstatus(e.target.value)}
+                        className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none"
+                      />
                     </div>
                   </div>
-                ))}
+
+                  <div>
+                    <label className="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">
+                      Observaciones Adicionales / Instrucciones de Seguimiento
+                    </label>
+                    <textarea
+                      rows={2}
+                      placeholder="Detalles adicionales, números de oficio, notas para el equipo..."
+                      value={observaciones}
+                      onChange={(e) => setObservaciones(e.target.value)}
+                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || !nuevaActuacion.trim()}
+                      className="bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
+                    >
+                      <Send className="w-4 h-4" />
+                      {isSubmitting ? 'Guardando...' : 'Guardar Actuación'}
+                    </button>
+                  </div>
+                </form>
               </div>
-            )}
-          </div>
+
+              {/* Historial / Línea de Tiempo de Actuaciones */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <History className="w-5 h-5 text-sky-400" />
+                    <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                      Historial de Actuaciones ({expediente.actuaciones.length})
+                    </h3>
+                  </div>
+                  <span className="text-xs text-slate-400">Orden Cronológico Reversivo</span>
+                </div>
+
+                {expediente.actuaciones.length === 0 ? (
+                  <div className="bg-slate-950/40 border border-slate-800 p-6 rounded-2xl text-center text-slate-500 text-sm">
+                    No hay actuaciones registradas en la bitácora aún.
+                  </div>
+                ) : (
+                  <div className="relative border-l-2 border-slate-800 ml-4 pl-6 space-y-6">
+                    {[...expediente.actuaciones].sort(sortHistoryDesc).map((act) => (
+                      <div key={act.id} className="relative group">
+                        {/* Punto del Timeline */}
+                        <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-slate-900 border-2 border-amber-400 group-hover:bg-amber-400 transition-colors"></div>
+
+                        <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-2xl space-y-2 hover:border-slate-700 transition-colors">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-2 text-xs text-slate-400">
+                              <span className="font-semibold text-amber-400 flex items-center gap-1">
+                                <Calendar className="w-3.5 h-3.5" /> {act.fecha}
+                              </span>
+                              {act.hora && (
+                                <span className="flex items-center gap-1 text-slate-400">
+                                  <Clock className="w-3.5 h-3.5" /> {act.hora}
+                                </span>
+                              )}
+                              {act.registradoPor && (
+                                <span className="text-slate-500">| Por: {act.registradoPor}</span>
+                              )}
+                            </div>
+
+                            <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                              Resultante: {act.estatusResultante}
+                            </span>
+                          </div>
+
+                          <p className="text-sm font-semibold text-white leading-relaxed">
+                            {act.actuacion}
+                          </p>
+
+                          {act.observaciones && (
+                            <p className="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80 italic">
+                              "{act.observaciones}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
         </div>
 

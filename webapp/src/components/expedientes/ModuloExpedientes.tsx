@@ -15,6 +15,8 @@ import {
 import api, { submitToServer } from '../../lib/api';
 import DetalleExpedienteModal from './DetalleExpedienteModal';
 import PlanificacionSemanal from './PlanificacionSemanal';
+import BadgeLapsoProcesal from './BadgeLapsoProcesal';
+import { calcularComputoProcesal } from '../../lib/lapsosProcesales';
 import { checkIsJefatura } from '../../App';
 
 interface ModuloExpedientesProps {
@@ -67,6 +69,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   const [searchTerm, setSearchTerm] = useState('');
   const [juzgadoFilter, setJuzgadoFilter] = useState('Todos');
   const [estatusFilter, setEstatusFilter] = useState('Todos');
+  const [lapsoFilter, setLapsoFilter] = useState('Todos');
 
   // Estados de Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -146,6 +149,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               }];
             }
 
+            const localMatch = expedientes.find(e => e.numeroExpediente === exp.numeroExpediente || e.id === exp.id);
             return {
               ...exp,
               id: exp.id || 'exp-' + Math.random(),
@@ -156,7 +160,8 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               fechaRegistro: exp.fechaRegistro || (acts[0] ? acts[0].fecha : new Date().toISOString().split('T')[0]),
               ultimaActualizacion: acts[0] ? acts[0].fecha : (exp.ultimaActualizacion || new Date().toISOString().split('T')[0]),
               responsableAsignado: userStr || exp.responsableAsignado || 'Sistema',
-              actuaciones: acts
+              actuaciones: acts,
+              controlProcesal: exp.controlProcesal || localMatch?.controlProcesal
             };
           }) as ExpedienteJudicial[];
 
@@ -381,10 +386,22 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
     }
 
     const rawSearch = searchTerm.trim().toLowerCase();
+    const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
+    const matchEstatus = estatusFilter === 'Todos' || item.estatusActual === estatusFilter;
+
+    let matchLapso = true;
+    if (lapsoFilter !== 'Todos') {
+      const comp = calcularComputoProcesal(item.controlProcesal);
+      if (lapsoFilter === 'urgente') matchLapso = comp.estado === 'urgente';
+      else if (lapsoFilter === 'alerta') matchLapso = comp.estado === 'alerta' || comp.estado === 'urgente';
+      else if (lapsoFilter === 'sin_despacho') matchLapso = (item.controlProcesal?.diasSinDespacho || []).length > 0;
+      else if (lapsoFilter === 'vencido') matchLapso = comp.estado === 'vencido';
+      else if (lapsoFilter === 'con_etapa') matchLapso = !!item.controlProcesal?.etapaActualNombre;
+      else if (lapsoFilter === 'sin_etapa') matchLapso = !item.controlProcesal?.etapaActualNombre;
+    }
+
     if (!rawSearch) {
-      const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
-      const matchEstatus = estatusFilter === 'Todos' || item.estatusActual === estatusFilter;
-      return matchJuzgado && matchEstatus;
+      return matchJuzgado && matchEstatus && matchLapso;
     }
 
     const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -407,7 +424,8 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       item.procedimiento.toLowerCase().includes(rawSearch) ||
       item.estatusActual.toLowerCase().includes(rawSearch) ||
       (item.responsableAsignado || '').toLowerCase().includes(rawSearch) ||
-      (item.actuaciones[0]?.registradoPor || '').toLowerCase().includes(rawSearch);
+      (item.actuaciones[0]?.registradoPor || '').toLowerCase().includes(rawSearch) ||
+      (item.controlProcesal?.etapaActualNombre || '').toLowerCase().includes(rawSearch);
 
     // 2. Coincidencia numérica bidireccional despojando caracteres especiales
     const numericMatch =
@@ -416,16 +434,14 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       (cleanSearch.length >= 2 && (cleanNumExp.includes(cleanSearch) || cleanCorrelativo.includes(cleanSearch) || cleanSearch.includes(cleanNumExp) || cleanSearch.includes(cleanCorrelativo)));
 
     const matchSearch = directMatch || numericMatch;
-    const matchJuzgado = juzgadoFilter === 'Todos' || item.juzgado === juzgadoFilter;
-    const matchEstatus = estatusFilter === 'Todos' || item.estatusActual === estatusFilter;
 
-    return matchSearch && matchJuzgado && matchEstatus;
+    return matchSearch && matchJuzgado && matchEstatus && matchLapso;
   });
 
   // Resetear a la primera página si cambian los filtros o la búsqueda
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, juzgadoFilter, estatusFilter, showDuplicatesOnly]);
+  }, [searchTerm, juzgadoFilter, estatusFilter, lapsoFilter, showDuplicatesOnly]);
 
   // Orden estricto del más nuevo al más viejo
   const sortedExpedientes = [...filteredExpedientes].sort((a, b) => {
@@ -615,11 +631,11 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
         {/* Buscador inteligente si estamos en vista de Expedientes */}
         {activeTab === 'expedientes' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-2">
-            <div className="lg:col-span-4 sm:col-span-2 relative">
+            <div className="lg:col-span-3 sm:col-span-2 relative">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Ingresa el N° de Expediente (ej: 57.380, Prov-V...)"
+                placeholder="Ingresa N° de Expediente o Etapa..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-10 pr-4 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder:text-slate-500 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
@@ -634,7 +650,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               )}
             </div>
 
-            <div className="lg:col-span-3 sm:col-span-1">
+            <div className="lg:col-span-2 sm:col-span-1">
               <select
                 value={juzgadoFilter}
                 onChange={(e) => setJuzgadoFilter(e.target.value)}
@@ -650,7 +666,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               </select>
             </div>
 
-            <div className="lg:col-span-3 sm:col-span-1">
+            <div className="lg:col-span-2 sm:col-span-1">
               <select
                 value={estatusFilter}
                 onChange={(e) => setEstatusFilter(e.target.value)}
@@ -663,6 +679,22 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 <option value="SENTENCIADO Y OFICIADO">SENTENCIADO Y OFICIADO</option>
                 <option value="TRIBUNAL ACÉFALO">TRIBUNAL ACÉFALO</option>
                 <option value="POR RETIRAR COPIAS">POR RETIRAR COPIAS</option>
+              </select>
+            </div>
+
+            <div className="lg:col-span-3 sm:col-span-2">
+              <select
+                value={lapsoFilter}
+                onChange={(e) => setLapsoFilter(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-950/90 border border-amber-500/40 rounded-2xl text-amber-300 text-xs font-bold outline-none cursor-pointer"
+              >
+                <option value="Todos">📅 Todos los Lapsos Procesales</option>
+                <option value="urgente">🔥 ¡Urgentes! (≤ 2 días hábiles)</option>
+                <option value="alerta">⏱️ Por Vencer (≤ 5 días)</option>
+                <option value="sin_despacho">🚫 Con Días Sin Despacho</option>
+                <option value="vencido">⚠️ Lapsos Vencidos</option>
+                <option value="con_etapa">✓ Con Etapa Asignada</option>
+                <option value="sin_etapa">+ Sin Etapa Asignada</option>
               </select>
             </div>
 
@@ -805,9 +837,16 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                         )}
                       </div>
 
-                      <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusBadgeStyle(exp.estatusActual)}`}>
-                        {exp.estatusActual}
-                      </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <BadgeLapsoProcesal
+                          control={exp.controlProcesal}
+                          onOpenConfig={() => setSelectedExpediente(exp)}
+                          compact={true}
+                        />
+                        <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusBadgeStyle(exp.estatusActual)}`}>
+                          {exp.estatusActual}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Alerta visible en la tarjeta si tiene duplicado */}
@@ -825,7 +864,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
                       {/* Partes y Procedimiento */}
-                      <div className="md:col-span-5 space-y-1">
+                      <div className="md:col-span-4 space-y-1">
                         <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Partes Procesales</p>
                         <h3 className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">
                           {exp.partes}
@@ -835,8 +874,16 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                         </p>
                       </div>
 
+                      {/* Control y Estado del Lapso Procesal */}
+                      <div className="md:col-span-3 flex flex-col justify-center">
+                        <BadgeLapsoProcesal
+                          control={exp.controlProcesal}
+                          onOpenConfig={() => setSelectedExpediente(exp)}
+                        />
+                      </div>
+
                       {/* Última Actuación Destacada */}
-                      <div className="md:col-span-5 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                      <div className="md:col-span-3 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
                         <div className="flex items-center justify-between text-[11px]">
                           <span className="text-slate-400 font-bold uppercase tracking-wider">Última Actuación</span>
                           <span className="text-amber-400 font-semibold">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>

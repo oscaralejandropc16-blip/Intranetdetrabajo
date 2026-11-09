@@ -1433,6 +1433,19 @@ export async function supabaseGetExpedientes(): Promise<any> {
     const oldestDate = uniqueActs[uniqueActs.length - 1]?.fecha || (e.created_at ? e.created_at.split('T')[0] : new Date().toISOString().split('T')[0]);
     const latestAutor = uniqueActs[0]?.registradoPor || e.abogado_responsable || 'Román & Delgado';
 
+    // Recuperar control procesal desde el registro, caché local o base
+    let foundControl = e.controlProcesal || e.control_procesal;
+    if (!foundControl) {
+      try {
+        const cachedRaw = localStorage.getItem('rd_cached_expedientes') || localStorage.getItem('rd_expedientes_list_v1');
+        if (cachedRaw) {
+          const cachedList = JSON.parse(cachedRaw);
+          const cMatch = cachedList.find((c: any) => c.numeroExpediente === e.numero || c.id === e.id);
+          if (cMatch?.controlProcesal) foundControl = cMatch.controlProcesal;
+        }
+      } catch (err) {}
+    }
+
     return {
       id: e.id,
       numeroExpediente: e.numero,
@@ -1450,7 +1463,8 @@ export async function supabaseGetExpedientes(): Promise<any> {
       responsableAsignado: latestAutor,
       fechaRegistro: oldestDate,
       ultimaActualizacion: latestDate,
-      actuaciones: uniqueActs
+      actuaciones: uniqueActs,
+      controlProcesal: foundControl
     };
   });
 
@@ -1470,7 +1484,7 @@ export async function supabaseSaveExpedientes(payload: any): Promise<any> {
   for (const exp of list) {
     if (exp.numeroExpediente || exp.numero) {
       const num = (exp.numeroExpediente || exp.numero || '').trim();
-      const insertData = {
+      const insertData: any = {
         numero: num,
         titulo: (exp.partes || exp.titulo || '').trim(),
         cliente: exp.cliente || '',
@@ -1479,6 +1493,9 @@ export async function supabaseSaveExpedientes(payload: any): Promise<any> {
         abogado_responsable: exp.usuario || exp.abogado_responsable || localStorage.getItem('rd_user_name') || '',
         estado: exp.estado || 'activo'
       };
+      if (exp.actuaciones) {
+        insertData.actuaciones = typeof exp.actuaciones === 'string' ? exp.actuaciones : JSON.stringify(exp.actuaciones);
+      }
       const { error } = await supabase.from('expedientes').upsert(insertData, { onConflict: 'numero' });
       if (error) {
         console.error('Error upserting expediente:', error);
