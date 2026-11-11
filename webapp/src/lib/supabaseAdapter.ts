@@ -1825,37 +1825,60 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
   const currentLower = normalizeName(currentUser);
   const isBossU = checkIsJefatura(currentUser);
 
-  // Lista canónica de contactos del bufete (deduplicada y con roles exactos)
+  // 1. Obtener lista de usuarios dados de baja para excluir estrictamente del chat
+  let deletedUsers: DeletedSystemUser[] = [];
+  try {
+    deletedUsers = await supabaseGetDeletedUsers();
+  } catch (e) {}
+
+  const isDeletedContact = (name: string) => {
+    const n = normalizeName(name);
+    return deletedUsers.some(d => {
+      const u = normalizeName(d.username || '');
+      const f = normalizeName(d.fullName || '');
+      const e = normalizeName(d.email || '');
+      return (u && (n === u || n.includes(u) || u.includes(n))) ||
+             (f && (n === f || n.includes(f) || f.includes(n))) ||
+             (e && n.includes(e));
+    });
+  };
+
+  // Lista canónica de contactos activos del bufete (deduplicada y con roles exactos)
   const canonicalContacts = [
     { full_name: 'Luis Delgado', role: 'jefatura' },
     { full_name: 'Victor Roman', role: 'jefatura' },
-    { full_name: 'Carmen Luisa', role: 'empleado' },
     { full_name: 'Mariela Isabel', role: 'empleado' },
-    { full_name: 'Hector', role: 'empleado' }
+    { full_name: 'Hector', role: 'empleado' },
+    { full_name: 'oscarpc20', role: 'empleado' }
   ];
 
-  // 1. Obtener perfiles de usuarios de Supabase
+  // 2. Obtener perfiles de usuarios de Supabase
   const { data: profiles } = await supabase.from('profiles').select('*');
   
-  // Unificar contactos canónicos con perfiles de BD sin duplicados
+  // Unificar contactos canónicos con perfiles de BD sin duplicados y filtrando eliminados
   const contactsMap = new Map<string, { full_name: string; role: string }>();
-  canonicalContacts.forEach(c => contactsMap.set(normalizeName(c.full_name), c));
+  canonicalContacts.forEach(c => {
+    if (!isDeletedContact(c.full_name)) {
+      contactsMap.set(normalizeName(c.full_name), c);
+    }
+  });
   
   if (profiles && profiles.length > 0) {
     for (const p of profiles) {
       const name = (p.full_name || p.email || '').trim();
       const nLower = normalizeName(name);
+      if (isDeletedContact(name)) continue;
+
       // Mapear nombres duplicados a la versión canónica
       if (nLower.includes('luis')) contactsMap.set('luis delgado', { full_name: 'Luis Delgado', role: 'jefatura' });
       else if (nLower.includes('victor') || nLower.includes('roman')) contactsMap.set('victor roman', { full_name: 'Victor Roman', role: 'jefatura' });
-      else if (nLower.includes('carmen')) contactsMap.set('carmen luisa', { full_name: 'Carmen Luisa', role: 'empleado' });
       else if (nLower.includes('mariela')) contactsMap.set('mariela isabel', { full_name: 'Mariela Isabel', role: 'empleado' });
       else if (nLower.includes('hector')) contactsMap.set('hector', { full_name: 'Hector', role: 'empleado' });
       else if (nLower.includes('oscar')) contactsMap.set('oscarpc20', { full_name: 'oscarpc20', role: 'empleado' });
     }
   }
 
-  const contactsList = Array.from(contactsMap.values());
+  const contactsList = Array.from(contactsMap.values()).filter(c => !isDeletedContact(c.full_name));
 
   // 2. Obtener mensajes recientes
   const { data: messages } = await supabase

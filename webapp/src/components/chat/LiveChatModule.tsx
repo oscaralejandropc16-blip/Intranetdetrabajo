@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import api, { submitToServer } from '../../lib/api';
 import { supabase } from '../../lib/supabase';
+import { supabaseGetDeletedUsers } from '../../lib/supabaseAdapter';
 import SystemAlertModal from '../common/SystemAlertModal';
 import { formatChatMessageMeta } from '../../lib/chatUtils';
 
@@ -139,16 +140,6 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       totalMessages: 0
     },
     {
-      employee: 'Carmen Luisa',
-      role: 'Abogado / Empleado',
-      unreadCountJefe: 0,
-      unreadCountEmpleado: 0,
-      lastMessage: 'Canal oficial disponible',
-      lastMessageTime: '',
-      lastMessageIsMe: false,
-      totalMessages: 0
-    },
-    {
       employee: 'Mariela Isabel',
       role: 'Abogado / Empleado',
       unreadCountJefe: 0,
@@ -182,13 +173,48 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
 
   const effectiveCurrentUser = currentUser || localStorage.getItem('rd_user_name') || (isJefatura ? 'Victor Roman' : 'Mariela Isabel');
 
-  // Inicializar contacto activo asegurando que no sea el mismo usuario
+  // Identificadores de usuarios dados de baja para excluir del directorio
+  const [deletedUserNames, setDeletedUserNames] = useState<string[]>(() => {
+    try {
+      const cached = localStorage.getItem('rd_system_deleted_users_history');
+      if (cached) {
+        const list = JSON.parse(cached);
+        if (Array.isArray(list)) {
+          return list.flatMap((u: any) => [u.username, u.fullName, u.email].filter(Boolean));
+        }
+      }
+    } catch (e) {}
+    return ['carmen', 'carmen luisa', 'abgcarmendelgado.990@gmail.com', 'contador'];
+  });
+
+  useEffect(() => {
+    supabaseGetDeletedUsers().then(list => {
+      if (Array.isArray(list) && list.length > 0) {
+        const names = list.flatMap(u => [u.username, u.fullName, u.email].filter(Boolean));
+        setDeletedUserNames(names);
+      }
+    }).catch(() => {});
+  }, []);
+
+  const isContactDeleted = useCallback((name?: string) => {
+    if (!name) return false;
+    const clean = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+    return deletedUserNames.some(d => {
+      const dClean = (d || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      return dClean && (clean === dClean || clean.includes(dClean) || dClean.includes(clean));
+    });
+  }, [deletedUserNames]);
+
+  // Inicializar contacto activo asegurando que no sea el mismo usuario ni un usuario dado de baja
   const [conversations, setConversations] = useState<ConversationItem[]>(DEFAULT_CONTACTS);
 
   const [activeEmployee, setActiveEmployee] = useState<string>(() => {
     const curClean = (effectiveCurrentUser || '').toLowerCase().trim();
     if (initialEmployee && !curClean.includes(initialEmployee.toLowerCase().trim())) {
-      return initialEmployee;
+      const initClean = initialEmployee.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+      if (!initClean.includes('carmen') && !initClean.includes('contador')) {
+        return initialEmployee;
+      }
     }
     // Por defecto ningún chat abierto: el usuario debe seleccionar de la lista a quién escribirle
     return '';
@@ -810,9 +836,10 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     }, 0);
   }, [conversations, isJefatura]);
 
-  // Filtrado de contactos excluyendo al usuario actualmente logueado
+  // Filtrado de contactos excluyendo al usuario actualmente logueado y a los dados de baja
   const filteredConversations = (conversations || []).filter(c => {
     if (!c || !c.employee) return false;
+    if (isContactDeleted(c.employee)) return false;
     const empLower = (c.employee || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const currLower = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
     const isSelf = (empLower && currLower) ? (empLower.includes(currLower) || currLower.includes(empLower)) : false;
@@ -844,7 +871,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               <h3 className="text-sm font-bold text-white">Directorio KANT</h3>
               <p className="text-[10px] text-emerald-400 flex items-center gap-1 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span>{effectiveCurrentUser} • En línea</span>
+                <span>{effectiveCurrentUser} • Conectado</span>
               </p>
             </div>
           </div>
@@ -918,10 +945,17 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 }`}
               >
                 <div className="relative shrink-0">
-                  <div className="w-10 h-10 rounded-full bg-[#202c33] border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs">
+                  <div className={`w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs ${
+                    isUserBoss(conv.employee) ? 'bg-amber-600/30 text-amber-200' : 'bg-[#202c33]'
+                  }`}>
                     {(conv.employee || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-[#111b21] rounded-full"></span>
+                  <span 
+                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#111b21] ${
+                      isUserBoss(conv.employee) ? 'bg-amber-400' : 'bg-emerald-400'
+                    }`}
+                    title={isUserBoss(conv.employee) ? 'Socio Director / Jefatura' : 'Equipo KANT'}
+                  ></span>
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -1000,10 +1034,25 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="relative shrink-0">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-emerald-600 flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md ring-2 ring-emerald-400/30">
-                    {isUserBoss(activeEmployee) ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md ring-2 ${
+                    isContactDeleted(activeEmployee)
+                      ? 'bg-rose-700 ring-rose-400/30'
+                      : isUserBoss(activeEmployee) 
+                        ? 'bg-amber-600 ring-amber-400/30' 
+                        : 'bg-emerald-600 ring-emerald-400/30'
+                  }`}>
+                    {isContactDeleted(activeEmployee) ? <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : isUserBoss(activeEmployee) ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </div>
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-400 border-2 border-[#1f2c34] rounded-full"></span>
+                  <span 
+                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-[#1f2c34] ${
+                      isContactDeleted(activeEmployee)
+                        ? 'bg-rose-500'
+                        : isUserBoss(activeEmployee) 
+                          ? 'bg-amber-400' 
+                          : 'bg-emerald-400'
+                    }`}
+                    title={isContactDeleted(activeEmployee) ? 'Cuenta dada de baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo KANT'}
+                  ></span>
                 </div>
 
                 <div className="min-w-0">
@@ -1012,16 +1061,29 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       {activeEmployee}
                     </h3>
                     <span className={`px-2 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider ${
-                      isUserBoss(activeEmployee) 
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      isContactDeleted(activeEmployee)
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                        : isUserBoss(activeEmployee) 
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     }`}>
-                      {isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo'}
+                      {isContactDeleted(activeEmployee) ? 'Inactivo / Baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo'}
                     </span>
                   </div>
                   <p className="text-[10px] sm:text-[11px] text-slate-400 flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                    <span className="text-emerald-300 font-medium">En línea en la Intranet</span>
+                    {isContactDeleted(activeEmployee) ? (
+                      <>
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        <span className="text-rose-400 font-medium">Cuenta dada de baja • Acceso denegado</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isUserBoss(activeEmployee) ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                        <span className="text-slate-300 font-medium">
+                          {isUserBoss(activeEmployee) ? 'Socio Director • Despacho Román & Delgado' : 'Equipo KANT • Canal Oficial'}
+                        </span>
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
