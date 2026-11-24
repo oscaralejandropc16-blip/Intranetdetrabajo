@@ -189,7 +189,7 @@ function MobileBottomNav({
   return (
     <>
       {/* Bottom bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/92 backdrop-blur-2xl border-t border-blue-100/90 safe-area-pb shadow-xl shadow-blue-950/10">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-blue-200 safe-area-pb shadow-[0_-6px_24px_rgba(23,37,84,0.08)]">
         <div className="flex items-stretch h-[60px]">
           {pinnedItems.map(item => {
             const isActive = item.id === activeView;
@@ -200,22 +200,25 @@ function MobileBottomNav({
                 className={cn(
                   'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer relative py-1',
                   'active:bg-blue-50',
-                  isActive ? 'text-blue-600' : 'text-slate-400'
+                  isActive ? 'text-[#1e3a8a] bg-blue-50/75' : 'text-slate-600 hover:text-[#1e3a8a]'
                 )}
               >
-                <span className={cn('w-5 h-5 flex items-center justify-center', isActive && 'text-blue-600')}>
+                <span className={cn(
+                  'w-5 h-5 flex items-center justify-center transition-colors',
+                  isActive ? '[&_svg]:!text-[#1e3a8a] text-[#1e3a8a]' : '[&_svg]:!text-slate-600 text-slate-600'
+                )}>
                   {item.icon}
                 </span>
-                <span className={cn('text-[10px] font-bold leading-none', isActive ? 'text-blue-700' : 'text-slate-500')}>
+                <span className={cn('text-[10px] leading-none', isActive ? 'text-[#1e3a8a] font-extrabold' : 'text-slate-600 font-semibold')}>
                   {item.shortLabel || item.label.split(' ')[0]}
                 </span>
                 {item.badge != null && (
-                  <span className="absolute top-1 right-1/4 min-w-[16px] h-[16px] flex items-center justify-center px-1 text-[9px] font-black text-white bg-rose-500 rounded-full">
+                  <span className="absolute top-1 right-1/4 min-w-[16px] h-[16px] flex items-center justify-center px-1 text-[9px] font-black text-white bg-rose-500 rounded-full shadow-2xs">
                     {item.badge}
                   </span>
                 )}
                 {isActive && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full" />
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] bg-gradient-to-r from-[#172554] to-[#1d4ed8] rounded-full" />
                 )}
               </button>
             );
@@ -227,18 +230,18 @@ function MobileBottomNav({
               onClick={() => setShowMore(!showMore)}
               className={cn(
                 'flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer relative py-1',
-                'active:bg-slate-100',
-                isActiveInOverflow || showMore ? 'text-blue-600' : 'text-slate-400'
+                'active:bg-blue-50',
+                isActiveInOverflow || showMore ? 'text-[#1e3a8a] bg-blue-50/75' : 'text-slate-600 hover:text-[#1e3a8a]'
               )}
             >
               <span className="w-5 h-5 flex items-center justify-center">
                 {showMore ? <X className="w-5 h-5" /> : <MoreHorizontal className="w-5 h-5" />}
               </span>
-              <span className={cn('text-[10px] font-bold leading-none', (isActiveInOverflow || showMore) ? 'text-blue-600' : 'text-slate-500')}>
+              <span className={cn('text-[10px] leading-none', (isActiveInOverflow || showMore) ? 'text-[#1e3a8a] font-extrabold' : 'text-slate-600 font-semibold')}>
                 Más
               </span>
               {isActiveInOverflow && !showMore && (
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] bg-blue-600 rounded-full" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[2.5px] bg-[#1e3a8a] rounded-full" />
               )}
             </button>
           )}
@@ -249,14 +252,14 @@ function MobileBottomNav({
       {showMore && (
         <>
           <div
-            className="md:hidden fixed inset-0 z-40 bg-slate-900/35 backdrop-blur-xs animate-in fade-in duration-150"
+            className="md:hidden fixed inset-0 z-40 bg-slate-900/45 backdrop-blur-xs animate-in fade-in duration-150"
             onClick={() => setShowMore(false)}
           />
-          <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-50 bg-white/98 rounded-t-3xl shadow-2xl border-t border-blue-100 animate-in slide-in-from-bottom duration-200 safe-area-pb max-h-[65vh] overflow-y-auto">
+          <div className="md:hidden fixed bottom-[60px] left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl shadow-blue-950/20 border-t border-blue-200 animate-in slide-in-from-bottom duration-200 safe-area-pb max-h-[65vh] overflow-y-auto">
             <div className="flex justify-center pt-3 pb-1">
-              <div className="w-10 h-1 bg-slate-300 rounded-full" />
+              <div className="w-10 h-1 bg-blue-200 rounded-full" />
             </div>
-            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center pt-1 pb-2">
+            <p className="text-[11px] font-bold text-[#1e3a8a] uppercase tracking-wider text-center pt-1 pb-2">
               Más Opciones y Módulos
             </p>
             <div className="grid grid-cols-3 gap-2 p-3 pb-4">
@@ -270,11 +273,14 @@ function MobileBottomNav({
                       'flex flex-col items-center justify-center gap-1.5 p-3 rounded-2xl transition-all cursor-pointer text-center',
                       'active:scale-95',
                       isActive
-                        ? 'bg-blue-50 text-blue-600 ring-1 ring-blue-500/40 shadow-xs'
-                        : 'text-slate-700 hover:bg-slate-50 border border-slate-100'
+                        ? 'bg-[#dbeafe] text-[#1e3a8a] font-extrabold ring-1 ring-blue-300 shadow-xs'
+                        : 'bg-slate-50/80 text-slate-700 hover:bg-blue-50 border border-blue-100'
                     )}
                   >
-                    <span className={cn('w-5 h-5 flex items-center justify-center', isActive ? 'text-blue-600' : 'text-slate-500')}>
+                    <span className={cn(
+                      'w-5 h-5 flex items-center justify-center',
+                      isActive ? '[&_svg]:!text-[#1e3a8a] text-[#1e3a8a]' : '[&_svg]:!text-[#1e3a8a]/80 text-[#1e3a8a]/80'
+                    )}>
                       {item.icon}
                     </span>
                     <span className="text-[11px] font-bold leading-tight">
