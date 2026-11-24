@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Sparkles, X, ShieldCheck, Heart, ChevronRight, EyeOff } from 'lucide-react';
-import { 
-  getEfemerideDelDia, 
-  getActiveDate, 
-  getDisfrazParaEfemeride 
+import { X, ShieldCheck, Heart, ChevronRight, EyeOff } from 'lucide-react';
+import {
+  getEfemerideDelDia,
+  getActiveDate,
+  getDisfrazParaEfemeride
 } from '../../lib/efemeridesVenezuela';
 import KantCostumeOverlay from './KantCostumeOverlay';
-import { 
-  getActiveFestiveTheme, 
-  type FestiveThemeId 
+import {
+  getActiveFestiveTheme,
+  type FestiveThemeId
 } from '../../lib/themeManager';
 
 interface KantMascotProps {
@@ -182,46 +182,27 @@ export default function KantMascot({
     xl: 'h-52 sm:h-64 w-auto'
   }[size];
 
-  const auraSize = {
-    sm: 'w-10 h-10 -inset-0.5',
-    md: 'w-16 h-16 -inset-1',
-    lg: 'w-48 h-48 -inset-3',
-    xl: 'w-64 h-64 -inset-4'
-  }[size];
-
   return (
     <div ref={mascotRef} className={`relative inline-flex items-center justify-center select-none ${className}`}>
-      {/* Halo y Aura de Glow Dinámico que cambia según el disfraz/efeméride */}
-      <div 
-        className={`absolute rounded-full bg-gradient-to-r ${disfrazInfo?.auraClass || 'from-amber-400/30 via-yellow-300/25 to-amber-500/30'} blur-md pointer-events-none transition-all duration-500 ${auraSize} ${
-          isExcited ? 'opacity-100 scale-125' : 'opacity-70 group-hover:opacity-100'
-        }`}
-      />
 
-      {/* Partículas flotantes de chispas en hover */}
-      <div className="absolute -top-1 -right-1 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
-      </div>
 
       {/* Partículas de Corazoncitos al hacer clic */}
       {showHearts && (
         <div className="absolute -top-4 pointer-events-none flex items-center gap-1 z-30 animate-bounce">
           <Heart className="w-4 h-4 text-rose-400 fill-rose-400 drop-shadow-md" />
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
         </div>
       )}
 
       {/* Contenedor Interactivo del Perrito con su Disfraz Automático */}
       {asDiv ? (
         <div
-          className={`relative transition-transform duration-300 group flex items-center justify-center pointer-events-none select-none ${
-            isExcited ? 'dog-excited' : 'dog-idle'
-          }`}
+          className={`relative transition-transform duration-300 group flex items-center justify-center pointer-events-none select-none ${isExcited ? 'dog-excited' : 'dog-idle'
+            }`}
         >
           <img
             src="/dog_logo.png"
             alt="KANT Mascota"
-            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-[0_4px_10px_rgba(245,158,11,0.35)]`}
+            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-xs`}
             onError={(e) => {
               e.currentTarget.style.display = 'none';
               if (e.currentTarget.nextElementSibling) {
@@ -233,7 +214,7 @@ export default function KantMascot({
           {festiveTheme === 'default' && disfrazInfo && disfrazInfo.tipo !== 'chocolate' && (
             <>
               {disfrazInfo.sombreroEmoji && (
-                <span 
+                <span
                   className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
                   style={{ animationDuration: '3s' }}
                   title={disfrazInfo.badgeLabel}
@@ -242,7 +223,7 @@ export default function KantMascot({
                 </span>
               )}
               {disfrazInfo.accesorioEmoji && (
-                <span 
+                <span
                   className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
                   title={disfrazInfo.badgeLabel}
                 >
@@ -251,8 +232,8 @@ export default function KantMascot({
               )}
             </>
           )}
-          <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
-            🐾
+          <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
+            K
           </div>
         </div>
       ) : (
@@ -260,14 +241,13 @@ export default function KantMascot({
           type="button"
           onClick={handleClick}
           aria-label="Kant Mascota"
-          className={`relative cursor-pointer transition-transform duration-300 active:scale-95 group focus:outline-none flex items-center justify-center ${
-            isExcited ? 'dog-excited' : 'dog-idle'
-          }`}
+          className={`relative cursor-pointer transition-transform duration-300 active:scale-95 group focus:outline-none flex items-center justify-center ${isExcited ? 'dog-excited' : 'dog-idle'
+            }`}
         >
           <img
             src="/dog_logo.png"
             alt="KANT Mascota"
-            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-[0_4px_10px_rgba(245,158,11,0.35)] group-hover:drop-shadow-[0_6px_18px_rgba(245,158,11,0.65)] group-hover:scale-105`}
+            className={`${sizeClasses} object-contain transition-all duration-300 drop-shadow-xs group-hover:scale-105`}
             onError={(e) => {
               // Respaldo de iniciales si la imagen fallara
               e.currentTarget.style.display = 'none';
@@ -285,7 +265,7 @@ export default function KantMascot({
             <>
               {/* Sombrero / Adorno de cabeza */}
               {disfrazInfo.sombreroEmoji && (
-                <span 
+                <span
                   className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
                   style={{ animationDuration: '3s' }}
                   title={disfrazInfo.badgeLabel}
@@ -295,7 +275,7 @@ export default function KantMascot({
               )}
               {/* Accesorio de patas / pecho */}
               {disfrazInfo.accesorioEmoji && (
-                <span 
+                <span
                   className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
                   title={disfrazInfo.badgeLabel}
                 >
@@ -305,38 +285,36 @@ export default function KantMascot({
             </>
           )}
 
-          <div className="hidden w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black text-xs items-center justify-center shadow-md">
-            🐾
+          <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
+            K
           </div>
         </button>
       )}
 
       {/* Globo de Diálogo Interactivo (Speech Bubble) Responsive */}
       {showSpeech && (
-        <div 
-          className={`absolute top-full mt-2.5 z-[100] w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700 rounded-2xl p-3.5 shadow-2xl text-left animate-in fade-in zoom-in-95 duration-200 ${
-            alignSpeech === 'left' 
-              ? 'left-0' 
-              : alignSpeech === 'right' 
-                ? 'right-0' 
-                : 'left-1/2 -translate-x-1/2'
-          }`}
+        <div
+          className={`absolute top-full mt-2.5 z-[100] w-64 sm:w-72 max-w-[calc(100vw-2rem)] bg-white/98 backdrop-blur-2xl border border-blue-100 rounded-2xl p-3.5 shadow-2xl shadow-blue-950/15 text-left animate-in fade-in zoom-in-95 duration-200 ${alignSpeech === 'left'
+            ? 'left-0'
+            : alignSpeech === 'right'
+              ? 'right-0'
+              : 'left-1/2 -translate-x-1/2'
+            }`}
         >
           {/* Triángulo indicador hacia el perrito */}
-          <div 
-            className={`absolute -top-1.5 w-3 h-3 bg-slate-900 border-t border-l border-slate-700 rotate-45 ${
-              alignSpeech === 'left' 
-                ? 'left-4' 
-                : alignSpeech === 'right' 
-                  ? 'right-4' 
-                  : 'left-1/2 -translate-x-1/2'
-            }`}
+          <div
+            className={`absolute -top-1.5 w-3 h-3 bg-white border-t border-l border-blue-100 rotate-45 ${alignSpeech === 'left'
+              ? 'left-4'
+              : alignSpeech === 'right'
+                ? 'right-4'
+                : 'left-1/2 -translate-x-1/2'
+              }`}
           />
 
           <div className="flex items-start justify-between gap-2 mb-1.5">
-            <div className="flex items-center gap-1.5 text-amber-400 font-black text-xs uppercase tracking-wider">
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>{disfrazInfo ? 'Kant celebra:' : 'Kant dice:'}</span>
+            <div className="flex items-center gap-1.5 text-blue-700 font-black text-xs uppercase tracking-wider">
+              <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+              <span>{disfrazInfo ? 'KANT celebra:' : 'KANT dice:'}</span>
             </div>
             <button
               type="button"
@@ -344,32 +322,32 @@ export default function KantMascot({
                 e.stopPropagation();
                 setShowSpeech(false);
               }}
-              className="text-slate-400 hover:text-white p-0.5 rounded-md hover:bg-slate-800 transition-colors"
+              className="text-slate-400 hover:text-slate-700 p-0.5 rounded-md hover:bg-blue-50 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
 
-          <p className="text-xs text-slate-200 font-medium leading-relaxed">
+          <p className="text-xs text-slate-700 font-medium leading-relaxed">
             {activeQuotes[currentQuoteIndex]}
           </p>
 
           {disfrazInfo?.badgeLabel && (
-            <div className="mt-2 flex items-center justify-between gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/30">
+            <div className="mt-2 flex items-center justify-between gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-lg border border-blue-200/80">
               <span className="flex items-center gap-1.5 truncate">
-                <span className="text-xs">{todayEfemeride?.icono || '🐾'}</span>
+                <ShieldCheck className="w-3 h-3 text-blue-600 shrink-0" />
                 <span className="truncate">{disfrazInfo.badgeLabel}</span>
               </span>
             </div>
           )}
 
-          <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-            <span className="flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          <div className="mt-2.5 pt-2 border-t border-blue-50 flex items-center justify-between text-[10px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
               {userName ? `Hola, ${userName}` : 'KANT Guardián'}
             </span>
-            <span className="text-amber-400/80 font-bold hover:underline cursor-pointer" onClick={handleClick}>
-              Siguiente tip 🐾
+            <span className="text-blue-600 font-bold hover:underline cursor-pointer" onClick={handleClick}>
+              Siguiente tip
             </span>
           </div>
         </div>
@@ -379,13 +357,13 @@ export default function KantMascot({
 }
 
 // Widget Flotante Opcional: Kant Companion / Asistente Guardián Responsive
-export function KantFloatingCompanion({ 
-  pendingReviews = 0, 
+export function KantFloatingCompanion({
+  pendingReviews = 0,
   pendingGastos = 0,
   unreadReplies = 0,
   onNavigate
-}: { 
-  pendingReviews?: number; 
+}: {
+  pendingReviews?: number;
   pendingGastos?: number;
   unreadReplies?: number;
   onNavigate?: (tab: string) => void;
@@ -440,12 +418,12 @@ export function KantFloatingCompanion({
           setIsDismissed(false);
           sessionStorage.removeItem('rd_kant_guardian_dismissed');
         }}
-        className="fixed bottom-2 right-2 z-40 bg-slate-900/60 hover:bg-slate-900 text-amber-400 p-1.5 rounded-full border border-amber-400/30 text-[10px] font-bold shadow-lg backdrop-blur-md opacity-40 hover:opacity-100 transition-all cursor-pointer flex items-center gap-1"
+        className="fixed bottom-2 right-2 z-40 bg-white/90 hover:bg-white text-blue-600 p-1.5 rounded-full border border-blue-200 text-[10px] font-bold shadow-lg backdrop-blur-md opacity-70 hover:opacity-100 transition-all cursor-pointer flex items-center gap-1"
         aria-label="Restaurar Kant Guardián"
       >
-        <span>🐾</span>
+        <img src="/dog_logo.png" alt="KANT" className="w-4 h-4 object-contain" />
         {totalAlerts > 0 && (
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
         )}
       </button>
     );
@@ -454,22 +432,22 @@ export function KantFloatingCompanion({
   // Estado Minimizado (A un lado, estilo pestaña en el borde derecho para no estorbar)
   if (isMinimized) {
     return (
-      <div 
+      <div
         ref={containerRef}
         className="fixed bottom-4 right-0 z-40 flex items-center transition-all duration-300"
       >
         <button
           onClick={handleToggleMinimize}
-          className="bg-slate-900/95 hover:bg-slate-900 border-l border-y border-amber-400/60 pl-2.5 pr-1.5 py-1.5 rounded-l-2xl shadow-xl backdrop-blur-xl flex items-center gap-1.5 text-amber-300 cursor-pointer hover:pl-3.5 transition-all group"
+          className="bg-white/95 hover:bg-blue-50 border-l border-y border-blue-200 pl-2.5 pr-2 py-1.5 rounded-l-2xl shadow-xl backdrop-blur-xl flex items-center gap-1.5 text-blue-700 cursor-pointer hover:pl-3.5 transition-all group"
           aria-label="Expandir KANT Guardián"
         >
-          <span className="text-sm">🐾</span>
+          <img src="/dog_logo.png" alt="KANT" className="w-4 h-4 object-contain" />
           {totalAlerts > 0 && (
-            <span className="min-w-[16px] h-[16px] px-1 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
+            <span className="min-w-[16px] h-[16px] px-1 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center animate-pulse">
               {totalAlerts}
             </span>
           )}
-          <span className="text-[10px] font-black hidden group-hover:inline transition-all text-amber-400">
+          <span className="text-[10px] font-black hidden group-hover:inline transition-all text-blue-700">
             KANT
           </span>
         </button>
@@ -478,22 +456,22 @@ export function KantFloatingCompanion({
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="fixed bottom-3 right-3 sm:bottom-5 sm:right-5 z-40 flex flex-col items-end gap-2 font-sans select-none max-w-[calc(100vw-1.5rem)]"
     >
       {/* Menú Desplegable de Resumen KANT Guardián */}
       {isOpen && (
-        <div className="w-[calc(100vw-2rem)] sm:w-72 max-w-xs bg-slate-900/95 backdrop-blur-2xl border border-amber-400/40 rounded-3xl p-3.5 sm:p-4 shadow-2xl text-white animate-in fade-in slide-in-from-bottom-3 duration-200 glow-amber-sm">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div className="w-[calc(100vw-2rem)] sm:w-72 max-w-xs bg-white border border-blue-200 rounded-3xl p-3.5 sm:p-4 shadow-2xl shadow-blue-950/20 text-slate-900 animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-blue-200">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] flex items-center justify-center text-white shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <h4 className="text-xs font-black tracking-wide text-white">KANT Guardián</h4>
-                <p className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Sistema en línea
+                <h4 className="text-xs font-black tracking-wide text-slate-900">KANT Guardián</h4>
+                <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Sistema en línea
                 </p>
               </div>
             </div>
@@ -501,7 +479,7 @@ export function KantFloatingCompanion({
               <button
                 onClick={handleToggleMinimize}
                 title="Poner a un lado (minimizar al borde)"
-                className="p-1 rounded-lg text-slate-400 hover:text-amber-300 hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-blue-50 transition-colors cursor-pointer"
                 aria-label="Minimizar al borde"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -509,7 +487,7 @@ export function KantFloatingCompanion({
               <button
                 onClick={() => setIsOpen(false)}
                 title="Cerrar menú"
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-blue-50 transition-colors cursor-pointer"
                 aria-label="Cerrar"
               >
                 <X className="w-3.5 h-3.5" />
@@ -524,10 +502,10 @@ export function KantFloatingCompanion({
                 if (onNavigate) onNavigate('bitacoras');
                 setIsOpen(false);
               }}
-              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-amber-500/10 p-2 rounded-xl border border-slate-800 hover:border-amber-500/30 transition-all text-left cursor-pointer active:scale-98"
+              className="w-full flex items-center justify-between bg-blue-50/70 hover:bg-blue-50 p-2 rounded-xl border border-blue-100 hover:border-blue-200 transition-all text-left cursor-pointer active:scale-98"
             >
-              <span className="text-slate-300 font-medium">📋 Bitácoras por revisar:</span>
-              <span className="font-black text-amber-400 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+              <span className="text-slate-700 font-semibold">Bitácoras por revisar:</span>
+              <span className="font-black text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-200">
                 {pendingReviews}
               </span>
             </button>
@@ -538,10 +516,10 @@ export function KantFloatingCompanion({
                 if (onNavigate) onNavigate('gastos');
                 setIsOpen(false);
               }}
-              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-emerald-500/10 p-2 rounded-xl border border-slate-800 hover:border-emerald-500/30 transition-all text-left cursor-pointer active:scale-98"
+              className="w-full flex items-center justify-between bg-emerald-50/60 hover:bg-emerald-50 p-2 rounded-xl border border-emerald-100 hover:border-emerald-200 transition-all text-left cursor-pointer active:scale-98"
             >
-              <span className="text-slate-300 font-medium">🧾 Gastos por liquidar:</span>
-              <span className="font-black text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-slate-700 font-semibold">Gastos por liquidar:</span>
+              <span className="font-black text-emerald-700 bg-white px-2 py-0.5 rounded-md border border-emerald-200">
                 {pendingGastos}
               </span>
             </button>
@@ -552,25 +530,25 @@ export function KantFloatingCompanion({
                 if (onNavigate) onNavigate('chat');
                 setIsOpen(false);
               }}
-              className="w-full flex items-center justify-between bg-slate-950/60 hover:bg-blue-500/10 p-2 rounded-xl border border-slate-800 hover:border-blue-500/30 transition-all text-left cursor-pointer active:scale-98"
+              className="w-full flex items-center justify-between bg-indigo-50/60 hover:bg-indigo-50 p-2 rounded-xl border border-indigo-100 hover:border-indigo-200 transition-all text-left cursor-pointer active:scale-98"
             >
-              <span className="text-slate-300 font-medium">💬 Mensajes de equipo:</span>
-              <span className="font-black text-blue-400 bg-blue-500/20 px-2 py-0.5 rounded-md border border-blue-500/30">
+              <span className="text-slate-700 font-semibold">Mensajes de equipo:</span>
+              <span className="font-black text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200">
                 {unreadReplies}
               </span>
             </button>
           </div>
 
-          <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+          <div className="pt-2 border-t border-blue-50 flex items-center justify-between text-[10px] text-slate-500">
             <button
               onClick={handleToggleMinimize}
-              className="text-amber-400 hover:underline cursor-pointer flex items-center gap-1"
+              className="text-blue-600 hover:underline cursor-pointer flex items-center gap-1 font-semibold"
             >
               <ChevronRight className="w-3 h-3" /> Poner a un lado
             </button>
             <button
               onClick={handleDismiss}
-              className="hover:text-rose-400 transition-colors cursor-pointer flex items-center gap-1"
+              className="hover:text-rose-600 transition-colors cursor-pointer flex items-center gap-1"
             >
               <EyeOff className="w-3 h-3" /> Ocultar guardián
             </button>
@@ -582,22 +560,22 @@ export function KantFloatingCompanion({
       <div className="flex items-center gap-1">
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="group relative flex items-center gap-2.5 bg-slate-900/90 hover:bg-slate-900 border border-amber-400/40 hover:border-amber-400 p-2 pr-3.5 rounded-full shadow-2xl backdrop-blur-xl transition-all duration-300 hover:scale-105 glow-pulse-amber cursor-pointer"
+          className="group relative flex items-center gap-2.5 bg-white/95 hover:bg-white border border-blue-100 hover:border-blue-200 p-2 pr-3.5 rounded-full shadow-xl shadow-blue-950/10 transition-all duration-300 hover:scale-105 cursor-pointer"
           aria-label="KANT Guardián"
         >
           <div className="relative">
             <KantMascot size="sm" showSpeechOnClick={false} soundEnabled={false} asDiv={true} />
             {totalAlerts > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-slate-900 shadow-md animate-pulse">
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-white shadow-md animate-pulse">
                 {totalAlerts}
               </span>
             )}
           </div>
           <div className="text-left hidden sm:block">
-            <p className="text-[11px] font-black text-amber-300 leading-tight flex items-center gap-1">
-              KANT Guardián <Sparkles className="w-3 h-3 text-amber-400" />
+            <p className="text-[11px] font-black text-blue-700 leading-tight flex items-center gap-1">
+              KANT Guardián <ShieldCheck className="w-3 h-3 text-blue-600" />
             </p>
-            <p className="text-[9px] text-slate-400 font-medium">
+            <p className="text-[9px] text-slate-500 font-medium">
               {totalAlerts > 0 ? `${totalAlerts} pendientes` : 'Todo al día'}
             </p>
           </div>
@@ -606,7 +584,7 @@ export function KantFloatingCompanion({
         {/* Botón rápido para poner a un lado sin abrir menú */}
         <button
           onClick={handleToggleMinimize}
-          className="w-6 h-6 rounded-full bg-slate-900/80 hover:bg-slate-800 text-slate-400 hover:text-amber-300 border border-slate-700/80 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-70 hover:opacity-100"
+          className="w-6 h-6 rounded-full bg-white/90 hover:bg-blue-50 text-slate-500 hover:text-blue-700 border border-blue-100 flex items-center justify-center shadow-md transition-all cursor-pointer opacity-80 hover:opacity-100"
           title="Poner a un lado"
           aria-label="Poner a un lado"
         >

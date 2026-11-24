@@ -16,7 +16,6 @@ export interface ThemeConfig {
   themeClass: string;
   accentPrimary: string;
   accentSecondary: string;
-  glowColor: string;
   navbarTopLine: string;
   cardBorderHover: string;
   badgeBg: string;
@@ -28,35 +27,33 @@ export interface ThemeConfig {
 export const THEMES: Record<FestiveThemeId, ThemeConfig> = {
   default: {
     id: 'default',
-    name: 'Clásico Román & Delgado',
-    shortName: 'Clásico',
+    name: 'Azul Pastel Corporativo KANT',
+    shortName: 'Ejecutivo',
     badge: 'Corporativo',
     themeClass: 'theme-default',
-    accentPrimary: '#f59e0b',
-    accentSecondary: '#0ea5e9',
-    glowColor: 'rgba(245, 158, 11, 0.3)',
-    navbarTopLine: 'from-transparent via-amber-500/40 to-transparent',
-    cardBorderHover: 'hover:border-amber-400/50',
-    badgeBg: 'bg-slate-800',
-    badgeText: 'text-amber-300',
-    badgeBorder: 'border-amber-500/30',
-    description: 'Estilo clásico ejecutivo formal para la rutina jurídica diaria.'
+    accentPrimary: '#2563eb',
+    accentSecondary: '#38bdf8',
+    navbarTopLine: 'from-sky-300/70 via-blue-500/75 to-indigo-400/70',
+    cardBorderHover: 'hover:border-blue-300/80',
+    badgeBg: 'bg-blue-50',
+    badgeText: 'text-blue-700',
+    badgeBorder: 'border-blue-200/80',
+    description: 'Estilo ejecutivo Cloud Blue pastel con superficies luminosas para la gestión jurídica moderna.'
   },
   halloween: {
     id: 'halloween',
-    name: 'Noche de Halloween',
+    name: 'Noche de Halloween Ejecutiva',
     shortName: 'Halloween',
-    badge: 'Modo Halloween',
+    badge: 'Edición Especial',
     themeClass: 'theme-halloween',
-    accentPrimary: '#f97316',
-    accentSecondary: '#a855f7',
-    glowColor: 'rgba(249, 115, 22, 0.45)',
-    navbarTopLine: 'from-orange-500 via-purple-500 to-amber-500',
-    cardBorderHover: 'hover:border-orange-500/60',
-    badgeBg: 'bg-orange-500/20',
-    badgeText: 'text-orange-300',
-    badgeBorder: 'border-orange-500/40',
-    description: 'Acentos naranja calabaza y púrpura místico con fondo oscuro de máximo contraste.'
+    accentPrimary: '#7c3aed',
+    accentSecondary: '#6366f1',
+    navbarTopLine: 'from-indigo-400 via-violet-500 to-sky-400',
+    cardBorderHover: 'hover:border-violet-300/80',
+    badgeBg: 'bg-violet-50',
+    badgeText: 'text-violet-700',
+    badgeBorder: 'border-violet-200/80',
+    description: 'Acentos violeta e índigo sobrio sobre lienzo claro corporativo.'
   },
   abogado: {
     id: 'abogado',
@@ -64,63 +61,59 @@ export const THEMES: Record<FestiveThemeId, ThemeConfig> = {
     shortName: 'Día del Abogado',
     badge: 'Día del Abogado',
     themeClass: 'theme-abogado',
-    accentPrimary: '#fbbf24',
-    accentSecondary: '#3b82f6',
-    glowColor: 'rgba(251, 191, 36, 0.5)',
-    navbarTopLine: 'from-amber-400 via-blue-600 to-amber-400',
-    cardBorderHover: 'hover:border-amber-400/60',
-    badgeBg: 'bg-amber-500/20',
-    badgeText: 'text-amber-300',
-    badgeBorder: 'border-amber-400/50',
-    description: 'Paleta solemne de alta corte: oro justicia y azul diplomático institucional.'
+    accentPrimary: '#1d4ed8',
+    accentSecondary: '#4f46e5',
+    navbarTopLine: 'from-sky-400 via-blue-600 to-indigo-500',
+    cardBorderHover: 'hover:border-indigo-300/80',
+    badgeBg: 'bg-indigo-50',
+    badgeText: 'text-indigo-700',
+    badgeBorder: 'border-indigo-200/80',
+    description: 'Paleta solemne de alta corte: azul diplomático e índigo institucional.'
   },
   navidad: {
     id: 'navidad',
     name: 'Navidad & Fin de Año',
     shortName: 'Navidad',
-    badge: 'Modo Navidad',
+    badge: 'Temporada Festiva',
     themeClass: 'theme-navidad',
-    accentPrimary: '#10b981',
-    accentSecondary: '#ef4444',
-    glowColor: 'rgba(16, 185, 129, 0.45)',
-    navbarTopLine: 'from-emerald-500 via-red-500 to-amber-400',
-    cardBorderHover: 'hover:border-emerald-400/60',
-    badgeBg: 'bg-emerald-500/20',
-    badgeText: 'text-emerald-300',
-    badgeBorder: 'border-emerald-500/40',
-    description: 'Verde pino esmeralda y rojo rubí festivo con destellos dorados.'
+    accentPrimary: '#059669',
+    accentSecondary: '#e11d48',
+    navbarTopLine: 'from-emerald-400 via-teal-500 to-rose-400',
+    cardBorderHover: 'hover:border-emerald-300/80',
+    badgeBg: 'bg-emerald-50',
+    badgeText: 'text-emerald-700',
+    badgeBorder: 'border-emerald-200/80',
+    description: 'Verde esmeralda y carmesí sutil con frescura pastel decembrina.'
   },
   patria: {
     id: 'patria',
     name: 'Fechas Patrias de Venezuela',
     shortName: 'Fechas Patrias',
-    badge: 'Fechas Patrias',
+    badge: 'Efeméride Nacional',
     themeClass: 'theme-patria',
-    accentPrimary: '#facc15',
-    accentSecondary: '#2563eb',
-    glowColor: 'rgba(250, 204, 21, 0.45)',
-    navbarTopLine: 'from-yellow-400 via-blue-600 to-red-500',
-    cardBorderHover: 'hover:border-yellow-400/60',
-    badgeBg: 'bg-yellow-500/20',
-    badgeText: 'text-yellow-300',
-    badgeBorder: 'border-yellow-500/40',
-    description: 'Tricolor patrio con azul republicano, amarillo oro y rojo independencia.'
+    accentPrimary: '#2563eb',
+    accentSecondary: '#dc2626',
+    navbarTopLine: 'from-sky-400 via-blue-600 to-rose-500',
+    cardBorderHover: 'hover:border-sky-300/80',
+    badgeBg: 'bg-sky-50',
+    badgeText: 'text-sky-700',
+    badgeBorder: 'border-sky-200/80',
+    description: 'Acentos azul republicano y carmesí institucional sobre fondo ejecutivo claro.'
   },
   chocolate: {
     id: 'chocolate',
     name: 'Día Nacional del Cacao y Chocolate',
-    shortName: 'Cacao & Chocolate',
-    badge: 'Cacao & Chocolate',
+    shortName: 'Cacao & Cultura',
+    badge: 'Cultura Nacional',
     themeClass: 'theme-chocolate',
-    accentPrimary: '#d97706',
-    accentSecondary: '#78350f',
-    glowColor: 'rgba(217, 119, 6, 0.45)',
-    navbarTopLine: 'from-amber-800 via-amber-500 to-yellow-500',
-    cardBorderHover: 'hover:border-amber-600/60',
-    badgeBg: 'bg-amber-950/70',
-    badgeText: 'text-amber-300',
-    badgeBorder: 'border-amber-600/50',
-    description: 'Paleta cálida de chocolate artesanal, grano de cacao fino venezolano y acentos dorados.'
+    accentPrimary: '#0284c7',
+    accentSecondary: '#be123c',
+    navbarTopLine: 'from-sky-400 via-indigo-500 to-rose-400',
+    cardBorderHover: 'hover:border-sky-300/80',
+    badgeBg: 'bg-rose-50',
+    badgeText: 'text-rose-700',
+    badgeBorder: 'border-rose-200/80',
+    description: 'Paleta conmemorativa con detalles azul cielo y borgoña suave.'
   }
 };
 
@@ -173,7 +166,7 @@ export function getActiveFestiveTheme(): FestiveThemeId {
     if (typeof localStorage !== 'undefined' && localStorage.getItem('rd_theme_mode')) {
       localStorage.removeItem('rd_theme_mode');
     }
-  } catch (e) {}
+  } catch (e) { }
 
   return determineAutoTheme();
 }
@@ -198,7 +191,7 @@ export function setFestiveThemeMode(_mode: ThemeMode = 'auto'): void {
  */
 export function applyThemeToDOM(): FestiveThemeId {
   const activeTheme = getActiveFestiveTheme();
-  
+
   if (typeof document !== 'undefined') {
     const root = document.documentElement;
     // Remover clases temáticas anteriores

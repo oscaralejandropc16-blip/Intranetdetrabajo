@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   CheckSquare, Plus, Search, Filter, RefreshCw, Clock, 
   CheckCircle2, MessageCircle, Trash2, Calendar, 
-  User, Scale, X, Send, FileText,
+  User, Scale, X, Send, FileText, RotateCcw,
   ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
@@ -228,21 +228,21 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
     <div className="space-y-6 animate-in fade-in duration-300">
       
       {/* BANNER PRINCIPAL DE JEFATURA */}
-      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 lg:p-8 rounded-3xl border border-indigo-800/40 shadow-xl text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-white p-6 lg:p-7 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-blue-100">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-xs font-bold uppercase tracking-wider mb-3">
-              <CheckSquare className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200 text-[#1e3a8a] text-xs font-bold uppercase tracking-wider mb-2.5">
+              <CheckSquare className="w-3.5 h-3.5 text-blue-700" />
               <span>Gestión de Equipo &bull; Despacho Román &amp; Delgado</span>
             </div>
-            <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <CheckSquare className="w-8 h-8 text-amber-400" />
+            <h2 className="text-2xl lg:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20">
+                <CheckSquare className="w-6 h-6" />
+              </span>
               Delegación &amp; Asignación de Tareas
             </h2>
-            <p className="text-slate-300 text-sm mt-1 max-w-2xl">
-              Asigna instrucciones, investigaciones y actuaciones directas a cada empleado desde tu usuario, sin necesidad de ingresar a sus cuentas.
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
+              Asigna instrucciones, investigaciones y actuaciones directas a cada empleado desde tu usuario.
             </p>
           </div>
 
@@ -250,7 +250,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
             <button
               onClick={() => loadData()}
               disabled={refreshing}
-              className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 border border-slate-700 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+              className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
               <span>Actualizar</span>
@@ -258,7 +258,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
 
             <button
               onClick={() => setModalOpen(true)}
-              className="px-5 py-2.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-95 transition-all cursor-pointer"
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl flex items-center gap-2 shadow-sm shadow-blue-600/20 transition-all cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>Asignar Nueva Tarea</span>
@@ -266,29 +266,52 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
           </div>
         </div>
 
-        {/* METRICAS RESUMEN */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-800">
-          <div className="bg-slate-800/50 backdrop-blur-md p-3.5 rounded-2xl border border-slate-700/50">
-            <span className="text-[11px] font-semibold text-slate-400 block uppercase">Total Asignadas</span>
-            <span className="text-2xl font-black text-white">{totalTareas}</span>
+        {/* METRICAS RESUMEN (ESTILO EJECUTIVO LIGHT) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-6">
+          <div className="bg-slate-50/80 border border-slate-200/90 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-slate-200/60 text-slate-700 flex items-center justify-center shrink-0">
+              <CheckSquare className="w-5 h-5 text-slate-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">Total Asignadas</span>
+              <span className="text-2xl font-black text-slate-900">{totalTareas}</span>
+            </div>
           </div>
-          <div className="bg-amber-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-amber-500/20">
-            <span className="text-[11px] font-bold text-amber-400 block uppercase">Pendientes</span>
-            <span className="text-2xl font-black text-amber-300">{pendientesCount}</span>
+
+          <div className="bg-blue-50/50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 text-blue-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-blue-700 block uppercase tracking-wider">Pendientes</span>
+              <span className="text-2xl font-black text-blue-900">{pendientesCount}</span>
+            </div>
           </div>
-          <div className="bg-blue-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-blue-500/20">
-            <span className="text-[11px] font-bold text-blue-400 block uppercase">En Progreso</span>
-            <span className="text-2xl font-black text-blue-300">{enProgresoCount}</span>
+
+          <div className="bg-indigo-50/50 border border-indigo-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+              <RefreshCw className="w-5 h-5 text-indigo-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-indigo-700 block uppercase tracking-wider">En Progreso</span>
+              <span className="text-2xl font-black text-indigo-900">{enProgresoCount}</span>
+            </div>
           </div>
-          <div className="bg-emerald-500/10 backdrop-blur-md p-3.5 rounded-2xl border border-emerald-500/20">
-            <span className="text-[11px] font-bold text-emerald-400 block uppercase">Completadas</span>
-            <span className="text-2xl font-black text-emerald-300">{completadasCount}</span>
+
+          <div className="bg-emerald-50/50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold text-emerald-700 block uppercase tracking-wider">Completadas</span>
+              <span className="text-2xl font-black text-emerald-900">{completadasCount}</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div id="listado-tareas-jefatura" className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between scroll-mt-6">
+      <div id="listado-tareas-jefatura" className="bg-white p-4 rounded-2xl border border-blue-200 shadow-md shadow-blue-950/8 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between scroll-mt-6">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -296,13 +319,13 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Buscar tarea, instrucción o empleado..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
           />
         </div>
 
         <div className="flex flex-wrap gap-2.5 items-center">
           {/* Filtro por Empleado */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
             <User className="w-3.5 h-3.5 text-slate-500" />
             <select
               value={filtroEmpleado}
@@ -319,7 +342,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
           </div>
 
           {/* Filtro por Estado */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
             <Filter className="w-3.5 h-3.5 text-slate-500" />
             <select
               value={filtroEstado}
@@ -334,7 +357,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
           </div>
 
           {/* Filtro por Prioridad */}
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
             <select
               value={filtroPrioridad}
               onChange={e => setFiltroPrioridad(e.target.value)}
@@ -346,13 +369,30 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
               <option value="normal">Normales</option>
             </select>
           </div>
+
+          {/* Botón Limpiar Filtros */}
+          {(searchQuery || filtroEmpleado !== 'Todos' || filtroEstado !== 'Todos' || filtroPrioridad !== 'Todos') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setFiltroEmpleado('Todos');
+                setFiltroEstado('Todos');
+                setFiltroPrioridad('Todos');
+              }}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Restablecer filtros"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Limpiar</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* LISTADO DE TAREAS */}
       {loading ? (
         <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center">
-          <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-3" />
+          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
           <p className="text-slate-600 font-bold text-sm">Cargando tareas asignadas...</p>
         </div>
       ) : tareasFiltradas.length === 0 ? (
@@ -366,7 +406,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
           </p>
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer"
           >
             + Asignar la primera tarea
           </button>
@@ -393,17 +433,17 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
 
             // Mensaje de WhatsApp ejecutivo y elegante para el empleado
             const msgWhatsApp = encodeURIComponent(
-              `⚖️ *Román & Delgado — Intranet KANT*\n\nHola *${t.asignado_a_nombre || t.asignado_a}*, te saluda *${bossName}*.\n\n📌 *Tarea asignada:* ${t.titulo}${t.expediente_asociado ? `\n📂 *Expediente:* ${t.expediente_asociado}` : ''}${t.fecha_limite ? `\n⏳ *Fecha límite:* ${fechaLimiteFormateada}` : ''}${t.descripcion ? `\n📝 *Instrucciones:* ${t.descripcion}` : ''}\n\nFavor mantener actualizado el estatus en la plataforma KANT: https://kant.romanydelgado.com`
+              `*Román & Delgado — Intranet KANT*\n\nHola *${t.asignado_a_nombre || t.asignado_a}*, te saluda *${bossName}*.\n\n*Tarea asignada:* ${t.titulo}${t.expediente_asociado ? `\n*Expediente:* ${t.expediente_asociado}` : ''}${t.fecha_limite ? `\n*Fecha límite:* ${fechaLimiteFormateada}` : ''}${t.descripcion ? `\n*Instrucciones:* ${t.descripcion}` : ''}\n\nFavor mantener actualizado el estatus en la plataforma KANT: https://kant.romanydelgado.com`
             );
 
             return (
               <div
                 key={t.id}
-                className={`bg-white rounded-3xl border transition-all duration-200 shadow-xs hover:shadow-md p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
+                className={`bg-white rounded-3xl border transition-all duration-200 shadow-2xs hover:shadow-xs p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
                   t.prioridad === 'urgente' && t.estado !== 'completada'
-                    ? 'border-rose-300 bg-rose-50/20'
+                    ? 'border-rose-200 bg-rose-50/15'
                     : t.estado === 'completada'
-                    ? 'border-emerald-300/80 bg-gradient-to-br from-emerald-50/20 via-white to-white'
+                    ? 'border-emerald-200 bg-emerald-50/15'
                     : 'border-slate-200/90'
                 }`}
               >
@@ -414,12 +454,12 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   <div className="flex flex-wrap items-center gap-2">
                     {/* Prioridad */}
                     {t.prioridad === 'urgente' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-500 text-white shadow-sm">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200">
                         URGENTE
                       </span>
                     )}
                     {t.prioridad === 'alta' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         Alta
                       </span>
                     )}
@@ -431,25 +471,25 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
 
                     {/* Estado */}
                     {t.estado === 'pendiente' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
                         Pendiente
                       </span>
                     )}
                     {t.estado === 'en_proceso' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-300">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
                         En Progreso
                       </span>
                     )}
                     {t.estado === 'completada' && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1 shadow-2xs">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1 shadow-2xs">
                         <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Completada
                       </span>
                     )}
 
                     {/* Expediente relacionado */}
                     {t.expediente_asociado && (
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1">
-                        <Scale className="w-3 h-3 text-indigo-600" />
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 flex items-center gap-1">
+                        <Scale className="w-3 h-3 text-slate-600" />
                         Exp: {t.expediente_asociado}
                       </span>
                     )}
@@ -509,7 +549,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   {/* Meta: Asignado a, Fecha límite, etc. */}
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 pt-1">
                     <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-                      <User className="w-3.5 h-3.5 text-amber-600" />
+                      <User className="w-3.5 h-3.5 text-blue-600" />
                       Asignada a: <strong className="text-slate-900">{t.asignado_a_nombre || t.asignado_a}</strong>
                     </span>
                     <span className="inline-flex items-center gap-1">
@@ -579,7 +619,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   setItemsPerPage(Number(e.target.value));
                   setCurrentPage(1);
                 }}
-                className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-amber-500 transition-colors"
+                className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-blue-500 transition-colors"
               >
                 <option value={5}>5 tareas</option>
                 <option value={10}>10 tareas</option>
@@ -592,7 +632,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
             <span className="text-slate-300">|</span>
 
             <span className="text-slate-600 font-medium">
-              Mostrando <strong className="text-slate-900 font-bold">{tareasFiltradas.length === 0 ? 0 : startIndex + 1}</strong> a <strong className="text-slate-900 font-bold">{endIndex}</strong> de <strong className="text-amber-600 font-bold">{tareasFiltradas.length}</strong> tareas
+              Mostrando <strong className="text-slate-900 font-bold">{tareasFiltradas.length === 0 ? 0 : startIndex + 1}</strong> a <strong className="text-slate-900 font-bold">{endIndex}</strong> de <strong className="text-blue-600 font-bold">{tareasFiltradas.length}</strong> tareas
             </span>
           </div>
 
@@ -639,7 +679,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                         onClick={() => handlePageChange(page)}
                         className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${
                           safeCurrentPage === page
-                            ? 'bg-amber-500 text-slate-950 shadow-sm shadow-amber-500/20 font-black'
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25 font-black'
                             : 'bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300'
                         }`}
                       >
@@ -674,28 +714,28 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
 
       {/* MODAL: ASIGNAR NUEVA TAREA */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-lg w-full p-6 animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 max-w-lg w-full overflow-hidden animate-in zoom-in-95 duration-200">
             
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 sm:p-6 flex items-center justify-between border-b border-blue-800/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-600 flex items-center justify-center font-bold">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 text-sky-200 flex items-center justify-center font-bold">
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-slate-900 text-base">Asignar Tarea a Empleado</h3>
-                  <p className="text-xs text-slate-500">Aparecerá en el KANT del empleado asignado</p>
+                  <h3 className="font-extrabold text-white text-base">Asignar Tarea a Empleado</h3>
+                  <p className="text-xs text-blue-100/85">Aparecerá en el KANT del empleado asignado</p>
                 </div>
               </div>
               <button
                 onClick={() => setModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all"
+                className="p-1.5 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-all cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTask} className="space-y-4">
+            <form onSubmit={handleCreateTask} className="p-6 space-y-4">
               
               {/* Empleado Destino */}
               <div>
@@ -706,7 +746,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   value={formAsignadoA}
                   onChange={e => setFormAsignadoA(e.target.value)}
                   required
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
                 >
                   {empleados.map(emp => (
                     <option key={emp.username || emp.fullName} value={emp.username || emp.fullName}>
@@ -727,7 +767,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   onChange={e => setFormTitulo(e.target.value)}
                   required
                   placeholder="Ej. Revisar expediente 4521 en Tribunal 2do de Control"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all"
                 />
               </div>
 
@@ -741,7 +781,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   onChange={e => setFormDescripcion(e.target.value)}
                   rows={3}
                   placeholder="Instrucciones específicas, diligencias a consignar, teléfono de contacto..."
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all resize-none"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all resize-none"
                 />
               </div>
 
@@ -753,7 +793,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                 <select
                   value={formExpediente}
                   onChange={e => setFormExpediente(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer"
+                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
                 >
                   <option value="">-- Ninguno o No Aplica --</option>
                   {expedientes.map(exp => (
@@ -774,7 +814,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                     type="date"
                     value={formFechaLimite}
                     onChange={e => setFormFechaLimite(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all"
                   />
                 </div>
 
@@ -786,11 +826,11 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                   <select
                     value={formPrioridad}
                     onChange={e => setFormPrioridad(e.target.value as any)}
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all cursor-pointer"
+                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
                   >
-                    <option value="normal">🔵 Normal</option>
-                    <option value="alta">⚡ Alta</option>
-                    <option value="urgente">🔥 Urgente</option>
+                    <option value="normal">Normal</option>
+                    <option value="alta">Alta</option>
+                    <option value="urgente">Urgente</option>
                   </select>
                 </div>
               </div>
@@ -807,7 +847,7 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black text-xs rounded-xl shadow-md flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
+                  className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-sm shadow-blue-600/20 flex items-center gap-2 cursor-pointer active:scale-95 transition-all"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>{submitting ? 'Asignando...' : 'Asignar Tarea'}</span>

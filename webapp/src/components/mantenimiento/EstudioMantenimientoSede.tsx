@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Sparkles, Plus, Clock, CheckCircle2, Trash2, Edit3, 
-  Check, Coffee, Droplets, Wrench, ShoppingCart, 
+import {
+  ShieldCheck, Plus, Clock, CheckCircle2, Trash2, Edit3,
+  Check, Coffee, Droplets, Wrench, ShoppingCart,
   Brush, MapPin, Key, CheckCheck, FileText, X
 } from 'lucide-react';
 import type { Actuacion } from '../../types/libros';
@@ -289,29 +289,26 @@ export default function EstudioMantenimientoSede({
     <div className="space-y-6">
 
       {/* 1. HERO BANNER: CONTROL DE SERVICIOS GENERALES & SEDE */}
-      <div className="bg-gradient-to-r from-slate-950 via-teal-950 to-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-teal-800/40 relative overflow-hidden">
-        {/* Glow de ambientación en verde esmeralda y oro */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-amber-500/5 rounded-full blur-2xl pointer-events-none" />
-
+      <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-md shadow-blue-950/8 border border-blue-200 relative overflow-hidden">
+        <div className="pointer-events-none absolute -right-12 -top-12 w-56 h-56 rounded-full bg-emerald-100/50 blur-3xl" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-full text-xs font-black tracking-wide shadow-sm">
-                <Sparkles className="w-3.5 h-3.5" /> SERVICIOS GENERALES & MANTENIMIENTO DE SEDE
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-full text-xs font-black tracking-wide shadow-sm">
+                <ShieldCheck className="w-3.5 h-3.5" /> SERVICIOS GENERALES & MANTENIMIENTO DE SEDE
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 rounded-full text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                 Sede Valencia Operativa
               </span>
             </div>
 
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Bitácora de Instalaciones, Limpieza & Insumos
             </h2>
 
-            <p className="text-sm text-slate-300 max-w-2xl font-medium leading-relaxed">
-              Control diario del despacho <strong className="text-amber-400">Román & Delgado</strong> a cargo de <strong className="text-white">Doris Rangel</strong>. Registra la limpieza de áreas, reposición de café y refrigerios, compras de insumos e inspecciones de la sede.
+            <p className="text-sm text-slate-600 max-w-2xl font-medium leading-relaxed">
+              Control diario del despacho <strong className="text-blue-700">Román & Delgado</strong> a cargo de <strong className="text-slate-900">Doris Rangel</strong>. Registra la limpieza de áreas, reposición de café y refrigerios, compras de insumos e inspecciones de la sede.
             </p>
           </div>
 
@@ -321,29 +318,28 @@ export default function EstudioMantenimientoSede({
               <button
                 type="button"
                 onClick={handleOpenNueva}
-                className="px-6 py-3.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/25 transition-all transform active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-sm"
+                className="px-6 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black rounded-2xl shadow-lg shadow-emerald-500/20 transition-all transform active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-sm"
               >
                 <Plus className="w-5 h-5" />
-                <span>+ Registrar Labor / Insumo</span>
+                <span>Registrar Labor / Insumo</span>
               </button>
             </div>
           )}
         </div>
 
         {/* 2. CHECKLIST RÁPIDO DE ÁREAS DE LA SEDE */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative z-10 mt-6 pt-5 border-t border-blue-100/80 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">Espacios Clave:</span>
+            <span className="text-xs font-bold text-slate-500">Espacios Clave:</span>
             {AREAS_DESPACHO.slice(0, 5).map(a => (
               <button
                 key={a.id}
                 type="button"
                 onClick={() => setFiltroArea(filtroArea === a.id ? 'todos' : a.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  filtroArea === a.id
-                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                    : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700/80'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${filtroArea === a.id
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm font-black'
+                  : 'bg-white hover:bg-blue-50 text-slate-600 border border-blue-100'
+                  }`}
               >
                 <span>{a.icon}</span>
                 <span>{a.label}</span>
@@ -351,9 +347,9 @@ export default function EstudioMantenimientoSede({
             ))}
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <span>Responsable:</span>
-            <span className="px-2.5 py-0.5 rounded-lg bg-teal-500/20 text-teal-300 font-bold border border-teal-500/30">
+            <span className="px-2.5 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold border border-emerald-200">
               Doris Rangel
             </span>
           </div>
@@ -362,16 +358,16 @@ export default function EstudioMantenimientoSede({
 
       {/* 3. TAREAS PROGRAMADAS / INSTRUCCIONES DE JEFATURA (Si existen para Doris) */}
       {pendingTasks && pendingTasks.length > 0 && (
-        <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-5 sm:p-6 shadow-xs">
+        <div className="bg-blue-50/75 border border-blue-200/80 rounded-3xl p-5 sm:p-6 shadow-2xs">
           <div className="flex items-center gap-2.5 mb-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-2xs">
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-black text-amber-950">
+              <h3 className="text-base font-black text-slate-900">
                 Instrucciones & Tareas Asignadas por Jefatura para Hoy
               </h3>
-              <p className="text-xs text-amber-800 font-medium">
+              <p className="text-xs text-slate-600 font-medium">
                 Puntos indicados por Víctor Román o Luis Delgado para atender durante tu jornada.
               </p>
             </div>
@@ -381,11 +377,10 @@ export default function EstudioMantenimientoSede({
             {pendingTasks.map((task: any) => (
               <label
                 key={task.id}
-                className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                  task.completed 
-                    ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 line-through' 
-                    : 'bg-white border-amber-200 text-slate-800 hover:shadow-xs'
-                }`}
+                className={`flex items-start gap-3 p-3.5 rounded-2xl border transition-all cursor-pointer ${task.completed
+                  ? 'bg-emerald-50/70 border-emerald-300 text-emerald-900 line-through'
+                  : 'bg-white border-blue-200/80 text-slate-800 hover:shadow-xs'
+                  }`}
               >
                 <input
                   type="checkbox"
@@ -397,7 +392,7 @@ export default function EstudioMantenimientoSede({
                 <div className="text-xs">
                   <span className="font-bold block">{task.title || task.text}</span>
                   {task.observaciones && (
-                    <span className="text-[11px] text-amber-700 block mt-0.5 font-medium">
+                    <span className="text-[11px] text-blue-700 block mt-0.5 font-medium">
                       Nota: {task.observaciones}
                     </span>
                   )}
@@ -410,7 +405,7 @@ export default function EstudioMantenimientoSede({
 
       {/* 4. KPIS DE MANTENIMIENTO */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white/95 p-4 rounded-2xl border border-blue-100 shadow-2xs">
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Labores Registradas</div>
           <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <span>{stats.total}</span>
@@ -418,7 +413,7 @@ export default function EstudioMantenimientoSede({
           </div>
         </div>
 
-        <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 shadow-xs">
+        <div className="bg-emerald-50/60 p-4 rounded-2xl border border-emerald-200 shadow-2xs">
           <div className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-1 flex items-center gap-1">
             <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> Labores Completadas
           </div>
@@ -427,7 +422,7 @@ export default function EstudioMantenimientoSede({
           </div>
         </div>
 
-        <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 shadow-xs">
+        <div className="bg-blue-50/60 p-4 rounded-2xl border border-blue-200 shadow-2xs">
           <div className="text-xs font-bold text-blue-800 uppercase tracking-wider mb-1 flex items-center gap-1">
             <Droplets className="w-3.5 h-3.5 text-blue-600" /> Insumos & Reposición
           </div>
@@ -436,11 +431,11 @@ export default function EstudioMantenimientoSede({
           </div>
         </div>
 
-        <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Wrench className="w-3.5 h-3.5 text-amber-600" /> Mantenimiento & Aires
+        <div className="bg-indigo-50/60 p-4 rounded-2xl border border-indigo-200 shadow-2xs">
+          <div className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <Wrench className="w-3.5 h-3.5 text-indigo-600" /> Mantenimiento & Aires
           </div>
-          <div className="text-2xl font-black text-amber-900">
+          <div className="text-2xl font-black text-indigo-950">
             {stats.reparaciones}
           </div>
         </div>
@@ -455,11 +450,10 @@ export default function EstudioMantenimientoSede({
               key={cat}
               type="button"
               onClick={() => setFiltroTipo(cat)}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                filtroTipo === cat
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${filtroTipo === cat
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {cat === 'todos' ? 'Todas las Labores' : cat}
             </button>
@@ -504,7 +498,7 @@ export default function EstudioMantenimientoSede({
               const isCompletada = labor.estado === 'Completada';
 
               return (
-                <div 
+                <div
                   key={labor.id}
                   className="bg-white rounded-3xl p-5 border border-slate-200 hover:border-teal-300 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group"
                 >
@@ -519,12 +513,12 @@ export default function EstudioMantenimientoSede({
 
                         {/* Tipo de Labor */}
                         <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1">
-                          {labor.tipo === 'Servicio de Café & Atención' ? <Coffee className="w-3 h-3 text-amber-600" /> :
-                           labor.tipo === 'Insumos & Reposición' ? <Droplets className="w-3 h-3 text-blue-600" /> :
-                           labor.tipo === 'Mantenimiento & Reparación' ? <Wrench className="w-3 h-3 text-indigo-600" /> :
-                           labor.tipo === 'Compras & Caja Chica' ? <ShoppingCart className="w-3 h-3 text-purple-600" /> :
-                           labor.tipo === 'Cierre & Seguridad' ? <Key className="w-3 h-3 text-slate-600" /> :
-                           <Brush className="w-3 h-3 text-emerald-600" />}
+                          {labor.tipo === 'Servicio de Café & Atención' ? <Coffee className="w-3 h-3 text-sky-600" /> :
+                            labor.tipo === 'Insumos & Reposición' ? <Droplets className="w-3 h-3 text-blue-600" /> :
+                              labor.tipo === 'Mantenimiento & Reparación' ? <Wrench className="w-3 h-3 text-indigo-600" /> :
+                                labor.tipo === 'Compras & Caja Chica' ? <ShoppingCart className="w-3 h-3 text-purple-600" /> :
+                                  labor.tipo === 'Cierre & Seguridad' ? <Key className="w-3 h-3 text-slate-600" /> :
+                                    <Brush className="w-3 h-3 text-emerald-600" />}
                           {labor.tipo}
                         </span>
 
@@ -535,11 +529,10 @@ export default function EstudioMantenimientoSede({
                       </div>
 
                       {/* Estado Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${
-                        isCompletada 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs' 
-                          : 'bg-amber-50 text-amber-800 border-amber-300'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${isCompletada
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                        : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        }`}>
                         {isCompletada ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Clock className="w-3 h-3" />}
                         {labor.estado}
                       </span>
@@ -573,7 +566,7 @@ export default function EstudioMantenimientoSede({
                   {/* Acciones al Pie de la Tarjeta */}
                   <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
                     <span className="text-[11px] font-bold text-slate-400">
-                      Prioridad: <span className={labor.prioridad === 'Urgente' ? 'text-rose-600 font-black' : labor.prioridad === 'Alta' ? 'text-amber-600 font-bold' : 'text-slate-600 font-bold'}>{labor.prioridad}</span>
+                      Prioridad: <span className={labor.prioridad === 'Urgente' ? 'text-rose-600 font-black' : labor.prioridad === 'Alta' ? 'text-indigo-600 font-bold' : 'text-slate-600 font-bold'}>{labor.prioridad}</span>
                     </span>
 
                     {!reportSubmitted && (
@@ -581,11 +574,10 @@ export default function EstudioMantenimientoSede({
                         <button
                           type="button"
                           onClick={() => handleToggleCompletada(labor)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                            isCompletada 
-                              ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' 
-                              : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
-                          }`}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${isCompletada
+                            ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+                            : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs'
+                            }`}
                           title="Alternar estado completado"
                         >
                           <CheckCircle2 className="w-3.5 h-3.5" />
@@ -621,23 +613,23 @@ export default function EstudioMantenimientoSede({
 
       {/* 7. MODAL PROFESIONAL DE REGISTRO / EDICIÓN PARA DORIS */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-950 text-white rounded-3xl max-w-3xl w-full border border-slate-800 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-3xl w-full border border-blue-200 shadow-2xl shadow-blue-950/25 max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+
             {/* Header del Modal */}
-            <div className="p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 border-b border-blue-800/60 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 border border-emerald-300/40 flex items-center justify-center text-emerald-200 shadow-sm">
                   <Brush className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-2">
+                  <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-2 flex-wrap">
                     <span>{editingId ? 'Editar Labor de Sede' : 'Nueva Labor de Servicios Generales'}</span>
-                    <span className="text-xs text-teal-300 font-bold bg-teal-500/15 px-2 py-0.5 rounded-full border border-teal-500/30">
+                    <span className="text-xs text-emerald-100 font-bold bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-300/40">
                       Doris Rangel
                     </span>
                   </h3>
-                  <p className="text-xs text-slate-400 font-medium">
+                  <p className="text-xs text-blue-100/85 font-medium">
                     Román & Delgado | Despacho de Abogados • Sede Valencia
                   </p>
                 </div>
@@ -646,19 +638,19 @@ export default function EstudioMantenimientoSede({
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 flex items-center justify-center text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Formulario */}
-            <form onSubmit={handleGuardarLabor} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-              
+            <form onSubmit={handleGuardarLabor} className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
+
               {/* 1. Selector de Área / Espacio con Botones de 1 Clic */}
               <div>
-                <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5 text-teal-400" />
+                <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Área o Espacio de la Sede</span>
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -669,11 +661,10 @@ export default function EstudioMantenimientoSede({
                         key={a.id}
                         type="button"
                         onClick={() => setFormData({ ...formData, area: a.id })}
-                        className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                          isSelected
-                            ? 'bg-gradient-to-r from-teal-600/30 to-emerald-600/20 border-teal-500 text-white shadow-md shadow-teal-500/20 ring-1 ring-teal-500/40'
-                            : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                        }`}
+                        className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${isSelected
+                          ? 'bg-emerald-50 border-emerald-400 text-emerald-950 shadow-xs ring-1 ring-emerald-200'
+                          : 'bg-slate-50 border-blue-100 text-slate-600 hover:text-slate-900 hover:bg-blue-50/50 hover:border-blue-200'
+                          }`}
                       >
                         <span className="text-lg">{a.icon}</span>
                         <div className="truncate">
@@ -689,14 +680,14 @@ export default function EstudioMantenimientoSede({
               {/* 2. Categoría de Labor y Hora */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <Brush className="w-3.5 h-3.5 text-emerald-400" />
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Brush className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Tipo de Labor</span>
                   </label>
                   <select
                     value={formData.tipo}
                     onChange={(e) => setFormData({ ...formData, tipo: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-teal-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
                   >
                     {TIPOS_LABOR.map(t => (
                       <option key={t.id} value={t.id}>{t.label}</option>
@@ -705,23 +696,23 @@ export default function EstudioMantenimientoSede({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5 text-blue-400" />
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-blue-600" />
                     <span>Hora Realizada</span>
                   </label>
                   <input
                     type="time"
                     value={formData.hora}
                     onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-teal-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
 
               {/* 3. Detalle de la Labor */}
               <div>
-                <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-teal-400" />
+                <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-blue-600" />
                   <span>Detalle de la Labor Realizada *</span>
                 </label>
                 <textarea
@@ -730,7 +721,7 @@ export default function EstudioMantenimientoSede({
                   value={formData.detalle}
                   onChange={(e) => setFormData({ ...formData, detalle: e.target.value })}
                   placeholder="Describe qué labor realizaste en esta área..."
-                  className="w-full p-3.5 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs sm:text-sm font-medium text-white placeholder-slate-500 outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                  className="w-full p-3.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-2xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
                 />
 
                 {/* Plantillas habituales de 1 clic */}
@@ -744,7 +735,7 @@ export default function EstudioMantenimientoSede({
                         ...prev,
                         detalle: prev.detalle ? `${prev.detalle}. ${plantilla}` : plantilla
                       }))}
-                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 rounded-xl text-[10px] font-medium transition-all text-left cursor-pointer"
+                      className="px-2.5 py-1 bg-blue-50/70 hover:bg-blue-100 text-slate-700 hover:text-blue-800 border border-blue-100 rounded-xl text-[10px] font-medium transition-all text-left cursor-pointer"
                     >
                       + {plantilla.slice(0, 42)}...
                     </button>
@@ -754,8 +745,8 @@ export default function EstudioMantenimientoSede({
 
               {/* 4. Insumos Requeridos / Reposición (Opcional) */}
               <div>
-                <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                  <Droplets className="w-3.5 h-3.5 text-blue-400" />
+                <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                  <Droplets className="w-3.5 h-3.5 text-blue-600" />
                   <span>Insumo o Compra Requerida (Opcional)</span>
                 </label>
                 <input
@@ -763,7 +754,7 @@ export default function EstudioMantenimientoSede({
                   value={formData.insumoRequerido}
                   onChange={(e) => setFormData({ ...formData, insumoRequerido: e.target.value })}
                   placeholder="Ej: Hace falta reponer 2 botellones de agua o jabón líquido..."
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-medium text-white placeholder-slate-500 outline-none focus:border-teal-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500"
                 />
 
                 {/* Botones de Insumos Frecuentes de 1 Clic */}
@@ -777,7 +768,7 @@ export default function EstudioMantenimientoSede({
                         ...prev,
                         insumoRequerido: prev.insumoRequerido ? `${prev.insumoRequerido}, ${ins}` : ins
                       }))}
-                      className="px-2.5 py-0.5 bg-blue-500/10 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                      className="px-2.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                     >
                       {ins}
                     </button>
@@ -786,31 +777,31 @@ export default function EstudioMantenimientoSede({
               </div>
 
               {/* 5. Estado y Observaciones de Jefatura */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-blue-100">
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5">
                     Estado de la Labor
                   </label>
                   <select
                     value={formData.estado}
                     onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-teal-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
                   >
-                    <option value="Completada">🟢 Labor Completada</option>
-                    <option value="En Proceso">🟡 En Proceso / En curso</option>
-                    <option value="Insumo Pendiente">🔵 Insumo Pendiente por Comprar</option>
-                    <option value="Requiere Revisión">🔴 Requiere Revisión de Jefatura</option>
+                    <option value="Completada">Labor Completada</option>
+                    <option value="En Proceso">En Proceso / En curso</option>
+                    <option value="Insumo Pendiente">Insumo Pendiente por Comprar</option>
+                    <option value="Requiere Revisión">Requiere Revisión de Jefatura</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5">
                     Prioridad
                   </label>
                   <select
                     value={formData.prioridad}
                     onChange={(e) => setFormData({ ...formData, prioridad: e.target.value as any })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-teal-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
                   >
                     <option value="Normal">Normal</option>
                     <option value="Alta">Alta</option>
@@ -820,7 +811,7 @@ export default function EstudioMantenimientoSede({
               </div>
 
               <div>
-                <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5">
                   Notas / Observaciones para Jefatura (Víctor Román & Luis Delgado)
                 </label>
                 <input
@@ -828,22 +819,22 @@ export default function EstudioMantenimientoSede({
                   value={formData.observaciones}
                   onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })}
                   placeholder="Comentarios sobre el estado del área, técnicos recibidos..."
-                  className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-medium text-white placeholder-slate-500 outline-none focus:border-teal-500"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500"
                 />
               </div>
 
               {/* Botones del Modal */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-blue-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-4 py-2.5 text-slate-400 hover:text-white rounded-xl font-bold text-xs cursor-pointer transition-colors"
+                  className="px-4 py-2.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl font-bold text-xs cursor-pointer transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-500/25 cursor-pointer transition-all active:scale-95 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl font-black text-xs shadow-lg shadow-emerald-500/20 cursor-pointer transition-all active:scale-95 flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Guardar Cambios' : 'Registrar en Bitácora'}</span>

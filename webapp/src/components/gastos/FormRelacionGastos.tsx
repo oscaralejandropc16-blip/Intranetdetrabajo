@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Plus, Trash2, Receipt, Calendar, 
+import {
+  Plus, Trash2, Receipt, Calendar,
   Upload, Image as ImageIcon, CheckCircle2, ArrowLeft,
   Save, Send, Eye, X, ChevronDown, Scale, ExternalLink, AlertCircle
 } from 'lucide-react';
@@ -110,9 +110,8 @@ function TramiteAutocompleteInput({
                     onChange(displayNum);
                     setIsOpen(false);
                   }}
-                  className={`w-full text-left p-2 rounded-xl text-xs transition-all cursor-pointer flex flex-col ${
-                    isSelected ? 'bg-blue-50 text-blue-900 font-black' : 'hover:bg-slate-100 text-slate-800'
-                  }`}
+                  className={`w-full text-left p-2 rounded-xl text-xs transition-all cursor-pointer flex flex-col ${isSelected ? 'bg-blue-50 text-blue-900 font-black' : 'hover:bg-slate-100 text-slate-800'
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-black text-slate-900 flex items-center gap-1.5">
@@ -142,10 +141,10 @@ function TramiteAutocompleteInput({
 
 const CATEGORIAS_RAPIDAS: { label: CategoriaGasto; bg: string }[] = [
   { label: 'Fotocopias', bg: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { label: 'Taxis / Traslados', bg: 'bg-amber-50 text-amber-700 border-amber-200' },
+  { label: 'Taxis / Traslados', bg: 'bg-sky-50 text-sky-700 border-sky-200' },
   { label: 'Aranceles / Tasas', bg: 'bg-purple-50 text-purple-700 border-purple-200' },
   { label: 'Timbres Fiscales', bg: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-  { label: 'Almuerzo / Refrigerio', bg: 'bg-orange-50 text-orange-700 border-orange-200' },
+  { label: 'Almuerzo / Refrigerio', bg: 'bg-teal-50 text-teal-700 border-teal-200' },
   { label: 'Estacionamiento', bg: 'bg-slate-50 text-slate-700 border-slate-200' },
   { label: 'Papelería', bg: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   { label: 'Gestión Externa', bg: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
@@ -159,7 +158,7 @@ export default function FormRelacionGastos({
   globalExpedientes = []
 }: FormRelacionGastosProps) {
   const currentUserName = localStorage.getItem('rd_user_name') || 'Empleado';
-  
+
   // Obtener tasa BCV desde localStorage sincronizada con LiveStatusBar
   const getInitialBcv = () => {
     try {
@@ -167,7 +166,7 @@ export default function FormRelacionGastos({
       if (savedRate && !isNaN(Number(savedRate)) && Number(savedRate) > 0) {
         return Number(savedRate);
       }
-    } catch (e) {}
+    } catch (e) { }
     return 794.99;
   };
 
@@ -204,14 +203,14 @@ export default function FormRelacionGastos({
               localStorage.setItem('rd_live_bcv_rate', data.promedio.toString());
             }
           })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
 
     window.addEventListener('rd_bcv_updated', handleBcvUpdate);
     return () => window.removeEventListener('rd_bcv_updated', handleBcvUpdate);
   }, []);
-  
+
   // Lista de items de gasto
   const [items, setItems] = useState<GastoItem[]>(() => {
     if (initialData?.items && initialData.items.length > 0) {
@@ -434,7 +433,7 @@ export default function FormRelacionGastos({
         isOpen: true,
         type: 'success',
         title: targetEstatus === 'Pendiente' ? '¡Relación Enviada a Jefatura!' : '¡Borrador Guardado!',
-        message: targetEstatus === 'Pendiente' 
+        message: targetEstatus === 'Pendiente'
           ? 'Tu relación de gastos ha sido enviada con éxito a Jefatura. Se notificará a los socios para su revisión y liquidación.'
           : 'Tu relación de gastos se ha guardado en borrador. Podrás continuar editándola cuando desees.',
         onConfirm: () => {
@@ -448,7 +447,7 @@ export default function FormRelacionGastos({
         const localList = JSON.parse(localStorage.getItem('rd_local_gastos_drafts') || '[]');
         const updatedList = [payload, ...localList.filter((g: any) => g.id !== payload.id)];
         localStorage.setItem('rd_local_gastos_drafts', JSON.stringify(updatedList));
-      } catch (e) {}
+      } catch (e) { }
 
       setSystemAlert({
         isOpen: true,
@@ -475,17 +474,17 @@ export default function FormRelacionGastos({
 
       {/* Modal visor de comprobante */}
       {previewImage && (
-        <div 
+        <div
           onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-5 border border-white/10 shadow-2xl flex flex-col items-center cursor-default"
+            className="relative max-w-2xl w-full bg-white rounded-3xl p-5 border border-slate-200 shadow-2xl flex flex-col items-center cursor-default"
           >
-            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-              <div className="text-white font-bold text-sm flex items-center gap-2">
-                <ImageIcon className="w-4 h-4 text-amber-400" /> Soporte / Factura Adjunta
+            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div className="text-slate-900 font-bold text-sm flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-blue-600" /> Soporte / Factura Adjunta
               </div>
               <div className="flex items-center gap-2">
                 {previewImage.startsWith('http') && (
@@ -493,16 +492,16 @@ export default function FormRelacionGastos({
                     href={previewImage}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-200 hover:text-white transition-colors text-xs flex items-center gap-1.5 font-bold"
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-xl text-blue-700 transition-colors text-xs flex items-center gap-1.5 font-bold border border-blue-200"
                     title="Abrir imagen en pestaña nueva"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-amber-400" /> Ver Original
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" /> Ver Original
                   </a>
                 )}
-                <button 
+                <button
                   type="button"
                   onClick={() => setPreviewImage(null)}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer"
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                   title="Cerrar"
                 >
                   <X className="w-4 h-4" />
@@ -510,11 +509,11 @@ export default function FormRelacionGastos({
               </div>
             </div>
 
-            <div className="w-full flex items-center justify-center bg-slate-950/60 rounded-2xl p-2 min-h-[220px]">
-              <img 
-                src={previewImage} 
-                alt="Comprobante de gasto" 
-                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-lg border border-slate-800"
+            <div className="w-full flex items-center justify-center bg-slate-50 rounded-2xl p-2 min-h-[220px] border border-slate-100">
+              <img
+                src={previewImage}
+                alt="Comprobante de gasto"
+                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-xs border border-slate-200"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                   const fallback = document.getElementById('comprobante-form-error-msg');
@@ -522,7 +521,7 @@ export default function FormRelacionGastos({
                 }}
               />
               <div id="comprobante-form-error-msg" style={{ display: 'none' }} className="flex flex-col items-center justify-center py-8 text-slate-400 text-xs">
-                <AlertCircle className="w-8 h-8 text-amber-400 mb-2 opacity-80" />
+                <AlertCircle className="w-8 h-8 text-blue-500 mb-2 opacity-80" />
                 <span>No se pudo cargar la vista previa del comprobante.</span>
               </div>
             </div>
@@ -531,25 +530,25 @@ export default function FormRelacionGastos({
       )}
 
       {/* Barra Superior con botón Volver y Título */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8">
         <div className="flex items-center gap-3">
           <button
             onClick={onCancel}
-            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all cursor-pointer"
+            className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all cursor-pointer border border-slate-200/80"
             title="Volver al listado"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
                 Planilla de Desembolsos
               </span>
-              <span className="text-xs font-bold text-slate-400">
+              <span className="text-xs font-medium text-slate-500">
                 Responsable: {currentUserName}
               </span>
             </div>
-            <h2 className="text-lg font-black text-slate-900 mt-0.5">
+            <h2 className="text-lg font-bold text-slate-900 mt-0.5">
               {initialData ? 'Editar Relación de Gastos' : 'Nueva Relación de Gastos & Taxes'}
             </h2>
           </div>
@@ -557,15 +556,15 @@ export default function FormRelacionGastos({
 
         {/* Resumen flotante de totales */}
         <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <div className="bg-slate-900 text-white px-4 py-2 rounded-2xl flex items-center gap-3 border border-slate-800 shadow-sm">
-            <div className="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-400 flex items-center justify-center font-black">
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50/90 text-slate-900 px-4 py-2 rounded-2xl flex items-center gap-3 border border-blue-200/80 shadow-2xs">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold shadow-xs">
               $
             </div>
             <div>
-              <div className="text-[10px] uppercase font-bold tracking-wider text-slate-400">Total a Reembolsar</div>
-              <div className="text-sm font-black text-white flex items-center gap-2">
+              <div className="text-[10px] uppercase font-extrabold tracking-wider text-blue-700">Total a Reembolsar</div>
+              <div className="text-sm font-black text-slate-900 flex items-center gap-2">
                 <span>${totalUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className="text-xs text-amber-400 font-bold">/ Bs {totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <span className="text-xs text-slate-500 font-semibold">/ Bs {totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
@@ -573,21 +572,21 @@ export default function FormRelacionGastos({
       </div>
 
       {/* Configuración de Período y Tasa BCV */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+      <div className="bg-white p-6 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 space-y-4">
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-amber-500" /> Datos Generales de la Relación
+          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-600" /> Datos Generales de la Relación
           </h3>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-bold text-slate-500">Tasa Oficial BCV:</span>
-            <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl">
-              <span className="text-[11px] font-black text-amber-900">Bs</span>
+            <span className="text-[11px] font-medium text-slate-500">Tasa Oficial BCV:</span>
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-xl">
+              <span className="text-[11px] font-bold text-slate-700">Bs</span>
               <input
                 type="number"
                 step="0.01"
                 value={tasaBcv}
                 onChange={(e) => handleTasaChange(Number(e.target.value))}
-                className="w-20 text-xs font-black text-amber-900 bg-transparent outline-none text-right"
+                className="w-20 text-xs font-bold text-slate-800 bg-transparent outline-none text-right"
               />
             </div>
           </div>
@@ -601,7 +600,7 @@ export default function FormRelacionGastos({
               value={titulo}
               onChange={(e) => setTitulo(e.target.value)}
               placeholder="Ej: Gastos Semana 35 - Tribunales Caracas"
-              className="w-full px-3.5 py-2 text-xs font-semibold rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+              className="w-full px-3.5 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none"
             />
           </div>
 
@@ -610,7 +609,7 @@ export default function FormRelacionGastos({
             <select
               value={periodo}
               onChange={(e) => setPeriodo(e.target.value as any)}
-              className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-white"
+              className="w-full px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-white text-slate-700"
             >
               <option value="Semanal">Semanal (7 Días)</option>
               <option value="Quincenal">Quincenal (15 Días)</option>
@@ -626,7 +625,7 @@ export default function FormRelacionGastos({
                 type="date"
                 value={fechaInicio}
                 onChange={(e) => setFechaInicio(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                className="w-full px-2.5 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-slate-700"
               />
             </div>
             <div className="flex-1">
@@ -635,7 +634,7 @@ export default function FormRelacionGastos({
                 type="date"
                 value={fechaFin}
                 onChange={(e) => setFechaFin(e.target.value)}
-                className="w-full px-2.5 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none"
+                className="w-full px-2.5 py-2 text-xs font-medium rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-slate-700"
               />
             </div>
           </div>
@@ -653,13 +652,13 @@ export default function FormRelacionGastos({
               Puedes asociar múltiples renglones (fotocopias, taxis, aranceles, timbres) a un mismo expediente o trámite.
             </p>
           </div>
-          
+
           <button
             type="button"
             onClick={handleAddNewTramite}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-xs cursor-pointer"
+            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl transition-all flex items-center gap-2 shadow-sm shadow-blue-500/20 cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5 text-amber-400" /> Añadir Otro Trámite
+            <Plus className="w-3.5 h-3.5 text-blue-100" /> Añadir Otro Trámite
           </button>
         </div>
 
@@ -670,8 +669,8 @@ export default function FormRelacionGastos({
           const subtotalVes = itemsOfTramite.reduce((acc, curr) => acc + (curr.montoVes || 0), 0);
 
           return (
-            <div 
-              key={tramiteName || `empty_tramite_${tIndex}`} 
+            <div
+              key={tramiteName || `empty_tramite_${tIndex}`}
               className="bg-white rounded-3xl border border-slate-200/90 shadow-xs overflow-hidden transition-all hover:border-slate-300"
             >
               {/* Encabezado del Trámite */}
@@ -719,8 +718,8 @@ export default function FormRelacionGastos({
               {/* Casillas / Renglones del Trámite */}
               <div className="p-4 space-y-3">
                 {itemsOfTramite.map((item, rIndex) => (
-                  <div 
-                    key={item.id} 
+                  <div
+                    key={item.id}
                     className="p-3.5 bg-slate-50/50 rounded-2xl border border-slate-200/60 flex flex-col lg:flex-row items-start lg:items-center gap-3 transition-all hover:bg-slate-50"
                   >
                     <div className="w-6 h-6 rounded-lg bg-slate-200 text-slate-600 text-[10px] font-bold flex items-center justify-center shrink-0">
@@ -769,18 +768,16 @@ export default function FormRelacionGastos({
                         <button
                           type="button"
                           onClick={() => handleUpdateItem(item.id, { moneda: 'USD' })}
-                          className={`px-2 py-1 text-[11px] font-black transition-colors ${
-                            item.moneda === 'USD' ? 'bg-amber-400 text-slate-950' : 'text-slate-500 hover:text-slate-800'
-                          }`}
+                          className={`px-2 py-1 text-[11px] font-bold transition-colors ${item.moneda === 'USD' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'
+                            }`}
                         >
                           $
                         </button>
                         <button
                           type="button"
                           onClick={() => handleUpdateItem(item.id, { moneda: 'VES' })}
-                          className={`px-2 py-1 text-[11px] font-black transition-colors ${
-                            item.moneda === 'VES' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'
-                          }`}
+                          className={`px-2 py-1 text-[11px] font-bold transition-colors ${item.moneda === 'VES' ? 'bg-blue-600 text-white' : 'text-slate-500 hover:text-slate-800'
+                            }`}
                         >
                           Bs
                         </button>
@@ -794,7 +791,7 @@ export default function FormRelacionGastos({
                           placeholder="0.00"
                           value={item.monto || ''}
                           onChange={(e) => handleUpdateItem(item.id, { monto: Number(e.target.value) })}
-                          className="w-full px-2.5 py-1.5 text-xs font-black text-slate-900 rounded-xl border border-slate-200 bg-white outline-none text-right focus:border-amber-500"
+                          className="w-full px-2.5 py-1.5 text-xs font-bold text-slate-900 rounded-xl border border-slate-200 bg-white outline-none text-right focus:border-blue-500"
                         />
                       </div>
 
@@ -804,8 +801,8 @@ export default function FormRelacionGastos({
                           {item.moneda === 'USD' ? 'En Bs:' : 'En $: '}
                         </span>
                         <span className="text-[11px] font-extrabold text-slate-700">
-                          {item.moneda === 'USD' 
-                            ? `Bs ${Number(item.montoVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}` 
+                          {item.moneda === 'USD'
+                            ? `Bs ${Number(item.montoVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
                             : `$ ${Number(item.montoUsd || 0).toFixed(2)}`}
                         </span>
                       </div>
@@ -836,10 +833,10 @@ export default function FormRelacionGastos({
                         <label className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-dashed border-slate-300 text-slate-600 rounded-xl text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors">
                           <Upload className="w-3 h-3 text-slate-400" />
                           <span>Adjuntar</span>
-                          <input 
-                            type="file" 
-                            accept="image/*,application/pdf" 
-                            className="hidden" 
+                          <input
+                            type="file"
+                            accept="image/*,application/pdf"
+                            className="hidden"
                             onChange={(e) => handleFileUpload(item.id, e)}
                           />
                         </label>
@@ -884,7 +881,7 @@ export default function FormRelacionGastos({
             type="button"
             disabled={saving}
             onClick={() => handleSubmit('Pendiente')}
-            className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 sm:flex-none px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
           >
             <Send className="w-4 h-4" /> {saving ? 'Guardando...' : (initialData ? 'Guardar Cambios y Actualizar' : 'Enviar a Jefatura para Pago')}
           </button>

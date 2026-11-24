@@ -1974,25 +1974,42 @@ export async function supabaseSendChatMessage(payload: any): Promise<any> {
   };
 }
 
-export async function supabaseMarkChatRead(contact?: string, currentUser?: string): Promise<any> {
+export async function supabaseMarkChatRead(contact?: string, currentUser?: string, specificIds?: string | string[]): Promise<any> {
   try {
     const curUser = currentUser || localStorage.getItem('rd_user_name') || '';
     const normCur = normalizeName(curUser);
     const normContact = normalizeName(contact || '');
 
+    // 1. Si se especifican IDs directos, marcarlos de forma inmediata y certera
+    if (specificIds) {
+      const rawList = Array.isArray(specificIds) ? specificIds : [specificIds];
+      const validIds = rawList.map(id => String(id).trim()).filter(Boolean);
+      if (validIds.length > 0) {
+        await supabase
+          .from('chat_messages')
+          .update({ leido: true })
+          .in('id', validIds);
+        return { success: true };
+      }
+    }
+
+    // 2. Consulta general de mensajes no leídos
     const { data } = await supabase
       .from('chat_messages')
       .select('id, sender_name, recipient_name')
       .eq('leido', false);
 
     if (data && data.length > 0) {
+      const isJefe = normCur.includes('luis') || normCur.includes('delgado') || normCur.includes('roman') || normCur.includes('victor') || localStorage.getItem('rd_is_admin') === 'true';
+
       const idsToMark = data.filter((m: any) => {
         const sNorm = normalizeName(m.sender_name);
         const rNorm = normalizeName(m.recipient_name);
 
         if (normContact) {
           const matchSender = sNorm.includes(normContact) || normContact.includes(sNorm);
-          const matchRecipient = !normCur || rNorm.includes(normCur) || normCur.includes(rNorm);
+          // Si es Jefatura quien atiende, tiene autorización para marcar cualquier mensaje de este empleado
+          const matchRecipient = isJefe || !normCur || rNorm.includes(normCur) || normCur.includes(rNorm);
           return matchSender && matchRecipient;
         } else if (normCur) {
           return rNorm.includes(normCur) || normCur.includes(rNorm);

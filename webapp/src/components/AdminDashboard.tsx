@@ -19,7 +19,6 @@ import ModuloBolsaEmpleo from './talento/ModuloBolsaEmpleo';
 import ModuloAsignacionTareas from './tareas/ModuloAsignacionTareas';
 import ModuloRecibosHonorarios from './recibos/ModuloRecibosHonorarios';
 import LiveStatusBar from './common/LiveStatusBar';
-import { KantFloatingCompanion } from './common/KantMascot';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { WhatsAppStyleChat, checkIsFromBoss } from './chat/WhatsAppStyleChat';
@@ -27,6 +26,7 @@ import LiveChatModule, { playNotificationSound } from './chat/LiveChatModule';
 import AttendanceReportModal from './common/AttendanceReportModal';
 import { normalizeSupervisorName, formatTime12h, checkIsSistemas, sortHistoryDesc } from '../lib/supabaseAdapter';
 import { cleanLocationForPdf } from '../lib/locationUtils';
+import { AppShell, type NavGroup } from './ui/AppShell';
 
 const ensureArray = (val: any): any[] => {
   if (Array.isArray(val)) return val;
@@ -163,7 +163,7 @@ export default function AdminDashboard() {
     // 2. Actualizar estado reactivo en pantalla
     setEmployeeMessages(prev => prev.map(m => {
       if (String(m.id) === String(replyId)) {
-        return { ...m, leido_por_jefe: true, atendido: true };
+        return { ...m, leido_por_jefe: true, atendido: true, leido: true };
       }
       return m;
     }));
@@ -171,7 +171,7 @@ export default function AdminDashboard() {
     // 3. Actualizar en cola local
     try {
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
-      const updatedQ = q.map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true } : item);
+      const updatedQ = q.map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true, leido: true } : item);
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
     } catch (e) {}
 
@@ -182,7 +182,7 @@ export default function AdminDashboard() {
         const parsedMap = JSON.parse(mapRaw);
         Object.keys(parsedMap).forEach(k => {
           if (Array.isArray(parsedMap[k])) {
-            parsedMap[k] = parsedMap[k].map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true } : item);
+            parsedMap[k] = parsedMap[k].map((item: any) => String(item.id) === String(replyId) ? { ...item, leido_por_jefe: true, atendido: true, leido: true } : item);
           }
         });
         localStorage.setItem('rd_local_employee_replies', JSON.stringify(parsedMap));
@@ -191,6 +191,56 @@ export default function AdminDashboard() {
 
     try {
       await submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: replyId, atendido: true });
+    } catch (e) {}
+  };
+
+  const markEmployeeRepliesGroupRead = async (messages: any[], author?: string) => {
+    const ids = (messages || []).map(m => String(m.id)).filter(Boolean);
+    if (ids.length === 0) return;
+
+    // 1. Guardar persistentemente en rd_jefe_attended_replies
+    try {
+      const existing = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
+      const updated = Array.from(new Set([...existing, ...ids]));
+      localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
+    } catch (e) {}
+
+    // 2. Actualizar estado reactivo en pantalla
+    setEmployeeMessages(prev => prev.map(m => {
+      if (ids.includes(String(m.id))) {
+        return { ...m, leido_por_jefe: true, atendido: true, leido: true };
+      }
+      return m;
+    }));
+
+    // 3. Actualizar en cola local
+    try {
+      const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
+      const updatedQ = q.map((item: any) => ids.includes(String(item.id)) ? { ...item, leido_por_jefe: true, atendido: true, leido: true } : item);
+      localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
+    } catch (e) {}
+
+    // 4. Actualizar en mapa local
+    try {
+      const mapRaw = localStorage.getItem('rd_local_employee_replies');
+      if (mapRaw) {
+        const parsedMap = JSON.parse(mapRaw);
+        Object.keys(parsedMap).forEach(k => {
+          if (Array.isArray(parsedMap[k])) {
+            parsedMap[k] = parsedMap[k].map((item: any) => ids.includes(String(item.id)) ? { ...item, leido_por_jefe: true, atendido: true, leido: true } : item);
+          }
+        });
+        localStorage.setItem('rd_local_employee_replies', JSON.stringify(parsedMap));
+      }
+    } catch (e) {}
+
+    // 5. Persistir en Supabase
+    try {
+      await submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { 
+        reply_ids: ids, 
+        contact: author,
+        atendido: true 
+      });
     } catch (e) {}
   };
 
@@ -786,7 +836,6 @@ export default function AdminDashboard() {
 
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
-  const [dismissedNotifs] = useState<number[]>([]);
   const [expandedUsers, setExpandedUsers] = useState<Record<string, boolean>>({});
   const [systemAlert, setSystemAlert] = useState<{
     isOpen: boolean;
@@ -954,12 +1003,41 @@ export default function AdminDashboard() {
         }
       } finally {
         api.get('/rd-intranet/v1/mensajes-jefatura').then(res => {
+          const attendedIds: string[] = [];
+          try {
+            const att = localStorage.getItem('rd_jefe_attended_replies');
+            if (att) attendedIds.push(...JSON.parse(att).map((id: any) => String(id)));
+          } catch (e) {}
+
           const localList = getLocalEmployeeMessages();
-          const serverList = Array.isArray(res.data) ? res.data : [];
+          const rawServerList = Array.isArray(res.data) ? res.data : [];
+          const serverList = rawServerList.map((m: any) => {
+            const isAtt = m.leido === true || m.atendido === true || attendedIds.includes(String(m.id));
+            return {
+              ...m,
+              atendido: isAtt,
+              leido_por_jefe: isAtt || m.leido === true,
+              leido: isAtt || m.leido === true
+            };
+          });
+
           const merged = [...serverList];
           localList.forEach(localItem => {
-            if (!merged.some(m => m.id === localItem.id || (m.mensaje === localItem.mensaje && m.fecha === localItem.fecha))) {
-              merged.unshift(localItem);
+            const isAtt = localItem.atendido === true || attendedIds.includes(String(localItem.id));
+            const existingIdx = merged.findIndex(m => String(m.id) === String(localItem.id) || (m.mensaje === localItem.mensaje && m.fecha === localItem.fecha));
+            if (existingIdx >= 0) {
+              if (isAtt) {
+                merged[existingIdx].atendido = true;
+                merged[existingIdx].leido_por_jefe = true;
+                merged[existingIdx].leido = true;
+              }
+            } else {
+              merged.unshift({
+                ...localItem,
+                atendido: isAtt,
+                leido_por_jefe: isAtt || localItem.leido === true,
+                leido: isAtt || localItem.leido === true
+              });
             }
           });
           setEmployeeMessages(merged);
@@ -1565,274 +1643,206 @@ export default function AdminDashboard() {
   const pendingChatGroups = allChatGroups.filter(g => g.hasPending);
   const attendedChatGroups = allChatGroups.filter(g => !g.hasPending);
 
-  const unreadEmployeeReplies = pendingChatGroups;
-
-  // 2. Notificaciones de Bitácoras por Revisar del Equipo
-  const activeNotifications = reports.filter(r =>
-    !r.isJefatura &&
-    r.status === 'Enviado' &&
-    !dismissedNotifs.includes(r.id)
-  );
-
   // Contador de gastos pendientes sincronizado por consulta HEAD (0 bytes de payload)
 
+  const navGroups: NavGroup[] = [
+    {
+      label: 'Supervisión',
+      items: [
+        {
+          id: 'mis_libros',
+          label: 'Mi Bitácora Personal',
+          shortLabel: 'Mi Bitácora',
+          icon: <BookOpen className="w-5 h-5 text-sky-400" />,
+          hidden: isSistemas,
+        },
+        {
+          id: 'bitacoras',
+          label: 'Revisión de Equipo',
+          shortLabel: 'Bitácoras',
+          icon: <FileText className="w-5 h-5 text-blue-300" />,
+          badge: pendingReview > 0 ? pendingReview : undefined,
+          badgeColor: 'blue',
+        },
+        {
+          id: 'tareas_asignadas',
+          label: 'Asignar Tareas',
+          shortLabel: 'Tareas',
+          icon: <CheckSquare className="w-5 h-5 text-indigo-300" />,
+        },
+      ],
+    },
+    {
+      label: 'Comunicaciones',
+      items: [
+        {
+          id: 'chat',
+          label: 'Chat en Vivo WhatsApp',
+          shortLabel: 'Chat',
+          icon: <MessageSquare className="w-5 h-5 text-emerald-400" />,
+          badge: unreadChatLive > 0 ? unreadChatLive : undefined,
+          badgeColor: 'emerald',
+        },
+        {
+          id: 'buzon',
+          label: 'Buzón & Dudas',
+          shortLabel: 'Buzón',
+          icon: <MessageSquare className="w-5 h-5 text-teal-400" />,
+          badge: pendingChatGroups.length > 0 ? pendingChatGroups.length : undefined,
+          badgeColor: 'blue',
+        },
+      ],
+    },
+    {
+      label: 'Gestión Jurídica',
+      items: [
+        {
+          id: 'expedientes',
+          label: 'Expedientes & Casos',
+          shortLabel: 'Expedientes',
+          icon: <Scale className="w-5 h-5 text-sky-400" />,
+        },
+        {
+          id: 'biblioteca',
+          label: 'Archivo & Documentos',
+          shortLabel: 'Archivo',
+          icon: <FolderSearch className="w-5 h-5 text-indigo-300" />,
+        },
+      ],
+    },
+    {
+      label: 'Finanzas & Nómina',
+      items: [
+        {
+          id: 'gastos',
+          label: 'Gastos & Reembolsos',
+          shortLabel: 'Gastos',
+          icon: <Receipt className="w-5 h-5 text-sky-400" />,
+          badge: pendingGastosCount > 0 ? pendingGastosCount : undefined,
+          badgeColor: 'rose',
+        },
+        {
+          id: 'nomina',
+          label: isSistemas ? 'Mis Recibos & Nómina' : 'Nómina & Recibos',
+          shortLabel: 'Nómina',
+          icon: <Wallet className="w-5 h-5 text-emerald-400" />,
+          badge: isSistemas && paymentNotif ? 'Nuevo' : undefined,
+          badgeColor: 'emerald',
+        },
+        {
+          id: 'recibos_honorarios',
+          label: 'Recibos & Honorarios',
+          shortLabel: 'Honorarios',
+          icon: <Receipt className="w-5 h-5 text-indigo-300" />,
+        },
+      ],
+    },
+    {
+      label: 'Administración & TI',
+      items: [
+        {
+          id: 'bolsa_empleo',
+          label: 'Bolsa de Empleo',
+          shortLabel: 'Talento',
+          icon: <Briefcase className="w-5 h-5 text-indigo-300" />,
+          badge: nuevosCandidatosCount > 0 ? nuevosCandidatosCount : undefined,
+          badgeColor: 'blue',
+        },
+        {
+          id: 'usuarios',
+          label: 'Usuarios & Roles TI',
+          shortLabel: 'Usuarios',
+          icon: <Cpu className="w-5 h-5 text-cyan-400" />,
+          hidden: !isSistemas,
+        },
+      ],
+    },
+  ];
+
   return (
-    <div className="max-w-7xl mx-auto space-y-4 animate-in fade-in duration-500 pb-24 sm:pb-16">
-      <SystemAlertModal
-        isOpen={systemAlert.isOpen}
-        type={systemAlert.type}
-        title={systemAlert.title}
-        message={systemAlert.message}
-        showCancel={systemAlert.showCancel}
-        onConfirm={systemAlert.onConfirm}
-        confirmText={systemAlert.confirmText}
-        cancelText={systemAlert.cancelText}
-        onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
-      />
+    <AppShell
+      navigation={navGroups}
+      activeView={activeView}
+      onNavigate={(view) => {
+        setActiveView(view as any);
+        if (view === 'chat') setChatToast(null);
+        if (view === 'nomina' && isSistemas) setNominaSubView('recibos');
+      }}
+      bottomNavIds={['bitacoras', 'chat', 'expedientes', 'nomina']}
+      sidebarHeader={
+        <div className="flex items-center gap-2 bg-white/12 px-3 py-2 rounded-xl border border-white/20 shadow-sm backdrop-blur-sm">
+          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+            {isSistemas ? 'Sistemas & TI' : 'Panel de Control'}
+          </span>
+        </div>
+      }
+    >
+      <div className="space-y-4 animate-page-enter">
+        <SystemAlertModal
+          isOpen={systemAlert.isOpen}
+          type={systemAlert.type}
+          title={systemAlert.title}
+          message={systemAlert.message}
+          showCancel={systemAlert.showCancel}
+          onConfirm={systemAlert.onConfirm}
+          confirmText={systemAlert.confirmText}
+          cancelText={systemAlert.cancelText}
+          onClose={() => setSystemAlert({ ...systemAlert, isOpen: false, showCancel: false })}
+        />
 
       {/* BARRA DE DIVISAS ($ / € BCV), CLIMA MULTICIUDAD Y RELOJ EN VIVO */}
       <LiveStatusBar />
 
       {/* BANNER DE NOTIFICACIÓN DE PAGO DE NÓMINA PARA ÓSCAR (SISTEMAS TI) */}
       {isSistemas && paymentNotif && (
-        <div className="bg-gradient-to-r from-emerald-950 via-slate-900 to-emerald-950 border border-emerald-500/40 p-4 rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-white animate-in slide-in-from-top duration-300">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
-              <Wallet className="w-5 h-5 animate-bounce" />
+        <div className="bg-white border border-emerald-200 border-l-4 border-l-emerald-600 bg-gradient-to-r from-emerald-50/55 via-white to-white p-4 rounded-2xl shadow-md shadow-blue-950/8 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3.5 text-slate-900 animate-in slide-in-from-top duration-300">
+          <div className="flex items-start sm:items-center gap-3.5 min-w-0 flex-1">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-emerald-600/20">
+              <Wallet className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 bg-emerald-500 text-slate-950 text-[10px] font-black uppercase tracking-wider rounded-full">
-                  Nómina Pagada
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider rounded-full shrink-0">
+                  Nómina Acreditada
                 </span>
-                <span className="text-xs sm:text-sm font-bold text-emerald-300">
+                <span className="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">
                   {paymentNotif.title || '¡Pago de Nómina Realizado!'}
                 </span>
               </div>
-              <p className="text-xs text-slate-300 mt-0.5 max-w-xl">
+              <p className="text-xs text-slate-600 font-medium leading-relaxed line-clamp-2">
                 {paymentNotif.message}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          <div className="flex items-center gap-2 shrink-0 self-end lg:self-center">
             <button
               onClick={() => {
                 setActiveView('nomina');
                 setNominaSubView('recibos');
                 markPaymentRead(paymentNotif.id);
               }}
-              className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-sm shadow-emerald-600/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
             >
               <Eye className="w-3.5 h-3.5" /> Ver Mi Recibo
             </button>
             <button
               onClick={() => markPaymentRead(paymentNotif.id)}
-              className="p-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white rounded-xl transition-colors cursor-pointer"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border border-slate-200 font-bold text-xs rounded-xl transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap"
               title="Cerrar aviso"
             >
-              <X className="w-4 h-4" />
+              <X className="w-3.5 h-3.5" /> Cerrar
             </button>
           </div>
         </div>
       )}
 
-      {/* Tabs Vistas con Segmented Control Moderno, Compacto y Glow */}
-      <div className="flex overflow-x-auto gap-2 p-1.5 bg-white/90 backdrop-blur-xl rounded-2xl border border-slate-200/90 shadow-md scrollbar-none relative z-10 mx-auto w-full">
-        {/* 1. MI BITÁCORA PERSONAL (JEFATURA - DIRECTORES / ABOGADOS) */}
-        {!isSistemas && (
-          <button
-            onClick={() => setActiveView('mis_libros')}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-              activeView === 'mis_libros' 
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(59,130,246,0.5)] ring-1 ring-blue-400 scale-[1.02]' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-blue-50/80 font-bold'
-            }`}
-          >
-            <BookOpen className={`w-4 h-4 ${activeView === 'mis_libros' ? 'text-white' : 'text-blue-600'}`} /> Mi Bitácora Diaria
-          </button>
-        )}
-
-        {/* 2. REVISIÓN DE BITÁCORAS DEL EQUIPO */}
-        <button
-          onClick={() => setActiveView('bitacoras')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'bitacoras' 
-              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <FileText className={`w-4 h-4 ${activeView === 'bitacoras' ? 'text-slate-950' : 'text-slate-400'}`} /> Revisión de Equipo
-          {pendingReview > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-sm ml-1 ${activeView === 'bitacoras' ? 'bg-slate-950 text-amber-300 shadow-[0_0_8px_rgba(245,158,11,0.3)]' : 'bg-amber-500 text-slate-900'}`}>
-              {pendingReview}
-            </span>
-          )}
-        </button>
-
-        {/* 3. CHAT EN VIVO */}
-        <button
-          onClick={() => {
-            setActiveView('chat');
-            setChatToast(null);
-          }}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'chat' 
-              ? 'bg-gradient-to-r from-[#00a884] to-emerald-600 text-white font-black shadow-[0_4px_20px_-2px_rgba(0,168,132,0.5)] ring-1 ring-emerald-400 scale-[1.02]' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/80 font-bold'
-          }`}
-        >
-          <div className="relative shrink-0 flex items-center justify-center">
-            <MessageSquare className={`w-4 h-4 ${activeView === 'chat' ? 'text-white' : 'text-emerald-600'}`} />
-            {unreadChatLive > 0 && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-ping" />
-            )}
-          </div>
-          <span>Chat en Vivo (WhatsApp)</span>
-          {unreadChatLive > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[11px] shadow-sm ml-1 animate-bounce ${activeView === 'chat' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-600 text-white'}`}>
-              {unreadChatLive}
-            </span>
-          )}
-        </button>
-
-        {/* 4. EXPEDIENTES & CASOS */}
-        <button
-          onClick={() => setActiveView('expedientes')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'expedientes' 
-              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <Scale className={`w-4 h-4 ${activeView === 'expedientes' ? 'text-slate-950' : 'text-slate-400'}`} /> Expedientes & Casos
-        </button>
-
-        {/* 6. GASTOS & REEMBOLSOS */}
-        <button
-          onClick={() => setActiveView('gastos')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'gastos' 
-              ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-yellow-500 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-              : 'text-slate-500 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <Receipt className={`w-4 h-4 ${activeView === 'gastos' ? 'text-slate-950' : 'text-slate-400'}`} /> Gastos & Reembolsos
-          {pendingGastosCount > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] shadow-[0_0_10px_rgba(239,68,68,0.5)] ml-1 ${activeView === 'gastos' ? 'bg-slate-900 text-rose-300' : 'bg-red-500 text-white animate-pulse'}`}>
-              {pendingGastosCount}
-            </span>
-          )}
-        </button>
-
-        {/* NÓMINA & RECIBOS DE PAGO */}
-        <button
-          onClick={() => {
-            setActiveView('nomina');
-            if (isSistemas) {
-              setNominaSubView('recibos');
-            }
-          }}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'nomina' 
-              ? 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 text-white font-black shadow-[0_4px_22px_-2px_rgba(16,185,129,0.55)] ring-1 ring-emerald-400 scale-[1.02]' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-emerald-50/60 font-bold'
-          }`}
-        >
-          <div className="relative shrink-0 flex items-center justify-center">
-            <Wallet className={`w-4 h-4 ${activeView === 'nomina' ? 'text-white' : 'text-emerald-600'}`} />
-            {isSistemas && paymentNotif && (
-              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full animate-ping" />
-            )}
-          </div>
-          <span>{isSistemas ? 'Mis Recibos & Nómina' : 'Nómina & Recibos'}</span>
-          {isSistemas && paymentNotif && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] ml-1 shadow-sm animate-bounce ${
-              activeView === 'nomina' ? 'bg-slate-900 text-emerald-300' : 'bg-emerald-500 text-slate-950'
-            }`}>
-              ¡Nuevo Pago!
-            </span>
-          )}
-        </button>
-
-        {/* RECIBOS DE HONORARIOS & CLIENTES (CORRELATIVO & FACTURACIÓN) */}
-        <button
-          onClick={() => setActiveView('recibos_honorarios')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'recibos_honorarios' 
-              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <Receipt className={`w-4 h-4 ${activeView === 'recibos_honorarios' ? 'text-slate-950' : 'text-amber-600'}`} />
-          <span>Recibos & Honorarios</span>
-        </button>
-
-        {/* ARCHIVO & BIBLIOTECA GENERAL DE EXPEDIENTES Y EVIDENCIAS */}
-        <button
-          onClick={() => setActiveView('biblioteca')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'biblioteca' 
-              ? 'bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white font-black shadow-[0_4px_22px_-2px_rgba(99,102,241,0.55)] ring-1 ring-indigo-400 scale-[1.02]' 
-              : 'text-slate-600 hover:text-slate-900 hover:bg-indigo-50/60 font-bold'
-          }`}
-        >
-          <FolderSearch className={`w-4 h-4 ${activeView === 'biblioteca' ? 'text-white' : 'text-indigo-600'}`} /> Archivo & Biblioteca
-        </button>
-
-        {/* BOLSA DE EMPLEO / TALENTO HUMANO (SOLO JEFATURA Y SISTEMAS) */}
-        <button
-          onClick={() => setActiveView('bolsa_empleo')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'bolsa_empleo'
-              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <Briefcase className={`w-4 h-4 ${activeView === 'bolsa_empleo' ? 'text-slate-950' : 'text-amber-600'}`} />
-          <span>Bolsa de Empleo</span>
-          {nuevosCandidatosCount > 0 && (
-            <span className={`px-2 py-0.5 font-black rounded-full text-[10px] ml-1 shadow-sm animate-pulse ${
-              activeView === 'bolsa_empleo' ? 'bg-slate-950 text-amber-300' : 'bg-amber-500 text-slate-900'
-            }`}>
-              {nuevosCandidatosCount}
-            </span>
-          )}
-        </button>
-
-        {/* ASIGNAR TAREAS A EMPLEADOS (JEFATURA Y SISTEMAS) */}
-        <button
-          onClick={() => setActiveView('tareas_asignadas')}
-          className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-            activeView === 'tareas_asignadas'
-              ? 'bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-600 text-slate-950 font-black shadow-[0_4px_22px_-2px_rgba(245,158,11,0.55)] ring-1 ring-amber-300 scale-[1.02]'
-              : 'text-slate-600 hover:text-slate-900 hover:bg-amber-50/60 font-bold'
-          }`}
-        >
-          <CheckSquare className={`w-4 h-4 ${activeView === 'tareas_asignadas' ? 'text-slate-950' : 'text-amber-600'}`} />
-          <span>Asignar Tareas</span>
-        </button>
-
-        {/* 8. USUARIOS & ROLES TI (EXCLUSIVO PARA ÓSCAR / SISTEMAS TI) */}
-        {isSistemas && (
-          <button
-            onClick={() => setActiveView('usuarios')}
-            className={`flex-shrink-0 px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs sm:text-sm transition-all duration-300 cursor-pointer active:scale-95 ${
-              activeView === 'usuarios' 
-                ? 'bg-gradient-to-r from-cyan-500 via-cyan-600 to-blue-600 text-white font-black shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300 scale-[1.02]' 
-                : 'text-slate-500 hover:text-slate-900 hover:bg-cyan-50/60 font-bold'
-            }`}
-          >
-            <Cpu className={`w-4 h-4 ${activeView === 'usuarios' ? 'text-white' : 'text-cyan-600'}`} /> Usuarios & Roles TI
-          </button>
-        )}
-      </div>
-
       {/* Main Content Area */}
       {activeView === 'bitacoras' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200">
+        <div className="bg-white rounded-3xl shadow-md shadow-blue-950/8 border border-blue-200">
 
           {/* Controles y Búsqueda Compactos */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-100 flex flex-col md:flex-row gap-3 items-center justify-between bg-slate-50/70">
+          <div className="p-3.5 sm:p-4 border-b border-blue-200 flex flex-col md:flex-row gap-3 items-center justify-between bg-[#eef4ff] rounded-t-3xl">
             <div className="relative w-full md:w-80">
               <Search className="absolute left-3.5 top-2.5 text-slate-400 w-4 h-4" />
               <input
@@ -1840,7 +1850,7 @@ export default function AdminDashboard() {
                 placeholder="Buscar bitácora por empleado..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all font-medium text-slate-700 bg-white"
+                className="w-full pl-10 pr-3.5 py-2 text-xs rounded-xl border border-blue-200 focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 outline-none transition-all font-medium text-slate-800 bg-white shadow-2xs"
               />
             </div>
             <div className="flex flex-wrap sm:flex-nowrap gap-2 w-full md:w-auto">
@@ -1849,7 +1859,7 @@ export default function AdminDashboard() {
                   onClick={() => setShowDateFilter(!showDateFilter)}
                   className="w-full bg-white border border-slate-200 text-slate-700 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:border-slate-300 hover:bg-slate-50 transition-all shadow-xs cursor-pointer"
                 >
-                  <CalendarIcon className="w-4 h-4 text-amber-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
+                  <CalendarIcon className="w-4 h-4 text-blue-500" /> {datePreset === 'Todos' ? 'Filtrar por Fecha' : datePreset}
                 </button>
 
                 {showDateFilter && (
@@ -1859,7 +1869,7 @@ export default function AdminDashboard() {
                       <button
                         key={preset}
                         onClick={() => { setDatePreset(preset); setShowDateFilter(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${datePreset === preset ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
                       >
                         {preset}
                       </button>
@@ -1882,7 +1892,7 @@ export default function AdminDashboard() {
                       <button
                         key={status}
                         onClick={() => { setStatusFilter(status); setShowFilters(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-amber-50 text-amber-700' : 'text-slate-600 hover:bg-slate-50'}`}
+                        className={`w-full text-left px-3 py-2 text-xs font-bold transition-colors border-b border-slate-100 last:border-0 ${statusFilter === status ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-50'}`}
                       >
                         {status}
                       </button>
@@ -1893,7 +1903,7 @@ export default function AdminDashboard() {
               <button
                 type="button"
                 onClick={() => setShowAttendanceModal(true)}
-                className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black px-3.5 py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer whitespace-nowrap"
                 title="Generar reporte consolidado de horas de entrada y salida (PDF)"
               >
                 <FileText className="w-4 h-4" /> Reporte Horas Asistencia (PDF)
@@ -1905,7 +1915,7 @@ export default function AdminDashboard() {
           <div className="md:hidden p-3.5 space-y-3">
             {loading ? (
               <div className="text-center p-12 bg-slate-50/50 rounded-2xl border border-slate-100">
-                <Loader2 className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-2" />
+                <Loader2 className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-2" />
                 <p className="text-slate-500 text-xs font-medium animate-pulse">Cargando bitácoras...</p>
               </div>
             ) : paginatedReports.length === 0 ? (
@@ -1916,30 +1926,30 @@ export default function AdminDashboard() {
               paginatedReports.map((report) => (
                 <div 
                   key={report.id}
-                  className={`bg-white rounded-2xl p-4 border transition-all shadow-xs ${
-                    report.unread ? 'border-amber-400/60 bg-amber-50/10' : 'border-slate-200'
+                  className={`bg-white rounded-3xl p-4 sm:p-5 border transition-all duration-200 shadow-xs hover:shadow-md ${
+                    report.unread ? 'border-blue-400/80 bg-blue-50/20 ring-1 ring-blue-300/40' : 'border-slate-200/90'
                   }`}
                 >
                   {/* Fila Superior: Empleado, Fecha y Estado */}
                   <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div className="relative shrink-0">
-                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 font-black text-xs uppercase border-2 border-white shadow-xs">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 text-blue-400 flex items-center justify-center font-black text-xs uppercase shadow-sm">
                           {String(report?.user || 'US').substring(0, 2)}
                         </div>
-                        {report.unread && <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white"></span>}
+                        {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white animate-pulse"></span>}
                       </div>
                       <div className="min-w-0">
-                        <h4 className="font-black text-slate-900 capitalize text-sm truncate">{report.user}</h4>
-                        <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1">
+                        <h4 className="font-extrabold text-slate-900 capitalize text-sm truncate">{report.user}</h4>
+                        <p className="text-[11px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                           <CalendarIcon className="w-3 h-3 text-slate-400" /> {report.date}
                         </p>
                       </div>
                     </div>
                     <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
-                      report.status === 'En Curso' ? 'bg-blue-100 text-blue-700' :
-                      report.status === 'Enviado' ? 'bg-amber-100 text-amber-700' :
-                      'bg-emerald-100 text-emerald-700'
+                      report.status === 'En Curso' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                      report.status === 'Enviado' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' :
+                      'bg-emerald-100 text-emerald-700 border border-emerald-200'
                     }`}>
                       {report.status === 'En Curso' && <Activity className="w-3 h-3" />}
                       {report.status === 'Enviado' && <AlertCircle className="w-3 h-3" />}
@@ -1949,7 +1959,7 @@ export default function AdminDashboard() {
                   </div>
 
                   {/* Horas de Jornada */}
-                  <div className="grid grid-cols-2 gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-100 mb-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2 bg-slate-50/90 p-3 rounded-2xl border border-slate-100 mb-3 text-xs">
                     <div>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Entrada</span>
                       <span className="font-bold text-slate-700 flex items-center gap-1 mt-0.5 text-[11px]">
@@ -1973,16 +1983,16 @@ export default function AdminDashboard() {
                         <span className="text-slate-400 uppercase tracking-wider">Progreso Tareas</span>
                         <span className="text-slate-700">{report.progress}%</span>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
                         <div 
-                          className={`h-1.5 rounded-full ${report.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
+                          className={`h-2 rounded-full transition-all ${report.progress === 100 ? 'bg-emerald-500' : 'bg-blue-500'}`} 
                           style={{ width: `${report.progress}%` }}
                         />
                       </div>
                     </div>
                   )}
 
-                  {/* Botones de Acción Móviles */}
+                  {/* Botones de Acción Móviles con Microinteracción Táctil */}
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-100">
                     <button
                       type="button"
@@ -1993,17 +2003,17 @@ export default function AdminDashboard() {
                         setAdminActuaciones(ensureArray(report.actuaciones));
                         setAdminIngresos(ensureArray(report.ingresos));
                       }}
-                      className="flex-1 py-2 px-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                      className="flex-1 py-2.5 px-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm shadow-blue-500/20 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
                     >
-                      <FileText className="w-3.5 h-3.5 text-amber-400" /> Inspeccionar
+                      <FileText className="w-3.5 h-3.5 text-blue-100" /> Inspeccionar
                     </button>
                     <button
                       type="button"
                       onClick={() => generateFallbackReportPdf(report)}
-                      className="py-2 px-3 rounded-xl bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-black transition-colors border border-emerald-300 shadow-xs flex items-center justify-center gap-1 cursor-pointer active:scale-95"
+                      className="py-2.5 px-4 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-black transition-colors border border-emerald-300 shadow-2xs flex items-center justify-center gap-1 cursor-pointer active:scale-95"
                       title="Ver o descargar PDF oficial con formato limpio"
                     >
-                      <Download className="w-3.5 h-3.5" /> PDF
+                      <Download className="w-3.5 h-3.5 text-emerald-600" /> PDF
                     </button>
                   </div>
                 </div>
@@ -2015,7 +2025,7 @@ export default function AdminDashboard() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b-2 border-slate-100 text-slate-500 text-xs font-bold uppercase tracking-wider">
+                <tr className="bg-[#dbeafe] border-b border-blue-200 text-[#1e3a8a] text-xs font-extrabold uppercase tracking-wider">
                   <th className="p-6">Empleado / Fecha</th>
                   <th className="p-6">Jornada</th>
                   <th className="p-6 w-48">Progreso</th>
@@ -2029,20 +2039,20 @@ export default function AdminDashboard() {
                   <tr>
                     <td colSpan={6} className="text-center p-16">
                       <div className="flex flex-col items-center justify-center space-y-4">
-                        <Loader2 className="w-10 h-10 text-amber-500 animate-spin" />
+                        <Loader2 className="w-10 h-10 text-blue-600 animate-spin" />
                         <p className="text-slate-500 font-medium animate-pulse">Conectando con la base de datos central...</p>
                       </div>
                     </td>
                   </tr>
                 ) : paginatedReports.map((report) => (
-                  <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-amber-50/10' : ''}`}>
+                  <tr key={report.id} className={`hover:bg-slate-50/80 transition-colors group ${report.unread ? 'bg-blue-50/20' : ''}`}>
                     <td className="p-6">
                       <div className="flex items-center gap-4">
                         <div className="relative">
                           <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 font-bold uppercase tracking-wider text-sm border-2 border-white shadow-sm">
                             {String(report?.user || 'Usuario').substring(0, 2)}
                           </div>
-                          {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full border-2 border-white"></span>}
+                          {report.unread && <span className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white"></span>}
                         </div>
                         <div>
                           <p className="font-bold text-slate-800 capitalize text-lg">{report.user}</p>
@@ -2111,7 +2121,7 @@ export default function AdminDashboard() {
                     <td className="p-6">
                       <span className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide
                       ${report.status === 'En Curso' ? 'bg-blue-100 text-blue-700' : ''}
-                      ${report.status === 'Enviado' ? 'bg-amber-100 text-amber-700' : ''}
+                      ${report.status === 'Enviado' ? 'bg-indigo-100 text-indigo-700 border border-indigo-200' : ''}
                       ${report.status === 'Revisado' ? 'bg-emerald-100 text-emerald-700' : ''}
                     `}>
                         {report.status === 'En Curso' && <Activity className="w-3.5 h-3.5" />}
@@ -2192,7 +2202,7 @@ export default function AdminDashboard() {
                     onClick={() => setCurrentPage(page)}
                     className={`w-7 h-7 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                       validCurrentPage === page
-                        ? 'bg-amber-500 text-slate-950 shadow-2xs font-black'
+                        ? 'bg-blue-600 text-white shadow-sm font-black'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
                     }`}
                   >
@@ -2216,25 +2226,24 @@ export default function AdminDashboard() {
 
       {/* VISTA: BUZÓN & CONVERSACIONES DE JEFATURA */}
       {activeView === 'buzon' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-4 sm:p-8 space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-xl sm:text-2xl font-black text-slate-900 flex items-center gap-2.5">
-                <MessageSquare className="w-6 h-6 text-emerald-600" />
-                Buzón & Conversaciones del Equipo
+        <div className="bg-white rounded-3xl shadow-md shadow-blue-950/8 border border-blue-200 p-4 sm:p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-blue-100">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] flex items-center justify-center text-white shrink-0 shadow-sm shadow-blue-900/20">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                Buzón & Dudas del Equipo
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                Canal oficial en vivo para resolver dudas, revisar aclaratorias y responder a los empleados por Bitácora.
-              </p>
             </div>
 
             {/* Subfiltros de estado */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-2xl border border-slate-200 self-stretch sm:self-auto">
+            <div className="flex items-center gap-1.5 p-1 bg-blue-100/85 rounded-2xl border border-blue-200 self-stretch sm:self-auto shadow-2xs">
               <button
                 type="button"
                 onClick={() => setRepliesFilter('pendientes')}
                 className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  repliesFilter === 'pendientes' ? 'bg-amber-500 text-slate-950 shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                  repliesFilter === 'pendientes' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm font-black' : 'text-slate-600 hover:text-blue-700'
                 }`}
               >
                 Pendientes ({pendingChatGroups.length})
@@ -2243,7 +2252,7 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setRepliesFilter('atendidos')}
                 className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  repliesFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                  repliesFilter === 'atendidos' ? 'bg-teal-700 text-white shadow-sm font-black' : 'text-slate-600 hover:text-blue-700'
                 }`}
               >
                 Atendidos ({attendedChatGroups.length})
@@ -2252,7 +2261,7 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => setRepliesFilter('todos')}
                 className={`flex-1 sm:flex-none px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  repliesFilter === 'todos' ? 'bg-slate-900 text-white shadow-xs font-black' : 'text-slate-600 hover:text-slate-900'
+                  repliesFilter === 'todos' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm font-black' : 'text-slate-600 hover:text-blue-700'
                 }`}
               >
                 Todos ({allChatGroups.length})
@@ -2300,20 +2309,20 @@ export default function AdminDashboard() {
                       }`}
                     >
                       <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                        <div className="w-11 h-11 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 shadow-sm border border-slate-800">
+                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm uppercase shrink-0 shadow-sm shadow-blue-500/20">
                           {String(group.author || 'EM').substring(0, 2)}
                         </div>
                         <div className="space-y-1.5 min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-extrabold text-slate-900 text-sm capitalize">{group.author}</span>
                             <span className="text-[11px] text-slate-600 font-bold bg-slate-100 px-2.5 py-0.5 rounded-lg flex items-center gap-1 border border-slate-200">
-                              <CalendarIcon className="w-3 h-3 text-amber-500" /> Bitácora {group.fecha_bitacora}
+                              <CalendarIcon className="w-3 h-3 text-blue-500" /> Bitácora {group.fecha_bitacora}
                             </span>
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
                               {group.totalCount} {group.totalCount === 1 ? 'mensaje' : 'mensajes'}
                             </span>
                             {group.hasPending ? (
-                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200 animate-pulse">
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-100 text-indigo-800 border border-indigo-200 animate-pulse">
                                 Pendiente
                               </span>
                             ) : (
@@ -2348,10 +2357,10 @@ export default function AdminDashboard() {
                         <button
                           type="button"
                           onClick={() => handleOpenReportForReply(group.lastMessage)}
-                          className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          className="px-3.5 py-2 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                           title="Inspeccionar la bitácora oficial de este día"
                         >
-                          <FileText className="w-3.5 h-3.5 text-amber-400" />
+                          <FileText className="w-3.5 h-3.5" />
                           <span>Ver Bitácora</span>
                         </button>
 
@@ -2359,8 +2368,7 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => {
-                              // Marcar todos los mensajes del grupo como atendidos
-                              group.messages.forEach(m => markEmployeeReplyRead(m.id));
+                              markEmployeeRepliesGroupRead(group.messages, group.author);
                             }}
                             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
                             title="Marcar todos los mensajes de esta bitácora como atendidos"
@@ -2409,18 +2417,20 @@ export default function AdminDashboard() {
 
       {/* VISTA: AGENDA GLOBAL */}
       {activeView === 'agenda' && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10">
-          <div className="mb-8 flex justify-between items-end">
-            <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3"><CalendarIcon className="w-7 h-7 text-amber-500" /> Planificación del Equipo</h3>
-              <p className="text-slate-500 font-medium">Línea de tiempo de todas las tareas futuras programadas.</p>
-            </div>
+        <div className="bg-white rounded-3xl shadow-md shadow-blue-950/8 border border-blue-200 p-5 lg:p-8">
+          <div className="mb-6 flex justify-between items-center pb-4 border-b border-blue-100">
+            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shadow-sm shadow-blue-900/20">
+                <CalendarIcon className="w-5 h-5" />
+              </div>
+              Planificación del Equipo
+            </h3>
           </div>
 
           <div className="space-y-10">
             {loading ? (
               <div className="text-center p-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-slate-100 animate-pulse flex flex-col items-center justify-center gap-3">
-                <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-amber-500 animate-spin"></div>
+                <div className="w-8 h-8 rounded-full border-2 border-slate-200 border-t-blue-600 animate-spin"></div>
                 Sincronizando agenda con la base de datos central...
               </div>
             ) : Object.keys(groupedTasks).length === 0 ? (
@@ -2435,15 +2445,15 @@ export default function AdminDashboard() {
               return (
                 <div key={dateStr} className="relative">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="px-4 py-2 bg-slate-900 text-amber-400 font-bold uppercase tracking-widest text-sm rounded-xl shadow-md border border-slate-800">
+                    <div className="px-4 py-2 bg-[#1e3a8a] text-white font-bold uppercase tracking-widest text-sm rounded-xl shadow-sm shadow-blue-900/20">
                       {dateLabel}
                     </div>
-                    <div className="h-px bg-slate-200 flex-1"></div>
+                    <div className="h-px bg-blue-200 flex-1"></div>
                   </div>
 
-                  <div className="flex flex-col gap-4 pl-2 lg:pl-6 border-l-2 border-amber-200">
+                  <div className="flex flex-col gap-4 pl-2 lg:pl-6 border-l-2 border-blue-300">
                     {Object.values(groupedTasks[dateStr]).map((userGroup: any, i: number) => (
-                      <div key={i} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:border-amber-400 transition-colors p-4 md:p-5 relative overflow-hidden group">
+                      <div key={i} className="bg-white rounded-2xl border border-blue-200 shadow-sm shadow-blue-950/5 hover:border-blue-400 transition-colors p-4 md:p-5 relative overflow-hidden group">
 
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4 pb-4 border-b border-slate-100">
                           <div className="flex items-center gap-3">
@@ -2452,7 +2462,7 @@ export default function AdminDashboard() {
                             </div>
                             <div>
                               <span className="font-bold text-slate-800 capitalize block">{userGroup.user}</span>
-                              <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border inline-block mt-1 ${userGroup.isDraft ? 'bg-amber-50 text-amber-600 border-amber-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                              <span className={`text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border inline-block mt-1 ${userGroup.isDraft ? 'bg-indigo-50 text-indigo-600 border-indigo-200' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
                                 {userGroup.isDraft ? 'AVANCE / BORRADOR' : 'BITÁCORA CONFIRMADA'}
                               </span>
                             </div>
@@ -2466,7 +2476,7 @@ export default function AdminDashboard() {
                               setAdminActuaciones(ensureArray(userGroup.sourceReport.actuaciones));
                               setAdminIngresos(ensureArray(userGroup.sourceReport.ingresos));
                             }}
-                            className="w-full sm:w-auto px-5 py-2.5 bg-slate-50 hover:bg-slate-900 text-slate-600 hover:text-amber-400 font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-slate-200 hover:border-slate-800 whitespace-nowrap"
+                            className="w-full sm:w-auto px-5 py-2.5 bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white font-bold text-xs uppercase tracking-wider rounded-xl transition-colors border border-blue-200 whitespace-nowrap cursor-pointer"
                           >
                             {userGroup.isDraft ? 'Editar Avance' : 'Editar Tareas'}
                           </button>
@@ -2481,12 +2491,12 @@ export default function AdminDashboard() {
                               <div className="flex-1 min-w-0">
                                 <p className="font-bold text-slate-800 text-[13px] leading-tight">{task.tipoActuacion}</p>
                                 <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium mt-1">
-                                  <MapPin className="w-3 h-3 text-blue-500" />
+                                   <MapPin className="w-3 h-3 text-blue-500" />
                                   <span className="truncate">{task.organismoTribunal}</span>
                                 </div>
                                 {task.observaciones && task.observaciones.trim().toUpperCase() !== 'SIN OBSERVACIONES' && (
-                                  <div className="mt-2 text-[11px] font-medium text-slate-600 bg-amber-50/50 px-2.5 py-1.5 rounded-lg border border-amber-100/50 inline-flex items-start gap-1.5 w-full md:w-auto">
-                                    <span className="font-bold text-amber-700 uppercase tracking-wider shrink-0 text-[9px] pt-0.5">Nota:</span>
+                                  <div className="mt-2 text-[11px] font-medium text-slate-600 bg-blue-50/50 px-2.5 py-1.5 rounded-lg border border-blue-100/50 inline-flex items-start gap-1.5 w-full md:w-auto">
+                                    <span className="font-bold text-blue-700 uppercase tracking-wider shrink-0 text-[9px] pt-0.5">Nota:</span>
                                     <span className="line-clamp-2 md:line-clamp-none">{task.observaciones}</span>
                                   </div>
                                 )}
@@ -2518,54 +2528,74 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* VISTA: MIS LIBROS (JEFATURA SIN HORARIO / SIN GPS) */}
+      {/* VISTA: MIS LIBROS (JEFATURA) */}
       {activeView === 'mis_libros' && !isSistemas && (
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 lg:p-10 space-y-8 animate-in fade-in duration-500">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-6 border-b border-slate-200">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 rounded-md border border-blue-500/20 mb-2">
-                <span className="w-2 h-2 rounded-full bg-blue-600"></span>
-                <span className="text-xs font-bold tracking-widest text-blue-600 uppercase">Régimen Especial Jefatura</span>
+        <div className="space-y-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-xs flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-200/60 flex items-center justify-center text-blue-600 shrink-0 shadow-xs">
+                <BookOpen className="w-5 h-5" />
               </div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                <BookOpen className="w-7 h-7 text-blue-600" /> Mis Libros y Registros de Gestión
-              </h3>
-              <p className="text-slate-500 font-medium mt-1">
-                Organiza tus actuaciones, casos recibidos y agenda ejecutiva. Sin marcaje de entrada, salida o GPS.
-              </p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Mi Bitácora de Gestión</h2>
+                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider rounded-full border border-blue-200">
+                  Jefatura
+                </span>
+              </div>
             </div>
 
-            {/* Sub-Tabs de Libros de Jefe */}
-            <div className="flex flex-wrap gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+            {/* Sub-Tabs de Navegación Segmentada */}
+            <div className="flex items-center gap-2 w-full lg:w-auto flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+              <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 overflow-x-auto scrollbar-none flex-1 sm:flex-none">
+                <button
+                  type="button"
+                  onClick={() => setBossSubTab('actuaciones')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    bossSubTab === 'actuaciones' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <Activity className="w-3.5 h-3.5" /> Actuaciones
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBossSubTab('ingresos')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    bossSubTab === 'ingresos' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" /> Ingresos
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBossSubTab('programacion')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    bossSubTab === 'programacion' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <CalendarIcon className="w-3.5 h-3.5" /> Programación
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBossSubTab('historial')}
+                  className={`px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                    bossSubTab === 'historial' ? 'bg-white text-blue-600 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <History className="w-3.5 h-3.5" /> Historial
+                </button>
+              </div>
+
               <button
-                onClick={() => setBossSubTab('actuaciones')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'actuaciones' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                <Activity className="w-4 h-4" /> Actuaciones Diarias
-              </button>
-              <button
-                onClick={() => setBossSubTab('ingresos')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'ingresos' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                <FileText className="w-4 h-4" /> Libro de Ingresos
-              </button>
-              <button
-                onClick={() => setBossSubTab('programacion')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'programacion' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                <CalendarIcon className="w-4 h-4" /> Programación
-              </button>
-              <button
-                onClick={() => setBossSubTab('historial')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'historial' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-              >
-                <History className="w-4 h-4" /> Mi Historial de Bitácoras
-              </button>
-              <button
+                type="button"
                 onClick={() => setBossSubTab('cierre')}
-                className={`px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex items-center gap-2 ${bossSubTab === 'cierre' ? 'bg-blue-600 text-white shadow-md' : 'text-blue-600 hover:bg-blue-50 font-extrabold'}`}
+                className={`px-3.5 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 shrink-0 cursor-pointer shadow-xs whitespace-nowrap ${
+                  bossSubTab === 'cierre'
+                    ? 'bg-blue-700 text-white shadow-sm'
+                    : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white'
+                }`}
+                title="Compilar y generar PDF oficial de la jornada"
               >
-                <Send className="w-4 h-4" /> Generar Bitácora PDF
+                <Send className="w-3.5 h-3.5" /> Generar PDF
               </button>
             </div>
           </div>
@@ -2631,7 +2661,7 @@ export default function AdminDashboard() {
                 }}
                 className="px-5 py-3 bg-white hover:bg-slate-50 text-slate-800 font-bold text-sm rounded-xl border border-slate-300 shadow-sm hover:shadow-md transition-all flex items-center gap-2 shrink-0 cursor-pointer"
               >
-                <Lock className="w-4 h-4 text-amber-500" />
+                <Lock className="w-4 h-4 text-indigo-600" />
                 <span>Reabrir Jornada de Hoy</span>
               </button>
             </div>
@@ -3050,17 +3080,17 @@ export default function AdminDashboard() {
       {activeView === 'nomina' && (
         <div className="space-y-6">
           {isSistemas && (
-            <div className="bg-slate-900 border border-slate-800 p-1.5 rounded-2xl flex flex-wrap gap-2 max-w-md shadow-lg">
+            <div className="bg-blue-100/85 border border-blue-200 p-1.5 rounded-2xl flex flex-wrap gap-2 max-w-md shadow-sm">
               <button
                 type="button"
                 onClick={() => setNominaSubView('recibos')}
                 className={`flex-1 min-w-[150px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   nominaSubView === 'recibos'
                     ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-black shadow-md shadow-emerald-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
                 }`}
               >
-                <Wallet className="w-4 h-4 text-emerald-400" />
+                <Wallet className={`w-4 h-4 ${nominaSubView === 'recibos' ? 'text-white' : 'text-emerald-600'}`} />
                 <span>Mis Recibos de Pago</span>
               </button>
               <button
@@ -3069,10 +3099,10 @@ export default function AdminDashboard() {
                 className={`flex-1 min-w-[150px] px-4 py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                   nominaSubView === 'liquidacion'
                     ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black shadow-md shadow-blue-500/20'
-                    : 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                    : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
                 }`}
               >
-                <ShieldCheck className="w-4 h-4 text-blue-400" />
+                <ShieldCheck className={`w-4 h-4 ${nominaSubView === 'liquidacion' ? 'text-white' : 'text-blue-600'}`} />
                 <span>Liquidación General</span>
               </button>
             </div>
@@ -3128,35 +3158,35 @@ export default function AdminDashboard() {
         <ModuloControlUsuarios />
       )}
 
-      {/* Modal de Revisión y Edición con Glassmorphism Responsive */}
+      {/* Modal de Revisión y Edición con Diseño Corporativo Zafiro */}
       {selectedReport && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-6 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-6 animate-in fade-in duration-200">
+          <div className="bg-white border border-blue-200 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-950/25 w-full max-w-4xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
 
             {/* Modal Header */}
-            <div className="bg-slate-900 p-4 sm:p-8 flex justify-between items-start text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] p-4 sm:p-7 flex justify-between items-start text-white relative overflow-hidden border-b border-blue-800/60">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-sky-400/15 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-3 sm:gap-4 mb-2">
-                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-full bg-white/10 flex items-center justify-center text-sm sm:text-xl font-bold border border-white/20 uppercase tracking-widest shrink-0">
+                  <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-2xl bg-white text-[#1e3a8a] flex items-center justify-center text-sm sm:text-xl font-extrabold uppercase tracking-widest shrink-0 shadow-md shadow-blue-950/25">
                     {String(selectedReport?.user || 'Usuario').substring(0, 2)}
                   </div>
                   <div>
-                    <h3 className="text-base sm:text-2xl font-black flex items-center gap-2 flex-wrap">
+                    <h3 className="text-base sm:text-2xl font-extrabold flex items-center gap-2 flex-wrap text-white">
                       <span className="capitalize">Bitácora de {selectedReport.user || 'Empleado'}</span>
                       {isReportApproved ? (
-                        <span className="bg-emerald-500/20 text-emerald-400 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-emerald-500/30 uppercase tracking-widest font-black flex items-center gap-1 shadow-2xs">
-                          <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-400" /> Aprobada
+                        <span className="bg-emerald-500/20 text-emerald-100 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-emerald-300/40 uppercase tracking-widest font-bold flex items-center gap-1 shadow-2xs">
+                          <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-300" /> Aprobada
                         </span>
                       ) : (
-                        <span className="bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-amber-500/30 uppercase tracking-widest font-black shadow-2xs">
+                        <span className="bg-white/15 text-blue-50 text-[10px] sm:text-xs px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-lg border border-white/25 uppercase tracking-widest font-bold shadow-2xs">
                           Revisión
                         </span>
                       )}
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                      <span className="px-2.5 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-xl text-xs font-black flex items-center gap-1 shadow-2xs">
-                        <CalendarIcon className="w-3.5 h-3.5 text-amber-400" />
+                      <span className="px-2.5 py-0.5 bg-white/15 text-white border border-white/25 rounded-xl text-xs font-bold flex items-center gap-1 shadow-2xs">
+                        <CalendarIcon className="w-3.5 h-3.5 text-sky-300" />
                         {selectedReport.date || selectedReport.fecha_bitacora || selectedReport.fecha || format(new Date(), 'yyyy-MM-dd')}
                       </span>
                       <button
@@ -3170,17 +3200,17 @@ export default function AdminDashboard() {
                           };
                           handleOpenChatForReply(msg);
                         }}
-                        className="px-2.5 py-0.5 bg-[#075E54] hover:bg-[#128C7E] text-white text-xs font-black rounded-xl transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                        className="px-2.5 py-0.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl border border-emerald-400/50 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                         title="Abrir chat tipo WhatsApp vinculado a esta bitácora"
                       >
-                        <MessageSquare className="w-3.5 h-3.5 text-emerald-300" />
+                        <MessageSquare className="w-3.5 h-3.5 text-emerald-100" />
                         <span>Chat Bitácora</span>
                       </button>
                     </div>
                   </div>
                 </div>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="relative z-10 p-1.5 sm:p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 hover:text-white transition-colors cursor-pointer">
+              <button onClick={() => setSelectedReport(null)} className="relative z-10 p-1.5 sm:p-2 bg-white/15 hover:bg-white/25 rounded-full text-white border border-white/25 transition-colors cursor-pointer">
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
@@ -3203,7 +3233,7 @@ export default function AdminDashboard() {
                         GPS Verificado
                       </span>
                     ) : selectedReport.ubicacionEntrada?.includes('Red IP') ? (
-                      <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                      <span className="px-1.5 py-0.2 bg-indigo-100 text-indigo-800 text-[9px] font-black rounded-full uppercase tracking-wider">
                         Red IP
                       </span>
                     ) : null}
@@ -3233,7 +3263,7 @@ export default function AdminDashboard() {
                         GPS Verificado
                       </span>
                     ) : selectedReport.ubicacionSalida?.includes('Red IP') ? (
-                      <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[9px] font-black rounded-full uppercase tracking-wider">
+                      <span className="px-1.5 py-0.2 bg-indigo-100 text-indigo-800 text-[9px] font-black rounded-full uppercase tracking-wider">
                         Red IP
                       </span>
                     ) : null}
@@ -3262,7 +3292,7 @@ export default function AdminDashboard() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
+                    <thead className="bg-[#dbeafe] text-[#1e3a8a] font-extrabold uppercase text-xs border-b border-blue-200">
                       <tr>
                         <th className="p-2 min-w-[120px]">Hora</th>
                         <th className="p-2 min-w-[150px]">Nº Asunto / Exp.</th>
@@ -3378,7 +3408,7 @@ export default function AdminDashboard() {
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
+                    <thead className="bg-[#dbeafe] text-[#1e3a8a] font-extrabold uppercase text-xs border-b border-blue-200">
                       <tr>
                         <th className="p-2 min-w-[120px]">Tipo / Exp.</th>
                         <th className="p-2 min-w-[150px]">Tribunal / Organismo</th>
@@ -3426,17 +3456,17 @@ export default function AdminDashboard() {
               </div>
 
               {/* LIBRO DE PROGRAMACIÓN (EDITABLE) */}
-              <div className="bg-white p-6 sm:p-8 rounded-2xl border-2 border-amber-200 shadow-sm overflow-hidden relative">
+              <div className="bg-white p-6 sm:p-8 rounded-2xl border-2 border-blue-200 shadow-sm overflow-hidden relative">
                 <div className="flex justify-between items-center mb-4">
                   <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg">
-                    <CalendarIcon className="w-5 h-5 text-amber-500" /> Libro de Programación (Futuro)
+                    <CalendarIcon className="w-5 h-5 text-blue-600" /> Libro de Programación (Futuro)
                   </h4>
-                  <button onClick={handleAddProgramacion} className="text-xs bg-amber-500 hover:bg-amber-600 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1">+ Añadir Tarea</button>
+                  <button onClick={handleAddProgramacion} className="text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-3 py-1.5 rounded-lg font-bold transition-colors flex items-center gap-1 shadow-xs cursor-pointer">+ Añadir Tarea</button>
                 </div>
 
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-bold uppercase text-xs border-b border-slate-200">
+                    <thead className="bg-[#dbeafe] text-[#1e3a8a] font-extrabold uppercase text-xs border-b border-blue-200">
                       <tr>
                         <th className="p-2 min-w-[140px]">Fecha/Hora</th>
                         <th className="p-2 min-w-[180px]">Tribunal/Lugar</th>
@@ -3449,19 +3479,19 @@ export default function AdminDashboard() {
                       {adminProgramaciones.length === 0 ? (
                         <tr><td colSpan={5} className="p-6 text-center text-slate-500 italic font-medium">El empleado no dejó programación. Añade tú las tareas si es necesario.</td></tr>
                       ) : adminProgramaciones.map((prog: any, i: number) => (
-                        <tr key={i} className="hover:bg-amber-50/30 transition-colors">
+                        <tr key={i} className="hover:bg-blue-50/30 transition-colors">
                           <td className="p-2 space-y-1 align-top">
-                            <input type="date" value={prog.fecha || ''} onChange={(e) => updateProgramacionField(i, 'fecha', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 bg-white" />
-                            <input type="time" value={prog.hora || ''} onChange={(e) => updateProgramacionField(i, 'hora', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 bg-white" />
+                            <input type="date" value={prog.fecha || ''} onChange={(e) => updateProgramacionField(i, 'fecha', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white" />
+                            <input type="time" value={prog.hora || ''} onChange={(e) => updateProgramacionField(i, 'hora', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white" />
                           </td>
                           <td className="p-2 align-top">
-                            <textarea value={prog.organismoTribunal || ''} onChange={(e) => updateProgramacionField(i, 'organismoTribunal', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 bg-white resize-none" rows={3} placeholder="Órgano / Tribunal" />
+                            <textarea value={prog.organismoTribunal || ''} onChange={(e) => updateProgramacionField(i, 'organismoTribunal', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Órgano / Tribunal" />
                           </td>
                           <td className="p-2 align-top">
-                            <textarea value={prog.tipoActuacion || ''} onChange={(e) => updateProgramacionField(i, 'tipoActuacion', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 bg-white resize-none" rows={3} placeholder="Descripción de la tarea" />
+                            <textarea value={prog.tipoActuacion || ''} onChange={(e) => updateProgramacionField(i, 'tipoActuacion', e.target.value)} className="w-full p-2 text-xs border border-slate-200 rounded outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20 bg-white resize-none" rows={3} placeholder="Descripción de la tarea" />
                           </td>
                           <td className="p-2 align-top">
-                            <textarea value={prog.observaciones || ''} onChange={(e) => updateProgramacionField(i, 'observaciones', e.target.value)} placeholder="Ej: Asegúrate de llevar el sello..." className="w-full p-2 text-xs border border-amber-300 bg-amber-50 rounded outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/30 resize-none placeholder:text-amber-700/50 text-slate-800 font-medium" rows={3} />
+                            <textarea value={prog.observaciones || ''} onChange={(e) => updateProgramacionField(i, 'observaciones', e.target.value)} placeholder="Ej: Asegúrate de llevar el sello..." className="w-full p-2 text-xs border border-blue-200 bg-blue-50/50 rounded outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 resize-none placeholder:text-blue-700/50 text-slate-800 font-medium" rows={3} />
                           </td>
                           <td className="p-2 text-center align-top pt-3">
                             <button onClick={() => handleRemoveProgramacion(i)} className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors border border-transparent hover:border-rose-200" title="Eliminar Tarea"><X className="w-4 h-4" /></button>
@@ -3477,11 +3507,11 @@ export default function AdminDashboard() {
               {allInvestigaciones.filter(inv => inv.user === selectedReport.user && inv.date && inv.date.startsWith(selectedReport.date)).length > 0 && (
                 <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm">
                   <h4 className="font-bold text-slate-800 flex items-center gap-2 text-lg mb-4">
-                    <BookOpen className="w-5 h-5 text-amber-500" /> Investigaciones Aportadas (KANT)
+                    <BookOpen className="w-5 h-5 text-blue-600" /> Investigaciones Aportadas (KANT)
                   </h4>
                   <div className="grid grid-cols-1 gap-4">
                     {allInvestigaciones.filter(inv => inv.user === selectedReport.user && inv.date && inv.date.startsWith(selectedReport.date)).map((inv: any, idx: number) => (
-                      <div key={idx} className="bg-amber-50 p-4 border border-amber-200 rounded-xl">
+                      <div key={idx} className="bg-blue-50/60 p-4 border border-blue-200 rounded-xl">
                         <p className="font-bold text-slate-800 mb-2">{inv.tema}</p>
                         <p className="text-sm text-slate-600 line-clamp-2">{inv.resumen}</p>
                       </div>
@@ -3519,20 +3549,20 @@ export default function AdminDashboard() {
                         programaciones: adminProgramaciones || selectedReport.programaciones,
                         comentario_admin: adminComment || selectedReport.comentario_admin
                       })}
-                      className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 bg-amber-50 border-2 border-amber-300 rounded-xl hover:border-amber-500 hover:bg-amber-100 transition-all cursor-pointer group shadow-sm text-left"
+                      className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 bg-blue-50/60 border-2 border-blue-300 rounded-xl hover:border-blue-500 hover:bg-blue-100/60 transition-all cursor-pointer group shadow-sm text-left"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-amber-500 text-slate-950 rounded-lg flex items-center justify-center shadow-md shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-lg flex items-center justify-center shadow-md shrink-0">
                           <FileText className="w-5 h-5" />
                         </div>
                         <div>
                           <p className="font-extrabold text-slate-900">Bitacora_{selectedReport.user}_{selectedReport.date}.pdf</p>
-                          <p className="text-xs text-amber-900 font-bold flex items-center gap-1">
-                            <Zap className="w-4 h-4 mr-1" /> Generar y Descargar Documento Oficial PDF (Reconstruido desde datos KANT)
+                          <p className="text-xs text-blue-900 font-bold flex items-center gap-1">
+                            <Zap className="w-4 h-4 mr-1 text-blue-600" /> Generar y Descargar Documento Oficial PDF (Reconstruido desde datos KANT)
                           </p>
                         </div>
                       </div>
-                      <span className="px-4 py-2 bg-amber-500 text-slate-950 rounded-xl font-black text-xs shrink-0 ml-2 shadow-sm">
+                      <span className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-black text-xs shrink-0 ml-2 shadow-sm">
                         <Download className="w-4 h-4 inline mr-1" /> GENERAR PDF
                       </span>
                     </button>
@@ -3781,9 +3811,9 @@ export default function AdminDashboard() {
                   <button 
                     type="button"
                     onClick={handleSaveComment} 
-                    className="flex-1 sm:flex-none bg-slate-900 hover:bg-slate-800 text-white px-8 py-3.5 rounded-xl font-bold shadow-xl transition-all flex items-center justify-center gap-2.5 text-sm hover:-translate-y-0.5 cursor-pointer"
+                    className="flex-1 sm:flex-none bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2.5 text-sm hover:-translate-y-0.5 cursor-pointer"
                   >
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Aprobar y Notificar
+                    <CheckCircle2 className="w-4 h-4 text-emerald-200" /> Aprobar y Notificar
                   </button>
                 ) : (
                   <button 
@@ -3803,7 +3833,7 @@ export default function AdminDashboard() {
 
       {/* Modal de Confirmación de Reseteo */}
       {showResetModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/35 backdrop-blur-md flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-300">
             <div className="p-8 text-center">
               <div className="w-16 h-16 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -3856,34 +3886,26 @@ export default function AdminDashboard() {
         initialEmployee="Carmen Luisa"
       />
 
-      {/* KANT COMPANION - ASISTENTE GUARDIÁN FLOTANTE */}
-      <KantFloatingCompanion 
-        pendingReviews={activeNotifications.length} 
-        pendingGastos={pendingGastosCount} 
-        unreadReplies={unreadEmployeeReplies.length + unreadChatLive} 
-        onNavigate={(tab: any) => setActiveView(tab)}
-      />
-
       {/* NOTIFICACIÓN FLOTANTE DE MENSAJE NUEVO DE CHAT */}
       {chatToast && chatToast.isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-slate-900 text-white p-4 rounded-3xl shadow-2xl border border-emerald-500/40 animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-3 backdrop-blur-md">
-          <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+        <div className="fixed bottom-6 right-6 z-50 max-w-sm w-full bg-white text-slate-900 p-4 rounded-3xl shadow-2xl shadow-blue-950/20 border-2 border-emerald-400 animate-in slide-in-from-bottom-5 duration-300 flex items-start gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
             <MessageSquare className="w-5 h-5 animate-bounce" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Nuevo Mensaje de Chat</span>
+              <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700">Nuevo Mensaje de Chat</span>
               <button 
                 onClick={() => setChatToast(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className="font-bold text-sm text-white truncate mt-0.5 capitalize">
+            <p className="font-bold text-sm text-slate-900 truncate mt-0.5 capitalize">
               {chatToast.sender}
             </p>
-            <p className="text-xs text-slate-300 line-clamp-2 mt-0.5 italic">
+            <p className="text-xs text-slate-600 line-clamp-2 mt-0.5 italic">
               "{chatToast.message}"
             </p>
             <div className="mt-3 flex items-center gap-2">
@@ -3892,14 +3914,14 @@ export default function AdminDashboard() {
                   setActiveView('chat');
                   setChatToast(null);
                 }}
-                className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>Abrir Chat</span>
               </button>
               <button
                 onClick={() => setChatToast(null)}
-                className="px-3 py-1.5 text-slate-400 hover:text-slate-200 text-xs font-semibold cursor-pointer"
+                className="px-3 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-semibold cursor-pointer"
               >
                 Cerrar
               </button>
@@ -3907,7 +3929,8 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }
 

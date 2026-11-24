@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShieldCheck, KeyRound, Plus, Edit3, Trash2, Search, 
+import {
+  ShieldCheck, KeyRound, Plus, Edit3, Trash2, Search,
   X, Eye, EyeOff, UserCheck, Cpu, RefreshCw,
   RotateCcw, History, UserX, Calendar, Lock
 } from 'lucide-react';
-import { 
-  supabaseGetSystemUsers, 
-  supabaseSaveSystemUsers, 
+import {
+  supabaseGetSystemUsers,
+  supabaseSaveSystemUsers,
   supabaseUpdateUserPassword,
   supabaseGetDeletedUsers,
   supabaseEliminarUsuarioConHistorial,
@@ -14,7 +14,7 @@ import {
   supabasePurgarUsuarioDefinitivo,
   checkIsSistemas,
   type SystemUser,
-  type DeletedSystemUser 
+  type DeletedSystemUser
 } from '../../lib/supabaseAdapter';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
@@ -24,12 +24,12 @@ export default function ModuloControlUsuarios() {
 
   if (!isSistemas) {
     return (
-      <div className="bg-slate-900 border border-amber-500/30 p-8 rounded-3xl text-center text-white max-w-xl mx-auto my-8 shadow-xl">
-        <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto mb-4">
+      <div className="bg-white/95 border border-blue-100 p-8 rounded-3xl text-center text-slate-900 max-w-xl mx-auto my-8 shadow-xl shadow-blue-950/10">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 mx-auto mb-4">
           <ShieldCheck className="w-7 h-7" />
         </div>
-        <h3 className="text-xl font-bold text-white mb-2">Módulo Restringido</h3>
-        <p className="text-slate-400 text-sm leading-relaxed">
+        <h3 className="text-xl font-extrabold text-slate-900 mb-2">Módulo Restringido</h3>
+        <p className="text-slate-600 text-sm leading-relaxed font-medium">
           El control y gestión de cuentas, roles y claves de acceso está reservado exclusivamente para el superadministrador de Sistemas & TI (Óscar).
         </p>
       </div>
@@ -131,7 +131,7 @@ export default function ModuloControlUsuarios() {
   const filteredDeletedUsers = useMemo(() => {
     if (!deletedSearchQuery.trim()) return deletedUsers;
     const q = deletedSearchQuery.toLowerCase().trim();
-    return deletedUsers.filter(d => 
+    return deletedUsers.filter(d =>
       d.fullName.toLowerCase().includes(q) ||
       d.username.toLowerCase().includes(q) ||
       d.email.toLowerCase().includes(q) ||
@@ -348,8 +348,8 @@ Consecuencias Inmediatas:
       isDestructive: true,
       onConfirm: async () => {
         await supabaseEliminarUsuarioConHistorial(
-          user, 
-          currentUserName || 'Óscar (Sistemas TI)', 
+          user,
+          currentUserName || 'Óscar (Sistemas TI)',
           'Baja aplicada desde el panel de control de Sistemas & TI'
         );
         await loadUsers();
@@ -427,7 +427,7 @@ Efectos:
       case 'Contabilidad':
         return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       case 'Servicios Generales':
-        return 'bg-amber-50 text-amber-700 border-amber-200';
+        return 'bg-teal-50 text-teal-700 border-teal-200';
       case 'Administración':
         return 'bg-rose-50 text-rose-700 border-rose-200';
       default:
@@ -437,25 +437,25 @@ Efectos:
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      
-      {/* CABECERA PRINCIPAL */}
-      <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-800">
-        <div className="absolute -right-16 -top-16 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -left-16 -bottom-16 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* CABECERA PRINCIPAL ZAFIRO & BLANCO NÍTIDO */}
+      <div className="bg-white rounded-3xl p-6 sm:p-8 text-slate-900 shadow-md shadow-blue-950/8 relative overflow-hidden border border-blue-200">
+        <div className="pointer-events-none absolute -right-16 -top-16 w-64 h-64 bg-sky-100/70 rounded-full blur-3xl" />
+        <div className="pointer-events-none absolute -left-16 -bottom-16 w-64 h-64 bg-blue-100/70 rounded-full blur-3xl" />
 
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] border border-blue-700/30 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-900/20">
               <Cpu className="w-8 h-8" />
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-[10px] font-black uppercase tracking-wider mb-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Administración de Sistemas & TI
+              <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-cyan-50 border border-cyan-200 text-cyan-800 text-[10px] font-black uppercase tracking-wider mb-1">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-600" /> Administración de Sistemas & TI
               </div>
-              <h2 className="text-xl sm:text-2xl font-black text-white">
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
                 Control de Acceso, Usuarios & Roles
               </h2>
-              <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-600 mt-0.5 font-medium">
                 Crea cuentas, asigna roles de departamento y gestiona las claves de acceso de la plataforma KANT.
               </p>
             </div>
@@ -464,93 +464,88 @@ Efectos:
           <div className="flex items-center gap-2.5 w-full md:w-auto">
             <button
               onClick={loadUsers}
-              className="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl transition-all cursor-pointer border border-slate-700"
+              className="p-3 bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-700 rounded-xl transition-all cursor-pointer border border-blue-200/80 shadow-2xs"
               title="Refrescar lista de usuarios"
             >
               <RefreshCw className="w-4 h-4" />
             </button>
             <button
               onClick={handleOpenCreate}
-              className="flex-1 md:flex-none px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
+              className="flex-1 md:flex-none px-5 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold rounded-xl text-xs sm:text-sm shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
             >
-              <Plus className="w-4 h-4 text-slate-950 stroke-[3]" />
+              <Plus className="w-4 h-4 stroke-[2.75]" />
               <span>Crear Nuevo Usuario</span>
             </button>
           </div>
         </div>
 
         {/* METRICS ROW */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-800">
-          <div className="bg-slate-800/60 rounded-2xl p-3.5 border border-slate-700/60">
-            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total Activos</span>
-            <div className="text-xl sm:text-2xl font-black text-white mt-0.5">{totalUsers}</div>
+        <div className="relative z-10 grid grid-cols-2 sm:grid-cols-5 gap-3 sm:gap-4 mt-6 pt-6 border-t border-blue-100/80">
+          <div className="bg-white/90 rounded-2xl p-3.5 border border-blue-100 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 block">Total Activos</span>
+            <div className="text-xl sm:text-2xl font-black text-slate-900 mt-0.5">{totalUsers}</div>
           </div>
-          <div className="bg-slate-800/60 rounded-2xl p-3.5 border border-slate-700/60">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-400 block">Área Legal</span>
-            <div className="text-xl sm:text-2xl font-black text-blue-300 mt-0.5">{legalUsers}</div>
+          <div className="bg-white/90 rounded-2xl p-3.5 border border-blue-100 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 block">Área Legal</span>
+            <div className="text-xl sm:text-2xl font-black text-blue-700 mt-0.5">{legalUsers}</div>
           </div>
-          <div className="bg-slate-800/60 rounded-2xl p-3.5 border border-slate-700/60">
-            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block">Sistemas & TI</span>
-            <div className="text-xl sm:text-2xl font-black text-cyan-300 mt-0.5">{techUsers}</div>
+          <div className="bg-white/90 rounded-2xl p-3.5 border border-cyan-100 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-cyan-700 block">Sistemas & TI</span>
+            <div className="text-xl sm:text-2xl font-black text-cyan-700 mt-0.5">{techUsers}</div>
           </div>
-          <div className="bg-slate-800/60 rounded-2xl p-3.5 border border-slate-700/60">
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 block">Jefatura / Directivos</span>
-            <div className="text-xl sm:text-2xl font-black text-rose-300 mt-0.5">{adminUsers}</div>
+          <div className="bg-white/90 rounded-2xl p-3.5 border border-rose-100 shadow-2xs">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 block">Jefatura / Directivos</span>
+            <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{adminUsers}</div>
           </div>
           <button
             onClick={() => setActiveTab('eliminados')}
-            className={`rounded-2xl p-3.5 border text-left transition-all cursor-pointer ${
-              activeTab === 'eliminados' 
-                ? 'bg-rose-950/80 border-rose-500 shadow-md ring-1 ring-rose-500/50' 
-                : 'bg-slate-800/60 hover:bg-slate-800 border-slate-700/60 hover:border-rose-500/40'
-            }`}
+            className={`rounded-2xl p-3.5 border text-left transition-all cursor-pointer ${activeTab === 'eliminados'
+              ? 'bg-rose-50 border-rose-300 shadow-sm ring-1 ring-rose-200'
+              : 'bg-white/90 hover:bg-rose-50/70 border-blue-100 hover:border-rose-200'
+              }`}
           >
-            <span className="text-[10px] font-black uppercase tracking-wider text-rose-400 flex items-center justify-between">
+            <span className="text-[10px] font-black uppercase tracking-wider text-rose-700 flex items-center justify-between">
               <span>Bajas / Historial</span>
-              <History className="w-3.5 h-3.5 text-rose-400" />
+              <History className="w-3.5 h-3.5 text-rose-600" />
             </span>
-            <div className="text-xl sm:text-2xl font-black text-rose-300 mt-0.5">{deletedUsers.length}</div>
+            <div className="text-xl sm:text-2xl font-black text-rose-700 mt-0.5">{deletedUsers.length}</div>
           </button>
         </div>
       </div>
 
       {/* SELECTOR DE PESTAÑAS: USUARIOS ACTIVOS vs HISTORIAL DE ELIMINADOS */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
+        <div className="flex items-center gap-2 p-1.5 bg-blue-100/85 rounded-2xl border border-blue-200 shadow-2xs">
           <button
             onClick={() => setActiveTab('activos')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
-              activeTab === 'activos'
-                ? 'bg-slate-900 text-white shadow-md'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${activeTab === 'activos'
+              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/20'
+              : 'text-slate-600 hover:text-blue-700 hover:bg-white/70'
+              }`}
           >
-            <UserCheck className={`w-4 h-4 ${activeTab === 'activos' ? 'text-cyan-400' : 'text-slate-400'}`} />
+            <UserCheck className={`w-4 h-4 ${activeTab === 'activos' ? 'text-cyan-200' : 'text-slate-400'}`} />
             <span>Directorio de Usuarios Activos</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-              activeTab === 'activos' ? 'bg-cyan-500/20 text-cyan-300' : 'bg-slate-200 text-slate-700'
-            }`}>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === 'activos' ? 'bg-white/20 text-white' : 'bg-white text-blue-700 border border-blue-100'
+              }`}>
               {users.length}
             </span>
           </button>
 
           <button
             onClick={() => setActiveTab('eliminados')}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${
-              activeTab === 'eliminados'
-                ? 'bg-rose-950 text-rose-200 shadow-md border border-rose-800'
-                : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50'
-            }`}
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all cursor-pointer ${activeTab === 'eliminados'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-500/20'
+              : 'text-slate-600 hover:text-rose-700 hover:bg-rose-50'
+              }`}
           >
-            <History className={`w-4 h-4 ${activeTab === 'eliminados' ? 'text-rose-400' : 'text-slate-400'}`} />
+            <History className={`w-4 h-4 ${activeTab === 'eliminados' ? 'text-rose-100' : 'text-slate-400'}`} />
             <span>Historial de Usuarios Eliminados</span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${
-              activeTab === 'eliminados' 
-                ? 'bg-rose-500 text-white' 
-                : deletedUsers.length > 0 
-                ? 'bg-rose-100 text-rose-700' 
-                : 'bg-slate-200 text-slate-700'
-            }`}>
+            <span className={`px-2 py-0.5 rounded-full text-[11px] font-black ${activeTab === 'eliminados'
+              ? 'bg-white/20 text-white'
+              : deletedUsers.length > 0
+                ? 'bg-rose-100 text-rose-700'
+                : 'bg-white text-slate-700'
+              }`}>
               {deletedUsers.length}
             </span>
           </button>
@@ -573,18 +568,17 @@ Efectos:
         <div className="space-y-4 animate-in fade-in duration-200">
           {/* BARRA DE FILTROS Y BÚSQUEDA */}
           <div className="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-            
+
             {/* Pestañas de departamentos */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
               {['todos', 'Legal', 'Marketing', 'Sistemas', 'Contabilidad', 'Servicios Generales', 'Administración'].map((dept) => (
                 <button
                   key={dept}
                   onClick={() => setDeptFilter(dept)}
-                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
-                    deptFilter === dept
-                      ? 'bg-slate-900 text-white shadow-sm'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${deptFilter === dept
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                    : 'bg-blue-50/70 text-slate-600 hover:bg-blue-100/70 border border-blue-100'
+                    }`}
                 >
                   {dept === 'todos' ? 'Todos los Departamentos' : dept}
                 </button>
@@ -614,7 +608,7 @@ Efectos:
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider">
+                    <tr className="bg-[#dbeafe] text-[#1e3a8a] border-b border-blue-200 text-[11px] font-extrabold uppercase tracking-wider">
                       <th className="py-4 px-6">Usuario & Colaborador</th>
                       <th className="py-4 px-4">Identificador (@login)</th>
                       <th className="py-4 px-4 text-center">Departamento</th>
@@ -641,7 +635,7 @@ Efectos:
 
                         return (
                           <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                            
+
                             {/* Usuario y Nombre */}
                             <td className="py-3.5 px-6">
                               <div className="flex items-center gap-3">
@@ -669,13 +663,12 @@ Efectos:
 
                             {/* Rol */}
                             <td className="py-3.5 px-4 text-center">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${
-                                u.role === 'jefatura'
-                                  ? 'bg-rose-100 text-rose-800'
-                                  : u.role === 'sistemas'
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider ${u.role === 'jefatura'
+                                ? 'bg-rose-100 text-rose-800'
+                                : u.role === 'sistemas'
                                   ? 'bg-cyan-100 text-cyan-800'
                                   : 'bg-slate-100 text-slate-700'
-                              }`}>
+                                }`}>
                                 {u.role === 'jefatura' ? 'Jefatura' : u.role === 'sistemas' ? 'Administrador TI' : 'Colaborador'}
                               </span>
                             </td>
@@ -690,11 +683,11 @@ Efectos:
                             {/* Acciones */}
                             <td className="py-3.5 px-6 text-right">
                               <div className="flex items-center justify-end gap-1.5">
-                                
+
                                 {/* Cambiar Clave */}
                                 <button
                                   onClick={() => handleOpenPasswordModal(u)}
-                                  className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-amber-200"
+                                  className="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border border-sky-200"
                                   title="Cambiar la clave de acceso de este usuario"
                                 >
                                   <KeyRound className="w-3.5 h-3.5" />
@@ -735,21 +728,21 @@ Efectos:
       {/* VISTA 2: HISTORIAL DE USUARIOS ELIMINADOS */}
       {activeTab === 'eliminados' && (
         <div className="space-y-4 animate-in fade-in duration-200">
-          
+
           {/* BANNER DE AUDITORÍA Y SEGURIDAD */}
-          <div className="bg-gradient-to-r from-rose-950/90 via-slate-900 to-slate-900 border border-rose-500/30 rounded-3xl p-6 text-white shadow-lg flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+          <div className="bg-gradient-to-r from-rose-50 via-white to-blue-50/50 border border-rose-200 rounded-3xl p-6 text-slate-900 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-rose-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-rose-100 border border-rose-200 flex items-center justify-center text-rose-600 shrink-0">
                 <UserX className="w-6 h-6" />
               </div>
               <div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wider mb-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-100 border border-rose-200 text-rose-700 text-[10px] font-black uppercase tracking-wider mb-1">
                   <Lock className="w-3 h-3" /> Bloqueo de Acceso Activo
                 </div>
-                <h3 className="text-base sm:text-lg font-extrabold text-white">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900">
                   Historial de Auditoría & Cuentas Dadas de Baja
                 </h3>
-                <p className="text-xs text-slate-300 mt-0.5 max-w-2xl leading-relaxed">
+                <p className="text-xs text-slate-600 mt-0.5 max-w-2xl leading-relaxed font-medium">
                   Las cuentas en este listado tienen el acceso <strong>estrictamente bloqueado</strong> en la plataforma KANT (computadoras y móviles). Puedes restaurar su acceso con un clic si el colaborador se reincorpora o purgar el registro definitivamente.
                 </p>
               </div>
@@ -763,7 +756,7 @@ Efectos:
                 value={deletedSearchQuery}
                 onChange={(e) => setDeletedSearchQuery(e.target.value)}
                 placeholder="Buscar en eliminados..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-bold text-white placeholder-slate-400 outline-none focus:border-rose-500 focus:bg-slate-800 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-rose-200 rounded-xl text-xs font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-rose-500 transition-all"
               />
             </div>
           </div>
@@ -778,7 +771,7 @@ Efectos:
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="bg-slate-900 text-white text-[11px] font-bold uppercase tracking-wider">
+                    <tr className="bg-[#dbeafe] text-[#1e3a8a] border-b border-blue-200 text-[11px] font-extrabold uppercase tracking-wider">
                       <th className="py-4 px-6">Usuario & Colaborador</th>
                       <th className="py-4 px-4">Identificador Revocado</th>
                       <th className="py-4 px-4 text-center">Departamento</th>
@@ -815,7 +808,7 @@ Efectos:
 
                         return (
                           <tr key={d.id} className="hover:bg-rose-50/40 transition-colors">
-                            
+
                             {/* Usuario y Nombre */}
                             <td className="py-4 px-6">
                               <div className="flex items-center gap-3">
@@ -875,7 +868,7 @@ Efectos:
                             {/* Acciones */}
                             <td className="py-4 px-6 text-right">
                               <div className="flex items-center justify-end gap-2">
-                                
+
                                 {/* Restaurar */}
                                 <button
                                   onClick={() => handleRestaurarUsuario(d)}
@@ -910,21 +903,21 @@ Efectos:
 
       {/* MODAL 1: CREAR NUEVO USUARIO */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 flex items-center justify-between border-b border-blue-800/60">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                  <UserCheck className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shadow-sm">
+                  <UserCheck className="w-5 h-5 text-sky-200" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">Crear Nuevo Usuario</h3>
-                  <p className="text-xs text-slate-400">Registra una nueva cuenta con rol y clave personalizada</p>
+                  <p className="text-xs text-blue-100/85 font-medium">Registra una nueva cuenta con rol y clave personalizada</p>
                 </div>
               </div>
               <button
                 onClick={() => setCreateModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1052,21 +1045,21 @@ Efectos:
 
       {/* MODAL 2: EDITAR USUARIO (ROL / DEPARTAMENTO) */}
       {editModalOpen && editingUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-lg overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 flex items-center justify-between border-b border-blue-800/60">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                  <Edit3 className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shadow-sm">
+                  <Edit3 className="w-5 h-5 text-sky-200" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">Editar Usuario</h3>
-                  <p className="text-xs text-slate-400">@{editingUser.username}</p>
+                  <p className="text-xs text-blue-100/85 font-medium">@{editingUser.username}</p>
                 </div>
               </div>
               <button
                 onClick={() => setEditModalOpen(false)}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1141,21 +1134,21 @@ Efectos:
 
       {/* MODAL 3: CAMBIAR CLAVE DE ACCESO */}
       {passwordModalUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
-            <div className="bg-slate-900 text-white p-5 flex items-center justify-between border-b border-amber-500/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-md overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 flex items-center justify-between border-b border-blue-800/60">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400">
-                  <KeyRound className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shadow-sm">
+                  <KeyRound className="w-5 h-5 text-sky-200" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">Cambiar Contraseña</h3>
-                  <p className="text-xs text-slate-400">{passwordModalUser.fullName} (@{passwordModalUser.username})</p>
+                  <p className="text-xs text-blue-100/85 font-medium">{passwordModalUser.fullName} (@{passwordModalUser.username})</p>
                 </div>
               </div>
               <button
                 onClick={() => setPasswordModalUser(null)}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+                className="p-2 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1173,7 +1166,7 @@ Efectos:
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Escribe la nueva clave..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-amber-500 focus:bg-white transition-all font-mono"
+                    className="w-full bg-slate-50 border border-blue-100 rounded-xl pl-3.5 pr-10 py-2.5 text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition-all font-mono"
                   />
                   <button
                     type="button"
@@ -1198,7 +1191,7 @@ Efectos:
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/30 flex items-center gap-2 cursor-pointer transition-all"
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer transition-all"
                 >
                   <KeyRound className="w-4 h-4" /> Guardar Nueva Clave
                 </button>

@@ -538,7 +538,7 @@ NETO A TRANSFERIR: ${calcResultados.netoPagar.toLocaleString('es-VE', { minimumF
     <div className="space-y-8 animate-in fade-in duration-300">
       
       {/* BANNER PRINCIPAL: CORPORATE ACCOUNTING & FINANCE */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-6 lg:p-8 shadow-xl border border-slate-800">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-6 lg:p-8 shadow-xl shadow-blue-950/20 border border-blue-800/60">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-blue-600/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-1/3 -mb-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -798,7 +798,7 @@ NETO A TRANSFERIR: ${calcResultados.netoPagar.toLocaleString('es-VE', { minimumF
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black text-slate-400 uppercase tracking-wider">SEMAT VALENCIA</span>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-50 text-indigo-700 border border-indigo-200">
               Municipal
             </span>
           </div>
@@ -991,7 +991,7 @@ NETO A TRANSFERIR: ${calcResultados.netoPagar.toLocaleString('es-VE', { minimumF
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50/70 text-[11px] font-black text-slate-500 uppercase tracking-wider">
+                <tr className="border-b border-blue-200 bg-[#dbeafe] text-[11px] font-extrabold text-[#1e3a8a] uppercase tracking-wider">
                   <th className="py-3.5 px-4">Hora</th>
                   <th className="py-3.5 px-4">Categoría & Subtipo</th>
                   <th className="py-3.5 px-4">Referencia / Comprobante</th>
@@ -1046,9 +1046,9 @@ NETO A TRANSFERIR: ${calcResultados.netoPagar.toLocaleString('es-VE', { minimumF
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold inline-flex items-center gap-1 ${
-                          asiento.estado === 'Conciliado' ? 'bg-emerald-100 text-emerald-800' :
-                          asiento.estado === 'Declarado' ? 'bg-blue-100 text-blue-800' :
-                          asiento.estado === 'En Proceso' ? 'bg-amber-100 text-amber-800' :
+                          asiento.estado === 'Conciliado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          asiento.estado === 'Declarado' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          asiento.estado === 'En Proceso' ? 'bg-sky-50 text-sky-700 border border-sky-200' :
                           'bg-slate-100 text-slate-700'
                         }`}>
                           {asiento.estado === 'Conciliado' && <CheckCircle2 className="w-3 h-3" />}
@@ -1088,7 +1088,7 @@ NETO A TRANSFERIR: ${calcResultados.netoPagar.toLocaleString('es-VE', { minimumF
 
       {/* MODAL PARA CREAR O EDITAR ASIENTO CONTABLE */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 max-w-xl w-full p-6 sm:p-8 space-y-6 max-h-[90vh] overflow-y-auto">
             
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">

@@ -1,16 +1,16 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { 
-  MessageSquare, 
-  AlertCircle, 
-  CheckCircle2, 
-  ChevronLeft, 
-  ChevronRight, 
-  Search, 
-  CheckCheck, 
-  Inbox, 
-  Sparkles, 
-  RotateCcw, 
-  Calendar, 
+import {
+  MessageSquare,
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  CheckCheck,
+  Inbox,
+  Edit3,
+  RotateCcw,
+  Calendar,
   CornerDownRight,
   ShieldCheck,
   X,
@@ -106,7 +106,7 @@ export default function NotificationPanel({ notifications, setNotifications, onN
           setLocalRepliesMap(map);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const handleMarkAsRead = (id: string | number) => {
@@ -194,8 +194,8 @@ export default function NotificationPanel({ notifications, setNotifications, onN
         );
       case 'instruction':
         return (
-          <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-black uppercase tracking-wider rounded-full border border-amber-200 flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+          <span className="px-2.5 py-0.5 bg-indigo-100 text-indigo-900 text-[10px] font-black uppercase tracking-wider rounded-full border border-indigo-200 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
             Instrucción de Tarea
           </span>
         );
@@ -218,26 +218,24 @@ export default function NotificationPanel({ notifications, setNotifications, onN
 
   return (
     <div className="space-y-5 animate-in fade-in duration-300">
-      
+
       {/* 1. BARRA SUPERIOR DE FILTROS, PESTAÑAS Y BÚSQUEDA */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-slate-50/80 p-3 rounded-2xl border border-slate-200/80">
-        
+
         {/* Pestañas de Estado de Lectura */}
         <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200 shadow-xs self-start sm:self-auto">
           <button
             type="button"
             onClick={() => { setFilterTab('unread'); setCurrentPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTab === 'unread' 
-                ? 'bg-blue-600 text-white shadow-sm' 
+            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${filterTab === 'unread'
+                ? 'bg-blue-600 text-white shadow-sm'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
+              }`}
           >
             <span>No Leídos</span>
             {unreadCount > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                filterTab === 'unread' ? 'bg-white text-blue-700' : 'bg-rose-500 text-white'
-              }`}>
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${filterTab === 'unread' ? 'bg-white text-blue-700' : 'bg-rose-500 text-white'
+                }`}>
                 {unreadCount}
               </span>
             )}
@@ -246,11 +244,10 @@ export default function NotificationPanel({ notifications, setNotifications, onN
           <button
             type="button"
             onClick={() => { setFilterTab('read'); setCurrentPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTab === 'read' 
-                ? 'bg-slate-900 text-white shadow-sm' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${filterTab === 'read'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70'
+              }`}
           >
             <span>Leídos</span>
             <span className="text-[10px] opacity-70">({readCount})</span>
@@ -259,11 +256,10 @@ export default function NotificationPanel({ notifications, setNotifications, onN
           <button
             type="button"
             onClick={() => { setFilterTab('all'); setCurrentPage(1); }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-              filterTab === 'all' 
-                ? 'bg-slate-900 text-white shadow-sm' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${filterTab === 'all'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/70'
+              }`}
           >
             <span>Todos</span>
             <span className="text-[10px] opacity-70">({totalCount})</span>
@@ -331,8 +327,8 @@ export default function NotificationPanel({ notifications, setNotifications, onN
               {filterTab === 'unread' ? '¡Bandeja al día!' : 'No hay mensajes'}
             </h4>
             <p className="text-slate-500 text-xs mt-1 max-w-sm mx-auto">
-              {filterTab === 'unread' 
-                ? 'No tienes instrucciones o correcciones pendientes por responder.' 
+              {filterTab === 'unread'
+                ? 'No tienes instrucciones o correcciones pendientes por responder.'
                 : 'No se encontraron mensajes que coincidan con los filtros aplicados.'}
             </p>
           </div>
@@ -368,10 +364,10 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                   });
                 }
               }
-            } catch (e) {}
+            } catch (e) { }
 
             const deletedList = (() => {
-              try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+              try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch (e) { return []; }
             })();
 
             const replies = [
@@ -379,53 +375,51 @@ export default function NotificationPanel({ notifications, setNotifications, onN
               ...(localRepliesMap[notifKey] || []),
               ...globalQueueReplies
             ].filter(m => !deletedList.includes(m.id) && (!m.mensaje || !deletedList.includes(m.mensaje.trim())))
-            .filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))
-            .sort((a, b) => {
-              const parseIdTime = (id: string) => {
-                if (!id) return 0;
-                const parts = id.split('_');
-                return parts.length >= 2 ? parseInt(parts[1], 10) || 0 : 0;
-              };
-              const tA = parseIdTime(a.id);
-              const tB = parseIdTime(b.id);
-              if (tA && tB && tA !== tB) return tA - tB;
-              return (a.fecha || '').localeCompare(b.fecha || '');
-            });
+              .filter((rep, idx, self) => idx === self.findIndex(t => (t.id && t.id === rep.id) || (t.mensaje === rep.mensaje && t.fecha === rep.fecha)))
+              .sort((a, b) => {
+                const parseIdTime = (id: string) => {
+                  if (!id) return 0;
+                  const parts = id.split('_');
+                  return parts.length >= 2 ? parseInt(parts[1], 10) || 0 : 0;
+                };
+                const tA = parseIdTime(a.id);
+                const tB = parseIdTime(b.id);
+                if (tA && tB && tA !== tB) return tA - tB;
+                return (a.fecha || '').localeCompare(b.fecha || '');
+              });
 
             return (
-              <div 
-                key={notif.id} 
-                className={`border rounded-2xl p-4 sm:p-5 transition-all relative overflow-hidden group ${
-                  isUnread
+              <div
+                key={notif.id}
+                className={`border rounded-2xl p-4 sm:p-5 transition-all relative overflow-hidden group ${isUnread
                     ? notif.type === 'changes'
                       ? 'bg-rose-50/60 border-rose-200 shadow-xs'
                       : notif.type === 'instruction'
-                        ? 'bg-amber-50/60 border-amber-200 shadow-xs'
+                        ? 'bg-indigo-50/70 border-indigo-200 shadow-xs'
                         : 'bg-blue-50/70 border-blue-200 shadow-xs'
                     : 'bg-white border-slate-200/90 hover:border-slate-300 shadow-xs'
-                }`}
+                  }`}
               >
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
-                  
+
                   {/* Contenido Principal */}
                   <div className="flex items-start gap-3 flex-1 min-w-0">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${
-                      isUnread
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 shadow-xs ${isUnread
                         ? notif.type === 'approval' || notif.type === 'pago'
                           ? 'bg-emerald-600 text-white'
                           : notif.type === 'changes'
-                          ? 'bg-rose-500 text-white'
-                          : notif.type === 'instruction'
-                            ? 'bg-amber-500 text-slate-950'
-                            : 'bg-blue-600 text-white'
+                            ? 'bg-rose-500 text-white'
+                            : notif.type === 'instruction'
+                              ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white'
+                              : 'bg-blue-600 text-white'
                         : 'bg-slate-100 text-slate-500'
-                    }`}>
+                      }`}>
                       {notif.type === 'approval' ? (
                         <CheckCircle2 className="w-4 h-4" />
                       ) : notif.type === 'pago' ? (
                         <Wallet className="w-4 h-4 animate-bounce" />
                       ) : notif.type === 'changes' ? (
-                        <Sparkles className="w-4 h-4" />
+                        <Edit3 className="w-4 h-4" />
                       ) : notif.type === 'instruction' ? (
                         <AlertCircle className="w-4 h-4" />
                       ) : (
@@ -534,7 +528,7 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                                 }}
                                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer disabled:opacity-50"
                               >
-                                <Download className="w-3.5 h-3.5" /> 
+                                <Download className="w-3.5 h-3.5" />
                                 {downloadingReciboId === notif.recibo_id ? 'Generando PDF...' : 'Descargar Recibo (PDF)'}
                               </button>
                             )}
@@ -547,9 +541,9 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                                   handleMarkAsRead(notif.id);
                                   onNavigate('nomina');
                                 }}
-                                className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                                className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 cursor-pointer"
                               >
-                                <Wallet className="w-3.5 h-3.5 text-emerald-400" /> Ir a Mis Recibos
+                                <Wallet className="w-3.5 h-3.5 text-blue-100" /> Ir a Mis Recibos
                               </button>
                             )}
                           </div>
@@ -637,19 +631,18 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                       {replies.slice(-2).map((rep, rIdx) => {
                         const isFromBoss = checkIsFromBoss(rep.author, rep.author_role);
                         return (
-                          <div 
-                            key={rIdx} 
-                            className={`p-2.5 rounded-xl border flex items-start justify-between gap-3 text-xs transition-all ${
-                              isFromBoss 
-                                ? 'bg-amber-50/90 border-amber-300/80 shadow-2xs' 
+                          <div
+                            key={rIdx}
+                            className={`p-2.5 rounded-xl border flex items-start justify-between gap-3 text-xs transition-all ${isFromBoss
+                                ? 'bg-blue-50/90 border-blue-200 shadow-2xs'
                                 : 'bg-emerald-50/80 border-emerald-200 shadow-2xs'
-                            }`}
+                              }`}
                           >
                             <div className="space-y-0.5 min-w-0">
-                              <span className={`font-black flex items-center gap-1.5 text-[11px] ${isFromBoss ? 'text-amber-950' : 'text-emerald-950'}`}>
+                              <span className={`font-black flex items-center gap-1.5 text-[11px] ${isFromBoss ? 'text-blue-950' : 'text-emerald-950'}`}>
                                 {isFromBoss ? (
                                   <>
-                                    <ShieldCheck className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600 shrink-0" />
                                     <span>{rep.author || 'Luis Delgado (Jefatura)'}:</span>
                                   </>
                                 ) : (
@@ -661,7 +654,7 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                               </span>
                               <p className="text-slate-800 font-medium pl-5 truncate">{rep.mensaje}</p>
                             </div>
-                            <span className={`text-[10px] font-bold shrink-0 ${isFromBoss ? 'text-amber-800' : 'text-emerald-700'}`}>{rep.fecha}</span>
+                            <span className={`text-[10px] font-bold shrink-0 ${isFromBoss ? 'text-blue-800' : 'text-emerald-700'}`}>{rep.fecha}</span>
                           </div>
                         );
                       })}
@@ -678,7 +671,7 @@ export default function NotificationPanel({ notifications, setNotifications, onN
       {/* 4. BARRA DE PAGINACIÓN INFERIOR */}
       {filteredNotifications.length > 0 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-200/80">
-          
+
           <div className="flex items-center gap-3">
             <span className="text-xs font-bold text-slate-500">
               Mostrando {((validCurrentPage - 1) * itemsPerPage) + 1} - {Math.min(validCurrentPage * itemsPerPage, filteredNotifications.length)} de {filteredNotifications.length} mensajes
@@ -711,11 +704,10 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                   key={page}
                   type="button"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-7 h-7 rounded-lg font-bold text-xs transition-all cursor-pointer ${
-                    validCurrentPage === page
+                  className={`w-7 h-7 rounded-lg font-bold text-xs transition-all cursor-pointer ${validCurrentPage === page
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>
@@ -773,9 +765,9 @@ export default function NotificationPanel({ notifications, setNotifications, onN
                     });
                   }
                 }
-              } catch (e) {}
+              } catch (e) { }
               const deletedList = (() => {
-                try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch(e) { return []; }
+                try { return JSON.parse(localStorage.getItem('rd_deleted_chat_messages') || '[]'); } catch (e) { return []; }
               })();
 
               return [
@@ -816,40 +808,40 @@ export default function NotificationPanel({ notifications, setNotifications, onN
 
       {/* MODAL DE PREVISUALIZACIÓN DE CAPTURE BANCARIO */}
       {captureModalImg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
-            <div className="p-4 px-6 border-b border-slate-800 flex items-center justify-between text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white border border-blue-200 rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl shadow-blue-950/25 flex flex-col max-h-[90vh]">
+            <div className="p-4 px-6 border-b border-blue-800/60 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] flex items-center justify-between text-white">
               <div className="flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-extrabold text-sm sm:text-base truncate">{captureModalImg.title}</h3>
+                <ImageIcon className="w-5 h-5 text-sky-200" />
+                <h3 className="font-extrabold text-sm sm:text-base truncate text-white">{captureModalImg.title}</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setCaptureModalImg(null)}
-                className="p-1.5 hover:bg-slate-800 rounded-xl text-slate-400 hover:text-white transition-colors cursor-pointer"
+                className="p-1.5 bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl text-white transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-4 overflow-y-auto flex items-center justify-center bg-slate-950/50 min-h-[250px]">
-              <img 
-                src={captureModalImg.url} 
-                alt="Capture de pago bancario" 
-                className="max-w-full max-h-[70vh] object-contain rounded-2xl border border-slate-800 shadow-md"
+            <div className="p-4 overflow-y-auto flex items-center justify-center bg-kant-canvas min-h-[250px]">
+              <img
+                src={captureModalImg.url}
+                alt="Capture de pago bancario"
+                className="max-w-full max-h-[70vh] object-contain rounded-2xl border border-blue-200 shadow-md"
               />
             </div>
-            <div className="p-3 px-6 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/90">
+            <div className="p-3 px-6 border-t border-blue-200 flex justify-end gap-3 bg-white">
               <a
                 href={captureModalImg.url}
                 download="Comprobante_Pago_Nomina.png"
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
+                className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold inline-flex items-center gap-2 transition-all shadow-sm cursor-pointer"
               >
                 <Download className="w-4 h-4" /> Descargar Imagen
               </a>
               <button
                 type="button"
                 onClick={() => setCaptureModalImg(null)}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                className="px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-colors cursor-pointer"
               >
                 Cerrar
               </button>

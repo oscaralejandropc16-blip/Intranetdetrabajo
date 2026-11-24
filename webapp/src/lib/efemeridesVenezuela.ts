@@ -664,7 +664,7 @@ export function getActiveDate(): Date {
           return new Date(y, m, d, 10, 0, 0);
         }
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   const simulated = typeof localStorage !== 'undefined' ? localStorage.getItem('rd_simulated_date_override') : null;
@@ -721,8 +721,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'halloween',
       sombreroEmoji: '🧙‍♂️',
       accesorioEmoji: '🎃',
-      auraClass: 'from-orange-500/50 via-purple-600/40 to-amber-500/50',
-      badgeLabel: '🎃 Halloween KANT'
+      auraClass: 'from-violet-400/45 via-indigo-400/35 to-sky-400/45',
+      badgeLabel: 'Edición Especial KANT'
     };
   }
 
@@ -732,8 +732,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'abogado',
       sombreroEmoji: '🎓',
       accesorioEmoji: '⚖️',
-      auraClass: 'from-amber-400/50 via-blue-500/40 to-yellow-300/50',
-      badgeLabel: '⚖️ Abogado KANT'
+      auraClass: 'from-sky-400/45 via-blue-500/40 to-indigo-400/45',
+      badgeLabel: 'Día del Abogado KANT'
     };
   }
 
@@ -743,8 +743,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'abogado',
       sombreroEmoji: '⚖️',
       accesorioEmoji: '📜',
-      auraClass: 'from-blue-500/40 via-amber-400/40 to-slate-900',
-      badgeLabel: '⚖️ Guardián Legal'
+      auraClass: 'from-blue-400/45 via-indigo-400/40 to-sky-400/40',
+      badgeLabel: 'Guardián Legal'
     };
   }
 
@@ -754,8 +754,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'navidad',
       sombreroEmoji: '🎅',
       accesorioEmoji: '🎄',
-      auraClass: 'from-red-600/50 via-emerald-600/40 to-amber-400/50',
-      badgeLabel: '🎄 Feliz Navidad'
+      auraClass: 'from-emerald-400/45 via-teal-400/35 to-rose-400/40',
+      badgeLabel: 'Temporada Navideña'
     };
   }
 
@@ -765,8 +765,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'patria',
       sombreroEmoji: '⭐',
       accesorioEmoji: '🇻🇪',
-      auraClass: 'from-amber-400/50 via-blue-600/40 to-rose-600/50',
-      badgeLabel: '🇻🇪 ¡Viva Venezuela!'
+      auraClass: 'from-sky-400/45 via-blue-500/40 to-rose-400/40',
+      badgeLabel: 'Efeméride Nacional'
     };
   }
 
@@ -781,8 +781,8 @@ export function getDisfrazParaEfemeride(efemeride: Efemeride | null): DisfrazKan
       tipo: 'chocolate',
       sombreroEmoji: '👨‍🍳',
       accesorioEmoji: '🍫',
-      auraClass: 'from-amber-800/60 via-amber-600/40 to-yellow-600/50',
-      badgeLabel: '🍫 KANT Chocolatero'
+      auraClass: 'from-sky-400/45 via-indigo-400/35 to-rose-400/40',
+      badgeLabel: 'Cultura Venezolana'
     };
   }
 

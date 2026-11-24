@@ -211,11 +211,13 @@ export default function TabAgenda({
   };
 
   return (
-    <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 animate-in fade-in duration-500">
+    <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-md shadow-blue-950/8 border border-blue-200 animate-page-enter">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
         <div>
-          <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-            <CalendarIcon className="w-7 h-7 text-amber-500" />
+          <h3 className="text-2xl font-extrabold text-slate-900 flex items-center gap-3">
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shadow-md shadow-blue-900/20">
+              <CalendarIcon className="w-5 h-5" />
+            </span>
             Libro de Programación
           </h3>
           <p className="text-slate-500 font-medium mt-1">Revisa tu agenda próxima y planifica nuevas actividades.</p>
@@ -223,9 +225,9 @@ export default function TabAgenda({
       </div>
 
       {/* MI AGENDA PRÓXIMA (Línea de tiempo) */}
-      <div className="mb-12 border-b border-slate-100 pb-12">
-        <h4 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-          <Clock className="w-5 h-5 text-blue-500" /> Mi Calendario Próximo
+      <div className="mb-12 border-b border-blue-100/80 pb-12">
+        <h4 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+          <Clock className="w-5 h-5 text-blue-600" /> Mi Calendario Próximo
         </h4>
         
         {(() => {
@@ -238,7 +240,7 @@ export default function TabAgenda({
           
           if (Object.keys(groupedTasks).length === 0) {
             return (
-              <div className="text-center p-8 text-slate-500 italic font-medium bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
+              <div className="text-center p-8 text-slate-500 italic font-medium bg-blue-50/40 rounded-2xl border border-dashed border-blue-200">
                 No tienes actividades programadas para el futuro.
               </div>
             );
@@ -255,35 +257,35 @@ export default function TabAgenda({
                 return (
                   <div key={dateStr} className="relative">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="px-4 py-2 bg-slate-100 text-slate-700 font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm border border-slate-200">
+                      <div className="px-4 py-2 bg-[#1e3a8a] text-white font-bold uppercase tracking-wider text-xs rounded-xl shadow-sm shadow-blue-900/20">
                         {dateLabel}
                       </div>
-                      <div className="h-px bg-slate-100 flex-1"></div>
+                      <div className="h-px bg-blue-200 flex-1"></div>
                     </div>
                     
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pl-4 lg:pl-6 border-l-2 border-slate-200">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 pl-4 lg:pl-6 border-l-2 border-blue-300">
                       {groupedTasks[dateStr].map((task: any, i: number) => (
-                        <div key={i} className="bg-white rounded-xl border border-slate-200 p-4 relative overflow-hidden group hover:border-amber-300 transition-colors">
-                          {task.observaciones && <div className="absolute top-0 right-0 w-12 h-12 bg-amber-100 rotate-45 translate-x-6 -translate-y-6 z-0"></div>}
+                        <div key={i} className="bg-white rounded-2xl border border-blue-200 p-4 relative overflow-hidden group hover:border-blue-400 hover:shadow-md transition-all">
+                          {task.observaciones && <div className="absolute top-0 right-0 w-12 h-12 bg-indigo-100 rotate-45 translate-x-6 -translate-y-6 z-0"></div>}
                           <div className="relative z-10">
                             <div className="flex justify-between items-start mb-2">
-                              <span className="bg-slate-100 text-slate-700 font-bold text-xs px-2 py-1 rounded-md">
+                              <span className="bg-blue-50 text-blue-700 border border-blue-100 font-bold text-xs px-2.5 py-1 rounded-lg">
                                 {task.hora}
                               </span>
                             </div>
                             
-                            <p className="font-bold text-slate-800 text-sm mb-1">{decodeAccents(task.tipoActuacion)}</p>
+                            <p className="font-bold text-slate-900 text-sm mb-1">{decodeAccents(task.tipoActuacion)}</p>
                             <p className="text-xs text-slate-500 font-medium mb-3 flex items-center gap-1.5">
-                              <Activity className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {decodeAccents(task.organismoTribunal)}
+                              <Activity className="w-3.5 h-3.5 text-blue-600 shrink-0" /> {decodeAccents(task.organismoTribunal)}
                             </p>
                             
                             {task.observaciones && (
-                              <div className="mt-3 pt-3 border-t border-amber-200 bg-amber-50 -mx-4 -mb-4 px-4 pb-4 rounded-b-xl">
-                                <div className="flex items-center gap-1.5 mb-1 text-amber-900 font-extrabold text-[11px] uppercase tracking-wider">
-                                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                              <div className="mt-3 pt-3 border-t border-indigo-100 bg-indigo-50/80 -mx-4 -mb-4 px-4 pb-4 rounded-b-2xl">
+                                <div className="flex items-center gap-1.5 mb-1 text-indigo-800 font-extrabold text-[11px] uppercase tracking-wider">
+                                  <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
                                   Instrucción del Jefe:
                                 </div>
-                                <p className="text-xs text-amber-950 font-bold leading-relaxed">{decodeAccents(task.observaciones)}</p>
+                                <p className="text-xs text-indigo-950 font-bold leading-relaxed">{decodeAccents(task.observaciones)}</p>
                               </div>
                             )}
                           </div>
@@ -299,29 +301,29 @@ export default function TabAgenda({
       </div>
 
       {/* NUEVA PROGRAMACIÓN */}
-      <div className="flex justify-between items-end mb-4">
-        <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-amber-500" /> Añadir Nuevas Tareas (Bitácora de Hoy)
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 mb-4">
+        <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+          <Plus className="w-5 h-5 text-blue-600" /> Añadir Nuevas Tareas (Bitácora de Hoy)
         </h4>
         {!reportSubmitted && (
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={handleSyncAdelanto}
               disabled={syncing || programaciones.length === 0}
-              className={`font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm ${
-                synced ? 'bg-emerald-500 hover:bg-emerald-600 text-white' : 'bg-slate-800 hover:bg-slate-900 text-white border border-slate-700'
+              className={`font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm cursor-pointer ${
+                synced ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
               title={isAdmin ? "Guardar programación temporalmente en el sistema" : "Notificar a jefatura sobre esta programación sin necesidad de cerrar el día"}
             >
               {syncing ? <Activity className="w-4 h-4 animate-spin" /> : (synced ? <Clock className="w-4 h-4" /> : <Activity className="w-4 h-4" />)}
               {isAdmin 
-                ? (syncing ? 'Guardando...' : (synced ? '¡Agenda Guardada!' : 'Guardar Agenda en Sistema'))
-                : (syncing ? 'Enviando...' : (synced ? '¡Adelanto Enviado a Jefatura!' : 'Enviar Avance a Jefatura'))
+                ? (syncing ? 'Guardando...' : (synced ? 'Agenda Guardada' : 'Guardar Agenda en Sistema'))
+                : (syncing ? 'Enviando...' : (synced ? 'Adelanto Enviado a Jefatura' : 'Enviar Avance a Jefatura'))
               }
             </button>
             <button 
               onClick={handleAddRow}
-              className="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold py-2.5 px-5 rounded-xl transition-all shadow-sm flex items-center gap-2 text-sm cursor-pointer"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 text-sm cursor-pointer"
             >
               <Plus className="w-4 h-4" /> Nueva Programación
             </button>
@@ -329,9 +331,9 @@ export default function TabAgenda({
         )}
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-sm">
+      <div className="overflow-x-auto rounded-2xl border border-blue-100 shadow-xs">
         <table className="w-full text-sm text-left">
-          <thead className="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-xs border-b border-slate-200">
+          <thead className="bg-[#dbeafe] text-[#1e3a8a] font-extrabold uppercase tracking-wider text-xs border-b border-blue-200">
             <tr>
               <th className="px-4 py-4 min-w-[150px]">Fecha</th>
               <th className="px-4 py-4 w-32">Hora</th>
@@ -343,7 +345,7 @@ export default function TabAgenda({
               {!reportSubmitted && <th className="px-4 py-4 text-center">Acción</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-blue-50">
             {programaciones.length === 0 ? (
               <tr>
                 <td colSpan={8} className="px-4 py-12 text-center text-slate-500 font-medium">
@@ -352,14 +354,14 @@ export default function TabAgenda({
               </tr>
             ) : (
               programaciones.map((prog) => (
-                <tr key={prog.id} className="hover:bg-slate-50/50 transition-colors">
+                <tr key={prog.id} className="hover:bg-blue-50/30 transition-colors">
                   <td className="px-4 py-3 align-top">
                     <input 
                       type="date" 
                       value={prog.fecha}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'fecha', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 bg-white font-medium"
+                      className="w-full p-2.5 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none text-slate-700 bg-white font-medium"
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
@@ -368,7 +370,7 @@ export default function TabAgenda({
                       value={prog.hora}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'hora', e.target.value)}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 bg-white"
+                      className="w-full p-2.5 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none text-slate-700 bg-white"
                     />
                   </td>
                   <td className="px-4 py-3 align-top">
@@ -378,11 +380,7 @@ export default function TabAgenda({
                       value={prog.numeroAsunto || ''}
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'numeroAsunto', e.target.value)}
-                      className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-bold transition-colors ${
-                        !prog.numeroAsunto || prog.numeroAsunto.trim() === ''
-                          ? 'border-slate-200 focus:ring-amber-500/50 bg-white'
-                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
-                      }`}
+                      className="w-full p-2.5 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none text-slate-700 font-bold transition-colors bg-white"
                       placeholder="Ej: RD-J-2026..."
                     />
                     <datalist id="expedientes-agenda">
@@ -400,7 +398,7 @@ export default function TabAgenda({
                       className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-medium transition-colors ${
                         !prog.organismoTribunal || prog.organismoTribunal.trim() === ''
                           ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
-                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                          : 'border-blue-100 focus:ring-blue-500/30 focus:border-blue-400 bg-white'
                       }`}
                       placeholder="Ej: Registro Principal *"
                     />
@@ -414,7 +412,7 @@ export default function TabAgenda({
                       className={`w-full p-2.5 border rounded-lg focus:ring-2 outline-none text-slate-700 font-medium transition-colors ${
                         !prog.tipoActuacion || prog.tipoActuacion.trim() === ''
                           ? 'border-rose-300 bg-rose-50/20 focus:ring-rose-400 focus:border-rose-400'
-                          : 'border-slate-200 focus:ring-amber-500/50 bg-white'
+                          : 'border-blue-100 focus:ring-blue-500/30 focus:border-blue-400 bg-white'
                       }`}
                       placeholder="Ej: Introducir documento *"
                     />
@@ -425,7 +423,7 @@ export default function TabAgenda({
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'resumen', e.target.value)}
                       rows={2}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 resize-none bg-white"
+                      className="w-full p-2.5 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none text-slate-700 resize-none bg-white"
                       placeholder="Resumen de la visita..."
                     />
                   </td>
@@ -435,7 +433,7 @@ export default function TabAgenda({
                       disabled={reportSubmitted}
                       onChange={(e) => updateField(prog.id, 'observaciones', e.target.value)}
                       rows={2}
-                      className="w-full p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500/50 outline-none text-slate-700 resize-none bg-white"
+                      className="w-full p-2.5 border border-blue-100 rounded-lg focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 outline-none text-slate-700 resize-none bg-white"
                       placeholder="Notas adicionales..."
                     />
                   </td>

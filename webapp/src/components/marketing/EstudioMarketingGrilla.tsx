@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Sparkles, Plus, Video, Image as ImageIcon, Layers,
-  ExternalLink, CheckCircle2, Clock, Trash2, Edit3, 
+import {
+  Megaphone, Plus, Video, Image as ImageIcon, Layers,
+  ExternalLink, CheckCircle2, Clock, Trash2, Edit3,
   Copy, Check, Share2, MessageSquare, Folder, ArrowUpRight,
   Heart, Bookmark, Send, Scale, FileText, X, Smartphone
 } from 'lucide-react';
@@ -131,7 +131,7 @@ export default function EstudioMarketingGrilla({
       // Parsear desde campos estándar
       const canalMatch = act.numeroAsunto.match(/\[(.*?)\]/);
       const canalParsed = (canalMatch ? canalMatch[1] : 'Instagram') as any;
-      
+
       let formato: any = 'Reel';
       if (act.numeroAsunto.toLowerCase().includes('carrusel') || act.partes?.toLowerCase().includes('carrusel')) formato = 'Carrusel';
       else if (act.numeroAsunto.toLowerCase().includes('historia')) formato = 'Historia';
@@ -312,36 +312,33 @@ export default function EstudioMarketingGrilla({
 
   return (
     <div className="space-y-6">
-      
-      {/* 1. HERO HEADER: ESTUDIO DE MARKETING & REDES SOCIALES */}
-      <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 relative overflow-hidden">
-        {/* Glow de ambientación Instagram + Gold */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-pink-500/10 via-purple-600/10 to-amber-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-10 -left-10 w-80 h-80 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
 
+      {/* 1. HERO HEADER: ESTUDIO DE MARKETING & REDES SOCIALES */}
+      <div className="bg-white text-slate-900 rounded-3xl p-6 sm:p-8 shadow-md shadow-blue-950/8 border border-blue-200 relative overflow-hidden">
+        <div className="pointer-events-none absolute -right-12 -top-12 w-56 h-56 rounded-full bg-blue-100/60 blur-3xl" />
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-pink-500 via-purple-500 to-amber-500 text-white rounded-full text-xs font-black tracking-wide shadow-sm">
-                <Sparkles className="w-3.5 h-3.5" /> ESTUDIO SOCIAL MEDIA & MARKETING
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-full text-xs font-black tracking-wide shadow-sm">
+                <Megaphone className="w-3.5 h-3.5" /> ESTUDIO SOCIAL MEDIA & MARKETING
               </span>
               <a
                 href="https://instagram.com/romanydelgado/"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-500/10 hover:bg-pink-500/20 text-pink-300 border border-pink-500/30 rounded-full text-xs font-bold transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-full text-xs font-bold transition-all"
               >
-                <InstagramIcon className="w-3.5 h-3.5 text-pink-400" />
+                <InstagramIcon className="w-3.5 h-3.5 text-pink-600" />
                 <span>@romanydelgado</span>
-                <span className="text-[10px] text-pink-400/80 font-normal">• 1,272 seguidores</span>
-                <ArrowUpRight className="w-3 h-3 text-pink-400" />
+                <span className="text-[10px] text-pink-600/80 font-normal">• 1,272 seguidores</span>
+                <ArrowUpRight className="w-3 h-3 text-pink-600" />
               </a>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900">
               Grilla de Contenido & Redes Sociales
             </h2>
-            <p className="text-sm text-slate-300 max-w-2xl font-medium leading-relaxed">
-              Planificación oficial de posts, reels, historias y carruseles para la firma <strong className="text-amber-400">Román & Delgado | Despacho de Abogados</strong>. Redacta copies, vincula artes de Google Drive y recibe la aprobación directa de Jefatura.
+            <p className="text-sm text-slate-600 max-w-2xl font-medium leading-relaxed">
+              Planificación oficial de posts, reels, historias y carruseles para la firma <strong className="text-blue-700">Román & Delgado | Despacho de Abogados</strong>. Redacta copies, vincula artes de Google Drive y recibe la aprobación directa de Jefatura.
             </p>
           </div>
 
@@ -351,61 +348,61 @@ export default function EstudioMarketingGrilla({
               <button
                 type="button"
                 onClick={handleOpenNuevo}
-                className="px-6 py-3.5 bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:via-purple-500 hover:to-indigo-500 text-white font-black rounded-2xl shadow-lg shadow-purple-500/25 transition-all transform active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-sm"
+                className="px-6 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:via-indigo-500 hover:to-purple-500 text-white font-black rounded-2xl shadow-lg shadow-blue-500/20 transition-all transform active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer text-sm"
               >
                 <Plus className="w-5 h-5" />
-                <span>+ Nuevo Contenido / Post</span>
+                <span>Nuevo Contenido / Post</span>
               </button>
             </div>
           )}
         </div>
 
         {/* 2. ACCESOS DIRECTOS Y RECURSOS OFICIALES */}
-        <div className="mt-6 pt-5 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-4">
+        <div className="relative z-10 mt-6 pt-5 border-t border-blue-100/80 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-bold text-slate-400">Canales & Enlaces:</span>
+            <span className="text-xs font-bold text-slate-500">Canales & Enlaces:</span>
             <a
               href="https://instagram.com/romanydelgado/"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-pink-500/20 to-purple-500/20 hover:from-pink-500/30 hover:to-purple-500/30 text-pink-300 border border-pink-500/30 rounded-xl text-xs font-bold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-pink-50 hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-xl text-xs font-bold transition-all"
             >
               <InstagramIcon className="w-3.5 h-3.5" />
               <span>Instagram Oficial (@romanydelgado)</span>
-              <ArrowUpRight className="w-3 h-3 text-pink-400" />
+              <ArrowUpRight className="w-3 h-3 text-pink-600" />
             </a>
             <a
               href="https://wa.me/584144996967"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-all"
             >
-              <span>📲 WhatsApp Consultas (+58 414-4996967)</span>
-              <ArrowUpRight className="w-3 h-3 text-emerald-400" />
+              <span>WhatsApp Consultas (+58 414-4996967)</span>
+              <ArrowUpRight className="w-3 h-3 text-emerald-600" />
             </a>
             <a
               href="https://drive.google.com"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold transition-all"
             >
-              <Folder className="w-3.5 h-3.5 text-amber-400" />
+              <Folder className="w-3.5 h-3.5 text-blue-600" />
               <span>Google Drive (Artes & Videos)</span>
-              <ArrowUpRight className="w-3 h-3 text-amber-400" />
+              <ArrowUpRight className="w-3 h-3 text-blue-600" />
             </a>
           </div>
 
-          <div className="flex items-center gap-2 text-xs text-slate-400 font-medium">
+          <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <span>Identidad:</span>
-            <span className="px-2 py-0.5 rounded-md bg-slate-900 border border-slate-700 text-slate-300 text-[11px] font-bold">#0f172a Obsidian</span>
-            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[11px] font-bold">#f59e0b Oro RD</span>
+            <span className="px-2 py-0.5 rounded-md bg-white border border-blue-200 text-blue-800 text-[11px] font-bold">#2563eb Azul KANT</span>
+            <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-indigo-700 text-[11px] font-bold">#4f46e5 Índigo RD</span>
           </div>
         </div>
       </div>
 
       {/* 3. KPIS & METRICAS DE LA GRILLA */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+        <div className="bg-white/95 p-4 rounded-2xl border border-blue-100 shadow-2xs">
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Total Contenidos</div>
           <div className="text-2xl font-black text-slate-900 flex items-center gap-2">
             <span>{stats.total}</span>
@@ -413,11 +410,11 @@ export default function EstudioMarketingGrilla({
           </div>
         </div>
 
-        <div className="bg-amber-50/60 p-4 rounded-2xl border border-amber-200 shadow-xs">
-          <div className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-1 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-amber-600" /> En Revisión Jefatura
+        <div className="bg-indigo-50/65 p-4 rounded-2xl border border-indigo-200 shadow-2xs">
+          <div className="text-xs font-bold text-indigo-800 uppercase tracking-wider mb-1 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-indigo-600" /> En Revisión Jefatura
           </div>
-          <div className="text-2xl font-black text-amber-900">
+          <div className="text-2xl font-black text-indigo-950">
             {stats.enRevision}
           </div>
         </div>
@@ -450,11 +447,10 @@ export default function EstudioMarketingGrilla({
               key={canal}
               type="button"
               onClick={() => setFiltroCanal(canal)}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                filtroCanal === canal
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${filtroCanal === canal
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {canal === 'todos' ? 'Todos los Canales' : canal}
             </button>
@@ -468,11 +464,10 @@ export default function EstudioMarketingGrilla({
               key={st}
               type="button"
               onClick={() => setFiltroEstado(st)}
-              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${
-                filtroEstado === st
-                  ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all cursor-pointer ${filtroEstado === st
+                ? 'bg-white text-slate-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
             >
               {st === 'todos' ? 'Todos los Estados' : st}
             </button>
@@ -485,7 +480,7 @@ export default function EstudioMarketingGrilla({
         {filteredPosts.length === 0 ? (
           <div className="p-12 text-center bg-white rounded-3xl border border-dashed border-slate-300">
             <div className="w-16 h-16 bg-purple-50 text-purple-600 rounded-3xl flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <Sparkles className="w-8 h-8" />
+              <Layers className="w-8 h-8" />
             </div>
             <h3 className="text-lg font-black text-slate-800">No hay publicaciones en la grilla para este filtro</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
@@ -509,7 +504,7 @@ export default function EstudioMarketingGrilla({
               const isPublicado = post.estado === 'Publicado';
 
               return (
-                <div 
+                <div
                   key={post.id}
                   className="bg-white rounded-3xl p-5 border border-slate-200 hover:border-purple-300 transition-all shadow-xs hover:shadow-md flex flex-col justify-between group"
                 >
@@ -525,8 +520,8 @@ export default function EstudioMarketingGrilla({
                         {/* Formato Badge */}
                         <span className="px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold flex items-center gap-1">
                           {post.formato === 'Reel' ? <Video className="w-3 h-3 text-purple-600" /> :
-                           post.formato === 'Carrusel' ? <Layers className="w-3 h-3 text-blue-600" /> :
-                           <ImageIcon className="w-3 h-3 text-emerald-600" />}
+                            post.formato === 'Carrusel' ? <Layers className="w-3 h-3 text-blue-600" /> :
+                              <ImageIcon className="w-3 h-3 text-emerald-600" />}
                           {post.formato}
                         </span>
 
@@ -537,15 +532,14 @@ export default function EstudioMarketingGrilla({
                       </div>
 
                       {/* Estado Badge */}
-                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${
-                        isAprobado 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300 shadow-2xs' 
-                          : isRevision 
-                          ? 'bg-amber-50 text-amber-800 border-amber-300 animate-pulse' 
-                          : isPublicado 
-                          ? 'bg-blue-50 text-blue-700 border-blue-300' 
-                          : 'bg-slate-100 text-slate-600 border-slate-200'
-                      }`}>
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border flex items-center gap-1 shrink-0 ${isAprobado
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-2xs'
+                        : isRevision
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-200 animate-pulse'
+                          : isPublicado
+                            ? 'bg-blue-50 text-blue-700 border-blue-200'
+                            : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
                         {isAprobado ? <CheckCircle2 className="w-3 h-3 text-emerald-600" /> : <Clock className="w-3 h-3" />}
                         {post.estado}
                       </span>
@@ -571,11 +565,11 @@ export default function EstudioMarketingGrilla({
 
                     {/* Feedback de Jefatura (Víctor Román / Luis Delgado) */}
                     {post.feedbackJefatura && (
-                      <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-3 text-xs mb-3 flex items-start gap-2">
-                        <MessageSquare className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="bg-indigo-50/75 border border-indigo-200/80 rounded-2xl p-3 text-xs mb-3 flex items-start gap-2">
+                        <MessageSquare className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
                         <div>
-                          <div className="font-extrabold text-amber-900 text-[11px]">Feedback de Jefatura:</div>
-                          <div className="text-amber-800 font-medium text-xs mt-0.5">{post.feedbackJefatura}</div>
+                          <div className="font-extrabold text-indigo-900 text-[11px]">Feedback de Jefatura:</div>
+                          <div className="text-indigo-800 font-medium text-xs mt-0.5">{post.feedbackJefatura}</div>
                         </div>
                       </div>
                     )}
@@ -629,11 +623,10 @@ export default function EstudioMarketingGrilla({
                           <button
                             type="button"
                             onClick={() => handleCambiarEstadoRapido(post, isAprobado ? 'Publicado' : 'Aprobado para Publicar')}
-                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                              isAprobado 
-                                ? 'bg-blue-600 hover:bg-blue-700 text-white' 
-                                : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                            }`}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${isAprobado
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                              : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
                             title={isAprobado ? 'Marcar como publicado en redes' : 'Marcar como aprobado por Jefatura'}
                           >
                             <CheckCircle2 className="w-3.5 h-3.5" />
@@ -670,29 +663,29 @@ export default function EstudioMarketingGrilla({
 
       {/* 6. MODAL REDISEÑADO: ESTUDIO PROFESIONAL INSTAGRAM @romanydelgado */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-950 text-white rounded-3xl max-w-6xl w-full border border-slate-800 shadow-2xl max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
-            
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-6xl w-full border border-blue-200 shadow-2xl shadow-blue-950/25 max-h-[94vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+
             {/* Header del Modal con Identidad @romanydelgado */}
-            <div className="p-4 sm:p-5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-4">
+            <div className="p-4 sm:p-5 border-b border-blue-800/60 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                {/* Avatar Instagram con anillo de degradado */}
-                <div className="relative p-[2px] rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-md">
-                  <div className="w-10 h-10 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 font-black text-xs border border-slate-900">
+                {/* Avatar Instagram con anillo blanco de alto contraste */}
+                <div className="relative p-[2px] rounded-full bg-white/80 shadow-md">
+                  <div className="w-10 h-10 rounded-full bg-[#172554] flex items-center justify-center text-sky-300 font-black text-xs">
                     <Scale className="w-5 h-5" />
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5">
+                    <h3 className="text-base sm:text-lg font-extrabold tracking-tight text-white flex items-center gap-1.5 flex-wrap">
                       <span>{editingId ? 'Editar Contenido' : 'Nuevo Contenido'}</span>
-                      <span className="text-xs text-pink-400 font-bold bg-pink-500/10 px-2 py-0.5 rounded-full border border-pink-500/20">
+                      <span className="text-xs text-sky-100 font-bold bg-white/15 px-2.5 py-0.5 rounded-full border border-white/25">
                         @romanydelgado
                       </span>
                     </h3>
                   </div>
-                  <p className="text-xs text-slate-400 font-medium">
+                  <p className="text-xs text-blue-100/85 font-medium">
                     Román & Delgado | Despacho de Abogados • Estudio Creativo de Redes
                   </p>
                 </div>
@@ -700,18 +693,18 @@ export default function EstudioMarketingGrilla({
 
               {/* Botón de Tabs para móvil (Editor vs Simulador) y Botón Cerrar */}
               <div className="flex items-center gap-2">
-                <div className="flex md:hidden bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs font-bold">
+                <div className="flex md:hidden bg-blue-50 p-1 rounded-xl border border-blue-100 text-xs font-bold">
                   <button
                     type="button"
                     onClick={() => setModalTab('editor')}
-                    className={`px-3 py-1.5 rounded-lg transition-all ${modalTab === 'editor' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all ${modalTab === 'editor' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
                   >
                     Editor
                   </button>
                   <button
                     type="button"
                     onClick={() => setModalTab('preview')}
-                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${modalTab === 'preview' ? 'bg-purple-600 text-white' : 'text-slate-400'}`}
+                    className={`px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 ${modalTab === 'preview' ? 'bg-blue-600 text-white' : 'text-slate-600'}`}
                   >
                     <Smartphone className="w-3.5 h-3.5" />
                     <span>En Vivo</span>
@@ -721,7 +714,7 @@ export default function EstudioMarketingGrilla({
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-slate-900 hover:bg-slate-800 border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  className="w-9 h-9 rounded-full bg-white hover:bg-blue-50 border border-blue-100 flex items-center justify-center text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -729,15 +722,15 @@ export default function EstudioMarketingGrilla({
             </div>
 
             {/* Cuerpo del Modal: 2 Columnas (Editor a la izquierda, Simulador Instagram a la derecha) */}
-            <form onSubmit={handleGuardarContenido} className="flex-1 overflow-y-auto flex flex-col md:flex-row [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-900 [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-slate-600 [&::-webkit-scrollbar-thumb]:rounded-full">
-              
+            <form onSubmit={handleGuardarContenido} className="flex-1 overflow-y-auto flex flex-col md:flex-row">
+
               {/* COLUMNA IZQUIERDA: CONTROLES DEL EDITOR */}
-              <div className={`p-5 sm:p-6 space-y-5 md:w-7/12 border-b md:border-b-0 md:border-r border-slate-800/80 overflow-y-auto ${modalTab === 'preview' ? 'hidden md:block' : 'block'}`}>
-                
+              <div className={`p-5 sm:p-6 space-y-5 md:w-7/12 border-b md:border-b-0 md:border-r border-blue-100 overflow-y-auto ${modalTab === 'preview' ? 'hidden md:block' : 'block'}`}>
+
                 {/* 1. Selector de Formato con Pills Visuales */}
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                    <Video className="w-3.5 h-3.5 text-purple-400" />
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <Video className="w-3.5 h-3.5 text-indigo-600" />
                     <span>Formato del Contenido</span>
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -746,7 +739,7 @@ export default function EstudioMarketingGrilla({
                       { id: 'Carrusel', label: 'Carrusel', icon: <Layers className="w-4 h-4" />, badge: 'Slides' },
                       { id: 'Post Estático', label: 'Post 1:1', icon: <ImageIcon className="w-4 h-4" />, badge: 'Arte' },
                       { id: 'Historia', label: 'Historia', icon: <Clock className="w-4 h-4" />, badge: '24h' },
-                      { id: 'Flyer / Evento', label: 'Flyer', icon: <Sparkles className="w-4 h-4" />, badge: 'Aviso' },
+                      { id: 'Flyer / Evento', label: 'Flyer', icon: <Megaphone className="w-4 h-4" />, badge: 'Aviso' },
                       { id: 'Guion / Video Largo', label: 'Guion', icon: <FileText className="w-4 h-4" />, badge: 'Largo' },
                     ].map(f => {
                       const isSelected = formData.formato === f.id;
@@ -755,15 +748,14 @@ export default function EstudioMarketingGrilla({
                           key={f.id}
                           type="button"
                           onClick={() => setFormData({ ...formData, formato: f.id as any })}
-                          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                            isSelected
-                              ? 'bg-gradient-to-b from-purple-600/30 to-purple-600/10 border-purple-500 text-white shadow-md shadow-purple-500/20 ring-1 ring-purple-500/40'
-                              : 'bg-slate-900/60 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
-                          }`}
+                          className={`p-2.5 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${isSelected
+                            ? 'bg-indigo-50 border-indigo-400 text-indigo-950 shadow-xs ring-1 ring-indigo-200'
+                            : 'bg-slate-50 border-blue-100 text-slate-600 hover:text-slate-900 hover:border-blue-200 hover:bg-blue-50/50'
+                            }`}
                         >
-                          <div className={isSelected ? 'text-purple-400' : 'text-slate-500'}>{f.icon}</div>
+                          <div className={isSelected ? 'text-indigo-600' : 'text-slate-400'}>{f.icon}</div>
                           <span className="text-[11px] font-black">{f.label}</span>
-                          <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${isSelected ? 'bg-purple-500/30 text-purple-200 font-bold' : 'text-slate-500'}`}>
+                          <span className={`text-[9px] px-1.5 py-0.2 rounded-md ${isSelected ? 'bg-indigo-100 text-indigo-700 font-bold' : 'text-slate-400'}`}>
                             {f.badge}
                           </span>
                         </button>
@@ -775,14 +767,14 @@ export default function EstudioMarketingGrilla({
                 {/* 2. Canal de Difusión & Hora */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Share2 className="w-3.5 h-3.5 text-pink-400" />
+                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Share2 className="w-3.5 h-3.5 text-pink-600" />
                       <span>Canal Oficial</span>
                     </label>
                     <select
                       value={formData.canal}
                       onChange={(e) => setFormData({ ...formData, canal: e.target.value as any })}
-                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     >
                       <option value="Instagram">Instagram Feed / Reels (@romanydelgado)</option>
                       <option value="Instagram Stories">Instagram Stories (24h)</option>
@@ -794,29 +786,29 @@ export default function EstudioMarketingGrilla({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-blue-400" />
+                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-blue-600" />
                       <span>Hora de Publicación</span>
                     </label>
                     <input
                       type="time"
                       value={formData.hora}
                       onChange={(e) => setFormData({ ...formData, hora: e.target.value })}
-                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                     />
                   </div>
                 </div>
 
                 {/* 3. Pilar de Contenido Estratégico */}
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <Scale className="w-3.5 h-3.5 text-amber-400" />
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Scale className="w-3.5 h-3.5 text-blue-600" />
                     <span>Pilar de Contenido (Línea Editorial)</span>
                   </label>
                   <select
                     value={formData.pilar}
                     onChange={(e) => setFormData({ ...formData, pilar: e.target.value })}
-                    className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-semibold text-white outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
                     {PILARES_OFICIALES.map(p => (
                       <option key={p.id} value={p.id}>
@@ -829,11 +821,11 @@ export default function EstudioMarketingGrilla({
                 {/* 4. Título Gancho (Hook) */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                    <label className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <Megaphone className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Título Gancho (Hook de Impacto) *</span>
                     </label>
-                    <span className="text-[10px] text-purple-300 font-bold bg-purple-500/10 px-2 py-0.5 rounded-full">
+                    <span className="text-[10px] text-indigo-700 font-bold bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
                       Primeros 3 segundos
                     </span>
                   </div>
@@ -843,7 +835,7 @@ export default function EstudioMarketingGrilla({
                     value={formData.hook}
                     onChange={(e) => setFormData({ ...formData, hook: e.target.value })}
                     placeholder="Ej: 3 cosas que NUNCA debes firmar sin la presencia de un abogado..."
-                    className="w-full px-4 py-3 bg-slate-900/90 border border-slate-800 rounded-2xl text-sm font-bold text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 shadow-inner"
+                    className="w-full px-4 py-3 bg-slate-50 focus:bg-white border border-blue-100 rounded-2xl text-sm font-bold text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 shadow-2xs"
                   />
                   <span className="text-[11px] text-slate-500 mt-1 block">
                     Este titular detendrá el scroll de los usuarios en Instagram y aparecerá destacado sobre el arte o video.
@@ -853,11 +845,11 @@ export default function EstudioMarketingGrilla({
                 {/* 5. Copywriting del Post */}
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-black text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                      <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                    <label className="text-xs font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-emerald-600" />
                       <span>Copywriting del Post (Texto Completo)</span>
                     </label>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 font-bold">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-bold">
                       <span>{formData.copy.length} caracteres</span>
                       <span>•</span>
                       <span>{formData.copy.trim() ? Math.ceil(formData.copy.trim().split(/\s+/).length / 3) : 0}s lectura</span>
@@ -868,14 +860,14 @@ export default function EstudioMarketingGrilla({
                     value={formData.copy}
                     onChange={(e) => setFormData({ ...formData, copy: e.target.value })}
                     placeholder="Escribe el cuerpo del copy aquí, desarrollando la idea jurídica, el contexto legal, los puntos clave y el llamado a la acción..."
-                    className="w-full p-4 bg-slate-900/90 border border-slate-800 rounded-2xl text-xs sm:text-sm font-medium text-slate-200 placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 leading-relaxed font-sans shadow-inner [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-700"
+                    className="w-full p-4 bg-slate-50 focus:bg-white border border-blue-100 rounded-2xl text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 leading-relaxed font-sans shadow-2xs"
                   />
 
                   {/* Herramientas de Inserción Rápida: CTAs y Hashtags */}
-                  <div className="mt-2.5 p-3.5 bg-slate-900/60 rounded-2xl border border-slate-800/80 space-y-3">
+                  <div className="mt-2.5 p-3.5 bg-blue-50/55 rounded-2xl border border-blue-100 space-y-3">
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 block mb-1.5 flex items-center gap-1">
-                        <span>📲 + Insertar Llamado a la Acción (CTA) Oficial:</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 block mb-1.5 flex items-center gap-1">
+                        <span>+ Insertar Llamado a la Acción (CTA) Oficial:</span>
                       </span>
                       <div className="flex flex-wrap gap-1.5">
                         {CTAS_SUGERIDOS.map((cta, i) => (
@@ -883,7 +875,7 @@ export default function EstudioMarketingGrilla({
                             key={i}
                             type="button"
                             onClick={() => handleInsertCTA(cta)}
-                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 rounded-xl text-[10px] font-medium transition-all text-left cursor-pointer"
+                            className="px-2.5 py-1 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-blue-100 rounded-xl text-[10px] font-medium transition-all text-left cursor-pointer"
                           >
                             {cta.slice(0, 52)}...
                           </button>
@@ -892,8 +884,8 @@ export default function EstudioMarketingGrilla({
                     </div>
 
                     <div>
-                      <span className="text-[10px] font-black uppercase tracking-wider text-pink-400 block mb-1.5 flex items-center gap-1">
-                        <span>🏷️ + Hashtags Oficiales Román & Delgado:</span>
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-700 block mb-1.5 flex items-center gap-1">
+                        <span>+ Hashtags Oficiales Román & Delgado:</span>
                       </span>
                       <div className="flex flex-wrap gap-1">
                         {HASHTAGS_SUGERIDOS.map((tag) => (
@@ -901,7 +893,7 @@ export default function EstudioMarketingGrilla({
                             key={tag}
                             type="button"
                             onClick={() => handleInsertHashtag(tag)}
-                            className="px-2 py-0.5 bg-purple-500/10 hover:bg-purple-500/25 text-purple-300 border border-purple-500/30 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
+                            className="px-2 py-0.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-bold transition-all cursor-pointer"
                           >
                             {tag}
                           </button>
@@ -913,8 +905,8 @@ export default function EstudioMarketingGrilla({
 
                 {/* 6. Enlace a Google Drive o Canva */}
                 <div>
-                  <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
-                    <Folder className="w-3.5 h-3.5 text-blue-400" />
+                  <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                    <Folder className="w-3.5 h-3.5 text-blue-600" />
                     <span>Enlace a Google Drive / Canva (Video o Arte)</span>
                   </label>
                   <div className="flex items-center gap-2">
@@ -924,16 +916,16 @@ export default function EstudioMarketingGrilla({
                         value={formData.driveUrl}
                         onChange={(e) => setFormData({ ...formData, driveUrl: e.target.value })}
                         placeholder="https://drive.google.com/drive/folders/... o Canva"
-                        className="w-full pl-10 pr-3 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-medium text-white placeholder-slate-500 outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                        className="w-full pl-10 pr-3 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                       />
-                      <Folder className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                      <Folder className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     </div>
                     {formData.driveUrl && (
                       <a
                         href={formData.driveUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="px-3.5 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
+                        className="px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold flex items-center gap-1 transition-colors shrink-0"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                         <span>Abrir</span>
@@ -943,26 +935,26 @@ export default function EstudioMarketingGrilla({
                 </div>
 
                 {/* 7. Estado de Aprobación & Observaciones de Jefatura */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-800/80">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-blue-100">
                   <div>
-                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5">
                       Estado de Aprobación
                     </label>
                     <select
                       value={formData.estado}
                       onChange={(e) => setFormData({ ...formData, estado: e.target.value as any })}
-                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-bold text-white outline-none focus:border-purple-500"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-bold text-slate-900 outline-none focus:border-blue-500"
                     >
-                      <option value="En Revisión Jefatura">🟡 En Revisión por Jefatura</option>
-                      <option value="Aprobado para Publicar">🟢 Aprobado por Jefatura (Listo)</option>
-                      <option value="Publicado">🔵 Publicado en Instagram</option>
-                      <option value="Borrador">⚪ Borrador en Redacción</option>
-                      <option value="Requiere Ajustes">🔴 Requiere Ajustes / Corrección</option>
+                      <option value="En Revisión Jefatura">En Revisión por Jefatura</option>
+                      <option value="Aprobado para Publicar">Aprobado por Jefatura (Listo)</option>
+                      <option value="Publicado">Publicado en Instagram</option>
+                      <option value="Borrador">Borrador en Redacción</option>
+                      <option value="Requiere Ajustes">Requiere Ajustes / Corrección</option>
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black text-slate-300 uppercase tracking-wider mb-1.5">
+                    <label className="block text-xs font-black text-slate-600 uppercase tracking-wider mb-1.5">
                       Feedback de Jefatura (Víctor / Luis)
                     </label>
                     <input
@@ -970,7 +962,7 @@ export default function EstudioMarketingGrilla({
                       value={formData.feedbackJefatura}
                       onChange={(e) => setFormData({ ...formData, feedbackJefatura: e.target.value })}
                       placeholder="Observaciones de Víctor Román o Luis Delgado..."
-                      className="w-full px-3.5 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs sm:text-sm font-medium text-white placeholder-slate-500 outline-none focus:border-purple-500"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 focus:bg-white border border-blue-100 rounded-xl text-xs sm:text-sm font-medium text-slate-900 placeholder-slate-400 outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -978,83 +970,83 @@ export default function EstudioMarketingGrilla({
               </div>
 
               {/* COLUMNA DERECHA: SIMULADOR EN VIVO INSTAGRAM @romanydelgado */}
-              <div className={`p-5 sm:p-6 md:w-5/12 bg-slate-900/40 flex flex-col justify-between space-y-4 ${modalTab === 'editor' ? 'hidden md:flex' : 'flex'}`}>
-                
+              <div className={`p-5 sm:p-6 md:w-5/12 bg-kant-canvas flex flex-col justify-between space-y-4 ${modalTab === 'editor' ? 'hidden md:flex' : 'flex'}`}>
+
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-pink-400" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-pink-600" />
                       <span>Simulador en Vivo Instagram</span>
                     </span>
-                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                       Feed Real @romanydelgado
                     </span>
                   </div>
 
                   {/* FRAME DE TELÉFONO / CARD DE INSTAGRAM */}
-                  <div className="bg-slate-950 rounded-3xl border border-slate-800 shadow-xl overflow-hidden">
-                    
+                  <div className="bg-white rounded-3xl border border-blue-100 shadow-lg shadow-blue-950/10 overflow-hidden">
+
                     {/* Top Bar de la Publicación */}
-                    <div className="p-3.5 border-b border-slate-800/60 flex items-center justify-between bg-slate-900/40">
+                    <div className="p-3.5 border-b border-blue-50 flex items-center justify-between bg-white">
                       <div className="flex items-center gap-2.5">
-                        <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600">
-                          <div className="w-7 h-7 rounded-full bg-slate-950 flex items-center justify-center text-amber-400 text-[10px] font-black">
+                        <div className="p-[1.5px] rounded-full bg-gradient-to-tr from-blue-500 via-indigo-500 to-pink-500">
+                          <div className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-blue-700 text-[10px] font-black">
                             <Scale className="w-3.5 h-3.5" />
                           </div>
                         </div>
                         <div>
                           <div className="flex items-center gap-1">
-                            <span className="text-xs font-black text-white">romanydelgado</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                            <span className="text-[10px] text-purple-300 font-bold">Siguiendo</span>
+                            <span className="text-xs font-black text-slate-900">romanydelgado</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                            <span className="text-[10px] text-blue-600 font-bold">Siguiendo</span>
                           </div>
-                          <span className="text-[10px] text-slate-400 block -mt-0.5">
+                          <span className="text-[10px] text-slate-500 block -mt-0.5">
                             Valencia, Carabobo
                           </span>
                         </div>
                       </div>
-                      <span className="text-slate-500 text-xs font-black cursor-pointer">•••</span>
+                      <span className="text-slate-400 text-xs font-black cursor-pointer">•••</span>
                     </div>
 
-                    {/* Canvas / Arte Visual Simulado */}
-                    <div className="aspect-square bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 p-6 flex flex-col justify-between relative overflow-hidden border-y border-slate-800/80">
-                      <div className="absolute -top-12 -right-12 w-36 h-36 bg-purple-500/15 rounded-full blur-2xl" />
-                      <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl" />
+                    {/* Canvas / Arte Visual Simulado (Azul Ejecutivo Corporativo) */}
+                    <div className="aspect-square bg-gradient-to-br from-blue-700 via-indigo-800 to-blue-950 p-6 flex flex-col justify-between relative overflow-hidden border-y border-blue-100">
+                      <div className="absolute -top-12 -right-12 w-36 h-36 bg-sky-400/20 rounded-full blur-2xl" />
+                      <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-indigo-400/20 rounded-full blur-2xl" />
 
                       {/* Header dentro del Arte */}
                       <div className="relative z-10 flex items-center justify-between">
-                        <span className="px-2.5 py-1 bg-white/10 backdrop-blur-md rounded-lg text-[10px] font-black uppercase tracking-wider text-purple-300 border border-white/10 flex items-center gap-1">
-                          {formData.formato === 'Reel' ? <Video className="w-3 h-3 text-purple-400" /> :
-                           formData.formato === 'Carrusel' ? <Layers className="w-3 h-3 text-blue-400" /> :
-                           <ImageIcon className="w-3 h-3 text-emerald-400" />}
+                        <span className="px-2.5 py-1 bg-white/15 backdrop-blur-md rounded-lg text-[10px] font-black uppercase tracking-wider text-sky-100 border border-white/20 flex items-center gap-1">
+                          {formData.formato === 'Reel' ? <Video className="w-3 h-3 text-sky-200" /> :
+                            formData.formato === 'Carrusel' ? <Layers className="w-3 h-3 text-sky-200" /> :
+                              <ImageIcon className="w-3 h-3 text-emerald-300" />}
                           {formData.formato}
                         </span>
 
-                        <span className="px-2 py-0.5 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded-md text-[9px] font-bold">
+                        <span className="px-2 py-0.5 bg-white/15 text-blue-100 border border-white/20 rounded-md text-[9px] font-bold">
                           {formData.pilar.slice(0, 24)}
                         </span>
                       </div>
 
                       {/* Titular Gancho (Hook) en el centro del arte */}
                       <div className="relative z-10 text-center py-4">
-                        <div className="w-10 h-10 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto mb-3 shadow-md">
+                        <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 text-white flex items-center justify-center mx-auto mb-3 shadow-md">
                           <Scale className="w-5 h-5" />
                         </div>
                         <h4 className="text-base sm:text-lg font-black text-white leading-snug drop-shadow-md">
                           {formData.hook || 'Escribe un Gancho de Impacto en el editor...'}
                         </h4>
-                        <span className="text-[10px] text-slate-400 font-bold tracking-widest uppercase mt-2 block">
+                        <span className="text-[10px] text-blue-200 font-bold tracking-widest uppercase mt-2 block">
                           Román & Delgado | Abogados
                         </span>
                       </div>
 
                       {/* Pie del Arte: Audio simulado / Drive */}
-                      <div className="relative z-10 flex items-center justify-between text-[10px] text-slate-400 font-medium">
-                        <span className="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 text-slate-300">
-                          🎵 Audio original • romanydelgado
+                      <div className="relative z-10 flex items-center justify-between text-[10px] text-blue-100 font-medium">
+                        <span className="bg-black/25 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/15 text-blue-50">
+                          Audio original • romanydelgado
                         </span>
                         {formData.driveUrl && (
-                          <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <span className="text-emerald-300 font-bold flex items-center gap-1">
                             <Check className="w-3 h-3" /> Drive OK
                           </span>
                         )}
@@ -1062,41 +1054,41 @@ export default function EstudioMarketingGrilla({
                     </div>
 
                     {/* Botones de Interacción Instagram */}
-                    <div className="p-3.5 space-y-2.5 bg-slate-900/30">
+                    <div className="p-3.5 space-y-2.5 bg-white">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-white">
+                        <div className="flex items-center gap-3 text-slate-700">
                           <Heart className="w-5 h-5 hover:text-rose-500 cursor-pointer transition-colors" />
-                          <MessageSquare className="w-5 h-5 hover:text-purple-400 cursor-pointer transition-colors" />
-                          <Send className="w-5 h-5 hover:text-blue-400 cursor-pointer transition-colors" />
+                          <MessageSquare className="w-5 h-5 hover:text-indigo-600 cursor-pointer transition-colors" />
+                          <Send className="w-5 h-5 hover:text-blue-600 cursor-pointer transition-colors" />
                         </div>
-                        <Bookmark className="w-5 h-5 text-white hover:text-amber-400 cursor-pointer transition-colors" />
+                        <Bookmark className="w-5 h-5 text-slate-700 hover:text-blue-600 cursor-pointer transition-colors" />
                       </div>
 
-                      <div className="text-xs font-black text-white">
+                      <div className="text-xs font-black text-slate-900">
                         1,272 Me gusta
                       </div>
 
                       {/* Texto del Copywriting con Formato Instagram */}
-                      <div className="text-xs text-slate-300 leading-relaxed max-h-36 overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-slate-700">
-                        <span className="font-black text-white mr-1.5">romanydelgado</span>
-                        <span className="font-bold text-purple-300">{formData.hook}</span>
+                      <div className="text-xs text-slate-600 leading-relaxed max-h-36 overflow-y-auto pr-1">
+                        <span className="font-black text-slate-900 mr-1.5">romanydelgado</span>
+                        <span className="font-bold text-indigo-700">{formData.hook}</span>
                         {formData.copy && (
-                          <div className="mt-1.5 text-slate-300 whitespace-pre-wrap font-sans text-xs">
+                          <div className="mt-1.5 text-slate-600 whitespace-pre-wrap font-sans text-xs">
                             {formData.copy}
                           </div>
                         )}
                       </div>
 
                       {/* Botón Acción Rápida WhatsApp */}
-                      <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-500 font-medium">Hace 1 hora • Ver traducción</span>
+                      <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                        <span className="text-slate-400 font-medium">Hace 1 hora • Ver traducción</span>
                         <a
                           href="https://wa.me/584144996967"
                           target="_blank"
                           rel="noreferrer"
-                          className="text-emerald-400 font-bold hover:underline"
+                          className="text-emerald-600 font-bold hover:underline"
                         >
-                          📲 wa.me/584144996967
+                          wa.me/584144996967
                         </a>
                       </div>
                     </div>
@@ -1105,14 +1097,14 @@ export default function EstudioMarketingGrilla({
                 </div>
 
                 {/* Resumen del Post */}
-                <div className="p-3 bg-slate-900/80 rounded-2xl border border-slate-800 text-xs space-y-1">
-                  <div className="flex justify-between text-slate-400">
+                <div className="p-3 bg-white rounded-2xl border border-blue-100 text-xs space-y-1 shadow-2xs">
+                  <div className="flex justify-between text-slate-500">
                     <span>Programado para:</span>
-                    <span className="font-bold text-white">{formData.fechaProgramada || 'Hoy'} - {formData.hora}</span>
+                    <span className="font-bold text-slate-900">{formData.fechaProgramada || 'Hoy'} - {formData.hora}</span>
                   </div>
-                  <div className="flex justify-between text-slate-400">
+                  <div className="flex justify-between text-slate-500">
                     <span>Estado en Bitácora:</span>
-                    <span className={`font-bold ${formData.estado === 'Aprobado para Publicar' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <span className={`font-bold ${formData.estado === 'Aprobado para Publicar' ? 'text-emerald-600' : 'text-indigo-600'}`}>
                       {formData.estado}
                     </span>
                   </div>
@@ -1123,11 +1115,11 @@ export default function EstudioMarketingGrilla({
             </form>
 
             {/* Pie del Modal con Botones de Acción */}
-            <div className="p-4 sm:p-5 border-t border-slate-800/80 bg-slate-900/80 flex items-center justify-between gap-3">
+            <div className="p-4 sm:p-5 border-t border-blue-100 bg-white flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1136,7 +1128,7 @@ export default function EstudioMarketingGrilla({
                 <button
                   type="button"
                   onClick={handleGuardarContenido}
-                  className="px-6 py-2.5 bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 hover:from-pink-500 hover:to-indigo-500 text-white rounded-xl font-black text-xs shadow-lg shadow-purple-500/25 cursor-pointer transition-all active:scale-95 flex items-center gap-2"
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-black text-xs shadow-lg shadow-blue-500/20 cursor-pointer transition-all active:scale-95 flex items-center gap-2"
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingId ? 'Guardar Cambios' : 'Agregar a la Grilla Oficial'}</span>

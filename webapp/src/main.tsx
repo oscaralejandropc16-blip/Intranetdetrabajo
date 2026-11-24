@@ -30,17 +30,17 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white text-center">
-          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 max-w-md shadow-2xl space-y-4">
-            <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center mx-auto text-amber-500">
+        <div className="min-h-screen bg-kant-canvas flex flex-col items-center justify-center p-6 text-slate-900 text-center">
+          <div className="bg-white/95 backdrop-blur-xl p-8 rounded-3xl border border-blue-100 max-w-md shadow-2xl shadow-blue-950/10 space-y-4">
+            <div className="w-16 h-16 bg-blue-50 border border-blue-100 rounded-2xl flex items-center justify-center mx-auto text-blue-600">
               <AlertCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold">¡Nueva versión disponible o error temporal!</h2>
-            <p className="text-slate-400 text-sm">
-              El sistema ha sido actualizado recientemente en el servidor. Por favor, recarga tu pantalla para aplicar los últimos cambios.
+            <h2 className="text-2xl font-extrabold text-slate-900">Nueva versión disponible</h2>
+            <p className="text-slate-600 text-sm font-medium">
+              El sistema ha sido actualizado recientemente en el servidor. Recarga tu pantalla para aplicar los últimos cambios.
             </p>
             {this.state.error && (
-              <pre className="text-xs text-red-400 bg-slate-900 p-3 rounded-lg overflow-x-auto text-left max-h-32">
+              <pre className="text-xs text-rose-700 bg-rose-50 border border-rose-200 p-3 rounded-xl overflow-x-auto text-left max-h-32">
                 {String(this.state.error?.message || this.state.error)}
               </pre>
             )}
@@ -49,7 +49,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
                 sessionStorage.removeItem('rd_chunk_reload');
                 window.location.reload();
               }}
-              className="w-full bg-amber-500 hover:bg-amber-400 text-slate-900 font-bold py-3 rounded-xl transition-colors shadow-lg cursor-pointer flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3 rounded-xl transition-all shadow-lg shadow-blue-500/25 cursor-pointer flex items-center justify-center gap-2"
             >
               <RefreshCw className="w-4 h-4" />
               Recargar Página Ahora

@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   Briefcase, Search, Filter, RefreshCw, ExternalLink, 
   MessageCircle, Mail, FileText, Clock, 
-  Trash2, AlertCircle, MessageSquare, Save
+  Trash2, AlertCircle, MessageSquare, Save, X,
+  ChevronLeft, ChevronRight, CheckCircle2, Users,
+  Phone
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { format } from 'date-fns';
@@ -30,6 +32,10 @@ export default function ModuloBolsaEmpleo() {
   const [editingNotesId, setEditingNotesId] = useState<number | null>(null);
   const [tempNotes, setTempNotes] = useState('');
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+
+  // Paginación
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(8);
 
   // 1. Cargar postulantes desde Supabase (Optimizada para plan gratuito)
   const fetchCandidatos = useCallback(async (isSilent = false) => {
@@ -127,22 +133,37 @@ export default function ModuloBolsaEmpleo() {
   };
 
   // 5. Filtrado de candidatos
-  const candidatosFiltrados = candidatos.filter(c => {
-    const matchesSearch = 
-      c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.telefono.includes(searchTerm);
-    
-    const matchesCargo = filtroCargo === 'Todos' || c.cargo === filtroCargo;
-    const matchesEstado = filtroEstado === 'Todos' || c.estado === filtroEstado;
+  const candidatosFiltrados = useMemo(() => {
+    return candidatos.filter(c => {
+      const matchesSearch = 
+        c.nombre.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.telefono.includes(searchTerm);
+      
+      const matchesCargo = filtroCargo === 'Todos' || c.cargo === filtroCargo;
+      const matchesEstado = filtroEstado === 'Todos' || c.estado === filtroEstado;
 
-    return matchesSearch && matchesCargo && matchesEstado;
-  });
+      return matchesSearch && matchesCargo && matchesEstado;
+    });
+  }, [candidatos, searchTerm, filtroCargo, filtroEstado]);
+
+  // Paginación calculada
+  const totalPages = Math.max(1, Math.ceil(candidatosFiltrados.length / pageSize));
+  const paginatedCandidatos = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize;
+    return candidatosFiltrados.slice(startIndex, startIndex + pageSize);
+  }, [candidatosFiltrados, currentPage, pageSize]);
+
+  // Reset page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filtroCargo, filtroEstado, pageSize]);
 
   // Métricas rápidas
   const totalPostulados = candidatos.length;
   const totalNuevos = candidatos.filter(c => c.estado === 'nuevo').length;
   const totalContactados = candidatos.filter(c => c.estado === 'contactado').length;
+  const totalEnRevision = candidatos.filter(c => c.estado === 'en_revision').length;
 
   const cargosDisponibles = Array.from(new Set(candidatos.map(c => c.cargo))).filter(Boolean);
 
@@ -161,23 +182,23 @@ export default function ModuloBolsaEmpleo() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-6 animate-in fade-in duration-200">
       
-      {/* HEADER PRINCIPAL */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 p-6 lg:p-8 rounded-3xl border border-slate-700/80 shadow-xl text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+      {/* 1. HEADER PRINCIPAL EJECUTIVO */}
+      <div className="bg-white p-6 sm:p-7 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-bold uppercase tracking-wider mb-3">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200 text-[#1e3a8a] text-xs font-bold uppercase tracking-wider mb-2.5">
+              <Users className="w-3.5 h-3.5 text-blue-700" />
               Talento Humano & Reclutamiento
             </div>
-            <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-              <Briefcase className="w-8 h-8 text-amber-400" />
-              Bolsa de Empleo &amp; Postulaciones
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20">
+                <Briefcase className="w-6 h-6" />
+              </span>
+              Bolsa de Empleo & Postulaciones
             </h2>
-            <p className="text-slate-300 text-sm mt-1 max-w-2xl">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-2xl font-normal leading-relaxed">
               Panel exclusivo de Jefatura para revisar credenciales, contactar a postulantes vía WhatsApp o correo y gestionar su proceso de selección.
             </p>
           </div>
@@ -185,32 +206,67 @@ export default function ModuloBolsaEmpleo() {
           <button
             onClick={() => fetchCandidatos()}
             disabled={refreshing}
-            className="self-start md:self-center px-4 py-2.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-amber-400 hover:text-amber-300 border border-slate-600 rounded-xl font-bold text-xs flex items-center gap-2 shadow-md transition-all cursor-pointer"
+            className="self-start md:self-center px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer shrink-0"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-slate-500 ${refreshing ? 'animate-spin text-blue-600' : ''}`} />
             <span>Actualizar</span>
           </button>
         </div>
 
-        {/* METRICAS RESUMEN */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-700/60">
-          <div className="bg-slate-800/60 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-slate-700/50">
-            <span className="text-xs font-semibold text-slate-400 block uppercase">Total Postulados</span>
-            <span className="text-2xl font-black text-white">{totalPostulados}</span>
+        {/* 2. MÉTRICAS KPI RESUMEN */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-100">
+          {/* Total Postulados */}
+          <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Total Postulados</span>
+              <span className="text-2xl font-black text-slate-900 mt-0.5 block">{totalPostulados}</span>
+              <span className="text-[10px] text-slate-400 font-medium">Registrados vía web</span>
+            </div>
+            <div className="p-3 bg-white rounded-2xl border border-slate-200 text-slate-700 shadow-2xs">
+              <Users className="w-5 h-5 text-slate-700" />
+            </div>
           </div>
-          <div className="bg-amber-500/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-amber-500/30">
-            <span className="text-xs font-bold text-amber-400 block uppercase">Nuevos por Responder</span>
-            <span className="text-2xl font-black text-amber-300">{totalNuevos}</span>
+
+          {/* Nuevos por Responder */}
+          <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-200/80 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider block">Nuevos por Responder</span>
+              <span className="text-2xl font-black text-blue-700 mt-0.5 block">{totalNuevos}</span>
+              <span className="text-[10px] text-blue-600 font-medium">Requieren contacto inicial</span>
+            </div>
+            <div className="p-3 bg-white rounded-2xl border border-blue-200 text-blue-600 shadow-2xs">
+              <Clock className="w-5 h-5 text-blue-600" />
+            </div>
           </div>
-          <div className="bg-emerald-500/10 backdrop-blur-md p-3 sm:p-4 rounded-2xl border border-emerald-500/30 col-span-2 sm:col-span-1">
-            <span className="text-xs font-bold text-emerald-400 block uppercase">Contactados / Respondidos</span>
-            <span className="text-2xl font-black text-emerald-300">{totalContactados}</span>
+
+          {/* Contactados */}
+          <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/80 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider block">Contactados</span>
+              <span className="text-2xl font-black text-emerald-700 mt-0.5 block">{totalContactados}</span>
+              <span className="text-[10px] text-emerald-600 font-medium">WhatsApp o Correo enviado</span>
+            </div>
+            <div className="p-3 bg-white rounded-2xl border border-emerald-200 text-emerald-600 shadow-2xs">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            </div>
+          </div>
+
+          {/* En Entrevista / Revisión */}
+          <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-200/80 flex items-center justify-between">
+            <div>
+              <span className="text-[11px] font-bold text-indigo-800 uppercase tracking-wider block">En Entrevista</span>
+              <span className="text-2xl font-black text-indigo-700 mt-0.5 block">{totalEnRevision}</span>
+              <span className="text-[10px] text-indigo-600 font-medium">Evaluación en curso</span>
+            </div>
+            <div className="p-3 bg-white rounded-2xl border border-indigo-200 text-indigo-600 shadow-2xs">
+              <Briefcase className="w-5 h-5 text-indigo-600" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* BARRA DE BÚSQUEDA Y FILTROS */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      {/* 3. BARRA DE BÚSQUEDA Y FILTROS */}
+      <div className="bg-white p-4 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="relative flex-1">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
@@ -218,12 +274,12 @@ export default function ModuloBolsaEmpleo() {
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Buscar por nombre, correo o teléfono..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 outline-none transition-all"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-bold text-slate-800 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all shadow-2xs"
           />
         </div>
 
         <div className="flex flex-wrap gap-2.5 items-center">
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
             <Filter className="w-3.5 h-3.5 text-slate-500" />
             <select
               value={filtroCargo}
@@ -237,41 +293,54 @@ export default function ModuloBolsaEmpleo() {
             </select>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl shadow-2xs">
             <select
               value={filtroEstado}
               onChange={e => setFiltroEstado(e.target.value)}
               className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
             >
               <option value="Todos">Todos los estados</option>
-              <option value="nuevo">🟡 Nuevos</option>
-              <option value="contactado">🟢 Contactados / Respondidos</option>
-              <option value="en_revision">🔵 En Entrevista / Revisión</option>
-              <option value="descartado">⚪ Descartados</option>
+              <option value="nuevo">Nuevos</option>
+              <option value="contactado">Contactados / Respondidos</option>
+              <option value="en_revision">En Entrevista / Revisión</option>
+              <option value="descartado">Descartados</option>
             </select>
           </div>
+
+          {(searchTerm || filtroCargo !== 'Todos' || filtroEstado !== 'Todos') && (
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setFiltroCargo('Todos');
+                setFiltroEstado('Todos');
+              }}
+              className="px-2.5 py-1.5 text-xs font-bold text-rose-600 hover:bg-rose-50 rounded-xl border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              <X className="w-3.5 h-3.5" /> Limpiar
+            </button>
+          )}
         </div>
       </div>
 
-      {/* LISTA DE CANDIDATOS */}
+      {/* 4. LISTA DE CANDIDATOS */}
       {loading ? (
-        <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center">
-          <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-3" />
+        <div className="bg-white p-16 rounded-3xl border border-slate-200/90 text-center shadow-2xs">
+          <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
           <p className="text-slate-600 font-bold text-sm">Consultando base de postulaciones...</p>
         </div>
       ) : candidatosFiltrados.length === 0 ? (
-        <div className="bg-white p-16 rounded-3xl border border-slate-200 text-center">
-          <AlertCircle className="w-10 h-10 text-slate-400 mx-auto mb-3" />
-          <h3 className="text-slate-800 font-bold text-lg mb-1">No se encontraron postulantes</h3>
-          <p className="text-slate-500 text-sm max-w-md mx-auto">
+        <div className="bg-white p-16 rounded-3xl border border-slate-200/90 text-center shadow-2xs">
+          <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+          <h3 className="text-slate-800 font-bold text-base mb-1">No se encontraron postulantes</h3>
+          <p className="text-slate-500 text-xs max-w-md mx-auto">
             {searchTerm || filtroCargo !== 'Todos' || filtroEstado !== 'Todos'
-              ? 'Intenta ajustar los filtros de búsqueda.'
+              ? 'Intenta ajustar o limpiar los filtros de búsqueda.'
               : 'Aún no hay currículums registrados a través del formulario de la web.'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {candidatosFiltrados.map(c => {
+        <div className="space-y-3.5">
+          {paginatedCandidatos.map(c => {
             const fechaFormateada = c.created_at ? (() => {
               try {
                 return format(new Date(c.created_at), "d 'de' MMMM, yyyy - hh:mm a", { locale: es });
@@ -280,57 +349,72 @@ export default function ModuloBolsaEmpleo() {
               }
             })() : 'Fecha no registrada';
 
+            const isNuevo = c.estado === 'nuevo';
+
             return (
               <div 
                 key={c.id} 
-                className={`bg-white rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
-                  c.estado === 'nuevo' 
-                    ? 'border-amber-400/80 bg-gradient-to-r from-amber-50/40 via-white to-white' 
+                className={`bg-white rounded-2xl border transition-all duration-200 shadow-2xs hover:shadow-xs p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${
+                  isNuevo 
+                    ? 'border-blue-300/90 border-l-4 border-l-blue-600 bg-gradient-to-r from-blue-50/30 via-white to-white' 
                     : 'border-slate-200/90'
                 }`}
               >
                 {/* DATOS DEL CANDIDATO */}
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-900 to-indigo-900 text-amber-400 font-black text-lg flex items-center justify-center shrink-0 shadow-md">
+                <div className="flex items-start gap-4 flex-1 min-w-0">
+                  <div className={`w-12 h-12 rounded-2xl font-black text-sm flex items-center justify-center shrink-0 shadow-2xs ${
+                    isNuevo 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}>
                     {c.nombre.substring(0, 2).toUpperCase()}
                   </div>
 
                   <div className="space-y-1.5 flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <h4 className="font-bold text-slate-900 text-base leading-tight truncate">
+                      <h4 className="font-extrabold text-slate-900 text-base leading-tight truncate">
                         {c.nombre}
                       </h4>
 
-                      <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200">
+                      <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200/80">
                         {c.cargo}
                       </span>
 
-                      {/* BADGE DE ESTADO */}
+                      {/* BADGE DE ESTADO (CERO EMOJIS, CERO AMARILLO) */}
                       {c.estado === 'nuevo' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-slate-950 shadow-sm animate-pulse">
-                          🟡 Nuevo
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-black bg-blue-50 text-blue-700 border border-blue-200">
+                          <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" />
+                          Nuevo
                         </span>
                       )}
                       {c.estado === 'contactado' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300">
-                          🟢 Respondido / Contactado
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          Respondido / Contactado
                         </span>
                       )}
                       {c.estado === 'en_revision' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-indigo-100 text-indigo-800 border border-indigo-300">
-                          🔵 En Entrevista
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                          <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
+                          En Entrevista
                         </span>
                       )}
                       {c.estado === 'descartado' && (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-500 border border-slate-300">
-                          ⚪ Descartado
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                          Descartado
                         </span>
                       )}
                     </div>
 
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500">
-                      <span><strong>Correo:</strong> {c.email}</span>
-                      <span><strong>Teléfono:</strong> {c.telefono}</span>
+                      <span className="flex items-center gap-1">
+                        <Mail className="w-3.5 h-3.5 text-slate-400" />
+                        <strong className="text-slate-700 font-semibold">{c.email}</strong>
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Phone className="w-3.5 h-3.5 text-slate-400" />
+                        <strong className="text-slate-700 font-semibold">{c.telefono}</strong>
+                      </span>
                       <span className="flex items-center gap-1 text-slate-400">
                         <Clock className="w-3.5 h-3.5" />
                         {fechaFormateada}
@@ -339,24 +423,25 @@ export default function ModuloBolsaEmpleo() {
 
                     {/* NOTAS INTERNAS DE JEFATURA */}
                     {editingNotesId === c.id ? (
-                      <div className="mt-2 flex gap-2 max-w-lg">
+                      <div className="mt-2 flex gap-2 max-w-lg animate-in fade-in duration-150">
                         <input
                           type="text"
                           value={tempNotes}
                           onChange={e => setTempNotes(e.target.value)}
                           placeholder="Añadir nota interna (ej. 'Llamar el viernes')..."
-                          className="flex-1 px-3 py-1.5 text-xs bg-slate-50 border border-amber-300 rounded-lg outline-none focus:bg-white"
+                          className="flex-1 px-3 py-1.5 text-xs bg-slate-50 border border-blue-300 rounded-xl outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+                          autoFocus
                         />
                         <button
                           onClick={() => handleSaveNotes(c.id)}
                           disabled={updatingId === c.id}
-                          className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1 shadow-sm cursor-pointer"
+                          className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl flex items-center gap-1 shadow-xs cursor-pointer active:scale-95"
                         >
                           <Save className="w-3.5 h-3.5" /> Guardar
                         </button>
                         <button
                           onClick={() => setEditingNotesId(null)}
-                          className="px-2 py-1.5 text-slate-500 hover:text-slate-800 text-xs cursor-pointer"
+                          className="px-2.5 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-bold cursor-pointer"
                         >
                           Cancelar
                         </button>
@@ -364,8 +449,8 @@ export default function ModuloBolsaEmpleo() {
                     ) : (
                       <div className="mt-1 flex items-center gap-2">
                         {c.notas ? (
-                          <p className="text-xs text-amber-900 bg-amber-50/80 border border-amber-200/80 px-2.5 py-1 rounded-md inline-flex items-center gap-1.5">
-                            <MessageSquare className="w-3 h-3 text-amber-600 shrink-0" />
+                          <p className="text-xs text-slate-700 bg-slate-100 border border-slate-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1.5">
+                            <MessageSquare className="w-3 h-3 text-blue-600 shrink-0" />
                             <span><strong>Nota Jefatura:</strong> {c.notas}</span>
                           </p>
                         ) : null}
@@ -374,7 +459,7 @@ export default function ModuloBolsaEmpleo() {
                             setEditingNotesId(c.id);
                             setTempNotes(c.notas || '');
                           }}
-                          className="text-[11px] text-slate-400 hover:text-amber-600 underline font-medium cursor-pointer"
+                          className="text-[11px] text-slate-400 hover:text-blue-600 underline font-medium cursor-pointer"
                         >
                           {c.notas ? 'Editar nota' : '+ Añadir nota interna'}
                         </button>
@@ -384,7 +469,7 @@ export default function ModuloBolsaEmpleo() {
                 </div>
 
                 {/* ACCIONES DIRECTAS: WHATSAPP, CORREO, CV Y CAMBIO DE ESTADO */}
-                <div className="flex flex-wrap lg:flex-nowrap items-center gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 shrink-0">
+                <div className="flex flex-wrap lg:flex-nowrap items-center gap-2 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 shrink-0">
                   
                   {/* BOTÓN WHATSAPP */}
                   <a
@@ -394,7 +479,7 @@ export default function ModuloBolsaEmpleo() {
                     onClick={() => {
                       if (c.estado === 'nuevo') handleCambiarEstado(c.id, 'contactado');
                     }}
-                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
                     title="Escribir directo por WhatsApp"
                   >
                     <MessageCircle className="w-4 h-4" />
@@ -407,43 +492,43 @@ export default function ModuloBolsaEmpleo() {
                     onClick={() => {
                       if (c.estado === 'nuevo') handleCambiarEstado(c.id, 'contactado');
                     }}
-                    className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
+                    className="px-3.5 py-2 bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 active:scale-95 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
                     title="Enviar correo"
                   >
-                    <Mail className="w-4 h-4 text-slate-500" />
+                    <Mail className="w-4 h-4 text-sky-600" />
                     <span>Correo</span>
                   </a>
 
-                  {/* BOTÓN VER / DESCARGAR CV */}
+                  {/* BOTÓN VER / DESCARGAR CV (AZUL EJECUTIVO, SIN AMARILLO) */}
                   <a
                     href={c.cv_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3.5 py-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 active:scale-95 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-sm transition-all"
+                    className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-md shadow-blue-600/20 transition-all cursor-pointer"
                     title="Abrir Currículum Vitae adjunto"
                   >
                     <FileText className="w-4 h-4" />
                     <span>Ver CV</span>
-                    <ExternalLink className="w-3 h-3 ml-0.5 opacity-70" />
+                    <ExternalLink className="w-3 h-3 ml-0.5 opacity-80" />
                   </a>
 
-                  {/* CAMBIAR ESTADO RÁPIDO */}
+                  {/* CAMBIAR ESTADO RÁPIDO (CERO EMOJIS) */}
                   <select
                     value={c.estado}
                     onChange={e => handleCambiarEstado(c.id, e.target.value as CandidatoBolsa['estado'])}
                     disabled={updatingId === c.id}
-                    className="bg-slate-50 hover:bg-slate-100 border border-slate-300 text-xs font-bold text-slate-700 rounded-xl px-2.5 py-2 outline-none cursor-pointer"
+                    className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl px-3 py-2 outline-none cursor-pointer focus:border-blue-500 shadow-2xs"
                   >
-                    <option value="nuevo">🟡 Pendiente</option>
-                    <option value="contactado">🟢 Contactado</option>
-                    <option value="en_revision">🔵 En Entrevista</option>
-                    <option value="descartado">⚪ Descartado</option>
+                    <option value="nuevo">Pendiente / Nuevo</option>
+                    <option value="contactado">Contactado</option>
+                    <option value="en_revision">En Entrevista</option>
+                    <option value="descartado">Descartado</option>
                   </select>
 
                   {/* ELIMINAR */}
                   <button
                     onClick={() => handleDeleteCandidato(c.id, c.nombre)}
-                    className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all cursor-pointer"
+                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                     title="Eliminar postulación"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -453,6 +538,70 @@ export default function ModuloBolsaEmpleo() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* 5. PAGINACIÓN */}
+      {candidatosFiltrados.length > 0 && (
+        <div className="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+          <div className="text-slate-500 font-medium flex items-center gap-3">
+            <span>
+              Mostrando <strong className="text-slate-800 font-bold">{Math.min(candidatosFiltrados.length, (currentPage - 1) * pageSize + 1)}</strong> a <strong className="text-slate-800 font-bold">{Math.min(candidatosFiltrados.length, currentPage * pageSize)}</strong> de <strong className="text-slate-800 font-bold">{candidatosFiltrados.length}</strong> postulaciones
+            </span>
+
+            <div className="flex items-center gap-1.5 pl-3 border-l border-slate-200">
+              <span className="text-slate-400">Por pág:</span>
+              <select
+                value={pageSize}
+                onChange={e => setPageSize(Number(e.target.value))}
+                className="bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-700 outline-none cursor-pointer"
+              >
+                <option value={4}>4</option>
+                <option value={8}>8</option>
+                <option value={15}>15</option>
+                <option value={30}>30</option>
+              </select>
+            </div>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-1 transition-all cursor-pointer"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" /> Anterior
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    type="button"
+                    onClick={() => setCurrentPage(page)}
+                    className={`min-w-[32px] h-8 rounded-xl font-bold transition-all cursor-pointer text-xs flex items-center justify-center ${
+                      page === currentPage 
+                        ? 'bg-blue-600 text-white shadow-xs' 
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed font-bold flex items-center gap-1 transition-all cursor-pointer"
+              >
+                Siguiente <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       )}
 

@@ -234,7 +234,8 @@ export async function submitToServer(endpoint: string, data: Record<string, any>
       return await supabaseSendChatMessage(data);
     }
     if (cleanEndpoint.endsWith('/chat/mark-read') || cleanEndpoint.endsWith('/marcar-mensaje-leido-jefe')) {
-      return await supabaseMarkChatRead(data.contact || data.employee, data.user || data.currentUser);
+      const targetIds = data.reply_ids || data.ids || (data.reply_id ? [data.reply_id] : (data.id ? [data.id] : undefined));
+      return await supabaseMarkChatRead(data.contact || data.employee, data.user || data.currentUser, targetIds);
     }
     if (cleanEndpoint.endsWith('/chat/mark-all-read')) {
       return await supabaseMarkAllChatRead(data.user || data.currentUser);

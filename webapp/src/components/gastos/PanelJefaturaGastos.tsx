@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { 
   CheckCircle2, Clock, Search, 
   Download, Eye, AlertCircle, X, ChevronDown, ChevronUp,
-  Receipt, User, RefreshCw, Send, Trash2, RotateCcw, ExternalLink
+  Receipt, User, RefreshCw, Send, Trash2, RotateCcw, ExternalLink,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import { format, isWithinInterval, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth } from 'date-fns';
 import type { RelacionGastos, MetodoPagoGasto } from '../../types/gastos';
@@ -29,6 +30,28 @@ export default function PanelJefaturaGastos({
   const [filterEmpleado, setFilterEmpleado] = useState<string>('todos');
   const [filterEstatus, setFilterEstatus] = useState<string>('todos');
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
+
+  // Estados de paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
+
+  // Handlers reactivos que reinician la página a 1
+  const handleSearchChange = (val: string) => {
+    setSearchTerm(val);
+    setCurrentPage(1);
+  };
+  const handlePeriodoChange = (val: any) => {
+    setFilterPeriodo(val);
+    setCurrentPage(1);
+  };
+  const handleEmpleadoChange = (val: string) => {
+    setFilterEmpleado(val);
+    setCurrentPage(1);
+  };
+  const handleEstatusChange = (val: string) => {
+    setFilterEstatus(val);
+    setCurrentPage(1);
+  };
 
   // Estados de modales
   const [previewImage, setPreviewImage] = useState<string | null>(null);
@@ -145,6 +168,14 @@ export default function PanelJefaturaGastos({
     if (createdA !== createdB) return createdB.localeCompare(createdA);
     return String(b.id || '').localeCompare(String(a.id || ''));
   });
+
+  // Paginación reactiva
+  const totalPages = Math.max(1, Math.ceil(filteredRelaciones.length / itemsPerPage));
+  const paginatedRelaciones = useMemo(() => {
+    if (itemsPerPage >= 9999) return filteredRelaciones;
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredRelaciones.slice(start, start + itemsPerPage);
+  }, [filteredRelaciones, currentPage, itemsPerPage]);
 
   // Métricas acumuladas
   const totalPendienteUsd = relaciones
@@ -288,15 +319,15 @@ export default function PanelJefaturaGastos({
       {previewImage && (
         <div 
           onClick={() => setPreviewImage(null)}
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
+          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
         >
           <div 
             onClick={(e) => e.stopPropagation()}
-            className="relative max-w-2xl w-full bg-slate-900 rounded-3xl p-5 border border-white/10 shadow-2xl flex flex-col items-center cursor-default"
+            className="relative max-w-2xl w-full bg-white rounded-3xl p-5 border border-slate-200 shadow-2xl flex flex-col items-center cursor-default"
           >
-            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-white/10">
-              <div className="text-white font-bold text-sm flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-amber-400" /> Soporte / Factura Adjunta
+            <div className="w-full flex items-center justify-between pb-3 mb-3 border-b border-slate-100">
+              <div className="text-slate-900 font-bold text-sm flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-blue-600" /> Soporte / Factura Adjunta
               </div>
               <div className="flex items-center gap-2">
                 {previewImage.startsWith('http') && (
@@ -304,15 +335,15 @@ export default function PanelJefaturaGastos({
                     href={previewImage}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-slate-200 hover:text-white transition-colors text-xs flex items-center gap-1.5 font-bold"
+                    className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-xl text-blue-700 transition-colors text-xs flex items-center gap-1.5 font-bold border border-blue-200"
                     title="Abrir imagen en pestaña nueva"
                   >
-                    <ExternalLink className="w-3.5 h-3.5 text-amber-400" /> Ver Original
+                    <ExternalLink className="w-3.5 h-3.5 text-blue-600" /> Ver Original
                   </a>
                 )}
                 <button 
                   onClick={() => setPreviewImage(null)}
-                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors cursor-pointer"
+                  className="p-1.5 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                   title="Cerrar"
                 >
                   <X className="w-4 h-4" />
@@ -320,11 +351,11 @@ export default function PanelJefaturaGastos({
               </div>
             </div>
             
-            <div className="w-full flex items-center justify-center bg-slate-950/60 rounded-2xl p-2 min-h-[220px]">
+            <div className="w-full flex items-center justify-center bg-slate-50 rounded-2xl p-2 min-h-[220px] border border-slate-100">
               <img 
                 src={previewImage} 
                 alt="Comprobante de soporte" 
-                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-lg border border-slate-800"
+                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-xs border border-slate-200"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                   const fallback = document.getElementById('comprobante-error-msg');
@@ -332,7 +363,7 @@ export default function PanelJefaturaGastos({
                 }}
               />
               <div id="comprobante-error-msg" style={{ display: 'none' }} className="flex flex-col items-center justify-center py-8 text-slate-400 text-xs">
-                <AlertCircle className="w-8 h-8 text-amber-400 mb-2 opacity-80" />
+                <AlertCircle className="w-8 h-8 text-blue-500 mb-2 opacity-80" />
                 <span>No se pudo cargar la vista previa del comprobante.</span>
               </div>
             </div>
@@ -342,7 +373,7 @@ export default function PanelJefaturaGastos({
 
       {/* Modal de Liquidación / Pago */}
       {pagoModal.isOpen && pagoModal.relacion && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -350,8 +381,8 @@ export default function PanelJefaturaGastos({
                   <CheckCircle2 className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">Aprobar y Pagar Gastos</h3>
-                  <p className="text-[11px] text-slate-500">{pagoModal.relacion.empleado}</p>
+                  <h3 className="text-sm font-bold text-slate-900">Aprobar y Pagar Gastos</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">{pagoModal.relacion.empleado}</p>
                 </div>
               </div>
               <button 
@@ -363,14 +394,14 @@ export default function PanelJefaturaGastos({
             </div>
 
             {/* Resumen del Monto a Liquidar */}
-            <div className="bg-slate-900 text-white p-4 rounded-2xl flex items-center justify-between">
+            <div className="bg-slate-50 border border-slate-200/90 p-4 rounded-2xl flex items-center justify-between">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Liquidación</span>
-                <span className="text-lg font-black text-white">${pagoModal.relacion.totalUsd?.toFixed(2)} USD</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Total Liquidación</span>
+                <span className="text-lg font-bold text-slate-900">${pagoModal.relacion.totalUsd?.toFixed(2)} USD</span>
               </div>
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-amber-400 block">Monto en Bolívares</span>
-                <span className="text-sm font-black text-amber-400">Bs {pagoModal.relacion.totalVes?.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Monto en Bolívares</span>
+                <span className="text-sm font-bold text-slate-700">Bs {pagoModal.relacion.totalVes?.toLocaleString('es-VE', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -380,7 +411,7 @@ export default function PanelJefaturaGastos({
                 <select
                   value={pagoModal.metodoPago}
                   onChange={(e) => setPagoModal(prev => ({ ...prev, metodoPago: e.target.value as any }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 >
                   <option value="Pago Móvil">Pago Móvil (Bs)</option>
                   <option value="Transferencia Bs">Transferencia Bancaria (Bs)</option>
@@ -399,7 +430,7 @@ export default function PanelJefaturaGastos({
                   placeholder="Ej: Ref #0102-98765432 o Efectivo entregado en oficina"
                   value={pagoModal.referenciaPago}
                   onChange={(e) => setPagoModal(prev => ({ ...prev, referenciaPago: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
 
@@ -409,7 +440,7 @@ export default function PanelJefaturaGastos({
                   type="date"
                   value={pagoModal.fechaPago}
                   onChange={(e) => setPagoModal(prev => ({ ...prev, fechaPago: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
 
@@ -420,7 +451,7 @@ export default function PanelJefaturaGastos({
                   placeholder="Comentario para el empleado..."
                   value={pagoModal.comentario}
                   onChange={(e) => setPagoModal(prev => ({ ...prev, comentario: e.target.value }))}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none resize-none"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none resize-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                 />
               </div>
             </div>
@@ -437,7 +468,7 @@ export default function PanelJefaturaGastos({
                 type="button"
                 disabled={processing}
                 onClick={handleConfirmarPago}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-emerald-600/20 cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" /> {processing ? 'Procesando...' : 'Confirmar Pago'}
               </button>
@@ -448,7 +479,7 @@ export default function PanelJefaturaGastos({
 
       {/* Modal de Devolución / Rechazo */}
       {rechazoModal.isOpen && rechazoModal.relacion && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
@@ -456,8 +487,8 @@ export default function PanelJefaturaGastos({
                   <AlertCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">Devolver Relación de Gastos</h3>
-                  <p className="text-[11px] text-slate-500">{rechazoModal.relacion.empleado}</p>
+                  <h3 className="text-sm font-bold text-slate-900">Devolver Relación de Gastos</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">{rechazoModal.relacion.empleado}</p>
                 </div>
               </div>
               <button 
@@ -475,7 +506,7 @@ export default function PanelJefaturaGastos({
                 placeholder="Indica al empleado qué debe corregir o justificar (ej. falta adjuntar recibo de arancel)..."
                 value={rechazoModal.motivo}
                 onChange={(e) => setRechazoModal(prev => ({ ...prev, motivo: e.target.value }))}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 font-medium text-slate-800 outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
               />
             </div>
 
@@ -491,7 +522,7 @@ export default function PanelJefaturaGastos({
                 type="button"
                 disabled={processing || !rechazoModal.motivo.trim()}
                 onClick={handleConfirmarRechazo}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-rose-600/20 cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Send className="w-4 h-4" /> {processing ? 'Enviando...' : 'Enviar Observación'}
               </button>
@@ -503,84 +534,84 @@ export default function PanelJefaturaGastos({
       {/* 1. TARJETAS DE INDICADORES / KPI EJECUTIVOS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Tarjeta 1: Pendiente de Pago */}
-        <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-transparent bg-white p-5 rounded-3xl border border-amber-200 shadow-xs relative overflow-hidden">
+        <div className="bg-white p-5 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 relative overflow-hidden">
           <div className="flex justify-between items-start">
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-800 border border-amber-300">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
                 Por Liquidar / Pagar
               </span>
-              <div className="text-2xl font-black text-slate-900 mt-2">
+              <div className="text-2xl font-bold text-slate-900 mt-2">
                 ${totalPendienteUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-xs font-bold text-amber-700 mt-0.5">
+              <div className="text-xs font-semibold text-slate-500 mt-0.5">
                 Bs {totalPendienteVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-md shadow-amber-500/20">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center font-bold shadow-2xs">
               <Clock className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-amber-200/60 flex items-center justify-between text-[11px] font-bold text-slate-600">
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-medium text-slate-600">
             <span>Solicitudes pendientes:</span>
-            <span className="px-2 py-0.5 bg-amber-100 text-amber-900 rounded-lg font-black">{totalPendientesCount}</span>
+            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-lg font-bold">{totalPendientesCount}</span>
           </div>
         </div>
 
         {/* Tarjeta 2: Total Liquidado */}
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
+        <div className="bg-white p-5 rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8">
           <div className="flex justify-between items-start">
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200">
                 Total Liquidado & Pagado
               </span>
-              <div className="text-2xl font-black text-slate-900 mt-2">
+              <div className="text-2xl font-bold text-slate-900 mt-2">
                 ${totalPagadoUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
-              <div className="text-xs font-bold text-emerald-700 mt-0.5">
+              <div className="text-xs font-semibold text-emerald-700 mt-0.5">
                 Bs {totalPagadoVes.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-black">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100 flex items-center justify-center font-bold">
               <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
-          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-bold text-slate-500">
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] font-medium text-slate-500">
             <span>Relaciones liquidadas:</span>
-            <span className="font-black text-slate-800">{relaciones.filter(r => r.estatus === 'Pagado').length}</span>
+            <span className="font-bold text-slate-800">{relaciones.filter(r => r.estatus === 'Pagado').length}</span>
           </div>
         </div>
 
         {/* Tarjeta 3: Equipo y Rendiciones */}
-        <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-xs flex flex-col justify-between">
+        <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex flex-col justify-between">
           <div className="flex justify-between items-start">
             <div>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-white/10 text-amber-400 border border-white/10">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
                 Control de Auditoría
               </span>
-              <div className="text-lg font-black text-white mt-2">
+              <div className="text-2xl font-bold text-slate-900 mt-2">
                 {relaciones.length} Relaciones en Total
               </div>
-              <p className="text-xs text-slate-400 mt-0.5">
+              <p className="text-xs text-slate-500 mt-0.5">
                 {empleadosUnicos.length} miembros del equipo con gastos registrados
               </p>
             </div>
             <button
               onClick={onRefresh}
-              className="p-2.5 bg-white/10 hover:bg-white/20 text-amber-400 rounded-xl transition-all cursor-pointer"
+              className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 rounded-xl transition-all cursor-pointer shadow-2xs"
               title="Actualizar datos"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-          <div className="text-[10px] text-slate-400 border-t border-white/10 pt-2.5 mt-2 flex items-center justify-between">
+          <div className="text-[11px] text-slate-500 border-t border-slate-100 pt-2.5 mt-2 flex items-center justify-between font-medium">
             <span>Supervisado por:</span>
-            <span className="font-bold text-amber-300">{currentLoggedUser}</span>
+            <span className="font-bold text-slate-800">{currentLoggedUser}</span>
           </div>
         </div>
       </div>
 
       {/* 2. BARRA DE FILTROS AVANZADOS */}
-      <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
+      <div className="bg-white p-4 rounded-3xl border border-slate-200/90 shadow-2xs space-y-3">
         <div className="flex flex-col lg:flex-row gap-3 items-stretch lg:items-center justify-between">
           {/* Buscador */}
           <div className="relative flex-1">
@@ -589,8 +620,8 @@ export default function PanelJefaturaGastos({
               type="text"
               placeholder="Buscar por empleado, expediente, trámite, concepto..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none bg-slate-50/50"
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none bg-slate-50/60 font-medium text-slate-800"
             />
           </div>
 
@@ -598,7 +629,7 @@ export default function PanelJefaturaGastos({
             {/* Filtro Período */}
             <select
               value={filterPeriodo}
-              onChange={(e) => setFilterPeriodo(e.target.value as any)}
+              onChange={(e) => handlePeriodoChange(e.target.value as any)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
               <option value="todas">Todos los Períodos</option>
@@ -612,7 +643,7 @@ export default function PanelJefaturaGastos({
             {/* Filtro Empleado */}
             <select
               value={filterEmpleado}
-              onChange={(e) => setFilterEmpleado(e.target.value)}
+              onChange={(e) => handleEmpleadoChange(e.target.value)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
               <option value="todos">Todos los Empleados</option>
@@ -624,7 +655,7 @@ export default function PanelJefaturaGastos({
             {/* Filtro Estatus */}
             <select
               value={filterEstatus}
-              onChange={(e) => setFilterEstatus(e.target.value)}
+              onChange={(e) => handleEstatusChange(e.target.value)}
               className="px-3 py-2 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
             >
               <option value="todos">Todos los Estados</option>
@@ -637,26 +668,59 @@ export default function PanelJefaturaGastos({
         </div>
       </div>
 
-      {/* 3. LISTADO DE RELACIONES DE GASTOS */}
-      <div className="space-y-4">
+      {/* 3. RESUMEN DE REGISTROS Y CONTROL DE PAGINACIÓN SUPERIOR */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-1">
+        <div>
+          <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+            Relaciones de Gastos del Equipo
+          </span>
+          {filteredRelaciones.length > 0 && (
+            <p className="text-xs text-slate-500 mt-0.5">
+              Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredRelaciones.length)} de {filteredRelaciones.length} relaciones registradas
+            </p>
+          )}
+        </div>
+
+        {/* Selector de cantidad por página */}
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500 font-medium">Mostrar:</span>
+          <select
+            value={itemsPerPage}
+            onChange={(e) => {
+              setItemsPerPage(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+            className="px-2.5 py-1 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none cursor-pointer"
+          >
+            <option value={5}>5 por pág.</option>
+            <option value={10}>10 por pág.</option>
+            <option value={20}>20 por pág.</option>
+            <option value={50}>50 por pág.</option>
+            <option value={9999}>Todas</option>
+          </select>
+        </div>
+      </div>
+
+      {/* 4. LISTADO DE RELACIONES DE GASTOS */}
+      <div className="space-y-3">
         {loading && relaciones.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs animate-in fade-in">
-            <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-            <h4 className="text-sm font-bold text-slate-700">Sincronizando relaciones de gastos...</h4>
-            <p className="text-xs text-slate-400">Consultando la base de datos central en tiempo real.</p>
+          <div className="bg-white p-12 rounded-3xl border border-slate-200/90 text-center space-y-3 shadow-2xs animate-in fade-in">
+            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+            <h4 className="text-sm font-bold text-slate-800">Sincronizando relaciones de gastos...</h4>
+            <p className="text-xs text-slate-500">Consultando la base de datos central en tiempo real.</p>
           </div>
         ) : filteredRelaciones.length === 0 ? (
-          <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+          <div className="bg-white p-12 rounded-3xl border border-slate-200/90 text-center space-y-3 shadow-2xs">
+            <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
               <Receipt className="w-6 h-6" />
             </div>
-            <h4 className="text-sm font-bold text-slate-700">No se encontraron relaciones de gastos</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h4 className="text-sm font-bold text-slate-800">No se encontraron relaciones de gastos</h4>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
               No hay registros que coincidan con los filtros seleccionados o el equipo aún no ha enviado relaciones en este período.
             </p>
           </div>
         ) : (
-          filteredRelaciones.map((rel) => {
+          paginatedRelaciones.map((rel) => {
             const isExpanded = expandedId === rel.id;
             const itemsCount = (rel.items || []).length;
             const tramitesGroup = Array.from(new Set((rel.items || []).map(i => i.tramiteExpediente.trim()))).filter(Boolean);
@@ -664,20 +728,23 @@ export default function PanelJefaturaGastos({
             return (
               <div 
                 key={rel.id} 
-                className={`bg-white rounded-3xl border transition-all overflow-hidden ${
-                  rel.estatus === 'Pendiente' 
-                    ? 'border-amber-300 shadow-sm ring-1 ring-amber-300/40' 
-                    : 'border-slate-200 shadow-xs'
+                className={`bg-white rounded-2xl border transition-all overflow-hidden ${
+                  isExpanded
+                    ? 'border-blue-300 shadow-xs ring-1 ring-blue-200'
+                    : 'border-slate-200/90 shadow-2xs hover:border-slate-300'
                 }`}
               >
                 {/* Encabezado Principal de la Relación */}
-                <div className="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 bg-slate-50/40">
+                <div 
+                  className="p-5 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 cursor-pointer select-none"
+                  onClick={() => setExpandedId(isExpanded ? null : rel.id)}
+                >
                   <div className="flex items-center gap-3.5 flex-1 min-w-0">
                     <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 font-bold ${
                       rel.estatus === 'Pagado'
-                        ? 'bg-emerald-100 text-emerald-800'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : rel.estatus === 'Pendiente'
-                        ? 'bg-amber-100 text-amber-800 animate-pulse'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
                         : 'bg-slate-100 text-slate-700'
                     }`}>
                       <Receipt className="w-5 h-5" />
@@ -685,18 +752,18 @@ export default function PanelJefaturaGastos({
 
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-extrabold text-sm text-slate-900 truncate">
+                        <span className="font-bold text-sm text-slate-900 truncate">
                           {rel.titulo || `Gastos ${rel.periodo} - ${rel.empleado}`}
                         </span>
 
                         {/* Badges de Estado */}
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                           rel.estatus === 'Pagado'
-                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                             : rel.estatus === 'Pendiente'
-                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
                             : rel.estatus === 'Rechazado'
-                            ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                            ? 'bg-rose-50 text-rose-800 border border-rose-200'
                             : 'bg-slate-100 text-slate-700 border border-slate-200'
                         }`}>
                           {rel.estatus === 'Pendiente' ? 'Por Pagar' : rel.estatus === 'Pagado' ? 'Pagado' : rel.estatus}
@@ -707,9 +774,9 @@ export default function PanelJefaturaGastos({
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mt-1">
+                      <div className="flex items-center gap-3 text-xs text-slate-500 font-medium mt-1 flex-wrap">
                         <span className="font-bold text-slate-700 flex items-center gap-1">
-                          <User className="w-3.5 h-3.5 text-blue-500" /> {rel.empleado}
+                          <User className="w-3.5 h-3.5 text-blue-600" /> {rel.empleado}
                         </span>
                         <span>•</span>
                         <span>{tramitesGroup.length} trámite(s)</span>
@@ -722,12 +789,12 @@ export default function PanelJefaturaGastos({
                   </div>
 
                   {/* Totales y Acciones Principales */}
-                  <div className="flex items-center gap-3 self-end lg:self-center flex-wrap">
-                    <div className="text-right">
-                      <div className="text-base font-black text-slate-900">
+                  <div className="flex items-center gap-2.5 self-end lg:self-center flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    <div className="text-right mr-1">
+                      <div className="text-base font-bold text-slate-900">
                         ${Number(rel.totalUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
-                      <div className="text-xs font-bold text-amber-600">
+                      <div className="text-xs font-medium text-slate-500">
                         Bs {Number(rel.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </div>
                     </div>
@@ -736,7 +803,7 @@ export default function PanelJefaturaGastos({
                     {rel.estatus === 'Pendiente' && (
                       <button
                         onClick={() => handleOpenPagoModal(rel)}
-                        className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-black text-xs rounded-xl transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white font-bold text-xs rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                       >
                         <CheckCircle2 className="w-4 h-4" /> Aprobar & Pagar
                       </button>
@@ -745,7 +812,7 @@ export default function PanelJefaturaGastos({
                     {/* Botón Descargar PDF */}
                     <button
                       onClick={() => exportarRelacionGastosPDF(rel)}
-                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                      className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/60 rounded-xl transition-all cursor-pointer"
                       title="Descargar PDF Oficial"
                     >
                       <Download className="w-4 h-4" />
@@ -754,7 +821,11 @@ export default function PanelJefaturaGastos({
                     {/* Toggle Desplegar */}
                     <button
                       onClick={() => setExpandedId(isExpanded ? null : rel.id)}
-                      className="px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer border ${
+                        isExpanded
+                          ? 'bg-blue-600 text-white border-blue-500 shadow-2xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      }`}
                     >
                       <span>{isExpanded ? 'Ocultar' : 'Ver Detalle'}</span>
                       {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -772,7 +843,7 @@ export default function PanelJefaturaGastos({
                           <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                           <div>
                             <div className="text-xs font-bold text-emerald-950">
-                              Liquidado el {rel.fechaPago || 'Fecha no registrada'} vía <span className="font-black text-emerald-800">{rel.metodoPago || 'Pago'}</span>
+                              Liquidado el {rel.fechaPago || 'Fecha no registrada'} vía <span className="font-bold text-emerald-800">{rel.metodoPago || 'Pago'}</span>
                             </div>
                             <div className="text-[11px] text-emerald-700">
                               Referencia: <span className="font-mono font-bold">{rel.referenciaPago || 'Sin número de referencia'}</span>
@@ -785,7 +856,7 @@ export default function PanelJefaturaGastos({
 
                     {/* Si tiene comentarios de jefatura */}
                     {rel.comentariosJefatura && (
-                      <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-xs text-amber-900">
+                      <div className="bg-blue-50/70 border border-blue-200 p-3 rounded-xl text-xs text-blue-950">
                         <span className="font-bold">Observación de Jefatura: </span>
                         {rel.comentariosJefatura}
                       </div>
@@ -795,7 +866,7 @@ export default function PanelJefaturaGastos({
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs border-collapse">
                         <thead>
-                          <tr className="bg-slate-100/70 text-slate-600 uppercase font-black text-[10px] tracking-wider border-b border-slate-200">
+                          <tr className="bg-[#dbeafe] text-[#1e3a8a] uppercase font-extrabold text-[10px] tracking-wider border-b border-blue-200">
                             <th className="py-2.5 px-3">Fecha</th>
                             <th className="py-2.5 px-3">Trámite / Expediente</th>
                             <th className="py-2.5 px-3">Categoría</th>
@@ -822,10 +893,10 @@ export default function PanelJefaturaGastos({
                               <td className="py-2.5 px-3 text-slate-600">
                                 {item.descripcion || 'Sin detalle adicional'}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-black text-slate-900 whitespace-nowrap">
+                              <td className="py-2.5 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
                                 ${Number(item.montoUsd || 0).toFixed(2)}
                               </td>
-                              <td className="py-2.5 px-3 text-right font-bold text-slate-600 whitespace-nowrap">
+                              <td className="py-2.5 px-3 text-right font-medium text-slate-600 whitespace-nowrap">
                                 Bs {Number(item.montoVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                               </td>
                               <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -862,9 +933,9 @@ export default function PanelJefaturaGastos({
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => exportarRelacionGastosPDF(rel)}
-                          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/20"
                         >
-                          <Download className="w-3.5 h-3.5 text-amber-400" /> Exportar PDF Oficial
+                          <Download className="w-3.5 h-3.5 text-blue-100" /> Exportar PDF Oficial
                         </button>
                         <button
                           onClick={() => handleDeleteRelacion(rel)}
@@ -882,6 +953,72 @@ export default function PanelJefaturaGastos({
           })
         )}
       </div>
+
+      {/* 5. CONTROLES DE PAGINACIÓN INFERIOR */}
+      {filteredRelaciones.length > itemsPerPage && itemsPerPage < 9999 && (
+        <div className="flex items-center justify-between pt-4 border-t border-slate-200/80 px-2 flex-wrap gap-3">
+          <span className="text-xs text-slate-500 font-medium">
+            Página {currentPage} de {totalPages} ({filteredRelaciones.length} registros totales)
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setCurrentPage(1)}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Primera página"
+            >
+              <ChevronsLeft className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Página anterior"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+              .map((page, index, arr) => {
+                const prevPage = arr[index - 1];
+                const showEllipsis = prevPage && page - prevPage > 1;
+                return (
+                  <span key={page} className="flex items-center">
+                    {showEllipsis && <span className="px-1 text-slate-400 text-xs">...</span>}
+                    <button
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-7 h-7 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </span>
+                );
+              })}
+
+            <button
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Página siguiente"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setCurrentPage(totalPages)}
+              disabled={currentPage === totalPages}
+              className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              title="Última página"
+            >
+              <ChevronsRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

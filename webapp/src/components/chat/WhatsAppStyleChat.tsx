@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  Send, 
-  X, 
+import {
+  Send,
+  X,
   Check,
-  CheckCheck, 
-  MessageSquare, 
-  ShieldCheck, 
-  User, 
-  CheckCircle2, 
+  CheckCheck,
+  MessageSquare,
+  ShieldCheck,
+  User,
+  CheckCircle2,
   Search,
   Trash2
 } from 'lucide-react';
@@ -60,18 +60,22 @@ interface WhatsAppStyleChatProps {
 
 // Función infalible para determinar si un mensaje fue emitido por Jefatura
 export const checkIsFromBoss = (author?: string, role?: string): boolean => {
-  const clean = (author || '').toLowerCase().trim();
+  const clean = (author || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
   if (clean.includes('carmen') || role === 'empleado') return false;
   if (role === 'jefatura' || role === 'admin') return true;
-  return clean.includes('delgado') || 
-         clean.includes('roman') || 
-         clean.includes('jefe') || 
-         clean.includes('jefatura') || 
-         clean.includes('admin') || 
-         clean === 'luis' || 
-         clean.startsWith('luis ') || 
-         clean === 'victor' || 
-         clean.startsWith('victor ');
+  return clean.includes('delgado') ||
+    clean.includes('roman') ||
+    clean.includes('jefe') ||
+    clean.includes('jefatura') ||
+    clean.includes('admin') ||
+    clean === 'luis' ||
+    clean.startsWith('luis ') ||
+    clean === 'victor' ||
+    clean.startsWith('victor ');
 };
 
 export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
@@ -129,7 +133,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           behavior: smooth ? 'smooth' : 'auto',
           block: 'end'
         });
-      } catch {}
+      } catch { }
     }
   }, []);
 
@@ -179,7 +183,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
       let hasChanges = false;
       const updated = messages.map(m => {
         const fromBoss = checkIsFromBoss(m.author, m.author_role);
-        
+
         if (isJefatura) {
           // Si el jefe abre el chat, lee los mensajes del empleado
           if (!fromBoss && !m.leido_por_jefe) {
@@ -210,14 +214,14 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
             return item;
           });
           localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           submitToServer('/rd-intranet/v1/chat/mark-read', {
             is_jefatura: isJefatura,
             employee: targetUser
           });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
   }, [isJefatura, isOpen]);
@@ -274,7 +278,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
     try {
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
       localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify([newMsg, ...q].slice(0, 150)));
-    } catch (e) {}
+    } catch (e) { }
 
     // Notificar componente padre
     if (onMessageSent) {
@@ -316,7 +320,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
   const handleDeleteMessage = async (msgId: string, msgText?: string) => {
     setMessages(prev => prev.filter(m => m.id !== msgId));
-    
+
     try {
       // 1. Quitar de cola global
       const q = JSON.parse(localStorage.getItem('rd_all_employee_replies_queue') || '[]');
@@ -341,7 +345,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         delList.push(msgId);
         localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Notificar componente padre
     if (onMessageDeleted) {
@@ -350,7 +354,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
     try {
       await submitToServer('/rd-intranet/v1/eliminar-mensaje-chat', { id: msgId, mensaje: msgText });
-    } catch (e) {}
+    } catch (e) { }
   };
 
   // Filtrado y ordenamiento cronológico ascendente (más antiguos arriba, más nuevos abajo)
@@ -391,8 +395,8 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
   const attendedCount = messages.filter(m => m.atendido).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div 
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200">
+      <div
         className="w-full max-w-2xl bg-[#0b141a] rounded-3xl shadow-2xl border border-white/10 flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
         style={{ height: '88vh', maxHeight: '780px' }}
       >
@@ -415,9 +419,8 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                 <h3 className="text-sm sm:text-base font-bold text-white truncate">
                   {isJefatura ? (targetUser || 'Carmen Luisa') : (targetUser || 'Luis Delgado / Jefatura')}
                 </h3>
-                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                  isJefatura ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${isJefatura ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                  }`}>
                   {isJefatura ? 'Empleado' : 'Jefatura'}
                 </span>
               </div>
@@ -434,27 +437,24 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
               <button
                 type="button"
                 onClick={() => setViewFilter('todos')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  viewFilter === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${viewFilter === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                  }`}
               >
                 Todos ({messages.length})
               </button>
               <button
                 type="button"
                 onClick={() => setViewFilter('pendientes')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                  viewFilter === 'pendientes' ? 'bg-[#2a3942] text-amber-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${viewFilter === 'pendientes' ? 'bg-[#2a3942] text-sky-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                  }`}
               >
                 Pendientes ({pendingCount})
               </button>
               <button
                 type="button"
                 onClick={() => setViewFilter('atendidos')}
-                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                  viewFilter === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                }`}
+                className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${viewFilter === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                  }`}
               >
                 Atendidos ({attendedCount})
               </button>
@@ -498,7 +498,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
         )}
 
         {/* CHAT MESSAGES BODY */}
-        <div 
+        <div
           ref={chatContainerRef}
           className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3 relative"
           style={{
@@ -510,8 +510,8 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           {/* Security / Encryption style notice */}
           <div className="flex justify-center">
             <div className="bg-[#182229] border border-white/5 rounded-xl px-3.5 py-1.5 text-center shadow-sm max-w-sm">
-              <p className="text-[10px] text-amber-300/80 font-medium flex items-center justify-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <p className="text-[10px] text-blue-300/80 font-medium flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
                 Canal oficial de Jefatura y supervisión KANT en tiempo real.
               </p>
             </div>
@@ -528,7 +528,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           ) : (
             filteredMessages.map((msg, index) => {
               const fromBoss = checkIsFromBoss(msg.author, msg.author_role);
-              
+
               // REGLA FUNDAMENTAL DE ALINEACIÓN:
               // Si Luis Delgado (Jefe) está viendo la pantalla: los mensajes del jefe son "Tú" (isMe = true, derecha en verde).
               // Si Carmen Luisa (Empleado) está viendo la pantalla: los mensajes de Carmen son "Tú" (isMe = true, derecha en verde).
@@ -536,9 +536,9 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
 
               const headerLabel = isMe
                 ? 'Tú'
-                : (isJefatura 
-                    ? (msg.author || targetUser || 'Carmen Luisa') 
-                    : (msg.author || targetUser || 'Luis Delgado / Jefatura'));
+                : (isJefatura
+                  ? (msg.author || targetUser || 'Carmen Luisa')
+                  : (msg.author || targetUser || 'Luis Delgado / Jefatura'));
 
               const canDelete = isMe || isJefatura;
 
@@ -562,15 +562,14 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                     className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} group`}
                   >
                     <div
-                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
-                        isMe 
-                          ? 'bg-[#005c4b] text-white rounded-tr-xs' 
-                          : 'bg-[#202c33] text-slate-100 rounded-tl-xs'
-                      } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
+                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${isMe
+                        ? 'bg-[#005c4b] text-white rounded-tr-xs'
+                        : 'bg-[#202c33] text-slate-100 rounded-tl-xs'
+                        } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
                     >
                       {/* Header del mensaje */}
                       <div className="flex items-center justify-between gap-3 mb-1">
-                        <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-amber-400'}`}>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${isMe ? 'text-emerald-200' : 'text-blue-400'}`}>
                           {headerLabel}
                         </span>
                         {msg.atendido && (
@@ -606,7 +605,7 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                         )}
 
                         {/* HORA Y FECHA TIPO WHATSAPP */}
-                        <span 
+                        <span
                           className="font-mono text-[9.5px] text-white/70 opacity-80 whitespace-nowrap tracking-tight"
                           title={meta.dateFormatted ? `${meta.dateFormatted} • ${meta.timeFormatted}` : meta.timeFormatted}
                         >
@@ -626,27 +625,26 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
                         )}
                       </div>
 
-                    {/* Acciones de Jefatura (Marcar como Atendido en burbuja) */}
-                    {isJefatura && !isMe && (
-                      <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
-                        <button
-                          onClick={() => handleToggleAtendido(msg.id)}
-                          className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                            msg.atendido 
-                              ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
+                      {/* Acciones de Jefatura (Marcar como Atendido en burbuja) */}
+                      {isJefatura && !isMe && (
+                        <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
+                          <button
+                            onClick={() => handleToggleAtendido(msg.id)}
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${msg.atendido
+                              ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
                               : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-                          }`}
-                        >
-                          <CheckCircle2 className="w-3 h-3" />
-                          {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
-                        </button>
-                      </div>
-                    )}
+                              }`}
+                          >
+                            <CheckCircle2 className="w-3 h-3" />
+                            {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </React.Fragment>
-            );
-          })
+                </React.Fragment>
+              );
+            })
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -683,11 +681,10 @@ export const WhatsAppStyleChat: React.FC<WhatsAppStyleChatProps> = ({
           <button
             onClick={() => handleSend()}
             disabled={!inputText.trim() || isSending}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
-              inputText.trim() && !isSending
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white scale-105 active:scale-95'
-                : 'bg-[#2a3942] text-slate-500 cursor-not-allowed'
-            }`}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${inputText.trim() && !isSending
+              ? 'bg-emerald-600 hover:bg-emerald-500 text-white scale-105 active:scale-95'
+              : 'bg-[#2a3942] text-slate-500 cursor-not-allowed'
+              }`}
             title="Enviar mensaje"
           >
             <Send className="w-4 h-4 ml-0.5" />

@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import { 
-  Plus, Receipt, Clock, CheckCircle2, 
+import { useState, useEffect, useMemo } from 'react';
+import {
+  Plus, Receipt, Clock, CheckCircle2,
   ShieldCheck, Download, Edit3, Trash2, RefreshCw,
-  Eye, ChevronDown, ChevronUp, X, AlertCircle
+  Eye, ChevronDown, ChevronUp, X, AlertCircle,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
 } from 'lucide-react';
 import api, { submitToServer } from '../../lib/api';
 import type { RelacionGastos } from '../../types/gastos';
@@ -21,8 +22,8 @@ const isJefaturaUser = (userName: string) => {
   if (!userName) return false;
   const lower = userName.toLowerCase().trim();
   const jefaturaExact = [
-    'victor', 'victor roman', 'víctor román', 
-    'luis', 'luis delgado', 
+    'victor', 'victor roman', 'víctor román',
+    'luis', 'luis delgado',
     'romanydelgado', 'romanydelgado@gmail.com',
     'admin', 'jefatura'
   ];
@@ -46,6 +47,10 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
   const [selectedRelacion, setSelectedRelacion] = useState<RelacionGastos | null>(null);
   const [expandedId, setExpandedId] = useState<string | number | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Paginación para mis gastos
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   const [systemAlert, setSystemAlert] = useState<{
     isOpen: boolean;
@@ -72,7 +77,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
       ]);
 
       const serverGastos: RelacionGastos[] = Array.isArray(gastosRes.data) ? gastosRes.data : [];
-      
+
       // Combinar con borradores locales válidos si no existen en el servidor
       try {
         const localDrafts = JSON.parse(localStorage.getItem('rd_local_gastos_drafts') || '[]');
@@ -85,7 +90,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
             }
           });
         }
-      } catch (e) {}
+      } catch (e) { }
 
       // Excluir relaciones vacías o en $0 y ordenar de la más nueva a la más vieja
       const validRelaciones = serverGastos
@@ -100,7 +105,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
           return String(b.id || '').localeCompare(String(a.id || ''));
         });
       setRelaciones(validRelaciones);
-      
+
       // Expedientes con respaldo sólido
       if (Array.isArray(expRes.data) && expRes.data.length > 0) {
         setGlobalExpedientes(expRes.data);
@@ -121,11 +126,20 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
   }, []);
 
   // Mis gastos (del usuario actual)
-  const misRelaciones = relaciones.filter(r => {
-    const rUser = (r.empleado || '').toLowerCase().trim();
-    const curr = currentLoggedUser.toLowerCase().trim();
-    return rUser === curr || curr.includes(rUser) || rUser.includes(curr);
-  });
+  const misRelaciones = useMemo(() => {
+    return relaciones.filter(r => {
+      const rUser = (r.empleado || '').toLowerCase().trim();
+      const curr = currentLoggedUser.toLowerCase().trim();
+      return rUser === curr || curr.includes(rUser) || rUser.includes(curr);
+    });
+  }, [relaciones, currentLoggedUser]);
+
+  const totalPagesMisRelaciones = Math.max(1, Math.ceil(misRelaciones.length / itemsPerPage));
+  const paginatedMisRelaciones = useMemo(() => {
+    if (itemsPerPage >= 9999) return misRelaciones;
+    const start = (currentPage - 1) * itemsPerPage;
+    return misRelaciones.slice(start, start + itemsPerPage);
+  }, [misRelaciones, currentPage, itemsPerPage]);
 
   // Métricas del empleado
   const miTotalPendiente = misRelaciones
@@ -155,7 +169,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
             const updated = localDrafts.filter((ld: any) => String(ld.id) !== String(rel.id));
             localStorage.setItem('rd_local_gastos_drafts', JSON.stringify(updated));
           }
-        } catch (e) {}
+        } catch (e) { }
 
         // 3. Eliminación optimista en el estado de React
         setRelaciones(prev => prev.filter(r => String(r.id) !== String(rel.id)));
@@ -195,32 +209,32 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
       {/* Modal de Vista Previa de Comprobante / Recibo */}
       {previewImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+        <div
+          className="fixed inset-0 z-50 bg-slate-900/35 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in cursor-pointer"
           onClick={() => setPreviewImage(null)}
         >
-          <div 
-            className="bg-slate-900 rounded-3xl p-5 max-w-2xl w-full border border-slate-800 shadow-2xl space-y-4"
+          <div
+            className="bg-white rounded-3xl p-5 max-w-2xl w-full border border-slate-200 shadow-2xl space-y-4 cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-white">
-                <Eye className="w-4 h-4 text-amber-400" />
-                <h3 className="text-sm font-bold">Comprobante de Soporte</h3>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-slate-900 font-bold text-sm">
+                <Eye className="w-4 h-4 text-blue-600" />
+                <h3>Comprobante de Soporte</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setPreviewImage(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
-            <div className="w-full flex items-center justify-center bg-slate-950/60 rounded-2xl p-2 min-h-[220px]">
-              <img 
-                src={previewImage} 
-                alt="Comprobante de soporte" 
-                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-lg border border-slate-800"
+
+            <div className="w-full flex items-center justify-center bg-slate-50 rounded-2xl p-2 min-h-[220px] border border-slate-100">
+              <img
+                src={previewImage}
+                alt="Comprobante de soporte"
+                className="max-h-[75vh] max-w-full w-auto rounded-xl object-contain shadow-xs border border-slate-200"
                 onError={(e) => {
                   (e.target as HTMLElement).style.display = 'none';
                   const fallback = document.getElementById('comprobante-error-msg-user');
@@ -228,7 +242,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                 }}
               />
               <div id="comprobante-error-msg-user" style={{ display: 'none' }} className="flex flex-col items-center justify-center py-8 text-slate-400 text-xs">
-                <AlertCircle className="w-8 h-8 text-amber-400 mb-2 opacity-80" />
+                <AlertCircle className="w-8 h-8 text-blue-500 mb-2 opacity-80" />
                 <span>No se pudo cargar la vista previa del comprobante.</span>
               </div>
             </div>
@@ -257,21 +271,21 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
       {viewMode === 'lista' && (
         <div className="space-y-6">
           {/* Header Principal del Módulo */}
-          <div className="bg-slate-900 rounded-3xl p-5 sm:p-6 text-white shadow-md border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 text-slate-900 shadow-md shadow-blue-950/8 border border-blue-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-black shadow-inner shrink-0">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] flex items-center justify-center text-white font-bold shadow-md shadow-blue-900/20 shrink-0">
                 <Receipt className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-lg sm:text-xl font-black text-white">
+                  <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
                     Control de Gastos & Reembolsos
                   </h2>
-                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
                     Taxes & Desembolsos
                   </span>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
+                <p className="text-xs text-slate-500 mt-0.5">
                   Rendición de cuentas semanal y quincenal de fotocopias, traslados, aranceles y desembolsos judiciales.
                 </p>
               </div>
@@ -280,7 +294,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
             <div className="flex items-center gap-2.5 self-end md:self-center shrink-0 flex-wrap">
               <button
                 onClick={fetchGastos}
-                className="p-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/80 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs"
                 title="Actualizar datos"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -291,7 +305,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                   setSelectedRelacion(null);
                   setViewMode('nuevo');
                 }}
-                className="px-5 py-2.5 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black rounded-xl transition-all shadow-md shadow-amber-500/20 flex items-center gap-2 cursor-pointer"
+                className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer"
               >
                 <Plus className="w-4 h-4" /> Nueva Relación de Gastos
               </button>
@@ -300,19 +314,18 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
           {/* Si es Jefatura, Selector de Pestañas (Supervisión vs Mis Gastos) */}
           {isJefe && (
-            <div className="flex gap-1.5 p-1.5 bg-slate-200/80 rounded-2xl border border-slate-300/80 w-fit">
+            <div className="flex gap-1.5 p-1.5 bg-blue-100/85 rounded-2xl border border-blue-200 w-fit shadow-2xs">
               <button
                 onClick={() => setActiveTabJefe('supervision')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTabJefe === 'supervision'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTabJefe === 'supervision'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
                 <ShieldCheck className="w-4 h-4 text-blue-600" />
                 <span>Supervisión & Liquidaciones del Equipo</span>
                 {relaciones.filter(r => r.estatus === 'Pendiente').length > 0 && (
-                  <span className="px-1.5 py-0.2 bg-amber-500 text-slate-950 rounded-full font-black text-[10px]">
+                  <span className="px-1.5 py-0.2 bg-blue-600 text-white rounded-full font-bold text-[10px]">
                     {relaciones.filter(r => r.estatus === 'Pendiente').length}
                   </span>
                 )}
@@ -320,13 +333,12 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
               <button
                 onClick={() => setActiveTabJefe('mis_gastos')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                  activeTabJefe === 'mis_gastos'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${activeTabJefe === 'mis_gastos'
+                  ? 'bg-white text-slate-900 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
+                  }`}
               >
-                <Receipt className="w-4 h-4 text-amber-500" />
+                <Receipt className="w-4 h-4 text-blue-600" />
                 <span>Mis Gastos Personales ({misRelaciones.length})</span>
               </button>
             </div>
@@ -348,32 +360,32 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
             <div className="space-y-6">
               {/* Tarjetas de Resumen Personal */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
                       Pendiente por Reembolsar
                     </span>
-                    <span className="text-xl font-black text-amber-600 mt-1 block">
+                    <span className="text-xl font-bold text-blue-700 mt-1 block">
                       ${miTotalPendiente.toFixed(2)} USD
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">
+                    <span className="text-[11px] font-medium text-slate-500">
                       {misRelaciones.filter(r => r.estatus === 'Pendiente').length} relación(es) en revisión
                     </span>
                   </div>
-                  <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
                     <Clock className="w-5 h-5" />
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
                       Total Pagado / Reembolsado
                     </span>
-                    <span className="text-xl font-black text-emerald-600 mt-1 block">
+                    <span className="text-xl font-bold text-emerald-700 mt-1 block">
                       ${miTotalPagado.toFixed(2)} USD
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">
+                    <span className="text-[11px] font-medium text-slate-500">
                       {misRelaciones.filter(r => r.estatus === 'Pagado').length} liquidación(es) pagadas
                     </span>
                   </div>
@@ -382,19 +394,19 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                   </div>
                 </div>
 
-                <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs flex items-center justify-between">
+                <div className="bg-white p-5 rounded-3xl border border-slate-200/90 shadow-2xs flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
                       Historial Registrado
                     </span>
-                    <span className="text-xl font-black text-slate-800 mt-1 block">
+                    <span className="text-xl font-bold text-slate-900 mt-1 block">
                       {misRelaciones.length} Planillas
                     </span>
-                    <span className="text-[11px] font-bold text-slate-500">
+                    <span className="text-[11px] font-medium text-slate-500">
                       Rendiciones en el sistema
                     </span>
                   </div>
-                  <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <div className="w-10 h-10 rounded-2xl bg-slate-50 text-slate-700 flex items-center justify-center font-bold border border-slate-200/60">
                     <Receipt className="w-5 h-5" />
                   </div>
                 </div>
@@ -402,78 +414,102 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
               {/* Listado de mis relaciones */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700">
-                    Mis Relaciones de Gastos Entregadas
-                  </h3>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                      Mis Relaciones de Gastos Entregadas
+                    </h3>
+                    {misRelaciones.length > 0 && (
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Mostrando {((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, misRelaciones.length)} de {misRelaciones.length} planillas
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Selector de items por página */}
+                  {misRelaciones.length > 5 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500 font-medium">Mostrar:</span>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="px-2.5 py-1 text-xs font-bold rounded-xl border border-slate-200 bg-white text-slate-700 outline-none"
+                      >
+                        <option value={5}>5 por pág.</option>
+                        <option value={10}>10 por pág.</option>
+                        <option value={20}>20 por pág.</option>
+                        <option value={9999}>Todas</option>
+                      </select>
+                    </div>
+                  )}
                 </div>
 
                 {loading && misRelaciones.length === 0 ? (
-                  <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs animate-in fade-in">
-                    <div className="w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto" />
-                    <h4 className="text-sm font-bold text-slate-700">Cargando tus relaciones de gastos...</h4>
-                    <p className="text-xs text-slate-400">Consultando la base de datos central en tiempo real.</p>
+                  <div className="bg-white p-12 rounded-3xl border border-slate-200/90 text-center space-y-3 shadow-2xs animate-in fade-in">
+                    <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <h4 className="text-sm font-bold text-slate-800">Cargando tus relaciones de gastos...</h4>
+                    <p className="text-xs text-slate-500">Consultando la base de datos central en tiempo real.</p>
                   </div>
                 ) : misRelaciones.length === 0 ? (
-                  <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center space-y-3 shadow-xs">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mx-auto">
+                  <div className="bg-white p-12 rounded-3xl border border-slate-200/90 text-center space-y-3 shadow-2xs">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto">
                       <Receipt className="w-6 h-6" />
                     </div>
                     <h4 className="text-sm font-bold text-slate-800">Aún no has registrado gastos</h4>
-                    <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
                       Haz clic en "Nueva Relación de Gastos" para desglosar tus fotocopias, traslados y desembolsos semanales.
                     </p>
                     <button
                       onClick={() => setViewMode('nuevo')}
-                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
+                      className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl transition-all inline-flex items-center gap-2 cursor-pointer shadow-xs"
                     >
-                      <Plus className="w-3.5 h-3.5 text-amber-400" /> Crear mi Primer Reporte
+                      <Plus className="w-3.5 h-3.5" /> Crear mi Primer Reporte
                     </button>
                   </div>
                 ) : (
-                  misRelaciones.map(rel => {
+                  paginatedMisRelaciones.map(rel => {
                     const isExpanded = expandedId === rel.id;
                     const itemsCount = (rel.items || []).length;
 
                     return (
-                      <div 
-                        key={rel.id} 
-                        className={`bg-white rounded-3xl border transition-all overflow-hidden ${
-                          isExpanded 
-                            ? 'border-amber-300 shadow-sm ring-1 ring-amber-300/40' 
-                            : 'border-slate-200 shadow-xs hover:border-slate-300'
-                        }`}
+                      <div
+                        key={rel.id}
+                        className={`bg-white rounded-2xl border transition-all overflow-hidden ${isExpanded
+                          ? 'border-blue-300 shadow-xs ring-1 ring-blue-200'
+                          : 'border-slate-200/90 shadow-2xs hover:border-slate-300'
+                          }`}
                       >
                         {/* Cabecera Principal de la Tarjeta */}
-                        <div 
+                        <div
                           className="p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 cursor-pointer select-none"
                           onClick={() => setExpandedId(isExpanded ? null : rel.id)}
                         >
                           <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shrink-0 ${
-                              rel.estatus === 'Pagado'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : rel.estatus === 'Pendiente'
-                                ? 'bg-amber-100 text-amber-800'
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-bold shrink-0 ${rel.estatus === 'Pagado'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : rel.estatus === 'Pendiente'
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                 : 'bg-slate-100 text-slate-700'
-                            }`}>
+                              }`}>
                               <Receipt className="w-5 h-5" />
                             </div>
 
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-black text-sm text-slate-900 truncate">
+                                <span className="font-bold text-sm text-slate-900 truncate">
                                   {rel.titulo}
                                 </span>
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                                  rel.estatus === 'Pagado'
-                                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                    : rel.estatus === 'Pendiente'
-                                    ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${rel.estatus === 'Pagado'
+                                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                                  : rel.estatus === 'Pendiente'
+                                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
                                     : rel.estatus === 'Rechazado'
-                                    ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                    : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                }`}>
+                                      ? 'bg-rose-50 text-rose-800 border border-rose-200'
+                                      : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
                                   {rel.estatus === 'Pendiente' ? 'En Revisión por Jefatura' : rel.estatus === 'Pagado' ? 'Pagado' : rel.estatus}
                                 </span>
                               </div>
@@ -497,10 +533,10 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                           {/* Montos y Acciones */}
                           <div className="flex items-center gap-2.5 self-end md:self-center flex-wrap" onClick={(e) => e.stopPropagation()}>
                             <div className="text-right mr-1">
-                              <span className="text-base font-black text-slate-900 block">
+                              <span className="text-base font-bold text-slate-900 block">
                                 ${Number(rel.totalUsd || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
-                              <span className="text-xs font-bold text-amber-600">
+                              <span className="text-xs font-medium text-slate-500">
                                 Bs {Number(rel.totalVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
@@ -508,11 +544,10 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                             {/* Botón Ver Detalle */}
                             <button
                               onClick={() => setExpandedId(isExpanded ? null : rel.id)}
-                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                isExpanded
-                                  ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-xs'
-                                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                              }`}
+                              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${isExpanded
+                                ? 'bg-blue-600 text-white border-blue-500 shadow-2xs'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                                }`}
                               title="Ver desglose de partidas y comprobantes"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -520,14 +555,14 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                               {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                             </button>
 
-                            {/* Botón Editar / Anexar Comprobantes: permitido mientras NO esté Pagado */}
+                            {/* Botón Editar / Anexar Comprobantes */}
                             {rel.estatus !== 'Pagado' && (
                               <button
                                 onClick={() => {
                                   setSelectedRelacion(rel);
                                   setViewMode('editar');
                                 }}
-                                className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl text-xs font-bold transition-all cursor-pointer border border-amber-200 shadow-2xs"
+                                className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all cursor-pointer border border-blue-200 shadow-2xs"
                                 title="Editar / Anexar comprobantes o corregir montos"
                               >
                                 <Edit3 className="w-4 h-4" />
@@ -537,7 +572,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                             {/* Botón Descargar PDF */}
                             <button
                               onClick={() => exportarRelacionGastosPDF(rel)}
-                              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer"
+                              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all cursor-pointer border border-slate-200/60"
                               title="Descargar PDF Oficial"
                             >
                               <Download className="w-4 h-4" />
@@ -566,7 +601,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                                   <div>
                                     <div className="text-xs font-bold text-emerald-950">
-                                      Liquidado el {rel.fechaPago || 'Fecha no registrada'} vía <span className="font-black text-emerald-800">{rel.metodoPago || 'Pago'}</span>
+                                      Liquidado el {rel.fechaPago || 'Fecha no registrada'} vía <span className="font-bold text-emerald-800">{rel.metodoPago || 'Pago'}</span>
                                     </div>
                                     <div className="text-[11px] text-emerald-700">
                                       Referencia: <span className="font-mono font-bold">{rel.referenciaPago || 'Sin número de referencia'}</span>
@@ -579,7 +614,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
 
                             {/* Si tiene observaciones de jefatura */}
                             {rel.comentariosJefatura && (
-                              <div className="bg-amber-50 border border-amber-200 p-3.5 rounded-xl text-xs text-amber-900">
+                              <div className="bg-blue-50/70 border border-blue-200 p-3.5 rounded-xl text-xs text-blue-950">
                                 <span className="font-bold">Observación de Jefatura: </span>
                                 {rel.comentariosJefatura}
                               </div>
@@ -589,7 +624,7 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                             <div className="overflow-x-auto">
                               <table className="w-full text-left text-xs border-collapse">
                                 <thead>
-                                  <tr className="bg-slate-100/70 text-slate-600 uppercase font-black text-[10px] tracking-wider border-b border-slate-200">
+                                  <tr className="bg-[#dbeafe] text-[#1e3a8a] uppercase font-extrabold text-[10px] tracking-wider border-b border-blue-200">
                                     <th className="py-2.5 px-3">Fecha</th>
                                     <th className="py-2.5 px-3">Trámite / Expediente</th>
                                     <th className="py-2.5 px-3">Categoría</th>
@@ -616,10 +651,10 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                                       <td className="py-2.5 px-3 text-slate-600">
                                         {item.descripcion || 'Sin detalle adicional'}
                                       </td>
-                                      <td className="py-2.5 px-3 text-right font-black text-slate-900 whitespace-nowrap">
+                                      <td className="py-2.5 px-3 text-right font-bold text-slate-900 whitespace-nowrap">
                                         ${Number(item.montoUsd || 0).toFixed(2)}
                                       </td>
-                                      <td className="py-2.5 px-3 text-right font-bold text-slate-600 whitespace-nowrap">
+                                      <td className="py-2.5 px-3 text-right font-medium text-slate-600 whitespace-nowrap">
                                         Bs {Number(item.montoVes || 0).toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                                       </td>
                                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
@@ -652,16 +687,16 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                                       setSelectedRelacion(rel);
                                       setViewMode('editar');
                                     }}
-                                    className="px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-bold rounded-xl transition-all cursor-pointer border border-amber-200 flex items-center gap-1.5"
+                                    className="px-3.5 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-bold rounded-xl transition-all cursor-pointer border border-blue-200 flex items-center gap-1.5"
                                   >
-                                    <Edit3 className="w-3.5 h-3.5 text-amber-700" /> Editar Partidas / Anexar Fotos
+                                    <Edit3 className="w-3.5 h-3.5 text-blue-700" /> Editar Partidas / Anexar Fotos
                                   </button>
                                 )}
                                 <button
                                   onClick={() => exportarRelacionGastosPDF(rel)}
-                                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 cursor-pointer shadow-sm shadow-blue-500/20"
                                 >
-                                  <Download className="w-3.5 h-3.5 text-amber-400" /> Descargar PDF Oficial
+                                  <Download className="w-3.5 h-3.5 text-blue-100" /> Descargar PDF Oficial
                                 </button>
                               </div>
                             </div>
@@ -670,6 +705,71 @@ export default function ModuloGastos({ isJefatura: propIsJefatura, globalExpedie
                       </div>
                     );
                   })
+                )}
+
+                {/* Controles de Paginación para Mis Gastos */}
+                {misRelaciones.length > itemsPerPage && itemsPerPage < 9999 && (
+                  <div className="flex items-center justify-between pt-4 border-t border-slate-200/80 px-2 flex-wrap gap-3">
+                    <span className="text-xs text-slate-500 font-medium">
+                      Página {currentPage} de {totalPagesMisRelaciones}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setCurrentPage(1)}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Primera página"
+                      >
+                        <ChevronsLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Página anterior"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      {Array.from({ length: totalPagesMisRelaciones }, (_, i) => i + 1)
+                        .filter(p => p === 1 || p === totalPagesMisRelaciones || Math.abs(p - currentPage) <= 1)
+                        .map((page, index, arr) => {
+                          const prevPage = arr[index - 1];
+                          const showEllipsis = prevPage && page - prevPage > 1;
+                          return (
+                            <span key={page} className="flex items-center">
+                              {showEllipsis && <span className="px-1 text-slate-400 text-xs">...</span>}
+                              <button
+                                onClick={() => setCurrentPage(page)}
+                                className={`w-7 h-7 text-xs font-bold rounded-lg transition-colors cursor-pointer ${currentPage === page
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                                  }`}
+                              >
+                                {page}
+                              </button>
+                            </span>
+                          );
+                        })}
+
+                      <button
+                        onClick={() => setCurrentPage(p => Math.min(totalPagesMisRelaciones, p + 1))}
+                        disabled={currentPage === totalPagesMisRelaciones}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Página siguiente"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => setCurrentPage(totalPagesMisRelaciones)}
+                        disabled={currentPage === totalPagesMisRelaciones}
+                        className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                        title="Última página"
+                      >
+                        <ChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

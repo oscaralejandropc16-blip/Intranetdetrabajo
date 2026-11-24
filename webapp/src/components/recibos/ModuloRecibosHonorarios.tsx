@@ -1,30 +1,43 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { 
-  Receipt, 
-  Plus, 
-  FileText, 
-  DollarSign, 
-  Search, 
-  Download, 
-  Share2, 
-  Trash2, 
-  Sparkles, 
-  RefreshCw, 
-  ShieldCheck, 
-  Copy, 
-  Check, 
-  Coins, 
-  User, 
+import {
+  Receipt,
+  Plus,
+  FileText,
+  DollarSign,
+  Search,
+  Download,
+  Share2,
+  Trash2,
+  Lightbulb,
+  RefreshCw,
+  ShieldCheck,
+  Copy,
+  Check,
+  Coins,
+  User,
   X,
   Scale,
   FileDown,
-  Eye
+  Eye,
+  Banknote,
+  CheckSquare,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Calendar,
+  Building2,
+  Hash,
+  Mail,
+  Phone,
+  Briefcase
 } from 'lucide-react';
 import type { ReciboCliente, TipoReciboCliente, MetodoPagoCliente } from '../../types/recibos';
-import { 
-  supabaseGetRecibosClientes, 
-  supabaseSaveReciboCliente, 
-  supabaseDeleteReciboCliente, 
+import {
+  supabaseGetRecibosClientes,
+  supabaseSaveReciboCliente,
+  supabaseDeleteReciboCliente,
   supabaseGetNextCorrelativoRecibo,
   supabaseGetExpedientes,
   checkIsJefatura,
@@ -221,7 +234,7 @@ const getInitialBcvRate = (): string => {
     if (saved && !isNaN(parseFloat(saved)) && parseFloat(saved) > 0) {
       return parseFloat(saved).toFixed(2);
     }
-  } catch {}
+  } catch { }
   return '887.30';
 };
 
@@ -334,6 +347,14 @@ export default function ModuloRecibosHonorarios({
   const [filterMoneda, setFilterMoneda] = useState<'todas' | 'USD' | 'VES'>('todas');
   const [filterTipo, setFilterTipo] = useState<'todos' | 'Honorarios Profesionales' | 'Provisión de Gastos'>('todos');
 
+  // Paginación del Historial
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterMoneda, filterTipo]);
+
   // Formulario de emisión
   const [formData, setFormData] = useState({
     tipoRecibo: 'Honorarios Profesionales' as TipoReciboCliente,
@@ -405,7 +426,7 @@ export default function ModuloRecibosHonorarios({
           try {
             localStorage.setItem('rd_bcv_usd', data.promedio.toString());
             localStorage.setItem('rd_live_bcv_rate', data.promedio.toString());
-          } catch {}
+          } catch { }
         }
       }
     } catch {
@@ -635,7 +656,7 @@ export default function ModuloRecibosHonorarios({
       `*Fecha:* ${recibo.fecha}\n` +
       `*Atendido por:* ${recibo.abogadoReceptor}\n\n` +
       `_Román & Delgado — Escritorio Jurídico Oficial_`;
-    
+
     const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
   };
@@ -674,6 +695,20 @@ export default function ModuloRecibosHonorarios({
       .sort(sortHistoryDesc);
   }, [filterMoneda, filterTipo, recibos, searchQuery]);
 
+  // Paginación calculada del historial
+  const totalPages = Math.max(1, Math.ceil(filteredRecibos.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, filteredRecibos.length);
+  const paginatedRecibos = itemsPerPage >= 9999 ? filteredRecibos : filteredRecibos.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    const valid = Math.max(1, Math.min(totalPages, page));
+    setCurrentPage(valid);
+    const el = document.getElementById('historial-recibos-card');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
   // Resumen de totales
   const totals = useMemo(() => {
     let usd = 0;
@@ -700,600 +735,774 @@ export default function ModuloRecibosHonorarios({
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-300">
-      
-      {/* HEADER SUPERIOR CON LOGO Y TÍTULO */}
-      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 sm:gap-5 relative overflow-hidden">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-tr from-amber-500 via-amber-600 to-yellow-500 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20 shrink-0">
-            <Receipt className="w-6 h-6 sm:w-7 sm:h-7" />
-          </div>
+
+      {/* HEADER EJECUTIVO DE FACTURACIÓN & RECIBOS */}
+      <div className="bg-white rounded-3xl p-6 lg:p-7 shadow-md shadow-blue-950/8 border border-blue-200 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-blue-100">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-700 border border-amber-500/20">
-                Román & Delgado • Facturación
+            <div className="flex items-center gap-2 flex-wrap mb-2.5">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-blue-100/80 text-[#1e3a8a] border border-blue-200">
+                <Receipt className="w-3.5 h-3.5 text-blue-700" />
+                <span>Román &amp; Delgado &bull; Facturación</span>
               </span>
-              <span className="text-[11px] sm:text-xs text-slate-400 font-medium">Sistema KANT</span>
+              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200 text-[11px] font-bold">
+                Sistema KANT
+              </span>
             </div>
-            <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight mt-1 truncate">
-              Recibos de Honorarios & Clientes
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20">
+                <Receipt className="w-6 h-6" />
+              </span>
+              <span>Recibos de Honorarios &amp; Clientes</span>
             </h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium line-clamp-2 sm:line-clamp-none">
-              Emisión de comprobantes oficiales con correlativo automático, talón de cliente y modelos contractuales.
+            <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1 max-w-2xl leading-relaxed">
+              Emisión de comprobantes oficiales con correlativo automático, talón dual en PDF y modelos contractuales del despacho.
             </p>
           </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 self-start md:self-center shrink-0">
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-50/70 border border-indigo-200/80 whitespace-nowrap">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Correlativo:</span>
+              <span className="text-xs sm:text-sm font-black text-indigo-950 font-mono">{nextCorrelativo}</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={loadRecibos}
+              disabled={loading}
+              className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+              title="Sincronizar recibos con la nube"
+            >
+              <RefreshCw className={`w-4 h-4 text-blue-600 ${loading ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
+          </div>
         </div>
 
-        {/* SELECTOR DE PESTAÑAS PRINCIPALES (RESPONSIVE TOUCH & SCROLL) */}
-        <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 rounded-2xl border border-slate-200 overflow-x-auto scrollbar-none flex-nowrap shrink-0">
-          <button
-            type="button"
-            onClick={() => setSubTab('emitir')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
-              subTab === 'emitir' 
-                ? 'bg-amber-500 text-slate-950 shadow-sm font-black' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>Emitir Recibo</span>
-          </button>
+        {/* NAVEGACIÓN PRINCIPAL DE PESTAÑAS */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-5">
+          <div className="flex items-center gap-1.5 p-1.5 bg-blue-100/85 rounded-2xl border border-blue-200 overflow-x-auto scrollbar-none flex-nowrap shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setSubTab('emitir')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 ${subTab === 'emitir'
+                ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/20 font-black'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                }`}
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>Emitir Recibo</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSubTab('historial')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
-              subTab === 'historial' 
-                ? 'bg-slate-900 text-white shadow-sm font-black' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>Historial ({recibos.length})</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSubTab('historial')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 ${subTab === 'historial'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm font-black'
+                : 'text-slate-600 hover:text-blue-700 hover:bg-white/80'
+                }`}
+            >
+              <Receipt className="w-4 h-4 shrink-0" />
+              <span>Historial ({recibos.length})</span>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => setSubTab('contratos')}
-            className={`flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap active:scale-95 ${
-              subTab === 'contratos' 
-                ? 'bg-blue-600 text-white shadow-sm font-black' 
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
-            <span>Contratos & Modelos</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => setSubTab('contratos')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 ${subTab === 'contratos'
+                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/20 font-black'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-white/70'
+                }`}
+            >
+              <FileText className="w-4 h-4 shrink-0" />
+              <span>Contratos &amp; Modelos</span>
+            </button>
+          </div>
+
+          <div className="hidden lg:flex items-center gap-2 text-xs text-slate-500 font-medium">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>Emisor activo: <strong className="text-slate-800">{loggedUser}</strong></span>
+          </div>
         </div>
       </div>
 
-      {/* MÉTRICAS RÁPIDAS DE FACTURACIÓN (RESPONSIVE FLUID GRID) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
-            <span>Total Recaudado ($)</span>
-            <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 shrink-0" />
+      {/* MÉTRICAS RÁPIDAS DE FACTURACIÓN (4 TARJETAS KPI EJECUTIVAS) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-emerald-700 flex items-center justify-center shrink-0">
+            <DollarSign className="w-5 h-5" />
           </div>
-          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
-            $ {totals.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-          </p>
-          <span className="text-[10px] text-slate-400 font-medium block truncate">En divisas USD / Zelle</span>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block truncate">Total Recaudado ($)</span>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 tabular-nums truncate mt-0.5">
+              $ {totals.totalUsd.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+            </p>
+            <span className="text-[10px] text-emerald-700 font-semibold block truncate">Divisas USD / Zelle</span>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
-            <span>Total en Bolívares</span>
-            <Coins className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 shrink-0" />
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-blue-50 border border-blue-200/80 text-blue-700 flex items-center justify-center shrink-0">
+            <Coins className="w-5 h-5" />
           </div>
-          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
-            Bs. {totals.totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-          </p>
-          <span className="text-[10px] text-slate-400 font-medium block truncate">Pago Móvil y transferencias</span>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block truncate">Total en Bolívares</span>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 tabular-nums truncate mt-0.5">
+              Bs. {totals.totalVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+            </p>
+            <span className="text-[10px] text-blue-700 font-semibold block truncate">Pago Móvil &amp; Transf.</span>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
-            <span>Recibos Emitidos</span>
-            <Receipt className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 shrink-0" />
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center shrink-0">
+            <Receipt className="w-5 h-5" />
           </div>
-          <p className="text-base sm:text-2xl font-black text-slate-900 truncate">
-            {totals.count}
-          </p>
-          <span className="text-[10px] text-slate-400 font-medium block truncate">Comprobantes en registro</span>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block truncate">Recibos Emitidos</span>
+            <p className="text-lg sm:text-2xl font-black text-slate-900 tabular-nums truncate mt-0.5">
+              {totals.count}
+            </p>
+            <span className="text-[10px] text-slate-500 font-medium block truncate">
+              {totals.honorariosCount} honorarios &bull; {totals.gastosCount} gastos
+            </span>
+          </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-2xs">
-          <div className="flex items-center justify-between text-slate-500 text-[11px] sm:text-xs font-bold mb-1">
-            <span>Siguiente Correlativo</span>
-            <ShieldCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-600 shrink-0" />
+        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-2xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 flex items-center justify-center shrink-0">
+            <ShieldCheck className="w-5 h-5" />
           </div>
-          <p className="text-sm sm:text-lg font-black text-amber-700 tracking-tight font-mono truncate">
-            {nextCorrelativo}
-          </p>
-          <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 truncate">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
-            Secuencia activa
-          </span>
+          <div className="min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500 block truncate">Siguiente Correlativo</span>
+            <p className="text-sm sm:text-lg font-black text-indigo-900 tracking-tight font-mono whitespace-nowrap truncate mt-0.5">
+              {nextCorrelativo}
+            </p>
+            <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-1.5 truncate">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              Secuencia oficial activa
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* PESTAÑA 1: FORMULARIO DE EMISIÓN DE RECIBO */}
-      {subTab === 'emitir' && (
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm space-y-5 sm:space-y-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-4 border-b border-slate-100">
-            <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-amber-600 shrink-0" />
-                Emitir Nuevo Recibo Oficial
-              </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Llena los datos del cliente y el monto. El correlativo se asigna de forma automática y se descarga el PDF en dos talones.
-              </p>
-            </div>
+      {/* PESTAÑA 1: ESTUDIO DE EMISIÓN DE RECIBO (FORMULARIO + VISTA PREVIA EN VIVO) */}
+      {subTab === 'emitir' && (() => {
+        const parsedMonto = parseFloat((formData.monto || '').replace(',', '.'));
+        const parsedTasa = parseFloat((formData.tasaBcv || '').replace(',', '.'));
+        const validMonto = !isNaN(parsedMonto) && parsedMonto > 0 ? parsedMonto : 0;
+        const validTasa = !isNaN(parsedTasa) && parsedTasa > 0 ? parsedTasa : 0;
+        const equivBs = formData.moneda === 'USD' && validMonto > 0 && validTasa > 0 ? validMonto * validTasa : 0;
 
-            <div className="flex items-center justify-between sm:justify-start gap-2 bg-amber-50 border border-amber-200/80 px-3 py-1.5 rounded-xl w-full sm:w-auto">
-              <span className="text-xs font-bold text-amber-800">Nº Asignado:</span>
-              <span className="text-xs sm:text-sm font-black text-amber-950 font-mono tracking-wider">{nextCorrelativo}</span>
-            </div>
-          </div>
-
-          <form onSubmit={handleEmitirRecibo} className="space-y-5 sm:space-y-6">
-            
-            {/* SELECTOR DE TIPO DE RECIBO */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Honorarios Profesionales' }))}
-                className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 sm:gap-3.5 active:scale-95 ${
-                  formData.tipoRecibo === 'Honorarios Profesionales'
-                    ? 'bg-amber-50/70 border-amber-400 ring-2 ring-amber-400/30'
-                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                  formData.tipoRecibo === 'Honorarios Profesionales' ? 'bg-amber-500 text-slate-950' : 'bg-white text-slate-600 border border-slate-200'
-                }`}>
-                  ⚖️
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Honorarios Profesionales</h4>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1 sm:line-clamp-none">Asesorías, consultas, redacción de documentos y juicios.</p>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Provisión de Gastos' }))}
-                className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3 sm:gap-3.5 active:scale-95 ${
-                  formData.tipoRecibo === 'Provisión de Gastos'
-                    ? 'bg-emerald-50/70 border-emerald-400 ring-2 ring-emerald-400/30'
-                    : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${
-                  formData.tipoRecibo === 'Provisión de Gastos' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-600 border border-slate-200'
-                }`}>
-                  📑
-                </div>
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Provisión de Gastos</h4>
-                  <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1 sm:line-clamp-none">Aranceles de tribunal, notaría, timbres fiscales y copias.</p>
-                </div>
-              </button>
-            </div>
-
-            {/* SECCIÓN 1: DATOS DEL CLIENTE */}
-            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3.5 sm:space-y-4">
-              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                1. Datos del Cliente y Asunto Legal
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
-                <div className="sm:col-span-2">
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Nombre Completo del Cliente *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Aquiles Pérez / Inversiones Los Llanos C.A."
-                    value={formData.clienteNombre}
-                    onChange={(e) => setFormData(prev => ({ ...prev, clienteNombre: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                  />
-                </div>
-
+        return (
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+            {/* COLUMNA IZQUIERDA: FORMULARIO ESTRUCTURADO */}
+            <div className="xl:col-span-8 bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-2xs space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-5 border-b border-slate-100">
                 <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Cédula de Identidad o RIF *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: V-14566378 / J-40182938-1"
-                    value={formData.clienteCedula}
-                    onChange={(e) => {
-                      const formatted = formatCedulaRifInput(e.target.value, formData.clienteCedula);
-                      setFormData(prev => ({ ...prev, clienteCedula: formatted }));
-                    }}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all font-mono"
-                  />
+                  <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
+                    <Receipt className="w-5 h-5 text-blue-600 shrink-0" />
+                    <span>Emitir Nuevo Recibo Oficial</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 font-medium mt-1">
+                    Completa los datos del cliente y del pago. El correlativo es automático y se descargará el PDF en dos talones.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Teléfono / WhatsApp</label>
-                  <input
-                    type="text"
-                    placeholder="Ej: 0414-1234567"
-                    value={formData.clienteTelefono}
-                    onChange={(e) => {
-                      const formatted = formatTelefonoInput(e.target.value, formData.clienteTelefono);
-                      setFormData(prev => ({ ...prev, clienteTelefono: formatted }));
-                    }}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                  />
+                <div className="inline-flex items-center gap-2 bg-indigo-50 border border-indigo-200/80 px-3.5 py-2 rounded-xl whitespace-nowrap shrink-0">
+                  <Hash className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">Nº Asignado:</span>
+                  <span className="text-xs sm:text-sm font-black text-indigo-950 font-mono">{nextCorrelativo}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 pt-0.5">
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-bold text-slate-600 block">
-                      Expediente o Caso Relacionado (Opcional)
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => setIsCustomExpediente(!isCustomExpediente)}
-                      className="text-[10.5px] font-bold text-amber-600 hover:text-amber-700 underline cursor-pointer"
-                    >
-                      {isCustomExpediente ? '← Ver lista' : '✍️ Escribir manual'}
-                    </button>
-                  </div>
+              <form id="form-emitir-recibo" onSubmit={handleEmitirRecibo} className="space-y-6">
 
-                  {isCustomExpediente ? (
-                    <input
-                      type="text"
-                      placeholder="Ej: RD-J-2026-004 • Divorcio 148-A"
-                      value={formData.expedienteRelacionado}
-                      onChange={(e) => setFormData(prev => ({ ...prev, expedienteRelacionado: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-amber-300 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                    />
-                  ) : (
-                    <select
-                      value={formData.expedienteRelacionado}
-                      onChange={(e) => handleSelectExpediente(e.target.value)}
-                      className="w-full px-3 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                    >
-                      <option value="">-- Seleccionar de la lista ({expedientesList.length} disponibles) --</option>
-                      {expedientesList.map((exp: any, idx: number) => {
-                        const num = exp.numeroExpediente || exp.numero || `EXP-${idx + 1}`;
-                        const tit = exp.partes || exp.titulo || exp.cliente || 'Sin título';
-                        const cliente = exp.cliente ? ` (${exp.cliente})` : '';
-                        const fullVal = `${num} • ${tit}`;
-                        return (
-                          <option key={exp.id || idx} value={fullVal}>
-                            📁 {num} - {tit.slice(0, 45)}{tit.length > 45 ? '...' : ''}{cliente}
-                          </option>
-                        );
-                      })}
-                      <option value="__custom__">✍️ Escribir otro expediente manualmente...</option>
-                    </select>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Correo Electrónico (Opcional)</label>
-                  <input
-                    type="email"
-                    placeholder="Ej: cliente@correo.com"
-                    value={formData.clienteEmail}
-                    onChange={(e) => setFormData(prev => ({ ...prev, clienteEmail: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* SECCIÓN 2: DETALLES ECONÓMICOS Y FORMA DE PAGO */}
-            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3.5 sm:space-y-4">
-              <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                2. Monto y Forma de Pago
-              </h4>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Moneda *</label>
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200">
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => {
-                        const currentMetodo = prev.metodoPago as string;
-                        const newMetodo: MetodoPagoCliente = currentMetodo === 'Pago Móvil' || currentMetodo === 'Efectivo Bolívares (Bs.)' ? 'Efectivo Divisas ($)' : prev.metodoPago;
-                        const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
-                        return {
-                          ...prev, 
-                          moneda: 'USD',
-                          metodoPago: newMetodo,
-                          ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
-                        };
-                      })}
-                      className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                        formData.moneda === 'USD'
-                          ? 'bg-amber-500 text-slate-950 shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                {/* SELECTOR DE TIPO DE RECIBO */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Honorarios Profesionales' }))}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3.5 active:scale-95 ${formData.tipoRecibo === 'Honorarios Profesionales'
+                      ? 'bg-blue-50/70 border-blue-500 ring-2 ring-blue-500/20 shadow-2xs'
+                      : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-white'
                       }`}
-                    >
-                      <span className="text-sm">💵</span>
-                      <span>Dólares ($)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setFormData(prev => {
-                        const currentMetodo = prev.metodoPago as string;
-                        const newMetodo: MetodoPagoCliente = currentMetodo === 'Efectivo Divisas ($)' || currentMetodo === 'Zelle' ? 'Pago Móvil' : prev.metodoPago;
-                        const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
-                        return {
-                          ...prev, 
-                          moneda: 'VES',
-                          metodoPago: newMetodo,
-                          ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
-                        };
-                      })}
-                      className={`py-2 px-2.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${
-                        formData.moneda === 'VES'
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-                      }`}
-                    >
-                      <span className="text-sm">🇻🇪</span>
-                      <span>Bolívares (Bs.)</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Monto Recibido *</label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
-                      {formData.moneda === 'USD' ? '$' : 'Bs.'}
-                    </span>
-                    <input
-                      type="text"
-                      required
-                      placeholder="100.00"
-                      value={formData.monto}
-                      onChange={(e) => setFormData(prev => ({ ...prev, monto: e.target.value }))}
-                      className="w-full pl-8 pr-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-black text-slate-900 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Forma de Pago *</label>
-                  <select
-                    value={formData.metodoPago}
-                    onChange={(e) => {
-                      const newMetodo = e.target.value as MetodoPagoCliente;
-                      const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
-                      setFormData(prev => ({ 
-                        ...prev, 
-                        metodoPago: newMetodo,
-                        ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
-                      }));
-                    }}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-bold text-slate-800 outline-none focus:border-amber-500 transition-all"
                   >
-                    {formData.moneda === 'USD' ? (
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${formData.tipoRecibo === 'Honorarios Profesionales' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}>
+                      <Scale className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Honorarios Profesionales</h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-2 sm:line-clamp-none">Asesorías, consultas, redacción de documentos y juicios.</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, tipoRecibo: 'Provisión de Gastos' }))}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3.5 active:scale-95 ${formData.tipoRecibo === 'Provisión de Gastos'
+                      ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20 shadow-2xs'
+                      : 'bg-slate-50/70 border-slate-200 hover:border-slate-300 hover:bg-white'
+                      }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors ${formData.tipoRecibo === 'Provisión de Gastos' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200'
+                      }`}>
+                      <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider truncate">Provisión de Gastos</h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-2 sm:line-clamp-none">Aranceles de tribunal, notaría, timbres fiscales y copias.</p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* SECCIÓN 1: DATOS DEL CLIENTE */}
+                <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80 space-y-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                      <User className="w-3.5 h-3.5" />
+                    </span>
+                    <span>1. Datos del Cliente y Asunto Legal</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div className="sm:col-span-2">
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Nombre Completo del Cliente *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej: Aquiles Pérez / Inversiones Los Llanos C.A."
+                        value={formData.clienteNombre}
+                        onChange={(e) => setFormData(prev => ({ ...prev, clienteNombre: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Cédula o RIF *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="V-14566378 / J-40182938-1"
+                        value={formData.clienteCedula}
+                        onChange={(e) => {
+                          const formatted = formatCedulaRifInput(e.target.value, formData.clienteCedula);
+                          setFormData(prev => ({ ...prev, clienteCedula: formatted }));
+                        }}
+                        className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Teléfono / WhatsApp</label>
+                      <div className="relative">
+                        <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="text"
+                          placeholder="0414-1234567"
+                          value={formData.clienteTelefono}
+                          onChange={(e) => {
+                            const formatted = formatTelefonoInput(e.target.value, formData.clienteTelefono);
+                            setFormData(prev => ({ ...prev, clienteTelefono: formatted }));
+                          }}
+                          className="w-full pl-9 pr-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-0.5">
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-[11px] font-bold text-slate-700 block">
+                          Expediente o Caso Relacionado (Opcional)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setIsCustomExpediente(!isCustomExpediente)}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline cursor-pointer"
+                        >
+                          {isCustomExpediente ? 'Ver lista de expedientes' : 'Escribir manualmente'}
+                        </button>
+                      </div>
+
+                      {isCustomExpediente ? (
+                        <input
+                          type="text"
+                          placeholder="Ej: RD-J-2026-004 • Divorcio 148-A"
+                          value={formData.expedienteRelacionado}
+                          onChange={(e) => setFormData(prev => ({ ...prev, expedienteRelacionado: e.target.value }))}
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-blue-300 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                      ) : (
+                        <select
+                          value={formData.expedienteRelacionado}
+                          onChange={(e) => handleSelectExpediente(e.target.value)}
+                          className="w-full px-3 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                        >
+                          <option value="">-- Seleccionar de la lista ({expedientesList.length} disponibles) --</option>
+                          {expedientesList.map((exp: any, idx: number) => {
+                            const num = exp.numeroExpediente || exp.numero || `EXP-${idx + 1}`;
+                            const tit = exp.partes || exp.titulo || exp.cliente || 'Sin título';
+                            const cliente = exp.cliente ? ` (${exp.cliente})` : '';
+                            const fullVal = `${num} • ${tit}`;
+                            return (
+                              <option key={exp.id || idx} value={fullVal}>
+                                {num} - {tit.slice(0, 45)}{tit.length > 45 ? '...' : ''}{cliente}
+                              </option>
+                            );
+                          })}
+                          <option value="__custom__">Escribir otro expediente manualmente...</option>
+                        </select>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Correo Electrónico (Opcional)</label>
+                      <div className="relative">
+                        <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        <input
+                          type="email"
+                          placeholder="cliente@correo.com"
+                          value={formData.clienteEmail}
+                          onChange={(e) => setFormData(prev => ({ ...prev, clienteEmail: e.target.value }))}
+                          className="w-full pl-9 pr-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 2: DETALLES ECONÓMICOS Y FORMA DE PAGO */}
+                <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80 space-y-4">
+                  <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <DollarSign className="w-3.5 h-3.5" />
+                    </span>
+                    <span>2. Monto y Forma de Pago</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Moneda *</label>
+                      <div className="grid grid-cols-2 gap-1 p-1 bg-slate-200/70 rounded-xl border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => {
+                            const currentMetodo = prev.metodoPago as string;
+                            const newMetodo: MetodoPagoCliente = currentMetodo === 'Pago Móvil' || currentMetodo === 'Efectivo Bolívares (Bs.)' ? 'Efectivo Divisas ($)' : prev.metodoPago;
+                            const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                            return {
+                              ...prev,
+                              moneda: 'USD',
+                              metodoPago: newMetodo,
+                              ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                            };
+                          })}
+                          className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${formData.moneda === 'USD'
+                            ? 'bg-emerald-600 text-white shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                            }`}
+                        >
+                          <DollarSign className="w-3.5 h-3.5 shrink-0" />
+                          <span>USD</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => {
+                            const currentMetodo = prev.metodoPago as string;
+                            const newMetodo: MetodoPagoCliente = currentMetodo === 'Efectivo Divisas ($)' || currentMetodo === 'Zelle' ? 'Pago Móvil' : prev.metodoPago;
+                            const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                            return {
+                              ...prev,
+                              moneda: 'VES',
+                              metodoPago: newMetodo,
+                              ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                            };
+                          })}
+                          className={`py-2 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 ${formData.moneda === 'VES'
+                            ? 'bg-blue-600 text-white shadow-xs font-black'
+                            : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                            }`}
+                        >
+                          <Coins className="w-3.5 h-3.5 shrink-0" />
+                          <span>Bs.</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Monto Recibido *</label>
+                      <div className="relative">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-500">
+                          {formData.moneda === 'USD' ? '$' : 'Bs.'}
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          placeholder="100.00"
+                          value={formData.monto}
+                          onChange={(e) => setFormData(prev => ({ ...prev, monto: e.target.value }))}
+                          className="w-full pl-9 pr-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-black text-slate-900 tabular-nums outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Forma de Pago *</label>
+                      <select
+                        value={formData.metodoPago}
+                        onChange={(e) => {
+                          const newMetodo = e.target.value as MetodoPagoCliente;
+                          const isCash = newMetodo === 'Efectivo Divisas ($)' || newMetodo === 'Efectivo Bolívares (Bs.)';
+                          setFormData(prev => ({
+                            ...prev,
+                            metodoPago: newMetodo,
+                            ...(isCash ? { bancoDestino: '', referenciaPago: '' } : {})
+                          }));
+                        }}
+                        className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer"
+                      >
+                        {formData.moneda === 'USD' ? (
+                          <>
+                            <option value="Efectivo Divisas ($)">Efectivo Divisas ($)</option>
+                            <option value="Zelle">Zelle</option>
+                            <option value="Transferencia Bancaria">Transferencia Internacional</option>
+                            <option value="Otro">Otro medio en divisas</option>
+                          </>
+                        ) : (
+                          <>
+                            <option value="Pago Móvil">Pago Móvil</option>
+                            <option value="Transferencia Bancaria">Transferencia Bancaria (Bs.)</option>
+                            <option value="Efectivo Bolívares (Bs.)">Efectivo Bolívares (Bs.)</option>
+                            <option value="Otro">Otro medio en Bs.</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Fecha del Recibo *</label>
+                      <input
+                        type="date"
+                        required
+                        value={formData.fecha}
+                        onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Fila extra: Banco y Referencia bancaria */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-0.5">
+                    {isEfectivo ? (
+                      <div className={`col-span-1 ${formData.moneda === 'USD' ? 'sm:col-span-2' : 'sm:col-span-2 lg:col-span-3'} p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl flex items-center gap-3 text-xs text-emerald-950 shadow-2xs`}>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-200 flex items-center justify-center shrink-0 text-emerald-700">
+                          <Banknote className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="font-bold text-emerald-950 flex items-center gap-2 flex-wrap">
+                            <span>Pago en Efectivo Físico</span>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 uppercase tracking-wide">
+                              {formData.moneda === 'USD' ? 'Divisas ($)' : 'Bolívares (Bs.)'}
+                            </span>
+                          </p>
+                          <p className="text-[11px] text-emerald-800/90 mt-0.5 font-medium">
+                            Recepción directa en efectivo. No requiere banco ni referencia bancaria.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
                       <>
-                        <option value="Efectivo Divisas ($)">Efectivo Divisas ($)</option>
-                        <option value="Zelle">Zelle</option>
-                        <option value="Transferencia Bancaria">Transferencia Internacional</option>
-                        <option value="Otro">Otro medio en divisas</option>
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Banco / Cuenta de Destino</label>
+                          <div className="relative">
+                            <Building2 className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                            <input
+                              type="text"
+                              placeholder="Banesco / Banco de Venezuela / Zelle"
+                              value={formData.bancoDestino}
+                              onChange={(e) => setFormData(prev => ({ ...prev, bancoDestino: e.target.value }))}
+                              className="w-full pl-9 pr-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-slate-700 block mb-1.5">Nº Referencia / Comprobante</label>
+                          <input
+                            type="text"
+                            placeholder="Ref. 00892839 / Comprobante Zelle"
+                            value={formData.referenciaPago}
+                            onChange={(e) => setFormData(prev => ({ ...prev, referenciaPago: e.target.value }))}
+                            className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-semibold text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {formData.moneda === 'USD' && (
+                      <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="text-[11px] font-bold text-slate-700 block">
+                            Tasa Oficial BCV
+                          </label>
+                          <button
+                            type="button"
+                            onClick={refreshLiveBcv}
+                            disabled={loadingBcv}
+                            title="Actualizar tasa oficial BCV en vivo"
+                            className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:text-blue-800 transition-colors cursor-pointer"
+                          >
+                            <RefreshCw className={`w-3 h-3 ${loadingBcv ? 'animate-spin' : ''}`} />
+                            {loadingBcv ? 'Actualizando...' : 'Actualizar BCV'}
+                          </button>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="887.30"
+                          value={formData.tasaBcv}
+                          onChange={(e) => setFormData(prev => ({ ...prev, tasaBcv: e.target.value }))}
+                          className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs font-bold text-slate-900 font-mono outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        />
+                        {equivBs > 0 && (
+                          <span className="text-[11px] text-emerald-700 font-bold block mt-1.5">
+                            Equivalente: Bs. {equivBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* SECCIÓN 3: CONCEPTO DETALLADO Y SUGERENCIAS RÁPIDAS */}
+                <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80 space-y-3.5">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                        <FileText className="w-3.5 h-3.5" />
+                      </span>
+                      <span>3. Concepto Detallado del Pago</span>
+                    </label>
+                    <span className="text-[11px] text-slate-500 font-medium">Se imprimirá textualmente en el recibo</span>
+                  </div>
+
+                  {/* Botones de sugerencias rápidas */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
+                      <Lightbulb className="w-3.5 h-3.5 text-blue-600" /> Sugerencias:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPreset('Abono a honorarios profesionales por redacción de documento y trámites legales.')}
+                      className="px-3 py-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    >
+                      Abono Redacción
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPreset('Pago de honorarios profesionales por consulta legal personalizada y estudio de expediente.')}
+                      className="px-3 py-1.5 bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    >
+                      Consulta Legal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectPreset('Provisión de fondos para aranceles judiciales, timbres fiscales y copias certificadas en tribunal.')}
+                      className="px-3 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-200 rounded-xl text-xs font-semibold transition-all cursor-pointer active:scale-95 shadow-2xs"
+                    >
+                      Gastos Tribunal / Copias
+                    </button>
+                  </div>
+
+                  <textarea
+                    rows={3}
+                    placeholder="Describe detalladamente el concepto de los honorarios o gastos recibidos..."
+                    value={formData.concepto}
+                    onChange={(e) => setFormData(prev => ({ ...prev, concepto: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all leading-relaxed"
+                  />
+                </div>
+
+                {/* BOTÓN DE ACCIÓN FINAL (VISIBLE EN FORMULARIO) */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>Atendido por: <strong className="text-slate-800">{loggedUser}</strong></span>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md shadow-blue-600/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
+                  >
+                    {isSaving ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                        <span>Emitiendo y Descargando PDF...</span>
                       </>
                     ) : (
                       <>
-                        <option value="Pago Móvil">Pago Móvil</option>
-                        <option value="Transferencia Bancaria">Transferencia Bancaria (Bs.)</option>
-                        <option value="Efectivo Bolívares (Bs.)">Efectivo Bolívares (Bs.)</option>
-                        <option value="Otro">Otro medio en Bs.</option>
+                        <Download className="w-4 h-4 shrink-0" />
+                        <span>Emitir Recibo Oficial y Descargar PDF</span>
                       </>
                     )}
-                  </select>
+                  </button>
                 </div>
 
-                <div>
-                  <label className="text-[11px] font-bold text-slate-600 block mb-1">Fecha del Recibo *</label>
-                  <input
-                    type="date"
-                    required
-                    value={formData.fecha}
-                    onChange={(e) => setFormData(prev => ({ ...prev, fecha: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                  />
-                </div>
-              </div>
+              </form>
+            </div>
 
-              {/* Fila extra: Banco y Referencia bancaria (se oculta automáticamente en pagos en efectivo) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-3.5 pt-0.5">
-                {isEfectivo ? (
-                  <div className={`col-span-1 ${formData.moneda === 'USD' ? 'sm:col-span-2' : 'sm:col-span-2 lg:col-span-3'} p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-xl flex items-center gap-3 text-xs text-emerald-950 shadow-2xs`}>
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 border border-emerald-200/80 flex items-center justify-center shrink-0 text-lg shadow-2xs">
-                      💵
-                    </div>
-                    <div>
-                      <p className="font-bold text-emerald-950 flex items-center gap-2">
-                        <span>Pago en Efectivo Físico</span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 uppercase tracking-wide">
-                          {formData.moneda === 'USD' ? 'Divisas ($)' : 'Bolívares (Bs.)'}
-                        </span>
-                      </p>
-                      <p className="text-[11px] text-emerald-800/90 mt-0.5 font-medium">
-                        Recepción directa en físico. No requiere banco de destino ni número de referencia bancaria.
-                      </p>
-                    </div>
+            {/* COLUMNA DERECHA: VISTA PREVIA EN VIVO DEL COMPROBANTE */}
+            <div className="xl:col-span-4 xl:sticky xl:top-6">
+              <div className="bg-white rounded-3xl border border-slate-200/90 shadow-sm overflow-hidden">
+                {/* Encabezado del talón preliminar */}
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-5 py-4 text-white flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-blue-300 block">
+                      Vista Previa en Vivo
+                    </span>
+                    <h4 className="text-sm font-black tracking-tight truncate">Román &amp; Delgado</h4>
                   </div>
-                ) : (
-                  <>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Banco / Cuenta de Destino</label>
-                      <input
-                        type="text"
-                        placeholder="Ej: Banesco / Banco de Venezuela / Zelle"
-                        value={formData.bancoDestino}
-                        onChange={(e) => setFormData(prev => ({ ...prev, bancoDestino: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                      />
-                    </div>
+                  <span className="px-2.5 py-1 rounded-lg bg-blue-500/20 border border-blue-400/30 text-blue-200 font-mono text-xs font-bold whitespace-nowrap shrink-0">
+                    {nextCorrelativo}
+                  </span>
+                </div>
 
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-600 block mb-1">Nº Referencia / Comprobante</label>
-                      <input
-                        type="text"
-                        placeholder="Ej: Ref. 00892839 / Comprobante Zelle"
-                        value={formData.referenciaPago}
-                        onChange={(e) => setFormData(prev => ({ ...prev, referenciaPago: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                      />
-                    </div>
-                  </>
-                )}
+                {/* Cuerpo visual del recibo */}
+                <div className="p-5 space-y-4">
+                  {/* Tipo y Fecha */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <span className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${formData.tipoRecibo === 'Honorarios Profesionales'
+                      ? 'bg-blue-50 text-blue-700 border-blue-200'
+                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                      {formData.tipoRecibo}
+                    </span>
+                    <span className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                      {formData.fecha}
+                    </span>
+                  </div>
 
-                {formData.moneda === 'USD' && (
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-slate-600 block">
-                        Tasa Oficial BCV Referencial
-                      </label>
-                      <button
-                        type="button"
-                        onClick={refreshLiveBcv}
-                        disabled={loadingBcv}
-                        title="Actualizar tasa oficial BCV en vivo"
-                        className="inline-flex items-center gap-1 text-[10.5px] font-bold text-amber-600 hover:text-amber-700 transition-colors cursor-pointer"
-                      >
-                        <RefreshCw className={`w-2.5 h-2.5 ${loadingBcv ? 'animate-spin' : ''}`} />
-                        {loadingBcv ? 'Actualizando...' : 'Actualizar BCV'}
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="887.30"
-                        value={formData.tasaBcv}
-                        onChange={(e) => setFormData(prev => ({ ...prev, tasaBcv: e.target.value }))}
-                        className="w-full px-3.5 py-2.5 sm:py-2 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-semibold text-slate-800 outline-none focus:border-amber-500 transition-all"
-                      />
-                    </div>
-                    {formData.monto && Number(formData.monto) > 0 && formData.tasaBcv && Number(formData.tasaBcv) > 0 && (
-                      <span className="text-[10.5px] text-emerald-600 font-bold block mt-1">
-                        ≈ Bs. {(Number(formData.monto) * Number(formData.tasaBcv)).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {/* Caja de Monto Principal */}
+                  <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-4 text-center space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">
+                      Monto a Recibir
+                    </span>
+                    <p className="text-3xl font-black text-slate-900 tabular-nums tracking-tight">
+                      {formData.moneda === 'USD'
+                        ? `$ ${validMonto.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                        : `Bs. ${validMonto.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      }
+                    </p>
+                    {equivBs > 0 && (
+                      <span className="inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                        Equiv: Bs. {equivBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     )}
                   </div>
-                )}
+
+                  {/* Resumen de Datos */}
+                  <div className="space-y-2.5 text-xs divide-y divide-slate-100">
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <span className="text-slate-500 font-medium">Cliente:</span>
+                      <span className="font-bold text-slate-900 text-right truncate max-w-[180px]">
+                        {formData.clienteNombre.trim() || 'Por definir'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2.5">
+                      <span className="text-slate-500 font-medium">Cédula / RIF:</span>
+                      <span className="font-mono font-bold text-slate-800">
+                        {formData.clienteCedula.trim() || 'V-00000000'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2.5">
+                      <span className="text-slate-500 font-medium">Método de Pago:</span>
+                      <span className="font-bold text-slate-800 text-right">
+                        {formData.metodoPago}
+                      </span>
+                    </div>
+
+                    {!isEfectivo && formData.referenciaPago && (
+                      <div className="flex items-center justify-between gap-2 pt-2.5">
+                        <span className="text-slate-500 font-medium">Referencia:</span>
+                        <span className="font-mono font-bold text-blue-700 truncate max-w-[160px]">
+                          {formData.referenciaPago}
+                        </span>
+                      </div>
+                    )}
+
+                    {formData.expedienteRelacionado && (
+                      <div className="flex items-center justify-between gap-2 pt-2.5">
+                        <span className="text-slate-500 font-medium shrink-0">Expediente:</span>
+                        <span className="font-bold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded text-[11px] truncate max-w-[170px]">
+                          {formData.expedienteRelacionado}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Concepto preliminar */}
+                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-100 space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                      Concepto en Comprobante:
+                    </span>
+                    <p className="text-xs text-slate-700 font-medium leading-relaxed line-clamp-3 italic">
+                      "{formData.concepto.trim() || (formData.tipoRecibo === 'Honorarios Profesionales' ? 'Honorarios profesionales por asesoría y servicios jurídicos.' : 'Provisión para gastos de tramitación y aranceles judiciales.')}"
+                    </p>
+                  </div>
+
+                  {/* Sello inferior */}
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span className="flex items-center gap-1.5 text-emerald-700 font-semibold">
+                      <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                      <span>PDF Dual (Original + Copia)</span>
+                    </span>
+                    <span className="font-semibold text-slate-400">Listo</span>
+                  </div>
+                </div>
               </div>
             </div>
-
-            {/* SECCIÓN 3: CONCEPTO DETALLADO Y SUGERENCIAS RÁPIDAS */}
-            <div className="bg-slate-50/60 rounded-xl sm:rounded-2xl p-3.5 sm:p-5 border border-slate-200 space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-wider block">
-                  3. Concepto Detallado del Pago
-                </label>
-                <span className="text-[10px] text-slate-400 font-medium">Se imprimirá textualmente en el recibo</span>
-              </div>
-
-              {/* Botones de sugerencias rápidas (Scrollable en móviles pequeños) */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider flex items-center gap-1 shrink-0">
-                  <Sparkles className="w-3 h-3 text-amber-500" /> Rápidas:
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPreset('Abono a honorarios profesionales por redacción de documento y trámites legales.')}
-                  className="px-2.5 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
-                >
-                  Abono Redacción
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPreset('Pago de honorarios profesionales por consulta legal personalizada y estudio de expediente.')}
-                  className="px-2.5 py-1.5 bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
-                >
-                  Consulta Legal
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSelectPreset('Provisión de fondos para aranceles judiciales, timbres fiscales y copias certificadas en tribunal.')}
-                  className="px-2.5 py-1.5 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 rounded-lg text-xs sm:text-[10.5px] font-semibold transition-all cursor-pointer active:scale-95"
-                >
-                  Gastos Tribunal / Copias
-                </button>
-              </div>
-
-              <textarea
-                rows={3}
-                placeholder="Describe el concepto de los honorarios o gastos recibidos..."
-                value={formData.concepto}
-                onChange={(e) => setFormData(prev => ({ ...prev, concepto: e.target.value }))}
-                className="w-full px-3.5 py-2.5 bg-white rounded-xl border border-slate-200 text-sm sm:text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/10 transition-all leading-relaxed"
-              />
-            </div>
-
-            {/* BOTÓN DE ACCIÓN FINAL */}
-            <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-3.5 sm:gap-4">
-              <div className="flex items-center gap-2 text-xs text-slate-500 font-medium w-full sm:w-auto justify-center sm:justify-start">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Atendido por: <strong className="text-slate-800">{loggedUser}</strong></span>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="w-full sm:w-auto px-6 sm:px-8 py-3.5 bg-gradient-to-r from-amber-500 via-amber-600 to-yellow-500 text-slate-950 font-black text-sm rounded-xl sm:rounded-2xl shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
-              >
-                {isSaving ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                    <span>Emitiendo y Descargando PDF...</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4 shrink-0" />
-                    <span>Emitir Recibo Oficial y Descargar PDF</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-          </form>
-        </div>
-      )}
+          </div>
+        );
+      })()}
 
       {/* PESTAÑA 2: HISTORIAL DE RECIBOS EMITIDOS */}
       {subTab === 'historial' && (
-        <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 border border-slate-200 shadow-sm space-y-4 sm:space-y-6">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3.5 sm:gap-4 pb-4 border-b border-slate-100">
+        <div id="historial-recibos-card" className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200/90 shadow-2xs space-y-5 scroll-mt-6">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 pb-5 border-b border-slate-100">
             <div>
-              <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-amber-600 shrink-0" />
-                Historial de Recibos Emitidos
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center gap-2.5">
+                <Receipt className="w-5 h-5 text-blue-600 shrink-0" />
+                <span>Historial de Recibos Emitidos</span>
               </h3>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Registro oficial con búsqueda por cliente, cédula o número de recibo correlativo.
+              <p className="text-xs text-slate-500 font-medium mt-1">
+                Registro oficial con búsqueda por cliente, cédula, expediente o número correlativo.
               </p>
             </div>
 
             {/* Buscador y Filtros Responsive */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-              <div className="relative flex-1 sm:w-60">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto">
+              <div className="relative flex-1 sm:w-64">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
                   placeholder="Buscar cliente, cédula o Nº..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-8 py-2 bg-slate-50 rounded-xl border border-slate-200 text-sm sm:text-xs font-medium text-slate-800 outline-none focus:border-amber-500 focus:bg-white transition-all"
+                  className="w-full pl-10 pr-8 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 transition-all"
                 />
                 {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
@@ -1303,7 +1512,7 @@ export default function ModuloRecibosHonorarios({
                 <select
                   value={filterMoneda}
                   onChange={(e) => setFilterMoneda(e.target.value as any)}
-                  className="w-full sm:w-auto px-2.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
+                  className="w-full sm:w-auto px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="todas">Moneda: Todas</option>
                   <option value="USD">Solo Dólares ($)</option>
@@ -1313,7 +1522,7 @@ export default function ModuloRecibosHonorarios({
                 <select
                   value={filterTipo}
                   onChange={(e) => setFilterTipo(e.target.value as any)}
-                  className="w-full sm:w-auto px-2.5 py-2 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none"
+                  className="w-full sm:w-auto px-3 py-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 outline-none focus:border-blue-500 cursor-pointer"
                 >
                   <option value="todos">Tipo: Todos</option>
                   <option value="Honorarios Profesionales">Honorarios</option>
@@ -1321,127 +1530,248 @@ export default function ModuloRecibosHonorarios({
                 </select>
               </div>
 
+              {(searchQuery || filterMoneda !== 'todas' || filterTipo !== 'todos') && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setFilterMoneda('todas'); setFilterTipo('todos'); }}
+                  className="px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                  title="Restablecer filtros"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Limpiar</span>
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={loadRecibos}
                 title="Actualizar lista"
-                className="p-2 text-slate-500 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-xl border border-slate-200 transition-colors cursor-pointer self-end sm:self-auto"
+                className="p-2.5 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer self-end sm:self-auto"
               >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-600' : ''}`} />
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-600' : ''}`} />
               </button>
             </div>
           </div>
 
           {filteredRecibos.length === 0 ? (
-            <div className="py-12 sm:py-16 text-center text-slate-400 space-y-3 bg-slate-50/60 rounded-2xl border border-slate-200/60">
-              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mx-auto text-slate-400 shadow-xs border border-slate-200">
-                <Receipt className="w-6 h-6 text-amber-500" />
+            <div className="py-14 text-center text-slate-500 space-y-3 bg-slate-50/70 rounded-2xl border border-slate-200/70">
+              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center mx-auto text-blue-600 shadow-2xs border border-slate-200">
+                <Receipt className="w-6 h-6" />
               </div>
-              <p className="text-sm font-bold text-slate-700">No se encontraron recibos emitidos</p>
-              <p className="text-xs text-slate-400">
-                {searchQuery ? 'Prueba con otro término de búsqueda.' : 'Aún no se han emitido recibos en este período.'}
+              <p className="text-sm font-bold text-slate-800">No se encontraron recibos emitidos</p>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
+                {searchQuery || filterMoneda !== 'todas' || filterTipo !== 'todos'
+                  ? 'Prueba modificando tus criterios de búsqueda o restableciendo los filtros.'
+                  : 'Aún no se han emitido recibos registrados en la plataforma.'}
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredRecibos.map((recibo) => {
-                const isUSD = recibo.moneda === 'USD';
-                return (
-                  <div
-                    key={recibo.id}
-                    className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl border border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/50 transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-3.5 sm:gap-4 shadow-2xs"
-                  >
-                    <div className="flex items-start gap-3 min-w-0 w-full md:w-auto">
-                      <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center font-black text-xs sm:text-sm shrink-0 shadow-xs ${
-                        isUSD ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-blue-100 text-blue-800 border border-blue-300'
-                      }`}>
-                        {isUSD ? '$' : 'Bs'}
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap mb-1">
-                          <span className="font-mono text-[11px] sm:text-xs font-black text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md">
-                            {recibo.numeroRecibo}
-                          </span>
-                          <span className="text-xs sm:text-sm font-black text-slate-900 truncate">
-                            {recibo.clienteNombre}
-                          </span>
-                          <span className="text-[10px] sm:text-[11px] text-slate-500 font-semibold">
-                            ({recibo.clienteCedula})
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                            recibo.tipoRecibo === 'Honorarios Profesionales'
-                              ? 'bg-amber-100 text-amber-800'
-                              : 'bg-emerald-100 text-emerald-800'
+            <>
+              <div className="space-y-3">
+                {paginatedRecibos.map((recibo) => {
+                  const isUSD = recibo.moneda === 'USD';
+                  return (
+                    <div
+                      key={recibo.id}
+                      className="p-4 sm:p-5 rounded-2xl border border-slate-200/90 hover:border-blue-300 bg-white hover:shadow-sm transition-all flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-2xs"
+                    >
+                      <div className="flex items-start gap-3.5 min-w-0 w-full md:w-auto">
+                        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-sm shrink-0 border ${isUSD
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}>
-                            {recibo.tipoRecibo}
-                          </span>
+                          {isUSD ? '$' : 'Bs'}
                         </div>
 
-                        <p className="text-xs text-slate-600 line-clamp-2 sm:line-clamp-1 mb-1 font-normal">
-                          {recibo.concepto}
-                        </p>
+                        <div className="min-w-0 flex-1 space-y-1.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-xs font-black text-indigo-800 bg-indigo-50 border border-indigo-200 px-2.5 py-0.5 rounded-lg whitespace-nowrap">
+                              {recibo.numeroRecibo}
+                            </span>
+                            <span className="text-sm font-black text-slate-900 truncate">
+                              {recibo.clienteNombre}
+                            </span>
+                            <span className="text-xs text-slate-500 font-mono font-semibold">
+                              ({recibo.clienteCedula})
+                            </span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${recibo.tipoRecibo === 'Honorarios Profesionales'
+                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              }`}>
+                              {recibo.tipoRecibo}
+                            </span>
+                            {recibo.expedienteRelacionado && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                                <Briefcase className="w-3 h-3 text-slate-500" />
+                                <span className="truncate max-w-[160px]">{recibo.expedienteRelacionado}</span>
+                              </span>
+                            )}
+                          </div>
 
-                        <div className="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-[11px] text-slate-400 font-medium flex-wrap">
-                          <span>Fecha: <strong className="text-slate-600">{recibo.fecha}</strong></span>
-                          <span>•</span>
-                          <span>Método: <strong className="text-slate-600">{recibo.metodoPago}</strong></span>
-                          {recibo.referenciaPago && (
-                            <>
-                              <span>•</span>
-                              <span className="truncate max-w-[120px] sm:max-w-none">Ref: <strong className="text-slate-600">{recibo.referenciaPago}</strong></span>
-                            </>
+                          <p className="text-xs text-slate-700 line-clamp-2 sm:line-clamp-1 font-medium">
+                            {recibo.concepto}
+                          </p>
+
+                          <div className="flex items-center gap-2.5 text-[11px] text-slate-500 font-medium flex-wrap">
+                            <span>Fecha: <strong className="text-slate-700">{recibo.fecha}</strong></span>
+                            <span>&bull;</span>
+                            <span>Método: <strong className="text-slate-700">{recibo.metodoPago}</strong></span>
+                            {recibo.referenciaPago && (
+                              <>
+                                <span>&bull;</span>
+                                <span className="truncate max-w-[150px]">Ref: <strong className="text-slate-700 font-mono">{recibo.referenciaPago}</strong></span>
+                              </>
+                            )}
+                            <span>&bull;</span>
+                            <span>Atendido por: <strong className="text-slate-700">{recibo.abogadoReceptor}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between md:justify-end gap-4 w-full md:w-auto shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
+                        <div className="text-left md:text-right">
+                          <span className="text-lg font-black text-slate-900 tabular-nums block">
+                            {isUSD
+                              ? `$ ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`
+                              : `Bs. ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`}
+                          </span>
+                          {recibo.montoEquivalente && isUSD && (
+                            <span className="text-[11px] text-emerald-700 font-semibold block">
+                              Equiv: Bs. {recibo.montoEquivalente.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                            </span>
                           )}
-                          <span>•</span>
-                          <span>Atendido por: <strong className="text-slate-600">{recibo.abogadoReceptor}</strong></span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => exportarReciboClientePDF(recibo)}
+                            title="Descargar PDF Oficial"
+                            className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white transition-all cursor-pointer font-bold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-600/20 active:scale-95"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>PDF</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleShareWhatsApp(recibo)}
+                            title="Compartir por WhatsApp"
+                            className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200/70 transition-all cursor-pointer active:scale-95"
+                          >
+                            <Share2 className="w-4 h-4" />
+                          </button>
+
+                          {isAdminUser && (
+                            <button
+                              type="button"
+                              onClick={() => handleAnular(recibo)}
+                              title="Anular / Eliminar recibo (Solo Administradores)"
+                              className="p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 border border-slate-200/70 transition-all cursor-pointer active:scale-95"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
+                  );
+                })}
+              </div>
 
-                    <div className="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto shrink-0 pt-2.5 md:pt-0 border-t md:border-t-0 border-slate-100">
-                      <div className="text-left md:text-right">
-                        <span className="text-base sm:text-lg font-black text-slate-900 block">
-                          {isUSD ? `$ ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}` : `Bs. ${recibo.monto.toLocaleString('es-VE', { minimumFractionDigits: 2 })}`}
-                        </span>
-                        {recibo.montoEquivalente && isUSD && (
-                          <span className="text-[10px] text-slate-400 block">
-                            Equiv: Bs. {recibo.montoEquivalente.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                          </span>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => exportarReciboClientePDF(recibo)}
-                          title="Descargar PDF Oficial"
-                          className="px-2.5 py-2 rounded-xl bg-slate-100 hover:bg-amber-500 hover:text-slate-950 text-slate-700 transition-all cursor-pointer font-bold text-xs flex items-center gap-1 shadow-2xs active:scale-95"
-                        >
-                          <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          <span className="hidden sm:inline">PDF</span>
-                        </button>
-
-                        <button
-                          onClick={() => handleShareWhatsApp(recibo)}
-                          title="Compartir por WhatsApp"
-                          className="p-2 sm:p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 transition-all cursor-pointer active:scale-95"
-                        >
-                          <Share2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </button>
-
-                        {isAdminUser && (
-                          <button
-                            onClick={() => handleAnular(recibo)}
-                            title="Anular / Eliminar recibo (Solo Administradores)"
-                            className="p-2 sm:p-2.5 rounded-xl bg-slate-50 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition-all cursor-pointer active:scale-95"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+              {/* BARRA DE PAGINACIÓN DEL HISTORIAL */}
+              <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
+                  <div className="flex items-center gap-1.5">
+                    <span className="font-semibold text-slate-600">Mostrar:</span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1);
+                      }}
+                      className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-blue-500 transition-colors"
+                    >
+                      <option value={5}>5 recibos</option>
+                      <option value={10}>10 recibos</option>
+                      <option value={20}>20 recibos</option>
+                      <option value={9999}>Ver todos ({filteredRecibos.length})</option>
+                    </select>
                   </div>
-                );
-              })}
-            </div>
+                  <span className="text-slate-300">|</span>
+                  <span className="font-medium text-slate-600">
+                    Mostrando <strong className="text-slate-900">{filteredRecibos.length === 0 ? 0 : startIndex + 1}</strong> a <strong className="text-slate-900">{endIndex}</strong> de <strong className="text-blue-600">{filteredRecibos.length}</strong> recibos
+                  </span>
+                </div>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(1)}
+                      disabled={safeCurrentPage === 1}
+                      title="Primera página"
+                      className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(safeCurrentPage - 1)}
+                      disabled={safeCurrentPage === 1}
+                      title="Página anterior"
+                      className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Anterior</span>
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPages || Math.abs(page - safeCurrentPage) <= 1)
+                      .map((page, idx, array) => {
+                        const prevPage = array[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsis && <span className="px-1 text-slate-400 text-xs font-bold">...</span>}
+                            <button
+                              type="button"
+                              onClick={() => handlePageChange(page)}
+                              className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${safeCurrentPage === page
+                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25'
+                                : 'bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(safeCurrentPage + 1)}
+                      disabled={safeCurrentPage === totalPages}
+                      title="Página siguiente"
+                      className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="hidden sm:inline">Siguiente</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={safeCurrentPage === totalPages}
+                      title="Última página"
+                      className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -1450,47 +1780,47 @@ export default function ModuloRecibosHonorarios({
       {subTab === 'contratos' && (
         <div className="space-y-6">
           {/* Banner de bienvenida y directrices de la sección */}
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-50/60 to-blue-50/50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-amber-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-amber-500 text-slate-950 flex items-center justify-center font-black shadow-sm shrink-0">
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-sm shadow-indigo-600/20 shrink-0">
                 <Scale className="w-6 h-6" />
               </div>
               <div>
                 <h3 className="text-base sm:text-lg font-black text-slate-900">
                   Modelos Jurídicos Institucionales
                 </h3>
-                <p className="text-xs text-slate-600 font-medium">
+                <p className="text-xs text-slate-500 font-medium mt-0.5">
                   Documentos oficiales listos conforme a la Ley de Abogados y el Código de Ética de Venezuela.
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
                 <Check className="w-3.5 h-3.5 text-emerald-600" />
                 Papel Membretado Oficial
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-200/80 text-xs font-bold text-blue-700 shadow-2xs">
                 <FileDown className="w-3.5 h-3.5 text-blue-600" />
                 Descarga en Word (.doc)
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
-            
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
             {/* FORMATO 1: CONTRATO DE PRESTACIÓN DE SERVICIOS */}
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3.5">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-4">
                 {/* Header de la tarjeta */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold shrink-0 border border-amber-200">
-                      ⚖️
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold shrink-0 border border-blue-200">
+                      <Scale className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-slate-900">Contrato de Prestación de Servicios</h4>
-                      <span className="text-[10px] text-slate-500 font-medium">Modelo oficial para causas legales y clientes</span>
+                      <span className="text-[11px] text-slate-500 font-medium">Modelo oficial para causas legales y clientes</span>
                     </div>
                   </div>
 
@@ -1502,7 +1832,7 @@ export default function ModuloRecibosHonorarios({
                       title="Alternar entre vista de documento membretado o texto plano"
                       className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
                     >
-                      {viewModeContract === 'documento' ? <FileText className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {viewModeContract === 'documento' ? <FileText className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       <span>{viewModeContract === 'documento' ? 'Ver Texto' : 'Ver Hoja'}</span>
                     </button>
 
@@ -1514,7 +1844,7 @@ export default function ModuloRecibosHonorarios({
                         CONTRATO_HTML
                       )}
                       title="Descargar editable en Microsoft Word (.doc)"
-                      className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-600 hover:text-white text-blue-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                      className="px-2.5 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200/70 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                     >
                       <FileDown className="w-3.5 h-3.5 shrink-0" />
                       <span>Word (.doc)</span>
@@ -1523,10 +1853,10 @@ export default function ModuloRecibosHonorarios({
                     <button
                       type="button"
                       onClick={() => handleCopyTemplate(CONTRATO_TEMPLATE, true)}
-                      className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm shadow-blue-600/20 active:scale-95"
                     >
-                      {copiedContract ? <Check className="w-3.5 h-3.5 text-slate-950 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
-                      <span>{copiedContract ? '¡Copiado!' : 'Copiar'}</span>
+                      {copiedContract ? <Check className="w-3.5 h-3.5 text-white shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                      <span>{copiedContract ? 'Copiado' : 'Copiar'}</span>
                     </button>
                   </div>
                 </div>
@@ -1534,18 +1864,19 @@ export default function ModuloRecibosHonorarios({
                 {/* VISTA HOJA MEMBRETADA (DEFAULT) vs VISTA TEXTO PLANO */}
                 {viewModeContract === 'documento' ? (
                   <div className="bg-slate-100/70 p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-inner">
-                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
-                      
+                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-2xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
+
                       {/* Membrete Oficial */}
-                      <div className="text-center pb-3 border-b-2 border-amber-500/30 space-y-0.5">
-                        <div className="flex items-center justify-center gap-1.5 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
-                          <span>⚖️ ROMÁN & DELGADO</span>
+                      <div className="text-center pb-3 border-b-2 border-blue-600/30 space-y-0.5">
+                        <div className="flex items-center justify-center gap-2 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
+                          <Scale className="w-4 h-4 text-blue-600 shrink-0" />
+                          <span>ROMÁN &amp; DELGADO</span>
                         </div>
-                        <p className="text-[10px] tracking-wider uppercase font-bold text-amber-700">
-                          Escritorio Jurídico & Asesoría Corporativa
+                        <p className="text-[10px] tracking-wider uppercase font-bold text-blue-700">
+                          Escritorio Jurídico &amp; Asesoría Corporativa
                         </p>
                         <p className="text-[9px] text-slate-400">
-                          Valencia, Estado Carabobo • RIF: J-40892839-1 • Inpreabogado: 184.290 / 201.442
+                          Valencia, Estado Carabobo &bull; RIF: J-40892839-1 &bull; Inpreabogado: 184.290 / 201.442
                         </p>
                       </div>
 
@@ -1556,26 +1887,26 @@ export default function ModuloRecibosHonorarios({
 
                       {/* Preámbulo */}
                       <p className="text-justify text-slate-700">
-                        Entre la firma jurídica <strong>ROMÁN & DELGADO</strong>, domiciliada en Valencia, Estado Carabobo, representada en este acto por los abogados en ejercicio <strong>VÍCTOR ROMÁN</strong> y <strong>LUIS DELGADO</strong>, en lo sucesivo denominados <strong>«LOS ABOGADOS»</strong>, por una parte; y por la otra el ciudadano(a):
+                        Entre la firma jurídica <strong>ROMÁN &amp; DELGADO</strong>, domiciliada en Valencia, Estado Carabobo, representada en este acto por los abogados en ejercicio <strong>VÍCTOR ROMÁN</strong> y <strong>LUIS DELGADO</strong>, en lo sucesivo denominados <strong>«LOS ABOGADOS»</strong>, por una parte; y por la otra el ciudadano(a):
                       </p>
 
                       {/* Tarjeta de Datos del Cliente */}
-                      <div className="bg-amber-50/40 rounded-xl p-3 border border-amber-200/60 space-y-1.5 text-[11.5px]">
+                      <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/90 space-y-1.5 text-[11.5px]">
                         <div className="flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-bold text-amber-950">Nombre Completo:</span>
-                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Nombre del Cliente]</span>
+                          <span className="font-bold text-slate-700">Nombre Completo:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-blue-900 font-semibold">[Nombre del Cliente]</span>
                         </div>
                         <div className="flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-bold text-amber-950">Cédula / RIF:</span>
-                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[V-__________]</span>
+                          <span className="font-bold text-slate-700">Cédula / RIF:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-blue-900 font-semibold">[V-__________]</span>
                         </div>
                         <div className="flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-bold text-amber-950">Domicilio:</span>
-                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Dirección de habitación o mercantil]</span>
+                          <span className="font-bold text-slate-700">Domicilio:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-blue-900 font-semibold">[Dirección de habitación o mercantil]</span>
                         </div>
                         <div className="flex items-center justify-between flex-wrap gap-1">
-                          <span className="font-bold text-amber-950">Teléfono / Correo:</span>
-                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-amber-200 text-amber-900 font-semibold">[Teléfono y correo electrónico]</span>
+                          <span className="font-bold text-slate-700">Teléfono / Correo:</span>
+                          <span className="font-mono bg-white px-2 py-0.5 rounded border border-slate-200 text-blue-900 font-semibold">[Teléfono y correo electrónico]</span>
                         </div>
                       </div>
 
@@ -1585,43 +1916,43 @@ export default function ModuloRecibosHonorarios({
 
                       {/* Cláusulas */}
                       <div className="space-y-2.5 pt-1">
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA PRIMERA (OBJETO):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA PRIMERA (OBJETO):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             «LOS ABOGADOS» se comprometen a prestar sus servicios profesionales de asesoría, representación y asistencia jurídica a favor de «EL CLIENTE» en el asunto relativo a la causa, juicio o redacción encomendada.
                           </p>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA SEGUNDA (HONORARIOS PACTADOS):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA SEGUNDA (HONORARIOS PACTADOS):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             De conformidad con el artículo 22 de la Ley de Abogados y normas de ética profesional, las partes fijan de mutuo acuerdo la remuneración estipulada en dólares ($ USD) o su equivalente en bolívares a la tasa oficial del Banco Central de Venezuela a la fecha de pago.
                           </p>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA TERCERA (FORMA DE PAGO):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA TERCERA (FORMA DE PAGO):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             El monto pactado será cancelado mediante Pago Único de Contado a la suscripción del instrumento, o de forma Fraccionada en un anticipo y cuotas sucesivas a través de los canales bancarios oficiales del bufete.
                           </p>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA CUARTA (GASTOS OPERATIVOS Y JUDICIALES):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA CUARTA (GASTOS OPERATIVOS Y JUDICIALES):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             Queda convenido que los honorarios profesionales pactados NO incluyen aranceles judiciales, timbres fiscales, traslados, fotocopias ni expensas de registros o notarías, los cuales son cubiertos por «EL CLIENTE» mediante el Anexo de Provisión de Gastos (Anexo A).
                           </p>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA QUINTA (SECRETO PROFESIONAL):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA QUINTA (SECRETO PROFESIONAL):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             «LOS ABOGADOS» guardarán estricto secreto profesional sobre todos los hechos y documentos aportados, manteniendo informado permanentemente a «EL CLIENTE».
                           </p>
                         </div>
 
-                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                          <strong className="text-amber-900 block mb-1">CLÁUSULA SEXTA (JURISDICCIÓN):</strong>
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                          <strong className="text-blue-900 block mb-1">CLÁUSULA SEXTA (JURISDICCIÓN):</strong>
                           <p className="text-slate-600 text-[11.5px]">
                             Para todos los efectos legales, las partes eligen como domicilio especial y excluyente los tribunales de la ciudad de Valencia, Estado Carabobo.
                           </p>
@@ -1632,7 +1963,7 @@ export default function ModuloRecibosHonorarios({
                       <div className="pt-6 border-t border-slate-200 grid grid-cols-2 gap-4 text-center">
                         <div className="space-y-1">
                           <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
-                          <p className="font-bold text-slate-800 text-[11px]">POR ROMÁN & DELGADO</p>
+                          <p className="font-bold text-slate-800 text-[11px]">POR ROMÁN &amp; DELGADO</p>
                           <p className="text-[9.5px] text-slate-400">Abg. Víctor Román / Luis Delgado</p>
                         </div>
                         <div className="space-y-1">
@@ -1645,30 +1976,31 @@ export default function ModuloRecibosHonorarios({
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-slate-800 shadow-inner">
+                  <div className="bg-blue-50/55 text-slate-800 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-blue-100 shadow-2xs">
                     {CONTRATO_TEMPLATE}
                   </div>
                 )}
               </div>
 
               {/* Pie de recomendación */}
-              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <span>💡 Haz clic en <strong>Copiar</strong> o descarga en <strong>Word (.doc)</strong> para editar e imprimir.</span>
+              <div className="pt-2 flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <Lightbulb className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                <span>Haz clic en <strong>Copiar</strong> o descarga en <strong>Word (.doc)</strong> para editar e imprimir.</span>
               </div>
             </div>
 
             {/* FORMATO 2: RECIBO Y ANEXO DE GASTOS JUDICIALES */}
-            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-sm hover:shadow-md transition-all flex flex-col justify-between space-y-4">
-              <div className="space-y-3.5">
+            <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4">
+              <div className="space-y-4">
                 {/* Header de la tarjeta */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-100 gap-2.5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shrink-0 border border-emerald-200">
-                      📑
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold shrink-0 border border-emerald-200">
+                      <FileText className="w-5 h-5" />
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-slate-900">Anexo y Provisión de Gastos</h4>
-                      <span className="text-[10px] text-slate-500 font-medium">Comprobante oficial de fondos para aranceles y movilización</span>
+                      <span className="text-[11px] text-slate-500 font-medium">Comprobante oficial de fondos para aranceles y movilización</span>
                     </div>
                   </div>
 
@@ -1680,7 +2012,7 @@ export default function ModuloRecibosHonorarios({
                       title="Alternar entre vista de comprobante membretado o texto plano"
                       className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1"
                     >
-                      {viewModeGastos === 'documento' ? <FileText className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {viewModeGastos === 'documento' ? <FileText className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                       <span>{viewModeGastos === 'documento' ? 'Ver Texto' : 'Ver Hoja'}</span>
                     </button>
 
@@ -1692,7 +2024,7 @@ export default function ModuloRecibosHonorarios({
                         ANEXO_GASTOS_HTML
                       )}
                       title="Descargar editable en Microsoft Word (.doc)"
-                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                      className="px-2.5 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200/70 text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
                     >
                       <FileDown className="w-3.5 h-3.5 shrink-0" />
                       <span>Word (.doc)</span>
@@ -1701,10 +2033,10 @@ export default function ModuloRecibosHonorarios({
                     <button
                       type="button"
                       onClick={() => handleCopyTemplate(ANEXO_GASTOS_TEMPLATE, false)}
-                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95"
                     >
                       {copiedGastos ? <Check className="w-3.5 h-3.5 text-white shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
-                      <span>{copiedGastos ? '¡Copiado!' : 'Copiar'}</span>
+                      <span>{copiedGastos ? 'Copiado' : 'Copiar'}</span>
                     </button>
                   </div>
                 </div>
@@ -1712,18 +2044,19 @@ export default function ModuloRecibosHonorarios({
                 {/* VISTA HOJA MEMBRETADA (DEFAULT) vs VISTA TEXTO PLANO */}
                 {viewModeGastos === 'documento' ? (
                   <div className="bg-slate-100/70 p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-inner">
-                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
-                      
+                    <div className="bg-white rounded-xl p-5 sm:p-7 shadow-2xs border border-slate-200/80 max-h-96 sm:max-h-[460px] overflow-y-auto space-y-4 text-xs sm:text-[12.5px] leading-relaxed text-slate-800 font-sans">
+
                       {/* Membrete Oficial */}
-                      <div className="text-center pb-3 border-b-2 border-emerald-500/30 space-y-0.5">
-                        <div className="flex items-center justify-center gap-1.5 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
-                          <span>📑 ROMÁN & DELGADO</span>
+                      <div className="text-center pb-3 border-b-2 border-emerald-600/30 space-y-0.5">
+                        <div className="flex items-center justify-center gap-2 text-slate-900 font-serif font-black tracking-widest text-sm sm:text-base uppercase">
+                          <FileText className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>ROMÁN &amp; DELGADO</span>
                         </div>
                         <p className="text-[10px] tracking-wider uppercase font-bold text-emerald-700">
                           Recibo y Anexo 'A': Provisión de Fondos para Gastos
                         </p>
                         <p className="text-[9px] text-slate-400">
-                          Valencia, Estado Carabobo • RIF: J-40892839-1
+                          Valencia, Estado Carabobo &bull; RIF: J-40892839-1
                         </p>
                       </div>
 
@@ -1759,29 +2092,30 @@ export default function ModuloRecibosHonorarios({
                           Destinado Exclusivamente a los Siguientes Gastos de Gestión:
                         </span>
                         <div className="space-y-1.5 text-[11.5px]">
-                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                            <span className="text-emerald-600 font-bold">☑️</span>
+                          <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className="text-slate-700 font-medium">Aranceles y tasas judiciales de Tribunales de la República.</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                            <span className="text-emerald-600 font-bold">☑️</span>
+                          <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className="text-slate-700 font-medium">Derechos y aranceles de Notaría Pública y Registros.</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                            <span className="text-emerald-600 font-bold">☑️</span>
+                          <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className="text-slate-700 font-medium">Timbres fiscales, estampillas tributarias y papel sellado.</span>
                           </div>
-                          <div className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg border border-slate-100">
-                            <span className="text-emerald-600 font-bold">☑️</span>
+                          <div className="flex items-center gap-2.5 p-2 bg-slate-50 rounded-lg border border-slate-100">
+                            <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
                             <span className="text-slate-700 font-medium">Fotocopias certificadas, traslados y movilización operativa.</span>
                           </div>
                         </div>
                       </div>
 
                       {/* Nota Legal Destacada */}
-                      <div className="bg-amber-50/80 rounded-xl p-3 border border-amber-300/80 text-[11px] text-amber-900 space-y-1">
-                        <strong className="block font-black text-amber-950 uppercase tracking-wide">
-                          ⚖️ Advertencia Jurídica (Ley de Abogados):
+                      <div className="bg-blue-50/70 rounded-xl p-3.5 border border-blue-200 text-[11px] text-slate-800 space-y-1">
+                        <strong className="flex items-center gap-1.5 font-black text-blue-900 uppercase tracking-wide">
+                          <Scale className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                          <span>Advertencia Jurídica (Ley de Abogados):</span>
                         </strong>
                         <p className="leading-relaxed">
                           Este monto <strong>NO constituye pago de honorarios profesionales</strong> de los abogados de la firma. Corresponde exclusivamente a una provisión para gastos de tramitación sujeta a presentación de soportes, facturas y rendición de cuentas.
@@ -1798,22 +2132,23 @@ export default function ModuloRecibosHonorarios({
                         <div className="space-y-1">
                           <div className="w-3/4 mx-auto border-b border-slate-400 pt-6"></div>
                           <p className="font-bold text-slate-800 text-[11px]">ENTREGADO CONFORME</p>
-                          <p className="text-[9.5px] text-slate-400">Firma del Cliente • C.I.</p>
+                          <p className="text-[9.5px] text-slate-400">Firma del Cliente &bull; C.I.</p>
                         </div>
                       </div>
 
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-900 text-slate-100 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-slate-800 shadow-inner">
+                  <div className="bg-blue-50/55 text-slate-800 p-4 rounded-2xl font-mono text-xs leading-relaxed max-h-96 sm:max-h-[460px] overflow-y-auto whitespace-pre-wrap select-all border border-blue-100 shadow-2xs">
                     {ANEXO_GASTOS_TEMPLATE}
                   </div>
                 )}
               </div>
 
               {/* Pie de recomendación */}
-              <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 font-medium">
-                <span>💡 Separa siempre los gastos de los honorarios para rendición contable clara.</span>
+              <div className="pt-2 flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                <span>Separa siempre los gastos de los honorarios para rendición contable clara.</span>
               </div>
             </div>
 

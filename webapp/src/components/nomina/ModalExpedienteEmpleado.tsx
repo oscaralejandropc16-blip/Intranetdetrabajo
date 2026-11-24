@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { 
-  X, User, FileText, Upload, Trash2, Eye, DollarSign, 
+import {
+  X, User, FileText, Upload, Trash2, Eye, DollarSign,
   Award, CheckCircle2, Save, Plus, Download, Briefcase, FileCheck, Loader2
 } from 'lucide-react';
-import type { 
-  PlantillaEmpleadoNomina, 
-  DocumentoPersonal, 
-  NovedadPersonal, 
+import type {
+  PlantillaEmpleadoNomina,
+  DocumentoPersonal,
+  NovedadPersonal,
   ReciboNomina,
   DepartamentoPersonal,
   TipoContratacion
@@ -163,37 +163,37 @@ export default function ModalExpedienteEmpleado({
   ];
 
   // Recibos pagados a este empleado
-  const recibosEmpleado = recibosHistoricos.filter(r => 
+  const recibosEmpleado = recibosHistoricos.filter(r =>
     r.empleadoNombre.toLowerCase().trim() === empleado.nombre.toLowerCase().trim() ||
     (r.cedula && empleado.cedula && r.cedula.trim() === empleado.cedula.trim())
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="bg-white border border-slate-200 rounded-3xl max-w-4xl w-full shadow-2xl overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
-        
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
+      <div className="bg-white border-t sm:border border-blue-200 rounded-t-3xl sm:rounded-3xl max-w-4xl w-full shadow-2xl shadow-blue-950/25 overflow-hidden my-0 sm:my-auto max-h-[92vh] flex flex-col animate-in slide-in-from-bottom sm:slide-in-from-bottom-0 sm:zoom-in-95 duration-200 safe-area-pb">
+        {/* Drag handle móvil */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 bg-[#172554]">
+          <div className="w-10 h-1 bg-white/30 rounded-full" />
+        </div>
+
         {/* 1. Header Ejecutivo */}
-        <div className="bg-slate-900 text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 shrink-0">
+        <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-800/60 shrink-0">
           <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white font-black text-lg flex items-center justify-center shadow-lg shadow-blue-600/30 shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-white text-[#1e3a8a] font-black text-lg flex items-center justify-center shadow-md shadow-blue-950/25 shrink-0">
               {empleado.nombre.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg sm:text-xl font-black text-white truncate">{empleado.nombre}</h2>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                  formData.tipoContratacion === 'Nomina Interna' 
-                    ? 'bg-blue-500/20 text-blue-300 border border-blue-400/30'
-                    : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
-                }`}>
+                <h2 className="text-lg sm:text-xl font-extrabold text-white truncate">{empleado.nombre}</h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-white/15 text-sky-100 border border-white/25">
                   {formData.tipoContratacion || 'Nomina Interna'}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-100 border border-emerald-300/40">
                   {formData.departamento || 'Legal'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
-                {empleado.cargo} • Cédula: <strong className="text-slate-200">{empleado.cedula}</strong>
+              <p className="text-xs text-blue-100/85 font-medium mt-0.5">
+                {empleado.cargo} • Cédula: <strong className="text-white">{empleado.cedula}</strong>
                 {formData.rif && ` • RIF: ${formData.rif}`}
               </p>
             </div>
@@ -201,14 +201,14 @@ export default function ModalExpedienteEmpleado({
 
           <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
             {saveSuccess && (
-              <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-400/40 flex items-center gap-1.5 animate-in fade-in">
+              <span className="bg-emerald-500/20 text-emerald-100 text-xs font-bold px-3 py-1.5 rounded-xl border border-emerald-300/40 flex items-center gap-1.5 animate-in fade-in">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Guardado
               </span>
             )}
             <button
               type="button"
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors cursor-pointer"
+              className="p-2 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer"
               title="Cerrar expediente"
             >
               <X className="w-5 h-5" />
@@ -217,15 +217,14 @@ export default function ModalExpedienteEmpleado({
         </div>
 
         {/* 2. Barra de Pestañas Internas */}
-        <div className="flex overflow-x-auto gap-2 p-2 bg-slate-100 border-b border-slate-200 scrollbar-none shrink-0 text-xs font-bold">
+        <div className="flex overflow-x-auto gap-2 p-2 bg-blue-100/85 border-b border-blue-200 scrollbar-none shrink-0 text-xs font-bold">
           <button
             type="button"
             onClick={() => setActiveTab('ficha')}
-            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'ficha'
-                ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
+            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'ficha'
+              ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
           >
             <User className="w-4 h-4 text-blue-600" />
             <span>Ficha & Datos Laborales</span>
@@ -234,11 +233,10 @@ export default function ModalExpedienteEmpleado({
           <button
             type="button"
             onClick={() => setActiveTab('documentos')}
-            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'documentos'
-                ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
+            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'documentos'
+              ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
           >
             <FileText className="w-4 h-4 text-emerald-600" />
             <span>Archivador Digital ({formData.documentos?.length || 0}/6)</span>
@@ -247,24 +245,22 @@ export default function ModalExpedienteEmpleado({
           <button
             type="button"
             onClick={() => setActiveTab('novedades')}
-            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'novedades'
-                ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
+            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'novedades'
+              ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
           >
-            <Award className="w-4 h-4 text-amber-500" />
+            <Award className="w-4 h-4 text-indigo-600" />
             <span>Libro de Novedades ({formData.novedades?.length || 0})</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('pagos')}
-            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'pagos'
-                ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-            }`}
+            className={`px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${activeTab === 'pagos'
+              ? 'bg-white text-slate-900 font-black shadow-xs ring-1 ring-slate-300'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+              }`}
           >
             <DollarSign className="w-4 h-4 text-teal-600" />
             <span>Historial de Pagos ({recibosEmpleado.length})</span>
@@ -277,7 +273,7 @@ export default function ModalExpedienteEmpleado({
           {/* TAB 1: FICHA GENERAL & DATOS LABORALES */}
           {activeTab === 'ficha' && (
             <form onSubmit={handleGuardarFicha} className="space-y-6">
-              
+
               {/* Sección 1: Datos Personales & Civiles */}
               <div>
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
@@ -490,13 +486,12 @@ export default function ModalExpedienteEmpleado({
                   const isUploading = uploadingDocTipo === item.tipo;
 
                   return (
-                    <div 
-                      key={item.tipo} 
-                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${
-                        doc 
-                          ? 'bg-emerald-50/40 border-emerald-300 shadow-xs' 
-                          : 'bg-slate-50/70 border-dashed border-slate-300 hover:border-slate-400'
-                      }`}
+                    <div
+                      key={item.tipo}
+                      className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between ${doc
+                        ? 'bg-emerald-50/40 border-emerald-300 shadow-xs'
+                        : 'bg-slate-50/70 border-dashed border-slate-300 hover:border-slate-400'
+                        }`}
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 mb-1">
@@ -577,7 +572,7 @@ export default function ModalExpedienteEmpleado({
           {/* TAB 3: LIBRO DE NOVEDADES DEL TRABAJADOR */}
           {activeTab === 'novedades' && (
             <div className="space-y-6">
-              
+
               {/* Formulario de Nueva Novedad */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-5">
                 <h4 className="text-xs font-black uppercase tracking-wider text-slate-700 mb-3 flex items-center gap-2">
@@ -629,9 +624,9 @@ export default function ModalExpedienteEmpleado({
                   <div className="flex justify-end pt-1">
                     <button
                       type="submit"
-                      className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                      className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shadow-blue-500/20"
                     >
-                      <Save className="w-3.5 h-3.5 text-emerald-400" />
+                      <Save className="w-3.5 h-3.5 text-emerald-200" />
                       <span>Registrar en Expediente</span>
                     </button>
                   </div>
@@ -654,12 +649,11 @@ export default function ModalExpedienteEmpleado({
                       <div key={nov.id} className="p-4 bg-white border border-slate-200 rounded-2xl shadow-xs flex items-start justify-between gap-3">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              nov.tipo === 'aumento' ? 'bg-emerald-100 text-emerald-800' :
-                              nov.tipo === 'felicitacion' ? 'bg-amber-100 text-amber-800' :
-                              nov.tipo === 'reposo' || nov.tipo === 'permiso' ? 'bg-blue-100 text-blue-800' :
-                              'bg-slate-100 text-slate-800'
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${nov.tipo === 'aumento' ? 'bg-emerald-100 text-emerald-800' :
+                              nov.tipo === 'felicitacion' ? 'bg-purple-100 text-purple-800' :
+                                nov.tipo === 'reposo' || nov.tipo === 'permiso' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-slate-100 text-slate-800'
+                              }`}>
                               {nov.tipo}
                             </span>
                             <span className="text-[11px] font-bold text-slate-400">{nov.fecha}</span>
@@ -706,7 +700,7 @@ export default function ModalExpedienteEmpleado({
               ) : (
                 <div className="overflow-x-auto rounded-2xl border border-slate-200 shadow-xs">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 font-bold uppercase text-[10px] text-slate-500 border-b border-slate-200">
+                    <thead className="bg-[#dbeafe] font-extrabold uppercase text-[10px] text-[#1e3a8a] border-b border-blue-200">
                       <tr>
                         <th className="py-3 px-4">N° Recibo</th>
                         <th className="py-3 px-4">Período / Quincena</th>

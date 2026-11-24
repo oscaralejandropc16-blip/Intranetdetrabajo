@@ -1,22 +1,33 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @theme {
-  --font-sans: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Outfit", "Inter", system-ui, -apple-system, sans-serif;
 }
 
 @layer base {
   html {
-    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: var(--font-sans);
     scroll-behavior: smooth;
     -webkit-tap-highlight-color: transparent;
   }
+
   body {
-    background-color: #f8fafc;
+    background-color: #dce7fa;
+    background-image:
+      radial-gradient(at 10% 0%, rgba(147, 197, 253, 0.55) 0px, transparent 50%),
+      radial-gradient(at 92% 8%, rgba(165, 180, 252, 0.42) 0px, transparent 48%),
+      radial-gradient(at 50% 100%, rgba(191, 219, 254, 0.65) 0px, transparent 55%);
+    background-attachment: fixed;
     color: #0f172a;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
   }
 }
 
@@ -25,29 +36,59 @@
   width: 6px;
   height: 6px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #93c5fd;
   border-radius: 9999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #60a5fa;
 }
 
 @layer utilities {
-  .glass-panel {
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(226, 232, 240, 0.8);
+  .font-display {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
   }
-  .glass-dark {
-    background: rgba(15, 23, 42, 0.85);
+
+  .bg-kant-canvas {
+    background-color: #dde8fb;
+    background-image:
+      radial-gradient(at 8% 0%, rgba(147, 197, 253, 0.55) 0px, transparent 50%),
+      radial-gradient(at 94% 10%, rgba(165, 180, 252, 0.42) 0px, transparent 48%),
+      radial-gradient(at 55% 100%, rgba(191, 219, 254, 0.62) 0px, transparent 55%);
+  }
+
+  .kant-card {
+    background: #ffffff;
+    border: 1px solid #bfdbfe;
+    border-radius: 1.5rem;
+    box-shadow: 0 12px 28px -12px rgba(30, 58, 138, 0.14), 0 2px 6px -1px rgba(15, 23, 42, 0.05);
+    transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1), border-color 220ms ease;
+  }
+
+  .kant-card:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 18px 36px -14px rgba(30, 58, 138, 0.2), 0 4px 12px rgba(15, 23, 42, 0.06);
+  }
+
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.94);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid #bfdbfe;
+  }
+
+  .glass-soft-blue {
+    background: rgba(219, 234, 254, 0.85);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid #93c5fd;
   }
 }
 
@@ -59,21 +100,28 @@
 
 /* Keyframes para el Perrito Animado (KANT) */
 @keyframes dog-breathe {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg) scale(1);
   }
+
   50% {
     transform: translateY(-4px) rotate(1.5deg) scale(1.02);
   }
 }
 
 @keyframes dog-wag {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: rotate(0deg) scale(1);
   }
+
   25% {
     transform: rotate(3.5deg) scale(1.04) translateY(-1px);
   }
+
   75% {
     transform: rotate(-3.5deg) scale(1.04) translateY(-1px);
   }
@@ -83,15 +131,19 @@
   0% {
     transform: translateY(0) scale(1);
   }
+
   30% {
     transform: translateY(-8px) scale(1.12) rotate(-4deg);
   }
+
   60% {
     transform: translateY(-2px) scale(1.08) rotate(4deg);
   }
+
   80% {
     transform: translateY(-4px) scale(1.04) rotate(-2deg);
   }
+
   100% {
     transform: translateY(0) scale(1) rotate(0deg);
   }
@@ -102,69 +154,30 @@
     opacity: 0;
     transform: translateY(0px) scale(0.6) rotate(0deg);
   }
+
   50% {
     opacity: 1;
     transform: translateY(-10px) scale(1.1) rotate(15deg);
   }
+
   100% {
     opacity: 0;
     transform: translateY(-20px) scale(0.4) rotate(30deg);
   }
 }
 
-/* Keyframes de Glow Ambiental y Neón */
-@keyframes pulse-glow-amber {
-  0%, 100% {
-    box-shadow: 0 0 14px -2px rgba(245, 158, 11, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 26px 2px rgba(245, 158, 11, 0.65);
-  }
-}
-
-@keyframes pulse-glow-emerald {
-  0%, 100% {
-    box-shadow: 0 0 14px -2px rgba(16, 185, 129, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 26px 2px rgba(16, 185, 129, 0.65);
-  }
-}
-
-@keyframes pulse-glow-blue {
-  0%, 100% {
-    box-shadow: 0 0 14px -2px rgba(59, 130, 246, 0.35);
-  }
-  50% {
-    box-shadow: 0 0 26px 2px rgba(59, 130, 246, 0.65);
-  }
-}
-
-@keyframes aura-flow {
-  0% {
-    opacity: 0.4;
-    transform: scale(1) translate(0%, 0%);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.1) translate(3%, 2%);
-  }
-  100% {
-    opacity: 0.4;
-    transform: scale(1) translate(-2%, -1%);
-  }
-}
-
+/* Keyframes Ambientales Sobrios */
 @keyframes sweep-light {
   0% {
     transform: translateX(-150%) skewX(-20deg);
   }
+
   100% {
     transform: translateX(250%) skewX(-20deg);
   }
 }
 
-/* Clases de Utilidad de Animación y Glow */
+/* Clases de Utilidad de Animación del Perrito KANT */
 .dog-idle {
   animation: dog-breathe 3.5s ease-in-out infinite;
   transform-origin: bottom center;
@@ -176,54 +189,6 @@
 
 .dog-excited {
   animation: dog-happy-jump 0.65s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.glow-amber-sm {
-  box-shadow: 0 0 12px -1px rgba(245, 158, 11, 0.35);
-}
-
-.glow-amber {
-  box-shadow: 0 0 20px -2px rgba(245, 158, 11, 0.45);
-}
-
-.glow-amber-lg {
-  box-shadow: 0 0 30px -2px rgba(245, 158, 11, 0.6);
-}
-
-.glow-emerald-sm {
-  box-shadow: 0 0 12px -1px rgba(16, 185, 129, 0.35);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 20px -2px rgba(16, 185, 129, 0.45);
-}
-
-.glow-blue-sm {
-  box-shadow: 0 0 12px -1px rgba(59, 130, 246, 0.35);
-}
-
-.glow-blue {
-  box-shadow: 0 0 20px -2px rgba(59, 130, 246, 0.45);
-}
-
-.glow-pulse-amber {
-  animation: pulse-glow-amber 3s ease-in-out infinite;
-}
-
-.glow-pulse-emerald {
-  animation: pulse-glow-emerald 3s ease-in-out infinite;
-}
-
-.glow-pulse-blue {
-  animation: pulse-glow-blue 3s ease-in-out infinite;
-}
-
-.text-glow-amber {
-  text-shadow: 0 0 12px rgba(245, 158, 11, 0.7);
-}
-
-.text-glow-emerald {
-  text-shadow: 0 0 12px rgba(16, 185, 129, 0.7);
 }
 
 .shimmer-sweep {
@@ -249,9 +214,12 @@
 
 /* Animación de flotado suave para accesorios */
 @keyframes float-slow {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0px) rotate(0deg);
   }
+
   50% {
     transform: translateY(-3px) rotate(1deg);
   }
@@ -263,133 +231,167 @@
 
 /* ===================================================
    SISTEMA DE TEMATIZACIÓN EFEMÉRICA ADAPTATIVA (KANT)
-   Garantía de Alto Contraste y Legibilidad WCAG AAA
+   Paleta Clara Pastel Corporativa — Contraste WCAG
    =================================================== */
 
-/* 🎃 TEMA HALLOWEEN PROFESIONAL */
+.theme-default {
+  --theme-accent: #2563eb;
+  --theme-accent-hover: #1d4ed8;
+}
+
 .theme-halloween {
-  --theme-accent: #f97316;
-  --theme-accent-hover: #ea580c;
-  --theme-glow: rgba(249, 115, 22, 0.4);
+  --theme-accent: #7c3aed;
+  --theme-accent-hover: #6d28d9;
 }
 
 .theme-halloween nav {
-  border-bottom-color: rgba(249, 115, 22, 0.45) !important;
+  border-bottom-color: rgba(139, 92, 246, 0.25) !important;
 }
 
-.theme-halloween .text-amber-400 {
-  color: #fb923c !important;
-}
-
-.theme-halloween .text-amber-300 {
-  color: #fdba74 !important;
-}
-
-.theme-halloween .border-amber-500\/30,
-.theme-halloween .border-amber-500\/20,
-.theme-halloween .border-amber-400\/40 {
-  border-color: rgba(249, 115, 22, 0.45) !important;
-}
-
-.theme-halloween .glow-amber-sm,
-.theme-halloween .glow-amber {
-  box-shadow: 0 0 16px -2px rgba(249, 115, 22, 0.45) !important;
-}
-
-/* ⚖️ TEMA DÍA DEL ABOGADO */
 .theme-abogado {
-  --theme-accent: #fbbf24;
-  --theme-accent-hover: #f59e0b;
-  --theme-glow: rgba(251, 191, 36, 0.5);
+  --theme-accent: #1d4ed8;
+  --theme-accent-hover: #1e40af;
 }
 
 .theme-abogado nav {
-  border-bottom-color: rgba(251, 191, 36, 0.55) !important;
+  border-bottom-color: rgba(79, 70, 229, 0.28) !important;
 }
 
-.theme-abogado .text-amber-400 {
-  color: #fbbf24 !important;
-}
-
-.theme-abogado .glow-amber-sm,
-.theme-abogado .glow-amber {
-  box-shadow: 0 0 16px -2px rgba(251, 191, 36, 0.55) !important;
-}
-
-/* 🎄 TEMA NAVIDEÑO */
 .theme-navidad {
-  --theme-accent: #10b981;
-  --theme-accent-hover: #059669;
-  --theme-glow: rgba(16, 185, 129, 0.45);
+  --theme-accent: #059669;
+  --theme-accent-hover: #047857;
 }
 
 .theme-navidad nav {
-  border-bottom-color: rgba(16, 185, 129, 0.45) !important;
+  border-bottom-color: rgba(16, 185, 129, 0.28) !important;
 }
 
-.theme-navidad .text-amber-400 {
-  color: #34d399 !important;
-}
-
-.theme-navidad .border-amber-500\/30,
-.theme-navidad .border-amber-500\/20,
-.theme-navidad .border-amber-400\/40 {
-  border-color: rgba(16, 185, 129, 0.45) !important;
-}
-
-.theme-navidad .glow-amber-sm,
-.theme-navidad .glow-amber {
-  box-shadow: 0 0 16px -2px rgba(16, 185, 129, 0.45) !important;
-}
-
-/* 🇻🇪 TEMA FECHAS PATRIAS */
 .theme-patria {
-  --theme-accent: #facc15;
-  --theme-accent-hover: #eab308;
-  --theme-glow: rgba(250, 204, 21, 0.5);
+  --theme-accent: #2563eb;
+  --theme-accent-hover: #1d4ed8;
 }
 
 .theme-patria nav {
-  border-bottom-color: rgba(250, 204, 21, 0.5) !important;
+  border-bottom-color: rgba(37, 99, 235, 0.28) !important;
 }
 
-.theme-patria .text-amber-400 {
-  color: #facc15 !important;
-}
-
-.theme-patria .glow-amber-sm,
-.theme-patria .glow-amber {
-  box-shadow: 0 0 16px -2px rgba(250, 204, 21, 0.5) !important;
-}
-
-/* 🍫 TEMA DÍA DEL CACAO Y CHOCOLATE VENEZOLANO */
 .theme-chocolate {
-  --theme-accent: #d97706;
-  --theme-accent-hover: #b45309;
-  --theme-glow: rgba(217, 119, 6, 0.45);
+  --theme-accent: #0284c7;
+  --theme-accent-hover: #0369a1;
 }
 
 .theme-chocolate nav {
-  border-bottom-color: rgba(217, 119, 6, 0.5) !important;
-  background: linear-gradient(180deg, rgba(32, 16, 8, 0.96) 0%, rgba(15, 23, 42, 0.96) 100%) !important;
+  border-bottom-color: rgba(14, 165, 233, 0.28) !important;
 }
 
-.theme-chocolate .text-amber-400 {
-  color: #f59e0b !important;
+/* ===================================================
+   MODERN UI / MOBILE UX UTILITIES (KANT REDESIGN)
+   =================================================== */
+
+/* Safe area insets para dispositivos móviles modernos (iPhone notch / home bar) */
+.safe-area-pb {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 16px));
 }
 
-.theme-chocolate .text-amber-300 {
-  color: #fcd34d !important;
+.safe-area-bottom-nav {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom, 8px));
 }
 
-.theme-chocolate .border-amber-500\/30,
-.theme-chocolate .border-amber-500\/20,
-.theme-chocolate .border-amber-400\/40 {
-  border-color: rgba(217, 119, 6, 0.45) !important;
+.safe-area-pt {
+  padding-top: max(1rem, env(safe-area-inset-top, 16px));
 }
 
-.theme-chocolate .glow-amber-sm,
-.theme-chocolate .glow-amber {
-  box-shadow: 0 0 16px -2px rgba(217, 119, 6, 0.45) !important;
+/* Ocultar barra de scroll para contenedores táctiles horizontales */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Animaciones para Bottom Sheets y Modales */
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-fade-in-scale {
+  animation: fade-in-scale 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Microinteracciones táctiles y entradas ejecutivas */
+.tap-bounce {
+  transition: transform 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tap-bounce:active {
+  transform: scale(0.97);
+}
+
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-card-enter {
+  animation: card-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

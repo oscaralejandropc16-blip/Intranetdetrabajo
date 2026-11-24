@@ -9,7 +9,7 @@ import {
   Search, 
   Trash2, 
   X, 
-  Sparkles,
+  Zap,
   RefreshCw,
   Users,
   Receipt,
@@ -946,13 +946,13 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               >
                 <div className="relative shrink-0">
                   <div className={`w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs ${
-                    isUserBoss(conv.employee) ? 'bg-amber-600/30 text-amber-200' : 'bg-[#202c33]'
+                    isUserBoss(conv.employee) ? 'bg-blue-600/30 text-blue-200' : 'bg-[#202c33]'
                   }`}>
                     {(conv.employee || 'U').charAt(0).toUpperCase()}
                   </div>
                   <span 
                     className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#111b21] ${
-                      isUserBoss(conv.employee) ? 'bg-amber-400' : 'bg-emerald-400'
+                      isUserBoss(conv.employee) ? 'bg-blue-400' : 'bg-emerald-400'
                     }`}
                     title={isUserBoss(conv.employee) ? 'Socio Director / Jefatura' : 'Equipo KANT'}
                   ></span>
@@ -996,8 +996,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               {totalDirectoryUnread} sin leer
             </span>
           ) : pendingCount > 0 ? (
-            <span className="text-amber-400 font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span className="text-sky-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse"></span>
               {pendingCount} pendientes
             </span>
           ) : null}
@@ -1015,8 +1015,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             <p className="text-xs text-slate-400 max-w-sm leading-relaxed mb-6 font-normal">
               Selecciona una conversación del panel izquierdo para comenzar a chatear en tiempo real con Jefatura o tu equipo.
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#182229] border border-white/5 text-[11px] text-amber-300/80 shadow-md">
-              <ShieldCheck className="w-4 h-4 text-amber-400 shrink-0" />
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#182229] border border-white/5 text-[11px] text-blue-300/80 shadow-md">
+              <ShieldCheck className="w-4 h-4 text-blue-400 shrink-0" />
               <span>Canal oficial confidencial de Román & Delgado • Encriptación interna</span>
             </div>
           </div>
@@ -1038,7 +1038,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                     isContactDeleted(activeEmployee)
                       ? 'bg-rose-700 ring-rose-400/30'
                       : isUserBoss(activeEmployee) 
-                        ? 'bg-amber-600 ring-amber-400/30' 
+                        ? 'bg-blue-600 ring-blue-400/30' 
                         : 'bg-emerald-600 ring-emerald-400/30'
                   }`}>
                     {isContactDeleted(activeEmployee) ? <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : isUserBoss(activeEmployee) ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
@@ -1048,7 +1048,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       isContactDeleted(activeEmployee)
                         ? 'bg-rose-500'
                         : isUserBoss(activeEmployee) 
-                          ? 'bg-amber-400' 
+                          ? 'bg-blue-400' 
                           : 'bg-emerald-400'
                     }`}
                     title={isContactDeleted(activeEmployee) ? 'Cuenta dada de baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo KANT'}
@@ -1064,7 +1064,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       isContactDeleted(activeEmployee)
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                         : isUserBoss(activeEmployee) 
-                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
                           : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     }`}>
                       {isContactDeleted(activeEmployee) ? 'Inactivo / Baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo'}
@@ -1078,7 +1078,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       </>
                     ) : (
                       <>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isUserBoss(activeEmployee) ? 'bg-amber-400' : 'bg-emerald-400'}`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isUserBoss(activeEmployee) ? 'bg-blue-400' : 'bg-emerald-400'}`}></span>
                         <span className="text-slate-300 font-medium">
                           {isUserBoss(activeEmployee) ? 'Socio Director • Despacho Román & Delgado' : 'Equipo KANT • Canal Oficial'}
                         </span>
@@ -1105,7 +1105,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                     type="button"
                     onClick={() => setFilterMode('pendientes')}
                     className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      filterMode === 'pendientes' ? 'bg-[#2a3942] text-amber-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                      filterMode === 'pendientes' ? 'bg-[#2a3942] text-sky-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     Pendientes ({pendingCount})
@@ -1193,8 +1193,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           {/* Security & Confidentiality notice */}
           <div className="flex justify-center">
             <div className="bg-[#182229] border border-white/5 rounded-xl px-3.5 py-1.5 text-center shadow-sm max-w-sm">
-              <p className="text-[10px] text-amber-300/80 font-medium flex items-center justify-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+              <p className="text-[10px] text-emerald-300/90 font-medium flex items-center justify-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                 Canal oficial confidencial de Román & Delgado • Encriptación interna
               </p>
             </div>
@@ -1264,7 +1264,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                     <div
                       className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
                         isSystemNotification
-                          ? 'bg-[#182229] border border-amber-500/30 text-amber-100 rounded-2xl text-center'
+                          ? 'bg-[#182229] border border-blue-500/30 text-blue-100 rounded-2xl text-center'
                           : (isMe 
                               ? 'bg-[#005c4b] text-white rounded-tr-xs' 
                               : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
@@ -1273,9 +1273,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       {/* Header de la burbuja */}
                       <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
                         <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                          isSystemNotification ? 'text-amber-400' : (isMe ? 'text-emerald-200' : 'text-amber-400')
+                          isSystemNotification ? 'text-blue-400' : (isMe ? 'text-emerald-200' : 'text-blue-400')
                         }`}>
-                          {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-amber-400" />}
+                          {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-blue-400" />}
                           {headerLabel}
                         </span>
                         {msg.atendido && !isSystemNotification && (
@@ -1286,7 +1286,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                       </div>
 
                       {/* Texto del mensaje */}
-                      <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-amber-200/90' : ''}`}>
+                      <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-blue-200/90' : ''}`}>
                         {msg.mensaje}
                       </p>
 
@@ -1361,7 +1361,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         {/* QUICK REPLY PRESETS */}
         <div className="bg-[#111b21] px-3 py-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
           <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 pl-1">
-            <Sparkles className="w-3 h-3 text-amber-400" /> Rápidas:
+            <Zap className="w-3 h-3 text-blue-400" /> Rápidas:
           </span>
           {quickPresets.map((preset, pIdx) => (
             <button

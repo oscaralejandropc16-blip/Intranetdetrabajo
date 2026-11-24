@@ -1,31 +1,57 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../../lib/supabase';
 import type { TareaAsignada } from '../../types/tareas';
 import type { Actuacion } from '../../types/libros';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import {
+  CheckSquare, Clock, CheckCircle2, RefreshCw, Calendar,
+  User, Scale, Search, Filter, RotateCcw,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
+  FileText, Send, X, Check
+} from 'lucide-react';
 
 interface BannerTareasEmpleadoProps {
   currentUserName: string;
   onCopiarABitacora?: (actuacion: Partial<Actuacion>) => void;
+  fullPage?: boolean;
+  onTareasCountChange?: (count: number) => void;
 }
 
-export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacora }: BannerTareasEmpleadoProps) {
+export default function BannerTareasEmpleado({
+  currentUserName,
+  onCopiarABitacora,
+  fullPage = false,
+  onTareasCountChange
+}: BannerTareasEmpleadoProps) {
   const [tareas, setTareas] = useState<TareaAsignada[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [pestana, setPestana] = useState<'pendientes' | 'completadas'>('pendientes');
+
+  // Filtros
+  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'en_proceso' | 'completada'>('todos');
+  const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todos');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Acciones en tareas
   const [reportingId, setReportingId] = useState<number | null>(null);
   const [reportComment, setReportComment] = useState('');
   const [savingId, setSavingId] = useState<number | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(fullPage ? 10 : 5);
+
   const cleanName = (currentUserName || '').toLowerCase().trim();
 
   // 1. Cargar tareas asignadas a este empleado
-  const fetchMisTareas = useCallback(async () => {
+  const fetchMisTareas = useCallback(async (isSilent = false) => {
     if (typeof document !== 'undefined' && document.hidden) return;
     if (!cleanName) return;
+
+    if (!isSilent) setRefreshing(true);
 
     try {
       const { data, error } = await supabase
@@ -42,9 +68,13 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
         });
         setTareas(misTareas);
 
-        // Si no tiene tareas pendientes, mantener colapsado para no estorbar la bitácora
         const pendientes = misTareas.filter(t => t.estado !== 'completada');
-        if (pendientes.length === 0) {
+        if (onTareasCountChange) {
+          onTareasCountChange(pendientes.length);
+        }
+
+        // Si no tiene tareas pendientes y estamos en modo banner, minimizar por defecto
+        if (!fullPage && pendientes.length === 0 && misTareas.length > 0) {
           setCollapsed(true);
         }
       }
@@ -52,20 +82,26 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
       console.warn('Error al consultar tareas del empleado:', e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [cleanName]);
+  }, [cleanName, fullPage, onTareasCountChange]);
 
   useEffect(() => {
     fetchMisTareas();
 
     const handleVisibility = () => {
-      if (!document.hidden) fetchMisTareas();
+      if (!document.hidden) fetchMisTareas(true);
     };
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [fetchMisTareas]);
 
-  // 2. Iniciar tarea (marcar en progreso)
+  // Resetear a página 1 cuando cambian los filtros
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filtroEstado, filtroPrioridad]);
+
+  // 2. Iniciar tarea (marcar en proceso)
   const handleStartTask = async (id: number) => {
     setSavingId(id);
     try {
@@ -89,13 +125,13 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
     if (!onCopiarABitacora) return;
 
     const textoReporte = comentarioExtra || t.respuesta_empleado || '';
-    const obsFinal = textoReporte 
+    const obsFinal = textoReporte
       ? `${textoReporte}${t.descripcion ? ` — Instrucción: ${t.descripcion}` : ''}`
       : (t.descripcion ? `${t.descripcion}` : 'Tarea asignada por Dirección ejecutada y culminada.');
 
     onCopiarABitacora({
       hora: format(new Date(), 'hh:mm a'),
-      numeroAsunto: t.expediente_asociado || 'Instrucción de Jefatura',
+      numeroAsunto: t.expediente_asociado || 'Instrucción de Dirección',
       partes: `Asignado por: ${t.asignado_por}`,
       actuacion: t.titulo,
       observaciones: obsFinal,
@@ -130,6 +166,12 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
         setReportingId(null);
         setReportComment('');
 
+        // Actualizar contador
+        const pendientesRestantes = tareas.filter(t => t.id !== id && t.estado !== 'completada');
+        if (onTareasCountChange) {
+          onTareasCountChange(pendientesRestantes.length);
+        }
+
         // AUTOMÁTICAMENTE AGREGAR A LA BITÁCORA DEL DÍA
         if (tareaActual) {
           handleCopiarABitacora(tareaActual, finalReport);
@@ -142,116 +184,222 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
     }
   };
 
-  const tareasPendientes = tareas.filter(t => t.estado !== 'completada');
-  const tareasCompletadas = tareas.filter(t => t.estado === 'completada');
+  // Métricas
+  const totalCount = tareas.length;
+  const pendientesCount = tareas.filter(t => t.estado === 'pendiente').length;
+  const enProgresoCount = tareas.filter(t => t.estado === 'en_proceso').length;
+  const completadasCount = tareas.filter(t => t.estado === 'completada').length;
 
-  if (loading || tareas.length === 0) {
-    return null; // Si no tiene tareas asignadas, no ocupa espacio
+  // Filtrado
+  const tareasFiltradas = tareas.filter(t => {
+    const matchSearch =
+      t.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.descripcion || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (t.expediente_asociado || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.asignado_por.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchEstado = filtroEstado === 'todos' || t.estado === filtroEstado;
+    const matchPrioridad = filtroPrioridad === 'todos' || t.prioridad === filtroPrioridad;
+
+    return matchSearch && matchEstado && matchPrioridad;
+  });
+
+  // Paginación
+  const totalPages = Math.max(1, Math.ceil(tareasFiltradas.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const startIndex = (safeCurrentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, tareasFiltradas.length);
+  const tareasPaginadas = tareasFiltradas.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (newPage: number) => {
+    const validPage = Math.max(1, Math.min(totalPages, newPage));
+    setCurrentPage(validPage);
+  };
+
+  // Si no está en vista completa y no tiene tareas asignadas, no muestra nada
+  if (!fullPage && (loading ? false : tareas.length === 0)) {
+    return null;
   }
 
-  const tareasAMostrar = pestana === 'pendientes' ? tareasPendientes : tareasCompletadas;
-
   return (
-    <div className="bg-white border border-slate-200/90 rounded-2xl p-4 sm:p-5 shadow-xs mb-4">
-      {/* ENCABEZADO */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
-        <div>
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
-              Tareas Asignadas por Dirección
-            </h3>
-            {tareasPendientes.length > 0 ? (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                {tareasPendientes.length} Pendiente{tareasPendientes.length > 1 ? 's' : ''}
+    <div className={`space-y-5 animate-in fade-in duration-300 ${!fullPage ? 'mb-5' : ''}`}>
+
+      {/* TARJETA / BANNER SUPERIOR */}
+      <div className="bg-white rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 p-6 lg:p-7 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-blue-100">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 border border-blue-200 text-[#1e3a8a] text-xs font-bold uppercase tracking-wider mb-2">
+              <CheckSquare className="w-3.5 h-3.5 text-blue-700" />
+              <span>Instrucciones &bull; Despacho Román &amp; Delgado</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20">
+                <CheckSquare className="w-6 h-6" />
               </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                Al día
-              </span>
+              Mis Tareas Asignadas
+            </h2>
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
+              Diligencias, investigaciones y actuaciones delegadas por Dirección. Complétalas e intégralas a tu bitácora diaria en tiempo real.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5 self-start md:self-center">
+            <button
+              type="button"
+              onClick={() => fetchMisTareas()}
+              disabled={refreshing}
+              className="px-4 py-2.5 bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 rounded-xl font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>Actualizar</span>
+            </button>
+
+            {!fullPage && (
+              <button
+                type="button"
+                onClick={() => setCollapsed(!collapsed)}
+                className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
+              >
+                {collapsed ? `Ver tareas (${pendientesCount} pendientes)` : 'Minimizar'}
+              </button>
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Al culminar una tarea, se añade automáticamente a tu Bitácora Diaria
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Pestañas compactas: Pendientes vs Completadas */}
-          <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setPestana('pendientes');
-                if (collapsed) setCollapsed(false);
-              }}
-              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                pestana === 'pendientes'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Pendientes ({tareasPendientes.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setPestana('completadas');
-                if (collapsed) setCollapsed(false);
-              }}
-              className={`px-3 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                pestana === 'completadas'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Completadas ({tareasCompletadas.length})
-            </button>
+        {/* METRICAS KPI (ESTILO EJECUTIVO LIGHT) */}
+        {(!collapsed || fullPage) && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-5">
+            <div className="bg-slate-50/80 border border-slate-200/90 p-4 rounded-2xl flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-slate-200/60 text-slate-700 flex items-center justify-center shrink-0">
+                <CheckSquare className="w-5 h-5 text-slate-700" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-slate-500 block uppercase tracking-wider">Total Asignadas</span>
+                <span className="text-2xl font-black text-slate-900">{totalCount}</span>
+              </div>
+            </div>
+
+            <div className="bg-blue-50/50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5 text-blue-700" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-blue-700 block uppercase tracking-wider">Por Iniciar</span>
+                <span className="text-2xl font-black text-blue-900">{pendientesCount}</span>
+              </div>
+            </div>
+
+            <div className="bg-indigo-50/50 border border-indigo-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+                <RefreshCw className="w-5 h-5 text-indigo-700" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-indigo-700 block uppercase tracking-wider">En Progreso</span>
+                <span className="text-2xl font-black text-indigo-900">{enProgresoCount}</span>
+              </div>
+            </div>
+
+            <div className="bg-emerald-50/50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+              </div>
+              <div>
+                <span className="text-[11px] font-bold text-emerald-700 block uppercase tracking-wider">Completadas</span>
+                <span className="text-2xl font-black text-emerald-900">{completadasCount}</span>
+              </div>
+            </div>
           </div>
-
-          {/* Botón Minimizar/Expandir */}
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all cursor-pointer"
-          >
-            {collapsed ? 'Ver tareas' : 'Minimizar'}
-          </button>
-        </div>
+        )}
       </div>
 
-      {/* CONTENIDO DESPLEGABLE */}
-      {!collapsed && (
-        <div className="mt-3">
-          
-          {/* Mensaje de vacío según la pestaña */}
-          {pestana === 'pendientes' && tareasPendientes.length === 0 && (
-            <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3.5 text-center flex flex-col sm:flex-row items-center justify-between gap-3">
-              <div className="text-left">
-                <p className="text-xs font-bold text-emerald-900">Al día: No tienes tareas pendientes de Jefatura.</p>
-                <p className="text-xs text-emerald-700">Todas las instrucciones asignadas han sido culminadas e integradas a tu bitácora.</p>
-              </div>
-              {tareasCompletadas.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setPestana('completadas')}
-                  className="px-3 py-1.5 bg-white border border-emerald-300 text-emerald-900 text-xs font-bold rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer shrink-0"
+      {/* CONTENIDO PRINCIPAL: BARRA DE FILTROS + LISTADO DE TAREAS */}
+      {(!collapsed || fullPage) && (
+        <div className="space-y-4">
+
+          {/* BARRA DE BÚSQUEDA Y FILTROS */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Buscar por título, expediente o instrucción..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all"
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2.5 items-center">
+              {/* Filtro por Estado */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                <Filter className="w-3.5 h-3.5 text-slate-500" />
+                <select
+                  value={filtroEstado}
+                  onChange={e => setFiltroEstado(e.target.value as any)}
+                  className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
                 >
-                  Ver {tareasCompletadas.length} completadas
+                  <option value="todos">Todos los estados</option>
+                  <option value="pendiente">Por Iniciar ({pendientesCount})</option>
+                  <option value="en_proceso">En Progreso ({enProgresoCount})</option>
+                  <option value="completada">Completadas ({completadasCount})</option>
+                </select>
+              </div>
+
+              {/* Filtro por Prioridad */}
+              <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
+                <select
+                  value={filtroPrioridad}
+                  onChange={e => setFiltroPrioridad(e.target.value)}
+                  className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
+                >
+                  <option value="todos">Todas las prioridades</option>
+                  <option value="urgente">Urgentes</option>
+                  <option value="alta">Altas</option>
+                  <option value="normal">Normales</option>
+                </select>
+              </div>
+
+              {/* Botón Limpiar Filtros */}
+              {(searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFiltroEstado('todos');
+                    setFiltroPrioridad('todos');
+                  }}
+                  className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                  title="Restablecer filtros"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Limpiar</span>
                 </button>
               )}
             </div>
-          )}
+          </div>
 
-          {pestana === 'completadas' && tareasCompletadas.length === 0 && (
-            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-              <p className="text-xs font-semibold text-slate-600">Aún no has completado tareas hoy.</p>
+          {/* LISTADO DE TAREAS */}
+          {loading ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center">
+              <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto mb-3" />
+              <p className="text-slate-600 font-bold text-sm">Cargando tus tareas asignadas...</p>
             </div>
-          )}
-
-          {/* LISTA CON SCROLL COMPACTO: No empuja la bitácora hacia abajo */}
-          {tareasAMostrar.length > 0 && (
-            <div className="max-h-[340px] overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
-              {tareasAMostrar.map(t => {
+          ) : tareasFiltradas.length === 0 ? (
+            <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center">
+              <CheckSquare className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+              <h3 className="text-slate-900 font-bold text-lg mb-1">
+                {searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos'
+                  ? 'No hay tareas que coincidan con los filtros'
+                  : '¡Al día! No tienes tareas pendientes'}
+              </h3>
+              <p className="text-slate-500 text-sm max-w-md mx-auto">
+                {searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos'
+                  ? 'Prueba modificando tus términos de búsqueda o restableciendo los filtros.'
+                  : 'Todas las instrucciones asignadas por Dirección han sido atendidas o completadas.'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              {tareasPaginadas.map(t => {
                 const fechaLimiteText = t.fecha_limite ? (() => {
                   try {
                     return format(new Date(t.fecha_limite + 'T12:00:00'), "d 'de' MMMM", { locale: es });
@@ -260,170 +408,344 @@ export default function BannerTareasEmpleado({ currentUserName, onCopiarABitacor
                   }
                 })() : 'Sin fecha límite';
 
+                const fechaCreadaFormateada = t.created_at ? (() => {
+                  try {
+                    return format(new Date(t.created_at), "d MMM, h:mm a", { locale: es });
+                  } catch {
+                    return t.created_at;
+                  }
+                })() : '';
+
                 const esCompletada = t.estado === 'completada';
 
                 return (
                   <div
                     key={t.id}
-                    className={`rounded-xl border p-3.5 transition-all duration-200 ${
-                      esCompletada
-                        ? 'bg-slate-50/70 border-slate-200'
-                        : t.prioridad === 'urgente'
-                        ? 'bg-red-50/40 border-red-200 shadow-xs'
-                        : 'bg-white border-slate-200 shadow-xs'
-                    }`}
+                    className={`bg-white rounded-3xl border transition-all duration-200 shadow-2xs hover:shadow-xs p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center justify-between gap-5 ${t.prioridad === 'urgente' && !esCompletada
+                      ? 'border-rose-200 bg-rose-50/15'
+                      : esCompletada
+                        ? 'border-emerald-200 bg-emerald-50/15'
+                        : 'border-slate-200/90'
+                      }`}
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                      
-                      {/* DETALLES DE LA TAREA */}
-                      <div className="space-y-1.5 flex-1 min-w-0">
-                        
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          {/* Prioridad */}
-                          {t.prioridad === 'urgente' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-red-100 text-red-800 border border-red-200">
-                              Urgente
-                            </span>
-                          )}
-                          {t.prioridad === 'alta' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 text-amber-800 border border-amber-200">
-                              Alta
-                            </span>
-                          )}
+                    {/* INFORMACIÓN DE LA TAREA */}
+                    <div className="space-y-3 flex-1 min-w-0">
 
-                          {/* Estado */}
-                          {t.estado === 'pendiente' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
-                              Por Iniciar
-                            </span>
-                          )}
-                          {t.estado === 'en_proceso' && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-800 border border-blue-200">
-                              En Progreso
-                            </span>
-                          )}
-                          {esCompletada && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              Completada
-                            </span>
-                          )}
-
-                          {t.expediente_asociado && (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                              Exp: {t.expediente_asociado}
-                            </span>
-                          )}
-                        </div>
-
-                        <h4 className={`text-sm font-bold ${esCompletada ? 'line-through text-slate-500' : 'text-slate-900'}`}>
-                          {t.titulo}
-                        </h4>
-
-                        {t.descripcion && (
-                          <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-200 whitespace-pre-line leading-relaxed">
-                            {t.descripcion}
-                          </p>
+                      {/* BADGES SUPERIORES */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Prioridad */}
+                        {t.prioridad === 'urgente' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200">
+                            URGENTE
+                          </span>
+                        )}
+                        {t.prioridad === 'alta' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            Alta
+                          </span>
+                        )}
+                        {t.prioridad === 'normal' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            Normal
+                          </span>
                         )}
 
-                        {t.respuesta_empleado && (
-                          <div className="bg-emerald-50/80 border border-emerald-200 p-2.5 rounded-lg text-xs text-slate-800 space-y-1">
-                            <span className="block font-bold text-emerald-900 text-[11px]">
-                              Reporte de cumplimiento enviado a Jefatura:
-                            </span>
-                            <p className="italic text-slate-800 bg-white/80 px-2.5 py-1.5 rounded border border-emerald-200/60 text-xs">
+                        {/* Estado */}
+                        {t.estado === 'pendiente' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            Por Iniciar
+                          </span>
+                        )}
+                        {t.estado === 'en_proceso' && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            En Progreso
+                          </span>
+                        )}
+                        {esCompletada && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Completada
+                          </span>
+                        )}
+
+                        {/* Expediente relacionado */}
+                        {t.expediente_asociado && (
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-700 border border-slate-200 flex items-center gap-1">
+                            <Scale className="w-3 h-3 text-slate-600" />
+                            Exp: {t.expediente_asociado}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Título de la Tarea */}
+                      <h4 className={`text-base sm:text-lg font-black leading-snug ${esCompletada ? 'line-through text-slate-500' : 'text-slate-900'}`}>
+                        {t.titulo}
+                      </h4>
+
+                      {/* Descripción o Instrucciones de Jefatura */}
+                      {t.descripcion && (
+                        <div className="bg-slate-50/90 border border-slate-200/80 rounded-2xl p-3.5 space-y-1">
+                          <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            <FileText className="w-3 h-3 text-slate-400" />
+                            <span>Instrucciones de Dirección:</span>
+                          </div>
+                          <p className="text-xs sm:text-sm text-slate-700 font-medium whitespace-pre-line leading-relaxed">
+                            {t.descripcion}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* REPORTE DE CUMPLIMIENTO ENVIADO A JEFATURA */}
+                      {t.respuesta_empleado && (
+                        <div className="bg-gradient-to-br from-emerald-50/80 via-teal-50/20 to-white border border-emerald-200 rounded-2xl p-4 shadow-2xs space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="font-extrabold text-xs text-emerald-950">
+                                Reporte de Cumplimiento Enviado a Jefatura
+                              </span>
+                            </div>
+                            {t.completada_en && (
+                              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                                <Clock className="w-3 h-3 text-emerald-600" />
+                                {(() => {
+                                  try {
+                                    return format(new Date(t.completada_en), "d MMM, h:mm a", { locale: es });
+                                  } catch {
+                                    return '';
+                                  }
+                                })()}
+                              </span>
+                            )}
+                          </div>
+                          <div className="bg-white/80 border border-emerald-200/60 rounded-xl p-3 shadow-2xs">
+                            <p className="text-xs sm:text-sm text-slate-800 font-medium italic whitespace-pre-line leading-relaxed">
                               "{t.respuesta_empleado}"
                             </p>
                           </div>
-                        )}
-
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 pt-0.5">
-                          <span>
-                            Asignado por: <strong className="text-slate-700">{t.asignado_por}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Fecha límite: <strong className={t.prioridad === 'urgente' ? 'text-red-700' : 'text-slate-700'}>{fechaLimiteText}</strong>
-                          </span>
                         </div>
+                      )}
 
-                      </div>
-
-                      {/* ACCIONES DEL EMPLEADO */}
-                      <div className="flex flex-wrap md:flex-nowrap items-center gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0">
-                        
-                        {/* Botón Iniciar Tarea */}
-                        {t.estado === 'pendiente' && (
-                          <button
-                            onClick={() => handleStartTask(t.id)}
-                            disabled={savingId === t.id}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer"
-                          >
-                            Comenzar
-                          </button>
+                      {/* Meta: Asignada por, Fecha límite, etc. */}
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500 pt-1">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
+                          <User className="w-3.5 h-3.5 text-blue-600" />
+                          Asignada por: <strong className="text-slate-900">{t.asignado_por}</strong>
+                        </span>
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          Fecha límite: <strong className={t.prioridad === 'urgente' ? 'text-rose-600 font-bold' : 'text-slate-700'}>{fechaLimiteText}</strong>
+                        </span>
+                        {fechaCreadaFormateada && (
+                          <span className="inline-flex items-center gap-1 text-slate-400">
+                            <Clock className="w-3.5 h-3.5" />
+                            Recibida el {fechaCreadaFormateada}
+                          </span>
                         )}
-
-                        {/* Botón Completar (Abre el campo de reporte y lo agrega directo a la bitácora) */}
-                        {!esCompletada && (
-                          <button
-                            onClick={() => {
-                              setReportingId(reportingId === t.id ? null : t.id);
-                              setReportComment('');
-                            }}
-                            className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer"
-                          >
-                            {reportingId === t.id ? 'Cancelar' : 'Completar'}
-                          </button>
-                        )}
-
-                        {/* Botón Pasar a mi Bitácora (por si ya estaba completada o quiere pasarlo manualmente) */}
-                        {onCopiarABitacora && (
-                          <button
-                            onClick={() => handleCopiarABitacora(t)}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                              copiedId === t.id
-                                ? 'bg-emerald-600 text-white font-black'
-                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
-                            }`}
-                            title="Asegurar o agregar nuevamente en tu Libro de Actuaciones de hoy"
-                          >
-                            {copiedId === t.id ? 'En tu Bitácora' : 'Pasar a Bitácora'}
-                          </button>
-                        )}
-
                       </div>
 
                     </div>
 
-                    {/* FORMULARIO DE REPORTE AL COMPLETAR: Informa a Jefatura y pasa directo a bitácora */}
-                    {reportingId === t.id && (
-                      <div className="mt-3 pt-3 border-t border-slate-200 flex flex-col sm:flex-row gap-2 animate-in fade-in duration-150">
-                        <input
-                          type="text"
-                          value={reportComment}
-                          onChange={e => setReportComment(e.target.value)}
-                          placeholder="Escribe brevemente tu reporte (ej. 'Listo, diligencia consignada en tribunal')..."
-                          className="flex-1 px-3 py-2 bg-white border border-emerald-400 rounded-lg text-xs text-slate-800 outline-none focus:ring-1 focus:ring-emerald-500"
-                          autoFocus
-                          onKeyDown={e => {
-                            if (e.key === 'Enter') {
-                              e.preventDefault();
-                              handleCompleteTask(t.id);
-                            }
-                          }}
-                        />
+                    {/* ACCIONES DEL EMPLEADO */}
+                    <div className="flex flex-wrap lg:flex-nowrap items-center gap-2.5 pt-3 lg:pt-0 border-t lg:border-t-0 border-slate-100 shrink-0">
+
+                      {/* Botón Iniciar Tarea */}
+                      {t.estado === 'pendiente' && (
                         <button
-                          onClick={() => handleCompleteTask(t.id)}
+                          type="button"
+                          onClick={() => handleStartTask(t.id)}
                           disabled={savingId === t.id}
-                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg transition-all cursor-pointer shrink-0"
+                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-sm shadow-blue-600/20 transition-all cursor-pointer flex items-center gap-1.5"
                         >
-                          {savingId === t.id ? 'Guardando...' : 'Completar y Pasar a Bitácora'}
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>Comenzar</span>
                         </button>
-                      </div>
-                    )}
+                      )}
+
+                      {/* Botón Completar (Despliega reporte para Jefatura) */}
+                      {!esCompletada && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReportingId(reportingId === t.id ? null : t.id);
+                            setReportComment('');
+                          }}
+                          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{reportingId === t.id ? 'Cancelar' : 'Completar'}</span>
+                        </button>
+                      )}
+
+                      {/* Botón Pasar a mi Bitácora */}
+                      {onCopiarABitacora && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopiarABitacora(t)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${copiedId === t.id
+                            ? 'bg-emerald-600 text-white font-black shadow-sm'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                            }`}
+                          title="Asegurar o agregar nuevamente en tu Libro de Actuaciones de hoy"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>{copiedId === t.id ? 'Copiada en Bitácora' : 'Pasar a Bitácora'}</span>
+                        </button>
+                      )}
+
+                    </div>
 
                   </div>
                 );
               })}
+
+              {/* FORMULARIO EXPANDIBLE PARA REPORTAR Y COMPLETAR TAREA */}
+              {reportingId && (
+                <div className="bg-white p-5 rounded-3xl border border-emerald-300 shadow-lg animate-in slide-in-from-top-2 duration-200 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+                        <CheckCircle2 className="w-4 h-4" />
+                      </div>
+                      <span className="font-extrabold text-sm text-slate-900">
+                        Culminar Tarea &bull; Reporte para Dirección
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReportingId(null)}
+                      className="p-1 text-slate-400 hover:text-slate-700 rounded-lg"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500 font-medium">
+                    Describe brevemente las diligencias realizadas. Este reporte será enviado a Jefatura y quedará agregado automáticamente en tu bitácora de hoy:
+                  </p>
+
+                  <textarea
+                    rows={3}
+                    value={reportComment}
+                    onChange={e => setReportComment(e.target.value)}
+                    placeholder="Ej. 'Diligencia consignada en el Tribunal 2do de Control. Se obtuvo sello y copia recibida satisfactoriamente...'"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all resize-none"
+                    autoFocus
+                  />
+
+                  <div className="flex items-center justify-end gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setReportingId(null)}
+                      className="px-4 py-2 text-slate-600 hover:text-slate-900 font-bold text-xs rounded-xl"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCompleteTask(reportingId)}
+                      disabled={savingId === reportingId}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{savingId === reportingId ? 'Guardando...' : 'Completar y Guardar en Bitácora'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* PAGINACIÓN */}
+              {totalPages > 1 && (
+                <div className="bg-white p-4 rounded-2xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-semibold text-slate-600">Mostrar:</span>
+                      <select
+                        value={itemsPerPage}
+                        onChange={(e) => {
+                          setItemsPerPage(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="bg-slate-50 border border-slate-200 text-slate-800 font-bold px-2.5 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-blue-500 transition-colors"
+                      >
+                        <option value={5}>5 tareas</option>
+                        <option value={10}>10 tareas</option>
+                        <option value={20}>20 tareas</option>
+                        <option value={9999}>Ver todas ({tareasFiltradas.length})</option>
+                      </select>
+                    </div>
+
+                    <span className="text-slate-300">|</span>
+
+                    <span className="text-slate-600 font-medium">
+                      Mostrando <strong className="text-slate-900 font-bold">{tareasFiltradas.length === 0 ? 0 : startIndex + 1}</strong> a <strong className="text-slate-900 font-bold">{endIndex}</strong> de <strong className="text-blue-600 font-bold">{tareasFiltradas.length}</strong> tareas
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                    <button
+                      onClick={() => handlePageChange(1)}
+                      disabled={safeCurrentPage === 1}
+                      title="Primera página"
+                      className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <ChevronsLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(safeCurrentPage - 1)}
+                      disabled={safeCurrentPage === 1}
+                      title="Página anterior"
+                      className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span className="hidden sm:inline">Anterior</span>
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => page === 1 || page === totalPages || Math.abs(page - safeCurrentPage) <= 1)
+                      .map((page, idx, array) => {
+                        const prevPage = array[idx - 1];
+                        const showEllipsis = prevPage && page - prevPage > 1;
+
+                        return (
+                          <React.Fragment key={page}>
+                            {showEllipsis && (
+                              <span className="px-1 text-slate-400 text-xs font-bold">...</span>
+                            )}
+                            <button
+                              onClick={() => handlePageChange(page)}
+                              className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${safeCurrentPage === page
+                                ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25 font-black'
+                                : 'bg-slate-50 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300'
+                                }`}
+                            >
+                              {page}
+                            </button>
+                          </React.Fragment>
+                        );
+                      })}
+
+                    <button
+                      onClick={() => handlePageChange(safeCurrentPage + 1)}
+                      disabled={safeCurrentPage === totalPages}
+                      title="Página siguiente"
+                      className="px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    >
+                      <span className="hidden sm:inline">Siguiente</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={safeCurrentPage === totalPages}
+                      title="Última página"
+                      className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-100 hover:border-slate-300 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    >
+                      <ChevronsRight className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

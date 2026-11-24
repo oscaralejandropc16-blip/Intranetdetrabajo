@@ -74,7 +74,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   // Estados de Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-  
+
   const [selectedExpediente, setSelectedExpediente] = useState<ExpedienteJudicial | null>(null);
   const [showNuevoExpedienteModal, setShowNuevoExpedienteModal] = useState(false);
 
@@ -119,7 +119,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
             if (missingOnServer.length > 0) {
               console.log(`Sincronizando ${missingOnServer.length} expedientes locales al servidor...`);
               await submitToServer('/rd-intranet/v1/expedientes', { expedientes: missingOnServer });
-              
+
               // Refetch after sync
               const newRes = await api.get('/rd-intranet/v1/expedientes');
               if (Array.isArray(newRes.data)) serverExpedientes = newRes.data;
@@ -136,7 +136,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
           const formatted = serverExpedientes.map(exp => {
             const userStr = (exp as any).usuario || (exp as any).registradoPor || exp.responsableAsignado;
             let acts = exp.actuaciones || [];
-            
+
             // Si no tiene actuaciones estructuradas, generamos una inicial usando el resumen o la bitácora
             if (acts.length === 0) {
               const txt = (exp as any).actuacion || (exp as any).resumenActuacion || (exp as any).detalles || 'Ingreso inicial de expediente';
@@ -215,7 +215,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
     } catch (e) {
       console.warn('Error guardando en caché:', e);
     }
-    
+
     // Guardar en el servidor
     try {
       await submitToServer('/rd-intranet/v1/expedientes', { expedientes: [updated] });
@@ -300,11 +300,11 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
     }
     setShowNuevoExpedienteModal(false);
     setNumExp('');
-    
+
     // Guardar en servidor
     submitToServer('/rd-intranet/v1/expedientes', { expedientes: [newExp] })
       .catch(e => console.error('Error creando expediente:', e));
-    
+
     setPartes('');
     setProcedimiento('');
   };
@@ -380,7 +380,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
   const filteredExpedientes = expedientes.filter((item) => {
     // Si el filtro de duplicados está activo (exclusivo jefatura)
     if (showDuplicatesOnly) {
-      const isDup = duplicatesAnalysis.duplicatesMap.has(item.id) || 
+      const isDup = duplicatesAnalysis.duplicatesMap.has(item.id) ||
         (item.numeroExpediente ? duplicatesAnalysis.duplicatesMap.has(item.numeroExpediente) : false);
       if (!isDup) return false;
     }
@@ -406,7 +406,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
     const normalize = (str: string) => str.toLowerCase().replace(/[^a-z0-9]/g, '');
     const cleanSearch = normalize(rawSearch);
-    
+
     const expDigits = (item.numeroExpediente.match(/\d+/g) || []).join('');
     const cleanNumExp = normalize(item.numeroExpediente);
     const itemCorrelativo = item.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
@@ -459,11 +459,11 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
   const getStatusBadgeStyle = (status: string) => {
     const s = status.toUpperCase();
-    if (s.includes('SENTENCIADO')) return 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30';
-    if (s.includes('FIJADO') || s.includes('AUDIENCIA')) return 'bg-sky-500/15 text-sky-400 border-sky-500/30';
-    if (s.includes('ESPERA') || s.includes('PENDIENTE')) return 'bg-amber-500/15 text-amber-400 border-amber-500/30';
-    if (s.includes('ACÉFALO') || s.includes('SUSPENDIDO')) return 'bg-rose-500/15 text-rose-400 border-rose-500/30';
-    return 'bg-purple-500/15 text-purple-400 border-purple-500/30';
+    if (s.includes('SENTENCIADO')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (s.includes('FIJADO') || s.includes('AUDIENCIA')) return 'bg-sky-50 text-sky-700 border-sky-200';
+    if (s.includes('ESPERA') || s.includes('PENDIENTE')) return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    if (s.includes('ACÉFALO') || s.includes('SUSPENDIDO')) return 'bg-rose-50 text-rose-700 border-rose-200';
+    return 'bg-purple-50 text-purple-700 border-purple-200';
   };
 
   const handleDownloadPdf = async (e?: React.MouseEvent) => {
@@ -484,7 +484,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       doc.setFontSize(10);
       doc.setTextColor(71, 85, 105);
       doc.text('Despacho de Abogados - Román & Delgado', pageWidth / 2, 19, { align: 'center' });
-      
+
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(217, 119, 6); // Ámbar / Oro
@@ -547,39 +547,44 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
   return (
     <div className="space-y-6">
-      
+
       {/* Cabecera Principal del Módulo */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border border-slate-800 p-4 sm:p-6 rounded-3xl shadow-xl space-y-4 overflow-hidden">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+      <div className="bg-white border border-blue-200 p-4 sm:p-5 rounded-2xl sm:rounded-3xl shadow-md shadow-blue-950/8 space-y-3.5">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-md flex-shrink-0">
-              <Scale className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] flex items-center justify-center text-white shadow-md shadow-blue-900/20 flex-shrink-0">
+              <Scale className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight truncate">
+              <h2 className="text-base sm:text-xl font-extrabold text-slate-900 tracking-tight truncate">
                 Gestión de Expedientes Judiciales
               </h2>
-              <p className="text-xs text-slate-400 truncate">
-                Consulta por N° de Expediente, historial de actuaciones y agenda de audiencias
+              <p className="text-xs text-slate-500 truncate">
+                Control de causas, historial de actuaciones y agenda de audiencias
               </p>
             </div>
           </div>
 
           {/* Navegación por pestañas de alto nivel */}
-          <div className="flex flex-wrap items-center bg-slate-950 p-1.5 rounded-2xl border border-slate-800 w-full lg:w-auto flex-shrink-0 gap-1">
+          <div className="flex flex-wrap items-center bg-blue-100/90 p-1 rounded-xl border border-blue-200 w-full lg:w-auto flex-shrink-0 gap-1">
             <button
               onClick={() => {
                 setActiveTab('expedientes');
                 setShowDuplicatesOnly(false);
               }}
-              className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'expedientes' && !showDuplicatesOnly
-                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'expedientes' && !showDuplicatesOnly
+                  ? 'bg-[#1e3a8a] text-white shadow-sm font-bold'
+                  : 'text-slate-700 hover:text-[#1e3a8a] hover:bg-white/75'
+                }`}
             >
-              <FolderSearch className="w-4 h-4" />
-              Expedientes ({isLoading && expedientes.length === 0 ? '...' : expedientes.length})
+              <FolderSearch className="w-3.5 h-3.5" />
+              <span>Expedientes</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${activeTab === 'expedientes' && !showDuplicatesOnly
+                  ? 'bg-blue-700/60 text-white'
+                  : 'bg-slate-200 text-slate-700'
+                }`}>
+                {isLoading && expedientes.length === 0 ? '...' : expedientes.length}
+              </span>
             </button>
 
             {isJefe && (
@@ -593,16 +598,15 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     setShowDuplicatesOnly(prev => !prev);
                   }
                 }}
-                className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                  showDuplicatesOnly
-                    ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/25 ring-1 ring-rose-400'
+                className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${showDuplicatesOnly
+                    ? 'bg-rose-600 text-white shadow-xs font-bold ring-1 ring-rose-500'
                     : duplicatesAnalysis.totalDuplicates > 0
-                    ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30 hover:bg-rose-500/25 animate-pulse'
-                    : 'text-slate-400 hover:text-white'
-                }`}
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                  }`}
                 title="Detector de expedientes repetidos o duplicados (Exclusivo Jefatura)"
               >
-                <AlertTriangle className={`w-4 h-4 ${duplicatesAnalysis.totalDuplicates > 0 ? 'text-rose-400' : 'text-slate-400'}`} />
+                <AlertTriangle className={`w-3.5 h-3.5 ${duplicatesAnalysis.totalDuplicates > 0 ? 'text-rose-600' : 'text-slate-500'}`} />
                 <span>
                   {duplicatesAnalysis.totalDuplicates > 0
                     ? `Repetidos (${duplicatesAnalysis.totalDuplicates})`
@@ -616,34 +620,33 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 setActiveTab('planificacion');
                 setShowDuplicatesOnly(false);
               }}
-              className={`flex-1 lg:flex-none px-3.5 sm:px-4 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${
-                activeTab === 'planificacion'
-                  ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
-                  : 'text-slate-400 hover:text-white'
-              }`}
+              className={`flex-1 lg:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5 whitespace-nowrap ${activeTab === 'planificacion'
+                  ? 'bg-blue-600 text-white shadow-xs font-bold'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
             >
-              <Calendar className="w-4 h-4" />
-              Agenda & Audiencias
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Agenda & Audiencias</span>
             </button>
           </div>
         </div>
 
         {/* Buscador inteligente si estamos en vista de Expedientes */}
         {activeTab === 'expedientes' && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5 pt-2">
-            <div className="lg:col-span-3 sm:col-span-2 relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400 w-4 h-4" />
+          <div className="bg-[#eef4ff] border border-blue-200 p-3 sm:p-3.5 rounded-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2.5">
+            <div className="lg:col-span-4 sm:col-span-2 relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
               <input
                 type="text"
-                placeholder="Ingresa N° de Expediente o Etapa..."
+                placeholder="Buscar por N° expediente, partes, tribunal..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white placeholder:text-slate-500 text-xs sm:text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                className="w-full pl-10 pr-16 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 text-xs sm:text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all shadow-2xs"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white text-xs font-bold"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 text-xs font-semibold"
                 >
                   Limpiar
                 </button>
@@ -654,7 +657,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               <select
                 value={juzgadoFilter}
                 onChange={(e) => setJuzgadoFilter(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold outline-none cursor-pointer hover:border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs truncate"
               >
                 <option value="Todos">Todos los Juzgados</option>
                 <option value="Tribunal 2do">Tribunal 2do</option>
@@ -670,7 +673,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               <select
                 value={estatusFilter}
                 onChange={(e) => setEstatusFilter(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950/90 border border-slate-700/80 rounded-2xl text-white text-xs font-semibold outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-semibold outline-none cursor-pointer hover:border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs truncate"
               >
                 <option value="Todos">Todos los Estatus</option>
                 <option value="SENTENCIADO">SENTENCIADO</option>
@@ -682,38 +685,38 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               </select>
             </div>
 
-            <div className="lg:col-span-3 sm:col-span-2">
+            <div className="lg:col-span-2 sm:col-span-1">
               <select
                 value={lapsoFilter}
                 onChange={(e) => setLapsoFilter(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-950/90 border border-amber-500/40 rounded-2xl text-amber-300 text-xs font-bold outline-none cursor-pointer"
+                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-slate-700 text-xs font-bold outline-none cursor-pointer hover:border-slate-300 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs truncate"
               >
-                <option value="Todos">📅 Todos los Lapsos Procesales</option>
-                <option value="urgente">🔥 ¡Urgentes! (≤ 2 días hábiles)</option>
-                <option value="alerta">⏱️ Por Vencer (≤ 5 días)</option>
-                <option value="sin_despacho">🚫 Con Días Sin Despacho</option>
-                <option value="vencido">⚠️ Lapsos Vencidos</option>
-                <option value="con_etapa">✓ Con Etapa Asignada</option>
-                <option value="sin_etapa">+ Sin Etapa Asignada</option>
+                <option value="Todos">Todos los Lapsos</option>
+                <option value="urgente">Urgentes (≤ 2 días hábiles)</option>
+                <option value="alerta">Por Vencer (≤ 5 días)</option>
+                <option value="sin_despacho">Con Días Sin Despacho</option>
+                <option value="vencido">Lapsos Vencidos</option>
+                <option value="con_etapa">Con Etapa Asignada</option>
+                <option value="sin_etapa">Sin Etapa Asignada</option>
               </select>
             </div>
 
-            <div className="lg:col-span-2 sm:col-span-2 flex gap-2">
+            <div className="lg:col-span-2 sm:col-span-1 flex gap-2">
               <button
                 onClick={handleDownloadPdf}
                 title="Generar PDF Imprimible idéntico al reporte de Word"
-                className="flex-1 bg-slate-900 hover:bg-slate-800 border border-amber-500/40 text-amber-400 font-bold py-2.5 rounded-2xl text-xs flex items-center justify-center gap-1 transition-all cursor-pointer"
+                className="flex-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
-                <Download className="w-4 h-4" />
-                <span>Imprimir / PDF</span>
+                <Download className="w-3.5 h-3.5 text-slate-600" />
+                <span className="hidden sm:inline">PDF</span>
               </button>
 
               <button
                 onClick={() => setShowNuevoExpedienteModal(true)}
-                className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-2.5 rounded-2xl text-xs uppercase tracking-wider flex items-center justify-center gap-1 transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+                className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer whitespace-nowrap"
               >
                 <Plus className="w-4 h-4" />
-                Nuevo
+                <span>Nuevo</span>
               </button>
             </div>
           </div>
@@ -721,29 +724,29 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
         {/* Banner Informativo cuando el filtro de duplicados está activo */}
         {showDuplicatesOnly && (
-          <div className="bg-gradient-to-r from-rose-950/70 via-slate-900 to-rose-950/40 border border-rose-500/40 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-200 shadow-xl animate-in fade-in duration-300">
+          <div className="bg-rose-50 border border-rose-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-rose-900 shadow-2xs animate-in fade-in duration-300">
             <div className="flex items-start gap-3">
-              <div className="p-2.5 bg-rose-500/20 text-rose-400 rounded-xl mt-0.5 border border-rose-500/30 flex-shrink-0">
+              <div className="p-2.5 bg-rose-100 text-rose-700 rounded-xl mt-0.5 border border-rose-200 flex-shrink-0">
                 <AlertTriangle className="w-5 h-5" />
               </div>
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h4 className="text-sm font-black text-white tracking-tight">
+                  <h4 className="text-sm font-black text-rose-950 tracking-tight">
                     Detector de Expedientes Repetidos Activo
                   </h4>
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-rose-500 text-white font-black shadow-sm">
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-rose-600 text-white font-extrabold shadow-2xs">
                     {duplicatesAnalysis.totalDuplicates} {duplicatesAnalysis.totalDuplicates === 1 ? 'caso repetido' : 'casos repetidos'}
                   </span>
                 </div>
-                <p className="text-xs text-rose-200/80 max-w-2xl">
-                  Se muestran únicamente los expedientes que tienen partes procesales, clientes o números correlativos repetidos. Revisa cuál es el expediente oficial y presiona el botón rojo <strong>"Eliminar Duplicado"</strong> para descartar la copia sobrante permanentemente de Supabase.
+                <p className="text-xs text-rose-800 max-w-2xl">
+                  Se muestran únicamente los expedientes que tienen partes procesales, clientes o números correlativos repetidos. Revisa cuál es el expediente oficial y presiona <strong>"Eliminar Duplicado"</strong> para descartar la copia sobrante permanentemente de Supabase.
                 </p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowDuplicatesOnly(false)}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:bg-slate-800 text-white text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow hover:border-slate-600"
+              className="px-3.5 py-2 rounded-xl bg-white border border-rose-200 hover:bg-rose-100 text-rose-800 text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-2xs"
             >
               Ver todos los expedientes
             </button>
@@ -754,20 +757,20 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       {/* VISTA 1: TABLA Y TARJETAS DE EXPEDIENTES */}
       {activeTab === 'expedientes' && (
         <div className="space-y-4">
-          
+
           <div className="flex justify-between items-center px-1">
             {isLoading && expedientes.length === 0 ? (
-              <p className="text-xs text-amber-400/90 font-medium flex items-center gap-2 animate-pulse">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping inline-block" />
+              <p className="text-xs text-blue-600 font-medium flex items-center gap-2 animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-blue-600 animate-ping inline-block" />
                 Conectando con la base de datos de expedientes...
               </p>
             ) : (
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-xs text-slate-400 font-semibold">
-                  Mostrando <strong className="text-amber-400">{sortedExpedientes.length > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, sortedExpedientes.length)}</strong> de {sortedExpedientes.length} expedientes {sortedExpedientes.length !== expedientes.length ? `(filtrados de ${expedientes.length})` : 'registrados'}
+                <p className="text-xs text-slate-500 font-semibold">
+                  Mostrando <strong className="text-slate-900 font-bold">{sortedExpedientes.length > 0 ? startIndex + 1 : 0} - {Math.min(endIndex, sortedExpedientes.length)}</strong> de {sortedExpedientes.length} expedientes {sortedExpedientes.length !== expedientes.length ? `(filtrados de ${expedientes.length})` : 'registrados'}
                 </p>
                 {totalPages > 1 && (
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-900 border border-slate-800 text-amber-400 font-semibold">
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-700 font-semibold">
                     Página {safeCurrentPage} de {totalPages}
                   </span>
                 )}
@@ -776,20 +779,20 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
           </div>
 
           {isLoading && expedientes.length === 0 ? (
-            <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-4 animate-in fade-in duration-300">
-              <div className="w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <div className="bg-white border border-slate-200/90 p-12 rounded-3xl text-center space-y-4 shadow-xs animate-in fade-in duration-300">
+              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
               <div className="space-y-1">
-                <h4 className="text-base font-bold text-white">Sincronizando Expedientes Judiciales...</h4>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                <h4 className="text-base font-bold text-slate-900">Sincronizando Expedientes Judiciales...</h4>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
                   Conectando con la base de datos central en tiempo real. Un momento por favor.
                 </p>
               </div>
             </div>
           ) : sortedExpedientes.length === 0 ? (
-            <div className="bg-slate-950/60 border border-slate-800 p-12 rounded-3xl text-center space-y-3">
-              <AlertCircle className="w-10 h-10 text-amber-500/50 mx-auto" />
-              <h4 className="text-base font-bold text-white">No se encontraron expedientes</h4>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+            <div className="bg-white border border-slate-200/90 p-12 rounded-3xl text-center space-y-3 shadow-xs">
+              <AlertCircle className="w-10 h-10 text-slate-400 mx-auto" />
+              <h4 className="text-base font-bold text-slate-900">No se encontraron expedientes</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto">
                 {searchTerm
                   ? `No hay ningún expediente que coincida con el término "${searchTerm}". Intenta buscar por otro número de expediente o parte procesal.`
                   : 'No hay expedientes con los filtros seleccionados.'}
@@ -802,47 +805,42 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 const expDigits = (exp.numeroExpediente.match(/\d+/g) || []).join('');
                 const correlativoBadge = exp.codigoCorrelativo || `RD-J-2026-${expDigits || '0000'}`;
                 const autorName = ultimaAct?.registradoPor || exp.responsableAsignado || (exp as any).usuario || 'Sistema';
-                const dupInfo = duplicatesAnalysis.duplicatesMap.get(exp.id) || 
+                const dupInfo = duplicatesAnalysis.duplicatesMap.get(exp.id) ||
                   (exp.numeroExpediente ? duplicatesAnalysis.duplicatesMap.get(exp.numeroExpediente) : undefined);
 
                 return (
                   <div
                     key={exp.id}
                     onClick={() => setSelectedExpediente(exp)}
-                    className={`bg-slate-950/80 p-5 rounded-2xl transition-all duration-200 shadow-md hover:shadow-xl group cursor-pointer space-y-4 border ${
-                      dupInfo
-                        ? 'border-rose-500/50 hover:border-rose-400 bg-rose-950/10'
-                        : 'border-slate-800/80 hover:border-amber-500/50'
-                    }`}
+                    className={`bg-white p-5 rounded-2xl transition-all duration-200 shadow-sm shadow-blue-950/5 hover:shadow-md group cursor-pointer space-y-4 border ${dupInfo
+                        ? 'border-rose-300 hover:border-rose-400 bg-rose-50/20'
+                        : 'border-blue-200 hover:border-blue-400'
+                      }`}
                   >
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-800/60 pb-3">
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="bg-amber-500 text-slate-950 font-black text-xs px-3 py-1 rounded-lg tracking-wider">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="bg-blue-50 text-blue-700 font-extrabold text-xs px-3 py-1 rounded-lg border border-blue-200/80 tracking-wider shadow-2xs">
                           EXP #{exp.numeroExpediente}
                         </span>
-                        <span className="text-xs font-bold px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-600">
                           Ref: {correlativoBadge}
                         </span>
-                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-300">
+                        <span className="text-xs font-semibold px-2.5 py-0.5 rounded-md bg-slate-50 border border-slate-200 text-slate-600">
                           {exp.juzgado}
                         </span>
-                        <span className="text-xs font-semibold text-slate-400">
+                        <span className="text-xs font-medium text-slate-500">
                           Sede: {exp.sede}
                         </span>
                         {dupInfo && (
-                          <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-rose-500 text-white flex items-center gap-1 shadow-sm">
-                            <AlertTriangle className="w-3.5 h-3.5" />
+                          <span className="text-xs font-black px-2.5 py-0.5 rounded-md bg-rose-50 text-rose-700 border border-rose-200 flex items-center gap-1 shadow-2xs">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
                             DUPLICADO
                           </span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-2 flex-wrap">
-                        <BadgeLapsoProcesal
-                          control={exp.controlProcesal}
-                          onOpenConfig={() => setSelectedExpediente(exp)}
-                          compact={true}
-                        />
+                        {/* Nota: Se eliminó el BadgeLapsoProcesal duplicado de la cabecera */}
                         <span className={`text-xs font-bold px-3 py-1 rounded-full border ${getStatusBadgeStyle(exp.estatusActual)}`}>
                           {exp.estatusActual}
                         </span>
@@ -851,25 +849,25 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
                     {/* Alerta visible en la tarjeta si tiene duplicado */}
                     {dupInfo && (
-                      <div className="bg-rose-950/40 border border-rose-500/40 rounded-xl px-3.5 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-rose-300">
+                      <div className="bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-rose-800">
                         <div className="flex items-center gap-2 font-bold">
-                          <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                          <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
                           <span>Expediente Repetido / Duplicado: {dupInfo.reason}</span>
                         </div>
-                        <span className="text-[11px] text-rose-300/90 font-mono">
+                        <span className="text-[11px] text-rose-700 font-mono font-semibold">
                           Coincide con #{dupInfo.matches.map(m => m.numeroExpediente).join(', ')}
                         </span>
                       </div>
                     )}
 
-                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
                       {/* Partes y Procedimiento */}
-                      <div className="md:col-span-4 space-y-1">
-                        <p className="text-xs text-slate-500 uppercase tracking-wider font-bold">Partes Procesales</p>
-                        <h3 className="text-base font-bold text-white group-hover:text-amber-400 transition-colors">
+                      <div className="md:col-span-4 space-y-0.5">
+                        <p className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Partes Procesales</p>
+                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors leading-snug">
                           {exp.partes}
                         </h3>
-                        <p className="text-xs text-amber-400/90 font-medium flex items-center gap-1 pt-0.5">
+                        <p className="text-xs text-blue-600 font-medium flex items-center gap-1 pt-0.5">
                           <FileText className="w-3.5 h-3.5" /> {exp.procedimiento}
                         </p>
                       </div>
@@ -883,17 +881,17 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                       </div>
 
                       {/* Última Actuación Destacada */}
-                      <div className="md:col-span-3 space-y-1.5 bg-slate-900/60 p-3 rounded-xl border border-slate-800/80">
+                      <div className="md:col-span-3 space-y-1.5 bg-slate-50 p-3 rounded-xl border border-slate-200/80">
                         <div className="flex items-center justify-between text-[11px]">
-                          <span className="text-slate-400 font-bold uppercase tracking-wider">Última Actuación</span>
-                          <span className="text-amber-400 font-semibold">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>
+                          <span className="text-slate-500 font-bold uppercase tracking-wider">Última Actuación</span>
+                          <span className="text-blue-600 font-semibold">{ultimaAct?.fecha || exp.ultimaActualizacion}</span>
                         </div>
-                        <p className="text-xs text-slate-200 font-medium line-clamp-2">
+                        <p className="text-xs text-slate-700 font-medium line-clamp-2">
                           {ultimaAct ? ultimaAct.actuacion : 'Sin actuaciones registradas'}
                         </p>
-                        <div className="text-[11px] text-amber-400/90 font-semibold pt-1 border-t border-slate-800/50 flex items-center justify-between">
+                        <div className="text-[11px] text-slate-600 font-semibold pt-1 border-t border-slate-200/80 flex items-center justify-between">
                           <span className="text-slate-400 font-medium">Registrado por:</span>
-                          <span className="text-white font-bold">{autorName}</span>
+                          <span className="text-slate-800 font-bold">{autorName}</span>
                         </div>
                       </div>
 
@@ -906,11 +904,10 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                               e.stopPropagation();
                               setConfirmDeleteExp(exp);
                             }}
-                            className={`font-bold px-3 py-2.5 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                              dupInfo
-                                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/40 border border-rose-500'
-                                : 'p-2.5 text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/30'
-                            }`}
+                            className={`font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 transition-all cursor-pointer ${dupInfo
+                                ? 'bg-rose-600 hover:bg-rose-700 text-white shadow-xs'
+                                : 'p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200'
+                              }`}
                             title={dupInfo ? 'Eliminar este expediente duplicado definitivamente (Solo Jefatura)' : 'Eliminar este expediente del sistema (Solo Jefatura)'}
                           >
                             <Trash2 className="w-4 h-4" />
@@ -922,7 +919,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                             e.stopPropagation();
                             setSelectedExpediente(exp);
                           }}
-                          className="bg-slate-900 hover:bg-amber-500 hover:text-slate-950 text-slate-300 font-bold px-3.5 py-2.5 rounded-xl text-xs transition-all flex items-center gap-1.5 border border-slate-700/80 group-hover:border-amber-500/40 cursor-pointer"
+                          className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold px-3.5 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 shadow-sm shadow-blue-500/20 cursor-pointer"
                         >
                           <Eye className="w-4 h-4" />
                           <span>Ficha</span>
@@ -938,9 +935,9 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
           {/* Barra de Navegación y Paginación */}
           {sortedExpedientes.length > 0 && (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-slate-800/80 bg-slate-950/50 p-4 rounded-2xl shadow-inner">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-4 pb-2 border-t border-slate-200/80 bg-white p-4 rounded-2xl shadow-xs">
               {/* Selector de cantidad por página y resumen */}
-              <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap justify-center sm:justify-start">
+              <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
                 <div className="flex items-center gap-1.5">
                   <span>Mostrar:</span>
                   <select
@@ -949,7 +946,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                       setItemsPerPage(Number(e.target.value));
                       setCurrentPage(1);
                     }}
-                    className="bg-slate-900 border border-slate-700/80 text-amber-400 font-bold px-3 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-amber-500/50 transition-colors"
+                    className="bg-slate-50 border border-slate-200 text-slate-700 font-bold px-3 py-1.5 rounded-xl text-xs outline-none cursor-pointer hover:border-blue-400 transition-colors shadow-2xs"
                   >
                     <option value={5}>5 expedientes</option>
                     <option value={10}>10 expedientes</option>
@@ -958,9 +955,9 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     <option value={9999}>Ver todos ({sortedExpedientes.length})</option>
                   </select>
                 </div>
-                <span className="text-slate-600">|</span>
-                <span className="text-slate-300 font-medium">
-                  Expedientes <strong className="text-white">{startIndex + 1}</strong> a <strong className="text-white">{Math.min(endIndex, sortedExpedientes.length)}</strong> de <strong className="text-amber-400">{sortedExpedientes.length}</strong>
+                <span className="text-slate-300">|</span>
+                <span className="text-slate-600 font-medium">
+                  Expedientes <strong className="text-slate-900">{startIndex + 1}</strong> a <strong className="text-slate-900">{Math.min(endIndex, sortedExpedientes.length)}</strong> de <strong className="text-blue-600">{sortedExpedientes.length}</strong>
                 </span>
               </div>
 
@@ -971,7 +968,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     onClick={() => setCurrentPage(1)}
                     disabled={safeCurrentPage === 1}
                     title="Primera página"
-                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
                   >
                     <ChevronsLeft className="w-4 h-4" />
                   </button>
@@ -979,7 +976,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={safeCurrentPage === 1}
                     title="Página anterior"
-                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                   >
                     <ChevronLeft className="w-4 h-4" />
                     <span className="hidden sm:inline">Anterior</span>
@@ -1001,15 +998,14 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                       return (
                         <React.Fragment key={page}>
                           {showEllipsis && (
-                            <span className="px-1.5 text-slate-600 text-xs font-bold">...</span>
+                            <span className="px-1.5 text-slate-400 text-xs font-bold">...</span>
                           )}
                           <button
                             onClick={() => setCurrentPage(page)}
-                            className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${
-                              safeCurrentPage === page
-                                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-                            }`}
+                            className={`w-8 h-8 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center ${safeCurrentPage === page
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-2xs'
+                              }`}
                           >
                             {page}
                           </button>
@@ -1021,7 +1017,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={safeCurrentPage === totalPages}
                     title="Página siguiente"
-                    className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1"
+                    className="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
                   >
                     <span className="hidden sm:inline">Siguiente</span>
                     <ChevronRight className="w-4 h-4" />
@@ -1030,7 +1026,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                     onClick={() => setCurrentPage(totalPages)}
                     disabled={safeCurrentPage === totalPages}
                     title="Última página"
-                    className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white hover:border-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-2xs"
                   >
                     <ChevronsRight className="w-4 h-4" />
                   </button>
@@ -1072,24 +1068,26 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
       {/* Modal Crear Nuevo Expediente */}
       {showNuevoExpedienteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-slate-700 w-full max-w-lg p-6 sm:p-8 rounded-3xl shadow-2xl space-y-5">
-            <div className="flex justify-between items-center">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white border border-blue-200 w-full max-w-lg rounded-3xl shadow-2xl shadow-blue-950/25 overflow-hidden text-slate-900 animate-in zoom-in-95 duration-200">
+            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 sm:p-6 flex justify-between items-center border-b border-blue-800/60">
+              <h3 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-sky-200" />
+                </div>
                 Registrar Nuevo Expediente
               </h3>
               <button
                 onClick={() => setShowNuevoExpedienteModal(false)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
+                className="text-white bg-white/15 hover:bg-white/25 border border-white/25 p-1.5 rounded-xl transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateExpediente} className="space-y-4">
+            <form onSubmit={handleCreateExpediente} className="p-6 sm:p-7 space-y-4">
               <div>
-                <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                   N° de Expediente *
                 </label>
                 <input
@@ -1098,12 +1096,12 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                   placeholder="Ej: 57.380 o Prov-V-2026-00100"
                   value={numExp}
                   onChange={(e) => setNumExp(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                   Tribunal / Juzgado *
                 </label>
                 <input
@@ -1112,12 +1110,12 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                   placeholder="Ej: Tribunal 2do de Primera Instancia"
                   value={juzgado}
                   onChange={(e) => setJuzgado(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                   Partes Procesales *
                 </label>
                 <input
@@ -1126,12 +1124,12 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                   placeholder="Ej. José De Sousa contra Francisco Texeira"
                   value={partes}
                   onChange={(e) => setPartes(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                   Procedimiento / Materia
                 </label>
                 <input
@@ -1139,32 +1137,32 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                   placeholder="Ej: Divorcio Mutuo Acuerdo, Cobro de Bolívares..."
                   value={procedimiento}
                   onChange={(e) => setProcedimiento(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                  <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                     Estatus Inicial
                   </label>
                   <input
                     type="text"
                     value={estatus}
                     onChange={(e) => setEstatus(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs text-slate-400 font-semibold uppercase block mb-1">
+                  <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                     Sede
                   </label>
                   <input
                     type="text"
                     value={sede}
                     onChange={(e) => setSede(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-white text-sm outline-none"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                   />
                 </div>
               </div>
@@ -1173,13 +1171,13 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 <button
                   type="button"
                   onClick={() => setShowNuevoExpedienteModal(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl"
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl shadow-lg shadow-amber-500/20"
+                  className="px-5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Guardar Expediente
                 </button>
@@ -1191,38 +1189,38 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
 
       {/* Modal de Confirmación de Eliminación Definitiva (Jefatura) */}
       {confirmDeleteExp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-slate-900 border border-rose-500/50 w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl space-y-4">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto border border-rose-500/30">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/35 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white/98 border border-rose-200 w-full max-w-md p-6 sm:p-7 rounded-3xl shadow-2xl shadow-blue-950/15 space-y-4 text-slate-900">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center mx-auto border border-rose-200 shadow-2xs">
               <Trash2 className="w-6 h-6" />
             </div>
-            
+
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-black text-white">¿Eliminar Expediente del Sistema?</h3>
-              <p className="text-xs text-slate-400">
+              <h3 className="text-lg font-black text-slate-900">¿Eliminar Expediente del Sistema?</h3>
+              <p className="text-xs text-slate-500">
                 Esta acción borrará este expediente de forma permanente de Supabase y de todos los dispositivos del despacho.
               </p>
             </div>
 
-            <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 space-y-2 text-xs">
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/80 space-y-2 text-xs">
               <div className="flex justify-between items-center">
-                <span className="text-slate-400 font-semibold">N° Expediente:</span>
-                <span className="text-amber-400 font-black">#{confirmDeleteExp.numeroExpediente}</span>
+                <span className="text-slate-500 font-semibold">N° Expediente:</span>
+                <span className="text-blue-600 font-black">#{confirmDeleteExp.numeroExpediente}</span>
               </div>
               <div className="flex justify-between items-start gap-2">
-                <span className="text-slate-400 font-semibold flex-shrink-0">Partes Procesales:</span>
-                <span className="text-white font-medium text-right truncate max-w-[220px]">{confirmDeleteExp.partes}</span>
+                <span className="text-slate-500 font-semibold flex-shrink-0">Partes Procesales:</span>
+                <span className="text-slate-900 font-medium text-right truncate max-w-[220px]">{confirmDeleteExp.partes}</span>
               </div>
               <div className="flex justify-between items-start gap-2">
-                <span className="text-slate-400 font-semibold flex-shrink-0">Tribunal / Sede:</span>
-                <span className="text-slate-300 text-right truncate max-w-[220px]">{confirmDeleteExp.juzgado} ({confirmDeleteExp.sede})</span>
+                <span className="text-slate-500 font-semibold flex-shrink-0">Tribunal / Sede:</span>
+                <span className="text-slate-700 text-right truncate max-w-[220px]">{confirmDeleteExp.juzgado} ({confirmDeleteExp.sede})</span>
               </div>
               {(() => {
                 const dup = duplicatesAnalysis.duplicatesMap.get(confirmDeleteExp.id) ||
                   (confirmDeleteExp.numeroExpediente ? duplicatesAnalysis.duplicatesMap.get(confirmDeleteExp.numeroExpediente) : undefined);
                 if (dup) {
                   return (
-                    <div className="pt-2 border-t border-slate-800/80 text-[11px] text-rose-300">
+                    <div className="pt-2 border-t border-slate-200 text-[11px] text-rose-700 font-medium">
                       <strong>Motivo de duplicidad:</strong> {dup.reason}. Se conservará el otro expediente correspondiente.
                     </div>
                   );
@@ -1235,7 +1233,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               <button
                 type="button"
                 onClick={() => setConfirmDeleteExp(null)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-xl transition-all cursor-pointer"
+                className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -1248,7 +1246,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                   setActionFeedback(`Expediente #${toDelete.numeroExpediente} eliminado correctamente.`);
                   setTimeout(() => setActionFeedback(null), 3500);
                 }}
-                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white text-xs font-black rounded-xl shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-black rounded-xl shadow-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Sí, Eliminar</span>

@@ -529,8 +529,8 @@ export default function ModuloBibliotecaArchivos() {
     if (isPdf) {
       return {
         label: 'Documento Legal (PDF)',
-        badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-        iconBg: 'bg-rose-50 text-rose-600 border border-rose-200',
+        badgeClass: 'bg-blue-50 text-blue-700 border-blue-200',
+        iconBg: 'bg-blue-50 text-blue-600 border border-blue-200',
         icon: FileText
       };
     }
@@ -561,19 +561,21 @@ export default function ModuloBibliotecaArchivos() {
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       
-      {/* 1. ENCABEZADO INSTITUCIONAL */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-slate-700">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      {/* 1. ENCABEZADO INSTITUCIONAL (EJECUTIVO DE ALTO CONTRASTE) */}
+      <div className="bg-white rounded-3xl border border-blue-200 shadow-md shadow-blue-950/8 p-6 lg:p-7 relative overflow-hidden">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-blue-100">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 text-xs font-bold uppercase tracking-wider mb-2">
-              <FolderSearch className="w-3.5 h-3.5 text-indigo-400" />
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100/80 text-[#1e3a8a] border border-blue-200 text-xs font-bold uppercase tracking-wider mb-2.5">
+              <FolderSearch className="w-3.5 h-3.5 text-blue-700" />
               <span>Archivo de Expedientes & Casos</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-3">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 flex items-center gap-3">
+              <span className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#172554] to-[#1d4ed8] text-white flex items-center justify-center shrink-0 shadow-md shadow-blue-900/20">
+                <FolderSearch className="w-6 h-6" />
+              </span>
               Biblioteca de Adjuntos & Expedientes
             </h2>
-            <p className="text-slate-300 text-xs sm:text-sm mt-1 max-w-2xl font-medium">
+            <p className="text-slate-500 text-xs sm:text-sm mt-1 max-w-2xl font-medium leading-relaxed">
               Consulta, descarga y audita todos los documentos probatorios, poderes, sentencias, oficios y anexos vinculados a asuntos y actuaciones del despacho.
             </p>
           </div>
@@ -581,44 +583,64 @@ export default function ModuloBibliotecaArchivos() {
           <button
             onClick={fetchAllDocuments}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 text-white font-bold text-xs transition-all border border-white/20 shadow-md cursor-pointer backdrop-blur-md"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 font-bold text-xs transition-all border border-slate-200 shadow-2xs cursor-pointer"
             title="Sincronizar biblioteca con la nube"
           >
-            <RefreshCw className={`w-4 h-4 text-amber-400 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 text-blue-600 ${loading ? 'animate-spin' : ''}`} />
             <span>Actualizar Archivos</span>
           </button>
         </div>
 
-        {/* METRICS CARDS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t border-slate-700/80">
-          <div className="bg-white/5 backdrop-blur-xs p-3.5 rounded-2xl border border-white/10">
-            <span className="text-[10px] font-bold uppercase text-slate-400 block tracking-wider">Total Adjuntos</span>
-            <p className="text-2xl font-black text-white mt-0.5">{stats.total}</p>
-            <span className="text-[10px] text-indigo-300 font-medium">Vinculados a casos</span>
+        {/* METRICS CARDS (LIGHT EJECUTIVO) */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-6">
+          <div className="bg-slate-50/80 border border-slate-200/90 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-slate-200/60 text-slate-700 flex items-center justify-center shrink-0">
+              <Paperclip className="w-5 h-5 text-slate-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase text-slate-500 block tracking-wider">Total Adjuntos</span>
+              <p className="text-2xl font-black text-slate-900">{stats.total}</p>
+              <span className="text-[10px] text-slate-400 font-medium">Vinculados a casos</span>
+            </div>
           </div>
 
-          <div className="bg-indigo-500/10 backdrop-blur-xs p-3.5 rounded-2xl border border-indigo-500/20">
-            <span className="text-[10px] font-bold uppercase text-indigo-300 block tracking-wider">Documentos & PDFs</span>
-            <p className="text-2xl font-black text-indigo-400 mt-0.5">{stats.documentos}</p>
-            <span className="text-[10px] text-indigo-300/80 font-medium">Poderes, sentencias y oficios</span>
+          <div className="bg-blue-50/50 border border-blue-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+              <FileText className="w-5 h-5 text-blue-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase text-blue-700 block tracking-wider">Documentos & PDFs</span>
+              <p className="text-2xl font-black text-blue-900">{stats.documentos}</p>
+              <span className="text-[10px] text-blue-700/80 font-medium">Poderes, sentencias y oficios</span>
+            </div>
           </div>
 
-          <div className="bg-emerald-500/10 backdrop-blur-xs p-3.5 rounded-2xl border border-emerald-500/20">
-            <span className="text-[10px] font-bold uppercase text-emerald-300 block tracking-wider">Evidencias & Fotos</span>
-            <p className="text-2xl font-black text-emerald-400 mt-0.5">{stats.evidencias}</p>
-            <span className="text-[10px] text-emerald-300/80 font-medium">Soportes de diligencias</span>
+          <div className="bg-emerald-50/50 border border-emerald-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+              <ImageIcon className="w-5 h-5 text-emerald-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase text-emerald-700 block tracking-wider">Evidencias & Fotos</span>
+              <p className="text-2xl font-black text-emerald-900">{stats.evidencias}</p>
+              <span className="text-[10px] text-emerald-700/80 font-medium">Soportes de diligencias</span>
+            </div>
           </div>
 
-          <div className="bg-amber-500/10 backdrop-blur-xs p-3.5 rounded-2xl border border-amber-500/20">
-            <span className="text-[10px] font-bold uppercase text-amber-300 block tracking-wider">Personal Activo</span>
-            <p className="text-2xl font-black text-amber-400 mt-0.5">{stats.totalAuthors}</p>
-            <span className="text-[10px] text-amber-300/80 font-medium">Abogados y jefatura</span>
+          <div className="bg-indigo-50/50 border border-indigo-200/80 p-4 rounded-2xl flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-indigo-700" />
+            </div>
+            <div>
+              <span className="text-[11px] font-bold uppercase text-indigo-700 block tracking-wider">Personal Activo</span>
+              <p className="text-2xl font-black text-indigo-900">{stats.totalAuthors}</p>
+              <span className="text-[10px] text-indigo-700/80 font-medium">Abogados y jefatura</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* 2. BARRA DE HERRAMIENTAS: BÚSQUEDA Y FILTROS */}
-      <div className="bg-white rounded-3xl p-5 shadow-sm border border-slate-200 space-y-4">
+      <div className="bg-white rounded-3xl p-5 shadow-md shadow-blue-950/8 border border-blue-200 space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
           
           {/* Campo de Búsqueda */}
@@ -629,12 +651,12 @@ export default function ModuloBibliotecaArchivos() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Buscar por nombre de archivo, Nº de asunto/expediente, fecha o empleado..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:bg-white rounded-2xl text-xs sm:text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400"
+              className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-500/20 rounded-2xl text-xs sm:text-sm font-medium text-slate-800 outline-none transition-all placeholder:text-slate-400"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -643,30 +665,32 @@ export default function ModuloBibliotecaArchivos() {
 
           {/* Filtro por Autor / Empleado */}
           <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-slate-400 shrink-0" />
-            <select
-              value={selectedAuthor}
-              onChange={(e) => setSelectedAuthor(e.target.value)}
-              className="bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl px-3.5 py-2.5 outline-none cursor-pointer hover:border-slate-300 transition-colors shadow-2xs"
-            >
-              <option value="todos">Todos los Empleados ({authorsList.length})</option>
-              {authorsList.map((author) => (
-                <option key={author} value={author}>{author}</option>
-              ))}
-            </select>
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-3 py-2 rounded-2xl">
+              <User className="w-4 h-4 text-slate-500 shrink-0" />
+              <select
+                value={selectedAuthor}
+                onChange={(e) => setSelectedAuthor(e.target.value)}
+                className="bg-transparent text-slate-700 text-xs font-bold outline-none cursor-pointer"
+              >
+                <option value="todos">Todos los Empleados ({authorsList.length})</option>
+                {authorsList.map((author) => (
+                  <option key={author} value={author}>{author}</option>
+                ))}
+              </select>
+            </div>
 
             {/* Alternador de vista: Grid vs Table */}
             <div className="flex items-center bg-slate-100 p-1 rounded-2xl border border-slate-200 shrink-0">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-1.5 rounded-xl transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`p-2 rounded-xl transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white text-blue-600 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Vista Cuadrícula"
               >
                 <Grid className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-xl transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white text-indigo-600 shadow-xs' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`p-2 rounded-xl transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white text-blue-600 shadow-2xs font-bold' : 'text-slate-500 hover:text-slate-800'}`}
                 title="Vista Tabla Detallada"
               >
                 <List className="w-4 h-4" />
@@ -681,8 +705,8 @@ export default function ModuloBibliotecaArchivos() {
             onClick={() => setSelectedCategory('todos')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
               selectedCategory === 'todos' 
-                ? 'bg-slate-900 text-white shadow-sm' 
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm' 
+                : 'bg-blue-50/70 text-slate-600 hover:bg-blue-50 border border-blue-100'
             }`}
           >
             Todos ({documents.length})
@@ -692,8 +716,8 @@ export default function ModuloBibliotecaArchivos() {
             onClick={() => setSelectedCategory('documento')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer flex items-center gap-1.5 ${
               selectedCategory === 'documento' 
-                ? 'bg-indigo-600 text-white shadow-sm' 
-                : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60'
+                ? 'bg-blue-600 text-white shadow-sm' 
+                : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60'
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
@@ -711,6 +735,16 @@ export default function ModuloBibliotecaArchivos() {
             <ImageIcon className="w-3.5 h-3.5" />
             Evidencias & Fotos ({stats.evidencias})
           </button>
+
+          {(searchQuery || selectedCategory !== 'todos' || selectedAuthor !== 'todos') && (
+            <button
+              onClick={() => { setSearchQuery(''); setSelectedCategory('todos'); setSelectedAuthor('todos'); }}
+              className="ml-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              title="Restablecer filtros"
+            >
+              <span>Limpiar filtros</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -751,7 +785,7 @@ export default function ModuloBibliotecaArchivos() {
             return (
               <div 
                 key={doc.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200 hover:border-indigo-300 hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden"
+                className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200/90 hover:border-blue-300 hover:shadow-md transition-all flex flex-col justify-between group relative overflow-hidden shadow-2xs"
               >
                 <div>
                   {/* Categoría y Fecha */}
@@ -767,11 +801,11 @@ export default function ModuloBibliotecaArchivos() {
 
                   {/* Nombre del Archivo e Ícono */}
                   <div className="flex items-start gap-3">
-                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-xs ${typeInfo.iconBg}`}>
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs ${typeInfo.iconBg}`}>
                       <IconComponent className="w-5 h-5" />
                     </div>
-                    <div className="overflow-hidden flex-1">
-                      <h4 className="font-bold text-sm text-slate-900 group-hover:text-indigo-600 transition-colors truncate" title={doc.name}>
+                    <div className="overflow-hidden flex-1 min-w-0">
+                      <h4 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors truncate" title={doc.name}>
                         {doc.name}
                       </h4>
                       <p className="text-xs text-slate-500 font-medium flex items-center gap-1.5 mt-0.5">
@@ -782,15 +816,15 @@ export default function ModuloBibliotecaArchivos() {
                   </div>
 
                   {/* Información extra: Asunto Obligatorio y Nota */}
-                  <div className="mt-3.5 p-2.5 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600">
-                    <div className="flex items-center gap-1.5 font-bold text-indigo-700 mb-1">
-                      <Scale className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                      <span className="bg-indigo-100/70 text-indigo-800 px-2 py-0.5 rounded-md text-[11px]">
+                  <div className="mt-3.5 p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600">
+                    <div className="flex items-center gap-1.5 font-bold text-blue-700 mb-1">
+                      <Scale className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                      <span className="bg-blue-50 text-blue-800 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border border-blue-200/80">
                         Asunto: {doc.expediente}
                       </span>
                     </div>
                     {doc.note && (
-                      <p className="text-[11px] text-slate-500 line-clamp-2 italic mt-1">
+                      <p className="text-[11px] text-slate-500 line-clamp-2 italic mt-1 font-medium">
                         "{doc.note}"
                       </p>
                     )}
@@ -799,7 +833,7 @@ export default function ModuloBibliotecaArchivos() {
 
                 {/* Pie con Acciones */}
                 <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-slate-400 font-medium">
+                  <span className="text-[11px] text-slate-400 font-mono font-medium">
                     {formatFileSize(doc.size)}
                   </span>
 
@@ -810,7 +844,7 @@ export default function ModuloBibliotecaArchivos() {
                         <button
                           type="button"
                           onClick={() => handleStartEdit(doc)}
-                          className="p-2 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-xl transition-colors cursor-pointer"
+                          className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
                           title="Modificar archivo (Jefatura)"
                         >
                           <Edit2 className="w-4 h-4" />
@@ -818,7 +852,7 @@ export default function ModuloBibliotecaArchivos() {
                         <button
                           type="button"
                           onClick={() => handleConfirmDelete(doc)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                           title="Eliminar archivo definitivamente (Jefatura)"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -828,7 +862,7 @@ export default function ModuloBibliotecaArchivos() {
 
                     <button
                       onClick={() => setPreviewDoc(doc)}
-                      className="p-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors cursor-pointer"
+                      className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all cursor-pointer"
                       title="Previsualizar documento"
                     >
                       <Eye className="w-4 h-4" />
@@ -839,7 +873,7 @@ export default function ModuloBibliotecaArchivos() {
                       target="_blank"
                       rel="noopener noreferrer"
                       download={doc.name}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-indigo-600 text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer"
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-sm shadow-blue-600/20 active:scale-95 cursor-pointer"
                       title="Abrir o Descargar archivo"
                     >
                       <Download className="w-3.5 h-3.5" />
@@ -853,10 +887,10 @@ export default function ModuloBibliotecaArchivos() {
         </div>
       ) : (
         /* VISTA TABLA (LISTA DETALLADA) */
-        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="bg-white rounded-3xl border border-blue-200 overflow-hidden shadow-md shadow-blue-950/8">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
+              <thead className="bg-[#dbeafe] text-[#1e3a8a] uppercase text-[10px] font-extrabold tracking-wider border-b border-blue-200">
                 <tr>
                   <th className="py-3.5 px-4">Archivo / Adjunto</th>
                   <th className="py-3.5 px-4">Tipo</th>
@@ -874,13 +908,13 @@ export default function ModuloBibliotecaArchivos() {
 
                   return (
                     <tr key={doc.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${typeInfo.iconBg}`}>
+                          <div className={`p-2 rounded-xl ${typeInfo.iconBg}`}>
                             <IconComponent className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="font-bold text-slate-900 truncate max-w-xs sm:max-w-md group-hover:text-indigo-600 transition-colors" title={doc.name}>
+                            <p className="font-bold text-slate-900 truncate max-w-xs sm:max-w-md group-hover:text-blue-600 transition-colors" title={doc.name}>
                               {doc.name}
                             </p>
                             {doc.note && (
@@ -889,26 +923,26 @@ export default function ModuloBibliotecaArchivos() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3 px-4">
+                      <td className="py-3.5 px-4">
                         <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${typeInfo.badgeClass}`}>
                           {typeInfo.label}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-md">
+                      <td className="py-3.5 px-4">
+                        <span className="font-bold text-blue-700 bg-blue-50 border border-blue-200/60 px-2 py-0.5 rounded-md">
                           {doc.expediente}
                         </span>
                       </td>
-                      <td className="py-3 px-4 capitalize font-bold text-slate-800">
+                      <td className="py-3.5 px-4 capitalize font-bold text-slate-800">
                         {doc.author}
                       </td>
-                      <td className="py-3 px-4 text-slate-500">
+                      <td className="py-3.5 px-4 text-slate-500">
                         {doc.date}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
+                      <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
                         {formatFileSize(doc.size)}
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right">
                         <div className="inline-flex items-center gap-1.5">
                           {/* Botones Exclusivos para Jefatura */}
                           {isAdmin && (
@@ -916,7 +950,7 @@ export default function ModuloBibliotecaArchivos() {
                               <button
                                 type="button"
                                 onClick={() => handleStartEdit(doc)}
-                                className="p-1.5 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                                 title="Modificar archivo (Jefatura)"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -934,7 +968,7 @@ export default function ModuloBibliotecaArchivos() {
 
                           <button
                             onClick={() => setPreviewDoc(doc)}
-                            className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                             title="Previsualizar"
                           >
                             <Eye className="w-4 h-4" />
@@ -944,7 +978,7 @@ export default function ModuloBibliotecaArchivos() {
                             target="_blank"
                             rel="noopener noreferrer"
                             download={doc.name}
-                            className="p-1.5 text-slate-700 hover:text-white hover:bg-slate-900 rounded-lg transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-700 hover:text-white hover:bg-blue-600 rounded-lg transition-colors cursor-pointer"
                             title="Descargar archivo"
                           >
                             <Download className="w-4 h-4" />
@@ -962,7 +996,7 @@ export default function ModuloBibliotecaArchivos() {
 
       {/* 3.1 BARRA DE PAGINACIÓN */}
       {!loading && filteredDocuments.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-white rounded-2xl border border-slate-200/90 p-4 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Selector de cantidad y rango */}
           <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap justify-center sm:justify-start">
             <div className="flex items-center gap-1.5">
@@ -984,7 +1018,7 @@ export default function ModuloBibliotecaArchivos() {
             </div>
             <span className="text-slate-300">|</span>
             <span className="font-medium">
-              Archivos <strong className="text-slate-800">{startIndex + 1}</strong> a <strong className="text-slate-800">{Math.min(endIndex, filteredDocuments.length)}</strong> de <strong className="text-indigo-600">{filteredDocuments.length}</strong>
+              Archivos <strong className="text-slate-800">{startIndex + 1}</strong> a <strong className="text-slate-800">{Math.min(endIndex, filteredDocuments.length)}</strong> de <strong className="text-blue-600">{filteredDocuments.length}</strong>
             </span>
           </div>
 
@@ -1029,7 +1063,7 @@ export default function ModuloBibliotecaArchivos() {
                         onClick={() => setCurrentPage(page)}
                         className={`min-w-8 h-8 px-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
                           safeCurrentPage === page
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/25 font-black'
                             : 'bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                         }`}
                       >
@@ -1063,18 +1097,22 @@ export default function ModuloBibliotecaArchivos() {
 
       {/* 4. MODAL VISOR DE PREVISUALIZACIÓN DE DOCUMENTOS */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header del Visor */}
-            <div className="p-4 sm:p-5 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-slate-800">
+            <div className="p-4 sm:p-5 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white flex items-center justify-between gap-3 border-b border-blue-800/60">
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5" />
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <FileText className="w-5 h-5 text-sky-200" />
                 </div>
                 <div className="overflow-hidden">
-                  <h3 className="font-bold text-sm text-white truncate" title={previewDoc.name}>{previewDoc.name}</h3>
-                  <p className="text-[11px] text-slate-400">
-                    Cargado por: <span className="font-bold text-white capitalize">{previewDoc.author}</span> • Asunto: <span className="text-amber-400 font-bold">{previewDoc.expediente}</span> • {previewDoc.date}
+                  <h3 className="font-extrabold text-sm text-white truncate" title={previewDoc.name}>{previewDoc.name}</h3>
+                  <p className="text-[11px] text-blue-100/85 flex items-center gap-1.5 flex-wrap mt-0.5">
+                    <span>Cargado por:</span> <strong className="text-white capitalize">{previewDoc.author}</strong>
+                    <span>&bull;</span>
+                    <span className="bg-white/15 text-sky-100 border border-white/25 px-2 py-0.5 rounded-md font-bold text-[11px]">Asunto: {previewDoc.expediente}</span>
+                    <span>&bull;</span>
+                    <span>{previewDoc.date}</span>
                   </p>
                 </div>
               </div>
@@ -1084,7 +1122,7 @@ export default function ModuloBibliotecaArchivos() {
                   href={previewDoc.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-bold transition-all flex items-center gap-1.5"
                   title="Abrir en pestaña nueva"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
@@ -1093,7 +1131,7 @@ export default function ModuloBibliotecaArchivos() {
                 <a
                   href={previewDoc.url}
                   download={previewDoc.name}
-                  className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm"
+                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-[#1e3a8a] text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
                   title="Descargar archivo a tu equipo"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1101,7 +1139,7 @@ export default function ModuloBibliotecaArchivos() {
                 </a>
                 <button
                   onClick={() => setPreviewDoc(null)}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors cursor-pointer ml-1"
+                  className="p-1.5 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer ml-1"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -1142,25 +1180,25 @@ export default function ModuloBibliotecaArchivos() {
 
       {/* 5. MODAL DE MODIFICACIÓN DE ARCHIVO (EXCLUSIVO PARA JEFATURA) */}
       {docToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header del Modal */}
-            <div className="p-5 bg-slate-900 text-white flex items-center justify-between border-b border-amber-500/30">
+            <div className="p-5 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white flex items-center justify-between border-b border-blue-800/60">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-                  <Edit2 className="w-5 h-5" />
+                <div className="w-10 h-10 rounded-2xl bg-white/15 border border-white/25 flex items-center justify-center text-white shrink-0 shadow-sm">
+                  <Edit2 className="w-5 h-5 text-sky-200" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded border border-amber-400/20">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-sky-100 bg-white/15 px-2 py-0.5 rounded border border-white/25">
                     Solo Jefatura
                   </span>
-                  <h3 className="font-bold text-base text-white mt-0.5">Modificar Archivo Oficial</h3>
+                  <h3 className="font-extrabold text-base text-white mt-0.5">Modificar Archivo Oficial</h3>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setDocToEdit(null)}
-                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 border border-white/25 text-white flex items-center justify-center transition-colors cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1176,7 +1214,7 @@ export default function ModuloBibliotecaArchivos() {
                   type="text"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   placeholder="Ej: Poder Inversiones Ox.pdf"
                 />
               </div>
@@ -1189,7 +1227,7 @@ export default function ModuloBibliotecaArchivos() {
                   type="text"
                   value={editExpediente}
                   onChange={(e) => setEditExpediente(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all"
                   placeholder="Ej: RD-J-2026-57371"
                 />
               </div>
@@ -1201,7 +1239,7 @@ export default function ModuloBibliotecaArchivos() {
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value as any)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all cursor-pointer"
                 >
                   <option value="documento">Documento Legal (PDF)</option>
                   <option value="evidencia">Evidencias & Fotos</option>
@@ -1216,7 +1254,7 @@ export default function ModuloBibliotecaArchivos() {
                   value={editNote}
                   onChange={(e) => setEditNote(e.target.value)}
                   rows={3}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all resize-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all resize-none"
                   placeholder="Indica el motivo o detalle relevante de este documento..."
                 />
               </div>
@@ -1234,7 +1272,7 @@ export default function ModuloBibliotecaArchivos() {
                   type="button"
                   onClick={handleSaveEdit}
                   disabled={savingEdit}
-                  className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs transition-all shadow-sm shadow-blue-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
                 >
                   {savingEdit ? (
                     <>

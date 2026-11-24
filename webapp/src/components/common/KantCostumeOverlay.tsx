@@ -38,59 +38,58 @@ export default function KantCostumeOverlay({
       {isHalloween && (
         <>
           {/* Sombrero de Bruja Elegante (sobre la oreja derecha de Kant) */}
-          <div 
-            className={`absolute -top-3.5 right-0.5 sm:-top-4 sm:right-1 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] ${
-              isExcited ? 'animate-bounce' : 'animate-float-slow'
-            }`}
+          <div
+            className={`absolute -top-3.5 right-0.5 sm:-top-4 sm:right-1 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] ${isExcited ? 'animate-bounce' : 'animate-float-slow'
+              }`}
           >
-            <svg 
-              viewBox="0 0 100 100" 
+            <svg
+              viewBox="0 0 100 100"
               className="w-7 h-7 sm:w-8 sm:h-8 filter drop-shadow-md overflow-visible"
-              fill="none" 
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Cono del sombrero morado oscuro con pliegue */}
-              <path 
-                d="M 50 10 Q 56 12 52 28 Q 62 48 68 62 L 28 62 Q 35 48 45 28 Z" 
-                fill="url(#witchConeGrad)" 
+              <path
+                d="M 50 10 Q 56 12 52 28 Q 62 48 68 62 L 28 62 Q 35 48 45 28 Z"
+                fill="url(#witchConeGrad)"
               />
               {/* Punta doblada caprichosa */}
-              <path 
-                d="M 50 10 Q 55 5 62 8 Q 60 14 52 14 Z" 
-                fill="#4c1d95" 
+              <path
+                d="M 50 10 Q 55 5 62 8 Q 60 14 52 14 Z"
+                fill="#4c1d95"
               />
               {/* Ala ancha curva del sombrero */}
-              <ellipse 
-                cx="48" 
-                cy="62" 
-                rx="34" 
-                ry="8" 
-                fill="#2e1065" 
-                stroke="#581c87" 
-                strokeWidth="1.5" 
+              <ellipse
+                cx="48"
+                cy="62"
+                rx="34"
+                ry="8"
+                fill="#2e1065"
+                stroke="#581c87"
+                strokeWidth="1.5"
               />
               {/* Cinta naranja calabaza */}
-              <path 
-                d="M 32 58 Q 48 64 64 58 L 65 62 Q 48 68 31 62 Z" 
-                fill="#ea580c" 
+              <path
+                d="M 32 58 Q 48 64 64 58 L 65 62 Q 48 68 31 62 Z"
+                fill="#ea580c"
               />
               {/* Hebilla dorada brillante */}
-              <rect 
-                x="44" 
-                y="57" 
-                width="8" 
-                height="6" 
-                rx="1.5" 
-                fill="#f59e0b" 
-                stroke="#78350f" 
-                strokeWidth="1" 
+              <rect
+                x="44"
+                y="57"
+                width="8"
+                height="6"
+                rx="1.5"
+                fill="#f59e0b"
+                stroke="#78350f"
+                strokeWidth="1"
               />
-              <rect 
-                x="46" 
-                y="58.5" 
-                width="4" 
-                height="3" 
-                fill="#ea580c" 
+              <rect
+                x="46"
+                y="58.5"
+                width="4"
+                height="3"
+                fill="#ea580c"
               />
 
               {/* Degradados */}
@@ -104,12 +103,12 @@ export default function KantCostumeOverlay({
             </svg>
           </div>
 
-          {/* Calabacita Jack-o'-lantern brillante junto a las patitas */}
-          <div className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-1.5 transition-transform duration-300 drop-shadow-[0_2px_6px_rgba(234,88,12,0.6)]">
-            <svg 
-              viewBox="0 0 60 60" 
-              className="w-5 h-5 sm:w-6 sm:h-6 overflow-visible" 
-              fill="none" 
+          {/* Calabacita Jack-o'-lantern junto a las patitas */}
+          <div className="absolute -bottom-1 -left-1 sm:-bottom-1.5 sm:-left-1.5 transition-transform duration-300 drop-shadow-sm">
+            <svg
+              viewBox="0 0 60 60"
+              className="w-5 h-5 sm:w-6 sm:h-6 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Tallito verde */}
@@ -124,7 +123,7 @@ export default function KantCostumeOverlay({
               <polygon points="30,32 32,34 28,34" fill="#fef08a" />
               {/* Sonrisa zig-zag */}
               <path d="M 21 38 Q 30 46 39 38 Q 36 43 30 43 Q 24 43 21 38 Z" fill="#fef08a" />
-              
+
               <defs>
                 <linearGradient id="pumpkinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#fb923c" />
@@ -141,16 +140,15 @@ export default function KantCostumeOverlay({
       {isAbogado && (
         <>
           {/* Birrete de Grado Académico / Abogado */}
-          <div 
-            className={`absolute -top-3.5 left-1/2 -translate-x-1/2 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${
-              isExcited ? 'animate-bounce' : 'animate-pulse'
-            }`}
+          <div
+            className={`absolute -top-3.5 left-1/2 -translate-x-1/2 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] ${isExcited ? 'animate-bounce' : 'animate-pulse'
+              }`}
             style={{ animationDuration: '4s' }}
           >
-            <svg 
-              viewBox="0 0 100 70" 
-              className="w-8 h-8 sm:w-9 sm:h-9 overflow-visible" 
-              fill="none" 
+            <svg
+              viewBox="0 0 100 70"
+              className="w-8 h-8 sm:w-9 sm:h-9 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Casquete inferior */}
@@ -174,11 +172,11 @@ export default function KantCostumeOverlay({
           </div>
 
           {/* Balanza de la Justicia Dorada al pie */}
-          <div className="absolute -bottom-1.5 -right-1 sm:-bottom-2 sm:-right-1.5 drop-shadow-[0_2px_8px_rgba(245,158,11,0.65)]">
-            <svg 
-              viewBox="0 0 60 60" 
-              className="w-5 h-5 sm:w-6 sm:h-6 overflow-visible" 
-              fill="none" 
+          <div className="absolute -bottom-1.5 -right-1 sm:-bottom-2 sm:-right-1.5 drop-shadow-sm">
+            <svg
+              viewBox="0 0 60 60"
+              className="w-5 h-5 sm:w-6 sm:h-6 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Columna central y base */}
@@ -204,21 +202,20 @@ export default function KantCostumeOverlay({
       {isNavidad && (
         <>
           {/* Gorro de Santa Rojo con Pompón Blanco */}
-          <div 
-            className={`absolute -top-3.5 right-0 sm:-top-4 sm:right-0.5 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${
-              isExcited ? 'animate-bounce' : 'animate-float-slow'
-            }`}
+          <div
+            className={`absolute -top-3.5 right-0 sm:-top-4 sm:right-0.5 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${isExcited ? 'animate-bounce' : 'animate-float-slow'
+              }`}
           >
-            <svg 
-              viewBox="0 0 100 80" 
-              className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible" 
-              fill="none" 
+            <svg
+              viewBox="0 0 100 80"
+              className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Cono rojo terciopelo caído a la derecha */}
-              <path 
-                d="M 30 52 Q 40 20 62 16 Q 80 20 78 36 Q 74 46 80 48 L 76 52 Z" 
-                fill="url(#santaRedGrad)" 
+              <path
+                d="M 30 52 Q 40 20 62 16 Q 80 20 78 36 Q 74 46 80 48 L 76 52 Z"
+                fill="url(#santaRedGrad)"
               />
               {/* Borde afelpado blanco */}
               <rect x="22" y="48" width="56" height="12" rx="6" fill="#f8fafc" stroke="#e2e8f0" strokeWidth="1" />
@@ -236,7 +233,7 @@ export default function KantCostumeOverlay({
           </div>
 
           {/* Arbolito o corona al pie */}
-          <div className="absolute -bottom-1 -left-1 drop-shadow-[0_2px_6px_rgba(16,185,129,0.5)]">
+          <div className="absolute -bottom-1 -left-1 drop-shadow-sm">
             <span className="text-sm sm:text-base">🎄</span>
           </div>
         </>
@@ -246,8 +243,8 @@ export default function KantCostumeOverlay({
       {isPatria && (
         <>
           {/* Escarapela con Estrellas y Laurel en la cabeza */}
-          <div className="absolute -top-3 right-0 drop-shadow-[0_2px_8px_rgba(250,204,21,0.7)] animate-pulse">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-b from-yellow-400 via-blue-600 to-red-600 p-0.5 border border-amber-300 shadow-md flex items-center justify-center">
+          <div className="absolute -top-3 right-0 drop-shadow-sm">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-b from-yellow-400 via-blue-600 to-red-600 p-0.5 border border-sky-300 shadow-md flex items-center justify-center">
               <span className="text-[10px] text-white font-black leading-none drop-shadow-sm">⭐</span>
             </div>
           </div>
@@ -263,23 +260,22 @@ export default function KantCostumeOverlay({
       {isChocolate && (
         <>
           {/* Gorro de Maestro Chocolatero francés / pastelero sobre la cabeza de Kant */}
-          <div 
-            className={`absolute -top-3.5 right-0 sm:-top-4 sm:right-0.5 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${
-              isExcited ? 'animate-bounce' : 'animate-float-slow'
-            }`}
+          <div
+            className={`absolute -top-3.5 right-0 sm:-top-4 sm:right-0.5 transition-transform duration-300 drop-shadow-[0_4px_8px_rgba(0,0,0,0.6)] ${isExcited ? 'animate-bounce' : 'animate-float-slow'
+              }`}
           >
-            <svg 
-              viewBox="0 0 100 80" 
-              className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible" 
-              fill="none" 
+            <svg
+              viewBox="0 0 100 80"
+              className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Pliegues abullonados del gorro blanco de chocolatero */}
-              <path 
-                d="M 28 50 C 20 40 22 25 38 20 C 42 12 58 10 65 18 C 76 15 84 26 80 40 C 85 46 80 52 75 52 L 25 52 Z" 
-                fill="url(#toqueWhiteGrad)" 
-                stroke="#cbd5e1" 
-                strokeWidth="1.2" 
+              <path
+                d="M 28 50 C 20 40 22 25 38 20 C 42 12 58 10 65 18 C 76 15 84 26 80 40 C 85 46 80 52 75 52 L 25 52 Z"
+                fill="url(#toqueWhiteGrad)"
+                stroke="#cbd5e1"
+                strokeWidth="1.2"
               />
               {/* Banda de la base marrón cacao con ribete dorado */}
               <rect x="25" y="48" width="52" height="8" rx="2" fill="#451a03" stroke="#d97706" strokeWidth="1" />
@@ -298,43 +294,42 @@ export default function KantCostumeOverlay({
           </div>
 
           {/* Tableta de Chocolate Gourmet siendo saboreada por Kant */}
-          <div 
-            className={`absolute -bottom-2 -right-1 sm:-bottom-2.5 sm:-right-1.5 transition-transform duration-300 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${
-              isExcited ? 'scale-110 rotate-6 animate-pulse' : 'hover:scale-105'
-            }`}
+          <div
+            className={`absolute -bottom-2 -right-1 sm:-bottom-2.5 sm:-right-1.5 transition-transform duration-300 drop-shadow-[0_4px_10px_rgba(0,0,0,0.8)] ${isExcited ? 'scale-110 rotate-6 animate-pulse' : 'hover:scale-105'
+              }`}
           >
-            <svg 
-              viewBox="0 0 70 85" 
-              className="w-7 h-8 sm:w-8 sm:h-9 overflow-visible" 
-              fill="none" 
+            <svg
+              viewBox="0 0 70 85"
+              className="w-7 h-8 sm:w-8 sm:h-9 overflow-visible"
+              fill="none"
               xmlns="http://www.w3.org/2000/svg"
             >
               {/* Tableta de chocolate oscuro base */}
               <rect x="12" y="10" width="46" height="65" rx="3" fill="#2d1305" />
-              
+
               {/* Parte superior de chocolate al descubierto (4 cuadritos) */}
               <g id="chocolateSquares">
                 {/* Cuadro superior izquierdo */}
                 <rect x="15" y="13" width="18" height="15" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
                 <rect x="17" y="15" width="14" height="11" rx="1" fill="#4a220c" opacity="0.6" />
-                
+
                 {/* Cuadro superior derecho CON MORDISCO de perrito */}
-                <path 
-                  d="M 37 13 L 52 13 C 53 13 54 14 54 15 L 54 28 L 37 28 Z" 
-                  fill="url(#chocoSquareGrad)" 
-                  stroke="#1a0a03" 
-                  strokeWidth="0.6" 
+                <path
+                  d="M 37 13 L 52 13 C 53 13 54 14 54 15 L 54 28 L 37 28 Z"
+                  fill="url(#chocoSquareGrad)"
+                  stroke="#1a0a03"
+                  strokeWidth="0.6"
                 />
                 {/* Bocado / mordida curva en la esquina */}
-                <path 
-                  d="M 44 12 C 43 17 48 21 54 18 L 55 12 Z" 
-                  fill="#0b0f19" 
+                <path
+                  d="M 44 12 C 43 17 48 21 54 18 L 55 12 Z"
+                  fill="#0b0f19"
                   opacity="0.95"
                 />
-                
+
                 {/* Cuadro inferior izquierdo */}
                 <rect x="15" y="30" width="18" height="14" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
-                
+
                 {/* Cuadro inferior derecho */}
                 <rect x="37" y="30" width="18" height="14" rx="1.5" fill="url(#chocoSquareGrad)" stroke="#1a0a03" strokeWidth="0.6" />
               </g>
@@ -345,19 +340,19 @@ export default function KantCostumeOverlay({
               <circle cx="47" cy="7" r="0.9" fill="#f59e0b" />
 
               {/* Papel de Envoltura Dorado (Golden Foil) arrugado artesanal */}
-              <path 
-                d="M 10 40 Q 22 43 35 39 Q 48 44 60 41 L 58 75 Q 35 77 12 75 Z" 
-                fill="url(#goldFoilChocoGrad)" 
-                stroke="#b45309" 
-                strokeWidth="0.8" 
+              <path
+                d="M 10 40 Q 22 43 35 39 Q 48 44 60 41 L 58 75 Q 35 77 12 75 Z"
+                fill="url(#goldFoilChocoGrad)"
+                stroke="#b45309"
+                strokeWidth="0.8"
               />
               {/* Pliegue de envoltura brillante */}
-              <path 
-                d="M 10 40 L 16 45 L 26 41 L 38 46 L 49 42 L 60 41 L 57 47 L 12 47 Z" 
-                fill="#fde68a" 
-                opacity="0.6" 
+              <path
+                d="M 10 40 L 16 45 L 26 41 L 38 46 L 49 42 L 60 41 L 57 47 L 12 47 Z"
+                fill="#fde68a"
+                opacity="0.6"
               />
-              
+
               {/* Cintillo de etiqueta venezolana: Cacao Chuao 100% */}
               <rect x="11" y="52" width="48" height="14" fill="#78350f" stroke="#d97706" strokeWidth="0.6" />
               <text x="35" y="60" textAnchor="middle" fill="#fef08a" fontSize="5.5" fontWeight="900" letterSpacing="0.4" fontFamily="sans-serif">

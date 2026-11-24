@@ -128,9 +128,9 @@ export async function exportarRelacionGastosPDF(relacion: RelacionGastos, logoBa
     doc.setDrawColor(134, 239, 172); // emerald-300
     doc.setTextColor(21, 128, 61);   // emerald-700
   } else if (estatusUpper === 'PENDIENTE') {
-    doc.setFillColor(254, 243, 199); // amber-100
-    doc.setDrawColor(252, 211, 77);   // amber-300
-    doc.setTextColor(180, 83, 9);     // amber-700
+    doc.setFillColor(239, 246, 255); // blue-50
+    doc.setDrawColor(191, 219, 254); // blue-200
+    doc.setTextColor(29, 78, 216);   // blue-700
   } else {
     doc.setFillColor(241, 245, 249); // slate-100
     doc.setDrawColor(203, 213, 225); // slate-300
