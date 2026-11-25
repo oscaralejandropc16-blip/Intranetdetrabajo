@@ -2710,6 +2710,17 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
     passwordHash: '123456',
     active: true,
     createdAt: '2026-10-14T10:00:00.000Z'
+  },
+  {
+    id: 'usr_1794018370842_9pocja',
+    username: 'luiscastillo',
+    email: 'lcastillog711@gmail.com',
+    fullName: 'Luis Castillo',
+    role: 'empleado',
+    department: 'Legal',
+    passwordHash: '123456',
+    active: true,
+    createdAt: '2026-11-07T00:00:00.000Z'
   }
 ];
 
@@ -2883,6 +2894,13 @@ export const INITIAL_DELETED_USERS: DeletedSystemUser[] = [
   }
 ];
 
+// Usuarios reactivados: se excluyen de la lista de eliminados aunque existan en DB/localStorage
+const REACTIVATED_USERNAMES = ['luiscastillo'];
+
+function purgeReactivated(list: DeletedSystemUser[]): DeletedSystemUser[] {
+  return list.filter(d => !REACTIVATED_USERNAMES.includes((d.username || '').toLowerCase().trim()));
+}
+
 export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
   try {
     const cached = localStorage.getItem('rd_system_deleted_users_history');
@@ -2891,7 +2909,7 @@ export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           fetchRemoteDeletedUsers();
-          return parsed;
+          return purgeReactivated(parsed);
         }
       } catch (e) {}
     }
@@ -2905,8 +2923,11 @@ export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
     if (existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(parsed));
-        return parsed;
+        const purged = purgeReactivated(parsed);
+        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(purged));
+        // Persiste la lista ya limpia de vuelta a Neon para no repetir la purga
+        supabaseSaveDeletedUsers(purged).catch(() => {});
+        return purged;
       }
     }
 
@@ -2929,7 +2950,8 @@ async function fetchRemoteDeletedUsers() {
     if (data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(parsed));
+        const purged = purgeReactivated(parsed);
+        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(purged));
       }
     }
   } catch (e) {}
