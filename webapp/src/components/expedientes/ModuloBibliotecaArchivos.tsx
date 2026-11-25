@@ -1119,25 +1119,29 @@ export default function ModuloBibliotecaArchivos() {
               </div>
 
               <div className="flex items-center gap-2">
-                <a
-                  href={previewDoc.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-bold transition-all flex items-center gap-1.5"
-                  title="Abrir en pestaña nueva"
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Pestaña Nueva</span>
-                </a>
-                <a
-                  href={previewDoc.url}
-                  download={previewDoc.name}
-                  className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-[#1e3a8a] text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
-                  title="Descargar archivo a tu equipo"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Descargar</span>
-                </a>
+                {!previewDoc.url.includes('supabase.co/storage') && (
+                  <>
+                    <a
+                      href={previewDoc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/25 text-xs font-bold transition-all flex items-center gap-1.5"
+                      title="Abrir en pestaña nueva"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline">Pestaña Nueva</span>
+                    </a>
+                    <a
+                      href={previewDoc.url}
+                      download={previewDoc.name}
+                      className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-blue-50 text-[#1e3a8a] text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                      title="Descargar archivo a tu equipo"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Descargar</span>
+                    </a>
+                  </>
+                )}
                 <button
                   onClick={() => setPreviewDoc(null)}
                   className="p-1.5 text-white bg-white/15 hover:bg-white/25 border border-white/25 rounded-xl transition-colors cursor-pointer ml-1"
@@ -1149,7 +1153,24 @@ export default function ModuloBibliotecaArchivos() {
 
             {/* Contenedor del Visor */}
             <div className="flex-1 bg-slate-100 p-2 sm:p-4 overflow-hidden flex items-center justify-center relative">
-              {previewDoc.type.includes('video') || previewDoc.url.endsWith('.mp4') ? (
+              {previewDoc.url.includes('supabase.co/storage') ? (
+                <div className="max-w-lg w-full bg-white rounded-3xl border border-amber-200 shadow-lg p-6 sm:p-8 text-center space-y-4">
+                  <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto">
+                    <FileText className="w-7 h-7" />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-base sm:text-lg font-extrabold text-slate-900">
+                      Archivo almacenado en el servidor anterior (Supabase Storage)
+                    </h4>
+                    <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Este adjunto histórico (<strong>{previewDoc.name}</strong>) no se perdió: sigue guardado en Supabase, pero su descarga pública quedó temporalmente pausada por la cuota gratuita mensual hasta el <strong>20 de diciembre de 2026</strong>.
+                    </p>
+                    <p className="text-xs text-slate-500 leading-relaxed">
+                      Si necesitas este archivo con urgencia hoy, el administrador puede descargarlo directamente desde <strong>Supabase Dashboard &rarr; Storage &rarr; evidencias</strong>. Los archivos nuevos subidos desde hoy ya se guardan en Neon sin bloqueo.
+                    </p>
+                  </div>
+                </div>
+              ) : previewDoc.type.includes('video') || previewDoc.url.endsWith('.mp4') ? (
                 <video
                   src={previewDoc.url}
                   controls
