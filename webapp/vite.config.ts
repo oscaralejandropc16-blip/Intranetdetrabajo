@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
+import { Readable } from 'node:stream'
 import { executeDbRequest, executeFileGet, executeFilePost } from './server/neonHandler.mjs'
 
 function readJsonBody(req: any): Promise<any> {
@@ -69,6 +70,37 @@ function neonDevApiPlugin(dbUrl: string): Plugin {
         }
         res.statusCode = 405
         res.end('Method not allowed')
+      })
+
+      server.middlewares.use('/api/wp-pdf', async (req, res) => {
+        if (req.method !== 'GET') {
+          res.statusCode = 405
+          res.end('Method not allowed')
+          return
+        }
+        try {
+          const reqUrl = new URL(req.url || '/', 'http://localhost')
+          const rawUrl = reqUrl.searchParams.get('url') || ''
+          const target = new URL(rawUrl)
+          if (target.protocol !== 'https:' || target.hostname !== 'romanydelgado.com' || !target.pathname.startsWith('/wp-content/uploads/')) {
+            res.statusCode = 403
+            res.end('URL no permitida')
+            return
+          }
+          const upstream = await fetch(target.toString())
+          if (!upstream.ok || !upstream.body) {
+            res.statusCode = upstream.status || 502
+            res.end('Error cargando documento')
+            return
+          }
+          res.statusCode = 200
+          res.setHeader('Content-Type', upstream.headers.get('content-type') || 'application/pdf')
+          res.setHeader('Content-Disposition', 'inline')
+          Readable.fromWeb(upstream.body as any).pipe(res)
+        } catch {
+          res.statusCode = 400
+          res.end('Solicitud inválida')
+        }
       })
     },
   }

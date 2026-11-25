@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   FolderSearch, FileText, Download, ExternalLink, Search, 
   Eye, Calendar, User, Paperclip, RefreshCw, 
@@ -1097,8 +1098,8 @@ export default function ModuloBibliotecaArchivos() {
       )}
 
       {/* 4. MODAL VISOR DE PREVISUALIZACIÓN DE DOCUMENTOS */}
-      {previewDoc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
+      {previewDoc && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-6 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white rounded-3xl shadow-2xl shadow-blue-950/25 border border-blue-200 w-full max-w-4xl h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
             {/* Header del Visor */}
             <div className="p-4 sm:p-5 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white flex items-center justify-between gap-3 border-b border-blue-800/60">
@@ -1184,7 +1185,11 @@ export default function ModuloBibliotecaArchivos() {
                 />
               ) : (
                 <iframe
-                  src={previewDoc.url}
+                  src={
+                    previewDoc.url.startsWith('https://romanydelgado.com/wp-content/uploads/')
+                      ? `/api/wp-pdf?url=${encodeURIComponent(previewDoc.url)}`
+                      : previewDoc.url
+                  }
                   title={previewDoc.name}
                   className="w-full h-full rounded-2xl border border-slate-300 shadow-sm bg-white"
                 />
@@ -1197,7 +1202,8 @@ export default function ModuloBibliotecaArchivos() {
               <span className="font-mono font-bold text-slate-700">{formatFileSize(previewDoc.size)}</span>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* 5. MODAL DE MODIFICACIÓN DE ARCHIVO (EXCLUSIVO PARA JEFATURA) */}
