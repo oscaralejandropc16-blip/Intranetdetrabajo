@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, Plus, FileText, Calendar, AlertCircle, Eye, FolderSearch, ChevronRight, ChevronLeft, ChevronsLeft, ChevronsRight, Scale, Download, X, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -1067,25 +1068,25 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
       )}
 
       {/* Modal Crear Nuevo Expediente */}
-      {showNuevoExpedienteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white border border-blue-200 w-full max-w-lg rounded-3xl shadow-2xl shadow-blue-950/25 overflow-hidden text-slate-900 animate-in zoom-in-95 duration-200">
-            <div className="bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-5 sm:p-6 flex justify-between items-center border-b border-blue-800/60">
-              <h3 className="text-lg sm:text-xl font-extrabold text-white flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center">
+      {showNuevoExpedienteModal && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+          <div className="bg-white border border-blue-200 w-full max-w-lg max-h-[90vh] flex flex-col rounded-3xl shadow-2xl shadow-blue-950/25 overflow-hidden text-slate-900 my-auto animate-in zoom-in-95 duration-200">
+            <div className="shrink-0 bg-gradient-to-r from-[#172554] via-[#1e3a8a] to-[#1d4ed8] text-white p-4 sm:p-5 flex justify-between items-center border-b border-blue-800/60">
+              <h3 className="text-base sm:text-lg font-extrabold text-white flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-white/15 border border-white/25 flex items-center justify-center shrink-0">
                   <Plus className="w-5 h-5 text-sky-200" />
                 </div>
                 Registrar Nuevo Expediente
               </h3>
               <button
                 onClick={() => setShowNuevoExpedienteModal(false)}
-                className="text-white bg-white/15 hover:bg-white/25 border border-white/25 p-1.5 rounded-xl transition-colors cursor-pointer"
+                className="text-white bg-white/15 hover:bg-white/25 border border-white/25 p-1.5 rounded-xl transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateExpediente} className="p-6 sm:p-7 space-y-4">
+            <form onSubmit={handleCreateExpediente} className="p-4 sm:p-6 pb-0 space-y-4 overflow-y-auto flex-1 min-h-0">
               <div>
                 <label className="text-xs text-slate-600 font-bold uppercase block mb-1">
                   N° de Expediente *
@@ -1167,7 +1168,7 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3">
+              <div className="sticky bottom-0 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3.5 bg-white/95 backdrop-blur-sm border-t border-slate-100 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowNuevoExpedienteModal(false)}
@@ -1184,7 +1185,8 @@ export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedi
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Modal de Confirmación de Eliminación Definitiva (Jefatura) */}
