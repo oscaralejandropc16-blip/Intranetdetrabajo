@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck, KeyRound, Plus, Edit3, Trash2, Search,
   X, Eye, EyeOff, UserCheck, Cpu, RefreshCw,
-  RotateCcw, History, UserX, Calendar, Lock
+  RotateCcw, History, UserX, Calendar, Lock, Copy, Check
 } from 'lucide-react';
 import {
   supabaseGetSystemUsers,
@@ -18,23 +18,58 @@ import {
 } from '../../lib/supabaseAdapter';
 import SystemAlertModal, { type AlertType } from '../common/SystemAlertModal';
 
+/** Controles compartidos para alternar visibilidad y copiar la clave asignada de un usuario. */
+function PasswordVisibilityActions({
+  userLabel,
+  isRevealed,
+  isCopied,
+  onToggle,
+  onCopy,
+  showCopy = true,
+  compact = false,
+}: {
+  userLabel: string;
+  isRevealed: boolean;
+  isCopied: boolean;
+  onToggle: () => void;
+  onCopy: () => void;
+  showCopy?: boolean;
+  compact?: boolean;
+}) {
+  const iconSize = compact ? 'w-3.5 h-3.5' : 'w-4 h-4';
+  const btnClass = compact
+    ? 'p-1 rounded-md hover:bg-white text-slate-500 transition-colors cursor-pointer'
+    : 'p-1.5 rounded-lg hover:bg-white text-slate-500 transition-colors cursor-pointer border border-transparent hover:border-slate-200';
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`${btnClass} hover:text-blue-600`}
+        title={isRevealed ? 'Ocultar clave asignada' : 'Ver clave asignada'}
+        aria-label={isRevealed ? `Ocultar clave de ${userLabel}` : `Ver clave de ${userLabel}`}
+      >
+        {isRevealed ? <EyeOff className={iconSize} /> : <Eye className={iconSize} />}
+      </button>
+      {showCopy && (
+        <button
+          type="button"
+          onClick={onCopy}
+          className={`${btnClass} hover:text-emerald-600`}
+          title="Copiar clave al portapapeles"
+          aria-label={`Copiar clave de ${userLabel}`}
+        >
+          {isCopied ? <Check className={`${iconSize} text-emerald-600`} /> : <Copy className={iconSize} />}
+        </button>
+      )}
+    </>
+  );
+}
+
 export default function ModuloControlUsuarios() {
   const currentUserName = localStorage.getItem('rd_user_name') || '';
   const isSistemas = checkIsSistemas(currentUserName);
-
-  if (!isSistemas) {
-    return (
-      <div className="bg-white/95 border border-blue-100 p-8 rounded-3xl text-center text-slate-900 max-w-xl mx-auto my-8 shadow-xl shadow-blue-950/10">
-        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 mx-auto mb-4">
-          <ShieldCheck className="w-7 h-7" />
-        </div>
-        <h3 className="text-xl font-extrabold text-slate-900 mb-2">Módulo Restringido</h3>
-        <p className="text-slate-600 text-sm leading-relaxed font-medium">
-          El control y gestión de cuentas, roles y claves de acceso está reservado exclusivamente para el superadministrador de Sistemas & TI (Óscar).
-        </p>
-      </div>
-    );
-  }
 
   const [activeTab, setActiveTab] = useState<'activos' | 'eliminados'>('activos');
   const [users, setUsers] = useState<SystemUser[]>([]);
@@ -69,6 +104,9 @@ export default function ModuloControlUsuarios() {
 
   const [newPassword, setNewPassword] = useState<string>('');
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [revealedPasswords, setRevealedPasswords] = useState<Record<string, boolean>>({});
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [showCurrentInModal, setShowCurrentInModal] = useState<boolean>(false);
 
   // Alerta del sistema
   const [systemAlert, setSystemAlert] = useState<{
@@ -106,8 +144,10 @@ export default function ModuloControlUsuarios() {
   };
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (isSistemas) {
+      loadUsers();
+    }
+  }, [isSistemas]);
 
   // Formato amigable de fecha de baja
   const formatDeletedDate = (isoString?: string) => {
@@ -276,11 +316,32 @@ export default function ModuloControlUsuarios() {
     });
   };
 
+  // Helpers para ver y copiar clave asignada en Sistemas TI
+  const getAssignedPassword = (user: SystemUser) =>
+    user.passwordHash?.trim() || '123456';
+
+  const toggleRevealPassword = (userId: string) => {
+    setRevealedPasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
+
+  const handleCopyPassword = async (user: SystemUser) => {
+    try {
+      await navigator.clipboard.writeText(getAssignedPassword(user));
+      setCopiedUserId(user.id);
+      setTimeout(() => {
+        setCopiedUserId(prev => (prev === user.id ? null : prev));
+      }, 1800);
+    } catch {
+      // Clipboard no disponible
+    }
+  };
+
   // Abrir Modal de Cambio de Clave
   const handleOpenPasswordModal = (user: SystemUser) => {
     setPasswordModalUser(user);
     setNewPassword('');
     setShowPassword(false);
+    setShowCurrentInModal(false);
   };
 
   // Guardar Nueva Clave
@@ -434,6 +495,20 @@ Efectos:
         return 'bg-slate-50 text-slate-700 border-slate-200';
     }
   };
+
+  if (!isSistemas) {
+    return (
+      <div className="bg-white/95 border border-blue-100 p-8 rounded-3xl text-center text-slate-900 max-w-xl mx-auto my-8 shadow-xl shadow-blue-950/10">
+        <div className="w-14 h-14 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center justify-center text-indigo-600 mx-auto mb-4">
+          <ShieldCheck className="w-7 h-7" />
+        </div>
+        <h3 className="text-xl font-extrabold text-slate-900 mb-2">Módulo Restringido</h3>
+        <p className="text-slate-600 text-sm leading-relaxed font-medium">
+          El control y gestión de cuentas, roles y claves de acceso está reservado exclusivamente para el superadministrador de Sistemas & TI (Óscar).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -674,10 +749,27 @@ Efectos:
                             </td>
 
                             {/* Clave */}
-                            <td className="py-3.5 px-4 text-center font-mono text-slate-500">
-                              <span className="px-2 py-1 bg-slate-100 rounded-md text-[11px] font-bold">
-                                {u.passwordHash ? '••••••••' : 'Predeterminada'}
-                              </span>
+                            <td className="py-3.5 px-4 text-center font-mono">
+                              {(() => {
+                                const isRevealed = Boolean(revealedPasswords[u.id]);
+                                const assignedPass = getAssignedPassword(u);
+                                return (
+                                  <div className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 border border-slate-200/80 rounded-lg text-[11px] font-bold text-slate-700">
+                                    <span className={isRevealed ? 'text-slate-900 select-all px-1' : 'text-slate-500 tracking-wider px-1'}>
+                                      {isRevealed ? assignedPass : '••••••••'}
+                                    </span>
+                                    <PasswordVisibilityActions
+                                      userLabel={u.fullName}
+                                      isRevealed={isRevealed}
+                                      isCopied={copiedUserId === u.id}
+                                      onToggle={() => toggleRevealPassword(u.id)}
+                                      onCopy={() => handleCopyPassword(u)}
+                                      showCopy={isRevealed}
+                                      compact
+                                    />
+                                  </div>
+                                );
+                              })()}
                             </td>
 
                             {/* Acciones */}
@@ -1155,6 +1247,26 @@ Efectos:
             </div>
 
             <form onSubmit={handleSavePassword} className="p-6 space-y-4">
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
+                    Clave Actual Asignada
+                  </span>
+                  <span className="text-xs font-mono font-bold text-slate-900 select-all">
+                    {showCurrentInModal ? getAssignedPassword(passwordModalUser) : '••••••••'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <PasswordVisibilityActions
+                    userLabel={passwordModalUser.fullName}
+                    isRevealed={showCurrentInModal}
+                    isCopied={copiedUserId === passwordModalUser.id}
+                    onToggle={() => setShowCurrentInModal(prev => !prev)}
+                    onCopy={() => handleCopyPassword(passwordModalUser)}
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-700 block mb-1">
                   Nueva Contraseña para este Usuario *
