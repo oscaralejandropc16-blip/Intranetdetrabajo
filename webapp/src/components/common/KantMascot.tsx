@@ -211,27 +211,6 @@ export default function KantMascot({
             }}
           />
           <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
-          {festiveTheme === 'default' && disfrazInfo && disfrazInfo.tipo !== 'chocolate' && (
-            <>
-              {disfrazInfo.sombreroEmoji && (
-                <span
-                  className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
-                  style={{ animationDuration: '3s' }}
-                  title={disfrazInfo.badgeLabel}
-                >
-                  {disfrazInfo.sombreroEmoji}
-                </span>
-              )}
-              {disfrazInfo.accesorioEmoji && (
-                <span
-                  className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
-                  title={disfrazInfo.badgeLabel}
-                >
-                  {disfrazInfo.accesorioEmoji}
-                </span>
-              )}
-            </>
-          )}
           <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
             K
           </div>
@@ -259,31 +238,6 @@ export default function KantMascot({
 
           {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo o Efeméride Especial */}
           <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
-
-          {/* Respaldo de Accesorios Automáticos si el tema es default pero hay efeméride con emoji */}
-          {festiveTheme === 'default' && disfrazInfo && disfrazInfo.tipo !== 'chocolate' && (
-            <>
-              {/* Sombrero / Adorno de cabeza */}
-              {disfrazInfo.sombreroEmoji && (
-                <span
-                  className="absolute -top-2.5 -right-1 text-sm sm:text-base pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] animate-bounce select-none"
-                  style={{ animationDuration: '3s' }}
-                  title={disfrazInfo.badgeLabel}
-                >
-                  {disfrazInfo.sombreroEmoji}
-                </span>
-              )}
-              {/* Accesorio de patas / pecho */}
-              {disfrazInfo.accesorioEmoji && (
-                <span
-                  className="absolute -bottom-1 -left-1 text-xs sm:text-sm pointer-events-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] select-none"
-                  title={disfrazInfo.badgeLabel}
-                >
-                  {disfrazInfo.accesorioEmoji}
-                </span>
-              )}
-            </>
-          )}
 
           <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
             K
