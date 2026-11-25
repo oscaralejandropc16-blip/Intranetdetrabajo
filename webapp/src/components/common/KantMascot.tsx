@@ -5,7 +5,6 @@ import {
   getActiveDate,
   getDisfrazParaEfemeride
 } from '../../lib/efemeridesVenezuela';
-import KantCostumeOverlay from './KantCostumeOverlay';
 import {
   getActiveFestiveTheme,
   type FestiveThemeId
@@ -97,7 +96,7 @@ export default function KantMascot({
   // Escuchar fecha activa (tiempo real del sistema o simulación en pruebas)
   const [currentDate, setCurrentDate] = useState<Date>(() => getActiveDate());
   // Tema festivo activo (automático o seleccionado manualmente)
-  const [festiveTheme, setFestiveTheme] = useState<FestiveThemeId>(() => getActiveFestiveTheme());
+  const [, setFestiveTheme] = useState<FestiveThemeId>(() => getActiveFestiveTheme());
 
   useEffect(() => {
     const handleDateChange = () => {
@@ -210,7 +209,6 @@ export default function KantMascot({
               }
             }}
           />
-          <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
           <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
             K
           </div>
@@ -235,9 +233,6 @@ export default function KantMascot({
               }
             }}
           />
-
-          {/* Atuendo Vectorial de Alta Definición si hay Tema Festivo Activo o Efeméride Especial */}
-          <KantCostumeOverlay theme={festiveTheme} costumeType={disfrazInfo?.tipo} size={size} isExcited={isExcited} />
 
           <div className="hidden w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-black text-xs items-center justify-center shadow-md">
             K
