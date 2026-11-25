@@ -29,8 +29,8 @@ export default function BannerTareasEmpleado({
   const [refreshing, setRefreshing] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
 
-  // Filtros
-  const [filtroEstado, setFiltroEstado] = useState<'todos' | 'pendiente' | 'en_proceso' | 'completada'>('todos');
+  // Filtros (por defecto mostrar solo tareas activas/pendientes para no mezclar historial completado antiguo)
+  const [filtroEstado, setFiltroEstado] = useState<'activas' | 'todos' | 'pendiente' | 'en_proceso' | 'completada'>('activas');
   const [filtroPrioridad, setFiltroPrioridad] = useState<string>('todos');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -189,21 +189,31 @@ export default function BannerTareasEmpleado({
   const totalCount = tareas.length;
   const pendientesCount = tareas.filter(t => t.estado === 'pendiente').length;
   const enProgresoCount = tareas.filter(t => t.estado === 'en_proceso').length;
+  const activasCount = pendientesCount + enProgresoCount;
   const completadasCount = tareas.filter(t => t.estado === 'completada').length;
 
-  // Filtrado
-  const tareasFiltradas = tareas.filter(t => {
-    const matchSearch =
-      t.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.descripcion || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (t.expediente_asociado || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.asignado_por.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filtrado + orden inteligente (siempre tareas activas primero, luego por fecha más reciente)
+  const tareasFiltradas = tareas
+    .filter(t => {
+      const matchSearch =
+        t.titulo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.descripcion || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (t.expediente_asociado || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        t.asignado_por.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchEstado = filtroEstado === 'todos' || t.estado === filtroEstado;
-    const matchPrioridad = filtroPrioridad === 'todos' || t.prioridad === filtroPrioridad;
+      const matchEstado =
+        filtroEstado === 'todos' ||
+        (filtroEstado === 'activas' ? t.estado !== 'completada' : t.estado === filtroEstado);
+      const matchPrioridad = filtroPrioridad === 'todos' || t.prioridad === filtroPrioridad;
 
-    return matchSearch && matchEstado && matchPrioridad;
-  });
+      return matchSearch && matchEstado && matchPrioridad;
+    })
+    .sort((a, b) => {
+      const rank = (s?: string) => (s === 'en_proceso' ? 0 : s === 'pendiente' ? 1 : 2);
+      const rDiff = rank(a.estado) - rank(b.estado);
+      if (rDiff !== 0) return rDiff;
+      return String(b.created_at || '').localeCompare(String(a.created_at || ''));
+    });
 
   // Paginación
   const totalPages = Math.max(1, Math.ceil(tareasFiltradas.length / itemsPerPage));
@@ -261,14 +271,14 @@ export default function BannerTareasEmpleado({
                 onClick={() => setCollapsed(!collapsed)}
                 className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-700 rounded-xl font-bold text-xs transition-all cursor-pointer"
               >
-                {collapsed ? `Ver tareas (${pendientesCount} pendientes)` : 'Minimizar'}
+                {collapsed ? `Ver tareas (${activasCount} pendientes)` : 'Minimizar'}
               </button>
             )}
           </div>
         </div>
 
-        {/* METRICAS KPI (ESTILO EJECUTIVO LIGHT) */}
-        {(!collapsed || fullPage) && (
+        {/* METRICAS KPI (SOLO EN VISTA COMPLETA PARA NO OCUPAR ESPACIO EN BITÁCORA) */}
+        {fullPage && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-5">
             <div className="bg-slate-50/80 border border-slate-200/90 p-4 rounded-2xl flex items-center gap-3.5">
               <div className="w-10 h-10 rounded-xl bg-slate-200/60 text-slate-700 flex items-center justify-center shrink-0">
@@ -339,10 +349,11 @@ export default function BannerTareasEmpleado({
                   onChange={e => setFiltroEstado(e.target.value as any)}
                   className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
                 >
-                  <option value="todos">Todos los estados</option>
-                  <option value="pendiente">Por Iniciar ({pendientesCount})</option>
-                  <option value="en_proceso">En Progreso ({enProgresoCount})</option>
-                  <option value="completada">Completadas ({completadasCount})</option>
+                  <option value="activas">Pendientes y En Progreso ({activasCount})</option>
+                  <option value="pendiente">Solo Por Iniciar ({pendientesCount})</option>
+                  <option value="en_proceso">Solo En Progreso ({enProgresoCount})</option>
+                  <option value="completada">Historial Completadas ({completadasCount})</option>
+                  <option value="todos">Todas ({totalCount})</option>
                 </select>
               </div>
 
@@ -361,11 +372,11 @@ export default function BannerTareasEmpleado({
               </div>
 
               {/* Botón Limpiar Filtros */}
-              {(searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos') && (
+              {(searchQuery || filtroEstado !== 'activas' || filtroPrioridad !== 'todos') && (
                 <button
                   onClick={() => {
                     setSearchQuery('');
-                    setFiltroEstado('todos');
+                    setFiltroEstado('activas');
                     setFiltroPrioridad('todos');
                   }}
                   className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
@@ -388,14 +399,14 @@ export default function BannerTareasEmpleado({
             <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center">
               <CheckSquare className="w-12 h-12 text-blue-500 mx-auto mb-3" />
               <h3 className="text-slate-900 font-bold text-lg mb-1">
-                {searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos'
+                {searchQuery || (filtroEstado !== 'activas' && filtroEstado !== 'todos') || filtroPrioridad !== 'todos'
                   ? 'No hay tareas que coincidan con los filtros'
                   : '¡Al día! No tienes tareas pendientes'}
               </h3>
               <p className="text-slate-500 text-sm max-w-md mx-auto">
-                {searchQuery || filtroEstado !== 'todos' || filtroPrioridad !== 'todos'
+                {searchQuery || (filtroEstado !== 'activas' && filtroEstado !== 'todos') || filtroPrioridad !== 'todos'
                   ? 'Prueba modificando tus términos de búsqueda o restableciendo los filtros.'
-                  : 'Todas las instrucciones asignadas por Dirección han sido atendidas o completadas.'}
+                  : 'Todas las instrucciones asignadas por Dirección han sido atendidas o completadas. Puedes consultar el historial seleccionando "Historial Completadas".'}
               </p>
             </div>
           ) : (
@@ -403,7 +414,7 @@ export default function BannerTareasEmpleado({
               {tareasPaginadas.map(t => {
                 const fechaLimiteText = t.fecha_limite ? (() => {
                   try {
-                    return format(new Date(t.fecha_limite + 'T12:00:00'), "d 'de' MMMM", { locale: es });
+                    return format(new Date(t.fecha_limite + 'T12:00:00'), "d 'de' MMMM yyyy", { locale: es });
                   } catch {
                     return t.fecha_limite;
                   }
@@ -411,7 +422,7 @@ export default function BannerTareasEmpleado({
 
                 const fechaCreadaFormateada = t.created_at ? (() => {
                   try {
-                    return format(new Date(t.created_at), "d MMM, h:mm a", { locale: es });
+                    return format(new Date(t.created_at), "d MMM yyyy, h:mm a", { locale: es });
                   } catch {
                     return t.created_at;
                   }
@@ -512,7 +523,7 @@ export default function BannerTareasEmpleado({
                                 <Clock className="w-3 h-3 text-emerald-600" />
                                 {(() => {
                                   try {
-                                    return format(new Date(t.completada_en), "d MMM, h:mm a", { locale: es });
+                                    return format(new Date(t.completada_en), "d MMM yyyy, h:mm a", { locale: es });
                                   } catch {
                                     return '';
                                   }
