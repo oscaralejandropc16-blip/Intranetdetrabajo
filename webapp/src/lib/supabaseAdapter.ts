@@ -35,7 +35,7 @@ export const checkIsJefatura = (nameOrEmail?: string | null, flag?: boolean): bo
   const lower = normalizeName(nameOrEmail);
 
   // Empleados que JAMÁS deben ser jefatura / admin
-  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'david', 'davidmoya', 'doris', 'dorisrangel'];
+  const employees = ['carmen', 'carmen luisa', 'abgcarmendelgado', 'mariela', 'mariela isabel', 'hector', 'david', 'davidmoya', 'doris', 'dorisrangel', 'castillo', 'castillo l'];
   if (employees.some(e => lower === e || lower.startsWith(e) || lower.includes(e))) {
     return false;
   }
@@ -290,6 +290,24 @@ export const KNOWN_USERS_DIR: Record<string, { email: string; displayName: strin
     displayName: 'Martín Delgado',
     role: 'empleado',
     department: 'Contabilidad'
+  },
+  'castillo': {
+    email: 'castillo@romanydelgado.com',
+    displayName: 'Castillo L',
+    role: 'empleado',
+    department: 'Legal'
+  },
+  'castillo l': {
+    email: 'castillo@romanydelgado.com',
+    displayName: 'Castillo L',
+    role: 'empleado',
+    department: 'Legal'
+  },
+  'castillo@romanydelgado.com': {
+    email: 'castillo@romanydelgado.com',
+    displayName: 'Castillo L',
+    role: 'empleado',
+    department: 'Legal'
   }
 };
 
@@ -2303,6 +2321,7 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
       if (filterClean.includes('hector') && (nLower.includes('hector') || emailLower.includes('hector'))) return true;
       if (filterClean.includes('doris') && (nLower.includes('doris') || emailLower.includes('doris'))) return true;
       if (filterClean.includes('david') && (nLower.includes('david') || emailLower.includes('david'))) return true;
+      if (filterClean.includes('castillo') && (nLower.includes('castillo') || emailLower.includes('castillo'))) return true;
       return false;
     });
   }
@@ -2712,76 +2731,108 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
     createdAt: '2026-10-14T10:00:00.000Z'
   },
   {
-    id: 'usr_1794018370842_9pocja',
-    username: 'luiscastillo',
-    email: 'lcastillog711@gmail.com',
-    fullName: 'Luis Castillo',
+    id: 'usr_castillo',
+    username: 'castillo',
+    email: 'castillo@romanydelgado.com',
+    fullName: 'Castillo L',
     role: 'empleado',
     department: 'Legal',
     passwordHash: '123456',
     active: true,
-    createdAt: '2026-11-07T00:00:00.000Z'
+    createdAt: '2026-11-09T08:00:00.000Z'
   }
 ];
 
-function filterActiveUsersAgainstDeleted(list: SystemUser[], deletedList: DeletedSystemUser[]): SystemUser[] {
-  return list.filter((u: any) => {
-    const uname = String(u?.username || '').toLowerCase().trim();
-    const uemail = String(u?.email || '').toLowerCase().trim();
-    const ufull = normalizeName(u?.fullName);
-    if (!uname || uname === 'contador') return false;
-    return !deletedList.some((d) =>
-      (d.username && d.username.toLowerCase().trim() === uname) ||
-      (d.email && uemail && d.email.toLowerCase().trim() === uemail) ||
-      (d.fullName && ufull && normalizeName(d.fullName) === ufull)
-    );
-  });
+function isUserInDeletedList(u: Partial<SystemUser>, deletedList: DeletedSystemUser[]): boolean {
+  const uname = String(u?.username || '').toLowerCase().trim();
+  const uemail = String(u?.email || '').toLowerCase().trim();
+  const ufull = normalizeName(u?.fullName);
+  if (!uname || uname === 'contador') return true;
+  return deletedList.some((d) =>
+    (d.username && d.username.toLowerCase().trim() === uname) ||
+    (d.email && uemail && d.email.toLowerCase().trim() === uemail) ||
+    (d.fullName && ufull && normalizeName(d.fullName) === ufull)
+  );
 }
 
-export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
+function filterActiveUsersAgainstDeleted(list: SystemUser[], deletedList: DeletedSystemUser[]): SystemUser[] {
+  return list.filter((u: any) => !isUserInDeletedList(u, deletedList));
+}
+
+function reconcileSystemUsers(list: SystemUser[], deletedList: DeletedSystemUser[]): SystemUser[] {
+  const cleaned = filterActiveUsersAgainstDeleted(list, deletedList);
+  for (const requiredUsername of ['martindelgado', 'castillo']) {
+    const def = DEFAULT_SYSTEM_USERS.find(u => u.username === requiredUsername);
+    if (!def || isUserInDeletedList(def, deletedList)) continue;
+    const alreadyPresent = cleaned.some(u =>
+      u.username.toLowerCase().trim() === def.username ||
+      normalizeName(u.fullName) === normalizeName(def.fullName)
+    );
+    if (!alreadyPresent) {
+      cleaned.push(def);
+    }
+  }
+  return cleaned;
+}
+
+export async function supabaseGetSystemUsers(forceRemote = false): Promise<SystemUser[]> {
   try {
     const deletedList = await supabaseGetDeletedUsers();
-    const cached = localStorage.getItem('rd_system_users_directory');
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = filterActiveUsersAgainstDeleted(parsed, deletedList);
-          if (cleaned.length !== parsed.length) {
-            localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
-            supabaseSaveSystemUsers(cleaned);
+    if (!forceRemote) {
+      const cached = localStorage.getItem('rd_system_users_directory');
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            const reconciled = reconcileSystemUsers(parsed, deletedList);
+            if (reconciled.length !== parsed.length) {
+              localStorage.setItem('rd_system_users_directory', JSON.stringify(reconciled));
+            }
+            // Solo lee el estado remoto al caché local sin sobrescribir la nube con caché viejo
+            fetchRemoteSystemUsers(deletedList);
+            return reconciled;
           }
-          fetchRemoteSystemUsers(deletedList);
-          return cleaned;
-        }
-      } catch (e) {}
+        } catch (e) {}
+      }
     }
 
-    const { data: existing } = await supabase
+    const { data: existing, error } = await supabase
       .from('investigaciones_kant')
       .select('contenido')
       .eq('categoria', 'system_users_directory')
       .limit(1);
 
-    if (existing && existing.length > 0 && existing[0].contenido) {
+    if (!error && existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const cleaned = filterActiveUsersAgainstDeleted(parsed, deletedList);
-        // Asegurar que martindelgado exista
-        if (!cleaned.some((u: any) => u.username === 'martindelgado')) {
-          const martinDef = DEFAULT_SYSTEM_USERS.find(u => u.username === 'martindelgado');
-          if (martinDef) cleaned.push(martinDef);
+        const reconciled = reconcileSystemUsers(parsed, deletedList);
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(reconciled));
+        const changed = reconciled.length !== parsed.length ||
+          reconciled.some((u, i) => parsed[i]?.id !== u.id || parsed[i]?.username !== u.username);
+        if (changed) {
+          supabaseSaveSystemUsers(reconciled);
         }
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
-        if (cleaned.length !== parsed.length) {
-          supabaseSaveSystemUsers(cleaned);
-        }
-        return cleaned;
+        return reconciled;
       }
     }
 
-    const cleanDefault = filterActiveUsersAgainstDeleted(DEFAULT_SYSTEM_USERS, deletedList);
-    await supabaseSaveSystemUsers(cleanDefault);
+    // Si forceRemote falló (ej. sin conexión), usar caché local reconciliado antes de caer al default
+    if (forceRemote) {
+      try {
+        const cached = localStorage.getItem('rd_system_users_directory');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return reconcileSystemUsers(parsed, deletedList);
+          }
+        }
+      } catch (e) {}
+    }
+
+    const cleanDefault = reconcileSystemUsers(DEFAULT_SYSTEM_USERS, deletedList);
+    if (!error) {
+      await supabaseSaveSystemUsers(cleanDefault);
+    }
     return cleanDefault;
   } catch (err) {
     console.warn('Error leyendo directorio de usuarios, usando predeterminado:', err);
@@ -2792,18 +2843,18 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
 async function fetchRemoteSystemUsers(deletedList?: DeletedSystemUser[]) {
   try {
     const del = deletedList || await supabaseGetDeletedUsers();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('investigaciones_kant')
       .select('contenido')
       .eq('categoria', 'system_users_directory')
       .limit(1);
-    if (data && data.length > 0 && data[0].contenido) {
+    if (!error && data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const cleaned = filterActiveUsersAgainstDeleted(parsed, del);
-        localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
-        if (cleaned.length !== parsed.length) {
-          supabaseSaveSystemUsers(cleaned);
+        const reconciled = reconcileSystemUsers(parsed, del);
+        localStorage.setItem('rd_system_users_directory', JSON.stringify(reconciled));
+        if (reconciled.length !== parsed.length) {
+          supabaseSaveSystemUsers(reconciled);
         }
       }
     }
@@ -2894,13 +2945,6 @@ export const INITIAL_DELETED_USERS: DeletedSystemUser[] = [
   }
 ];
 
-// Usuarios reactivados: se excluyen de la lista de eliminados aunque existan en DB/localStorage
-const REACTIVATED_USERNAMES = ['luiscastillo'];
-
-function purgeReactivated(list: DeletedSystemUser[]): DeletedSystemUser[] {
-  return list.filter(d => !REACTIVATED_USERNAMES.includes((d.username || '').toLowerCase().trim()));
-}
-
 export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
   try {
     const cached = localStorage.getItem('rd_system_deleted_users_history');
@@ -2909,30 +2953,29 @@ export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           fetchRemoteDeletedUsers();
-          return purgeReactivated(parsed);
+          return parsed;
         }
       } catch (e) {}
     }
 
-    const { data: existing } = await supabase
+    const { data: existing, error } = await supabase
       .from('investigaciones_kant')
       .select('contenido')
       .eq('categoria', 'system_deleted_users_history')
       .limit(1);
 
-    if (existing && existing.length > 0 && existing[0].contenido) {
+    if (!error && existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const purged = purgeReactivated(parsed);
-        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(purged));
-        // Persiste la lista ya limpia de vuelta a Neon para no repetir la purga
-        supabaseSaveDeletedUsers(purged).catch(() => {});
-        return purged;
+        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(parsed));
+        return parsed;
       }
     }
 
-    localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(INITIAL_DELETED_USERS));
-    await supabaseSaveDeletedUsers(INITIAL_DELETED_USERS);
+    if (!error) {
+      localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(INITIAL_DELETED_USERS));
+      await supabaseSaveDeletedUsers(INITIAL_DELETED_USERS);
+    }
     return INITIAL_DELETED_USERS;
   } catch (err) {
     console.warn('Error leyendo historial de usuarios eliminados de Supabase:', err);
@@ -2942,16 +2985,15 @@ export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
 
 async function fetchRemoteDeletedUsers() {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('investigaciones_kant')
       .select('contenido')
       .eq('categoria', 'system_deleted_users_history')
       .limit(1);
-    if (data && data.length > 0 && data[0].contenido) {
+    if (!error && data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const purged = purgeReactivated(parsed);
-        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(purged));
+        localStorage.setItem('rd_system_deleted_users_history', JSON.stringify(parsed));
       }
     }
   } catch (e) {}

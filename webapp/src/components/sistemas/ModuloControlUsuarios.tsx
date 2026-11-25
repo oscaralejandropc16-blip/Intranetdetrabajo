@@ -126,12 +126,12 @@ export default function ModuloControlUsuarios() {
     message: ''
   });
 
-  // Cargar usuarios activos y dados de baja
+  // Cargar usuarios activos y dados de baja siempre desde la nube al entrar al panel TI
   const loadUsers = async () => {
     setLoading(true);
     try {
       const [dataActivos, dataEliminados] = await Promise.all([
-        supabaseGetSystemUsers(),
+        supabaseGetSystemUsers(true),
         supabaseGetDeletedUsers()
       ]);
       setUsers(dataActivos);
