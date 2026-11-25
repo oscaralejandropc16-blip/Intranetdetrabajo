@@ -2713,20 +2713,34 @@ export const DEFAULT_SYSTEM_USERS: SystemUser[] = [
   }
 ];
 
+function filterActiveUsersAgainstDeleted(list: SystemUser[], deletedList: DeletedSystemUser[]): SystemUser[] {
+  return list.filter((u: any) => {
+    const uname = String(u?.username || '').toLowerCase().trim();
+    const uemail = String(u?.email || '').toLowerCase().trim();
+    const ufull = normalizeName(u?.fullName);
+    if (!uname || uname === 'contador') return false;
+    return !deletedList.some((d) =>
+      (d.username && d.username.toLowerCase().trim() === uname) ||
+      (d.email && uemail && d.email.toLowerCase().trim() === uemail) ||
+      (d.fullName && ufull && normalizeName(d.fullName) === ufull)
+    );
+  });
+}
+
 export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
   try {
+    const deletedList = await supabaseGetDeletedUsers();
     const cached = localStorage.getItem('rd_system_users_directory');
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Filtrar 'contador' para asegurar que no vuelva a aparecer
-          const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+          const cleaned = filterActiveUsersAgainstDeleted(parsed, deletedList);
           if (cleaned.length !== parsed.length) {
             localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
             supabaseSaveSystemUsers(cleaned);
           }
-          fetchRemoteSystemUsers();
+          fetchRemoteSystemUsers(deletedList);
           return cleaned;
         }
       } catch (e) {}
@@ -2741,8 +2755,7 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
     if (existing && existing.length > 0 && existing[0].contenido) {
       const parsed = JSON.parse(existing[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Filtrar 'contador' tanto local como remotamente
-        const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+        const cleaned = filterActiveUsersAgainstDeleted(parsed, deletedList);
         // Asegurar que martindelgado exista
         if (!cleaned.some((u: any) => u.username === 'martindelgado')) {
           const martinDef = DEFAULT_SYSTEM_USERS.find(u => u.username === 'martindelgado');
@@ -2756,16 +2769,18 @@ export async function supabaseGetSystemUsers(): Promise<SystemUser[]> {
       }
     }
 
-    await supabaseSaveSystemUsers(DEFAULT_SYSTEM_USERS);
-    return DEFAULT_SYSTEM_USERS;
+    const cleanDefault = filterActiveUsersAgainstDeleted(DEFAULT_SYSTEM_USERS, deletedList);
+    await supabaseSaveSystemUsers(cleanDefault);
+    return cleanDefault;
   } catch (err) {
-    console.warn('Error leyendo directorio de usuarios de Supabase, usando predeterminado:', err);
-    return DEFAULT_SYSTEM_USERS;
+    console.warn('Error leyendo directorio de usuarios, usando predeterminado:', err);
+    return filterActiveUsersAgainstDeleted(DEFAULT_SYSTEM_USERS, INITIAL_DELETED_USERS);
   }
 }
 
-async function fetchRemoteSystemUsers() {
+async function fetchRemoteSystemUsers(deletedList?: DeletedSystemUser[]) {
   try {
+    const del = deletedList || await supabaseGetDeletedUsers();
     const { data } = await supabase
       .from('investigaciones_kant')
       .select('contenido')
@@ -2774,7 +2789,7 @@ async function fetchRemoteSystemUsers() {
     if (data && data.length > 0 && data[0].contenido) {
       const parsed = JSON.parse(data[0].contenido);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        const cleaned = parsed.filter((u: any) => u.username !== 'contador');
+        const cleaned = filterActiveUsersAgainstDeleted(parsed, del);
         localStorage.setItem('rd_system_users_directory', JSON.stringify(cleaned));
         if (cleaned.length !== parsed.length) {
           supabaseSaveSystemUsers(cleaned);

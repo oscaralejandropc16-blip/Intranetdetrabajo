@@ -3172,7 +3172,7 @@ export default function AdminDashboard() {
 
       {/* Modal de Revisión y Edición con Diseño Corporativo Zafiro */}
       {selectedReport && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-50 p-2 sm:p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-md flex items-center justify-center z-[60] p-2 sm:p-6 animate-in fade-in duration-200 overflow-y-auto">
           <div className="bg-white border border-blue-200 rounded-2xl sm:rounded-3xl shadow-2xl shadow-blue-950/25 w-full max-w-4xl overflow-hidden flex flex-col max-h-[96vh] sm:max-h-[90vh] animate-in zoom-in-95 duration-300">
 
             {/* Modal Header */}

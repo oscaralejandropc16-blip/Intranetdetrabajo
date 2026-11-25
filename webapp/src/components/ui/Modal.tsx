@@ -1,4 +1,5 @@
 import React, { useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { cn } from './cn';
 import { X } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export function Modal({
 
   if (!isOpen) return null;
 
-  return (
+  const modalContent = (
     <div
       className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center"
       role="dialog"
@@ -182,6 +183,8 @@ export function Modal({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
 }
 
 export default Modal;
