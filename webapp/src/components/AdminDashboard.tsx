@@ -435,9 +435,9 @@ export default function AdminDashboard() {
       if (typeof document !== 'undefined' && document.hidden) return;
       lastCheckAt = Date.now();
       checkPaymentNotification();
-    }, 300000);
+    }, 600000);
     const handleFocus = () => {
-      if (Date.now() - lastCheckAt < 180000) return;
+      if (Date.now() - lastCheckAt < 300000) return;
       lastCheckAt = Date.now();
       checkPaymentNotification();
     };
@@ -542,7 +542,7 @@ export default function AdminDashboard() {
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchUnreadChatCount();
-    }, 120000);
+    }, 180000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -587,9 +587,9 @@ export default function AdminDashboard() {
       lastCountAt = Date.now();
       fetchPendingGastosCount();
       fetchNuevosCandidatosCount();
-    }, 240000);
+    }, 600000);
     const handleFocus = () => {
-      if (Date.now() - lastCountAt < 120000) return;
+      if (Date.now() - lastCountAt < 300000) return;
       lastCountAt = Date.now();
       fetchPendingGastosCount();
       fetchNuevosCandidatosCount();
@@ -869,6 +869,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     let retryTimer: any;
+    let investigacionesLoaded = false;
     const fetchBitacoras = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/bitacoras');
@@ -1005,10 +1006,13 @@ export default function AdminDashboard() {
           setAllDrafts(parsedDrafts);
         }
 
-        // Obtener investigaciones globales para cruzar con las bitácoras
-        const invesRes = await api.get('/rd-intranet/v1/investigaciones');
-        if (invesRes.data && Array.isArray(invesRes.data)) {
-          setAllInvestigaciones(invesRes.data);
+        // Obtener investigaciones globales una sola vez al montar (no en cada ciclo periódico)
+        if (!investigacionesLoaded) {
+          investigacionesLoaded = true;
+          const invesRes = await api.get('/rd-intranet/v1/investigaciones');
+          if (invesRes.data && Array.isArray(invesRes.data)) {
+            setAllInvestigaciones(invesRes.data);
+          }
         }
 
       } catch (error) {
@@ -1063,7 +1067,7 @@ export default function AdminDashboard() {
     const intervalId = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchBitacoras();
-    }, 300000);
+    }, 600000);
     return () => {
       clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);

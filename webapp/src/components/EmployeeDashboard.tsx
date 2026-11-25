@@ -282,11 +282,12 @@ export default function EmployeeDashboard() {
 
     const refreshTasksAndNotifications = async () => {
         try {
-            const [tasksRes, histRes, draftRes] = await Promise.all([
-                api.get('/rd-intranet/v1/my-tasks').catch(() => ({ data: null })),
+            // /my-tasks y /my-history consultaban la misma tabla bitacoras en paralelo; unificamos en 1 llamada
+            const [histRes, draftRes] = await Promise.all([
                 api.get('/rd-intranet/v1/my-history').catch(() => ({ data: [] })),
                 api.get('/rd-intranet/v1/draft').catch(() => ({ data: null }))
             ]);
+            const tasksRes: { data: any } = { data: null };
 
             const allNotifs: any[] = [];
             const hoy = format(new Date(), 'yyyy-MM-dd');
@@ -799,10 +800,10 @@ export default function EmployeeDashboard() {
             if (typeof document !== 'undefined' && document.hidden) return;
             lastSyncAt = Date.now();
             refreshTasksAndNotifications();
-        }, 240000);
+        }, 480000);
 
         const handleFocus = () => {
-            if (Date.now() - lastSyncAt < 120000) return;
+            if (Date.now() - lastSyncAt < 300000) return;
             lastSyncAt = Date.now();
             refreshTasksAndNotifications();
         };
@@ -1400,7 +1401,7 @@ export default function EmployeeDashboard() {
         const pollInterval = setInterval(() => {
             if (typeof document !== 'undefined' && document.hidden) return;
             fetchUnreadChatCount();
-        }, 120000);
+        }, 180000);
 
         return () => {
             supabase.removeChannel(channel);

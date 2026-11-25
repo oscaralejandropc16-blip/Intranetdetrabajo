@@ -1,8 +1,12 @@
-import { neon, types } from '@neondatabase/serverless';
+import { neon, types as neonTypes } from '@neondatabase/serverless';
+import pg from 'pg';
 
 // Preservar columnas DATE de PostgreSQL como string 'YYYY-MM-DD' igual que PostgREST
-if (types?.setTypeParser) {
-  types.setTypeParser(1082, (val) => val);
+if (neonTypes?.setTypeParser) {
+  neonTypes.setTypeParser(1082, (val) => val);
+}
+if (pg?.types?.setTypeParser) {
+  pg.types.setTypeParser(1082, (val) => val);
 }
 
 const TABLE_SCHEMA = {
@@ -162,12 +166,41 @@ const TABLE_SCHEMA = {
   },
 };
 
+const poolCache = new Map();
+
 function getSql(dbUrl) {
   const url = dbUrl || process.env.DATABASE_URL;
   if (!url) {
     throw new Error('DATABASE_URL no está configurada en el servidor.');
   }
-  return neon(url);
+
+  // Usar driver serverless HTTP cuando el destino sea Neon; en cualquier otro PostgreSQL (Supabase Pooler, Aiven, local) usar pg.Pool
+  if (url.includes('.neon.tech')) {
+    return neon(url);
+  }
+
+  let pool = poolCache.get(url);
+  if (!pool) {
+    const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+    pool = new pg.Pool({
+      connectionString: url,
+      max: 3,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+      ssl: isLocal ? false : { rejectUnauthorized: false },
+    });
+    pool.on('error', (err) => {
+      console.error('[Postgres Pool] Error en conexión inactiva:', err?.message || err);
+    });
+    poolCache.set(url, pool);
+  }
+
+  return {
+    query: async (text, queryParams = []) => {
+      const res = await pool.query(text, queryParams);
+      return res.rows;
+    },
+  };
 }
 
 function resolveColumnRef(tableMeta, rawCol, allowJsonPath = true) {

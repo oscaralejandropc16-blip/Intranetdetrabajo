@@ -49,11 +49,11 @@ export default function TabLibroIngresos({
     const handleRemoteUpdate = () => fetchCorrelatives();
     window.addEventListener('rd_expedientes_updated', handleRemoteUpdate);
 
-    // Polling optimizado cada 300 segundos solo si la pestaña está visible
+    // Polling optimizado cada 600 segundos solo si la pestaña está visible
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchCorrelatives();
-    }, 300000);
+    }, 600000);
     return () => {
       clearInterval(interval);
       window.removeEventListener('rd_expedientes_updated', handleRemoteUpdate);

@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { 
-  Send, 
-  CheckCheck, 
-  MessageSquare, 
-  ShieldCheck, 
-  User, 
-  CheckCircle2, 
-  Search, 
-  Trash2, 
-  X, 
+import {
+  Send,
+  CheckCheck,
+  MessageSquare,
+  ShieldCheck,
+  User,
+  CheckCircle2,
+  Search,
+  Trash2,
+  X,
   Zap,
   RefreshCw,
   Users,
@@ -76,15 +76,15 @@ export const isUserBoss = (author?: string, role?: string): boolean => {
   const clean = (author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
   if (clean.includes('carmen') || clean.includes('mariela') || clean.includes('hector') || clean.includes('oscar') || role === 'empleado') return false;
   if (role === 'jefatura' || role === 'admin') return true;
-  return clean.includes('roman') || 
-         clean.includes('jefe') || 
-         clean.includes('jefatura') || 
-         clean.includes('admin') || 
-         clean === 'luis' || 
-         clean.startsWith('luis ') || 
-         clean.includes('luis delgado') ||
-         clean === 'victor' || 
-         clean.startsWith('victor ');
+  return clean.includes('roman') ||
+    clean.includes('jefe') ||
+    clean.includes('jefatura') ||
+    clean.includes('admin') ||
+    clean === 'luis' ||
+    clean.startsWith('luis ') ||
+    clean.includes('luis delgado') ||
+    clean === 'victor' ||
+    clean.startsWith('victor ');
 };
 
 // Reproducir un sutil tono de notificación cuando entra un nuevo mensaje
@@ -183,7 +183,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           return list.flatMap((u: any) => [u.username, u.fullName, u.email].filter(Boolean));
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return ['carmen', 'carmen luisa', 'abgcarmendelgado.990@gmail.com', 'contador'];
   });
 
@@ -193,7 +193,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         const names = list.flatMap(u => [u.username, u.fullName, u.email].filter(Boolean));
         setDeletedUserNames(names);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const isContactDeleted = useCallback((name?: string) => {
@@ -264,7 +264,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     try {
       // 1. Obtener mensajes del servidor para la conversación entre el usuario actual y el contacto seleccionado
       const response = await api.get('/rd-intranet/v1/chat/messages', {
-        params: { 
+        params: {
           employee: activeEmployee,
           user: effectiveCurrentUser
         }
@@ -284,14 +284,14 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           const parsed = JSON.parse(qRaw);
           if (Array.isArray(parsed)) {
             // Solo retener mensajes que aún no están en el servidor y no estén eliminados
-            localQ = parsed.filter(m => 
-              m && m.id && 
-              !deletedList.includes(m.id) && 
+            localQ = parsed.filter(m =>
+              m && m.id &&
+              !deletedList.includes(m.id) &&
               !serverMsgs.some(s => s.id === m.id || (s.mensaje === m.mensaje && s.author === m.author))
             );
             localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(localQ));
           }
-        } catch (e) {}
+        } catch (e) { }
       }
 
       // 3. Filtrar eliminados y deduplicar estrictamente por ID único
@@ -332,10 +332,10 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             const existing = JSON.parse(localStorage.getItem('rd_jefe_attended_replies') || '[]');
             const updatedAtt = Array.from(new Set([...existing, ...unattendedIds]));
             localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updatedAtt));
-          } catch (e) {}
+          } catch (e) { }
 
           unattendedIds.forEach(id => {
-            submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: id, atendido: true }).catch(() => {});
+            submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: id, atendido: true }).catch(() => { });
           });
         }
 
@@ -353,7 +353,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
               localStorage.setItem('rd_all_employee_replies_queue', JSON.stringify(updatedQ));
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           const mapRaw = localStorage.getItem('rd_local_employee_replies');
@@ -371,13 +371,13 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             });
             localStorage.setItem('rd_local_employee_replies', JSON.stringify(parsedMap));
           }
-        } catch (e) {}
+        } catch (e) { }
 
         submitToServer('/rd-intranet/v1/chat/mark-read', {
           is_jefatura: isJefatura,
           employee: activeEmployee,
           user: effectiveCurrentUser
-        }).catch(() => {});
+        }).catch(() => { });
 
         // Directamente actualizar Supabase para asegurar leido = true inmediato
         const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -387,7 +387,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             .from('chat_messages')
             .update({ leido: true })
             .in('id', validUuids)
-            .then(() => {});
+            .then(() => { });
         }
 
         window.dispatchEvent(new CustomEvent('rd_chat_read', { detail: { employee: activeEmployee, ids: unattendedIds } }));
@@ -538,7 +538,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
           employee: activeEmployee,
           user: effectiveCurrentUser
         });
-      } catch (e) {}
+      } catch (e) { }
     }
   }, [activeEmployee, effectiveCurrentUser, isJefatura]);
 
@@ -567,7 +567,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   delList.push(delId);
                   localStorage.setItem('rd_deleted_chat_messages', JSON.stringify(delList));
                 }
-              } catch (e) {}
+              } catch (e) { }
               fetchConversations();
             }
           } else if (payload.eventType === 'UPDATE') {
@@ -581,12 +581,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-    }, 15000);
+    }, 45000);
 
     const convInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchConversations();
-    }, 45000);
+    }, 180000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -677,9 +677,9 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         updated = existing.filter(id => id !== String(msgId));
       }
       localStorage.setItem('rd_jefe_attended_replies', JSON.stringify(updated));
-    } catch (e) {}
+    } catch (e) { }
 
-    submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: msgId, atendido: nextState }).catch(() => {});
+    submitToServer('/rd-intranet/v1/marcar-mensaje-leido-jefe', { reply_id: msgId, atendido: nextState }).catch(() => { });
     window.dispatchEvent(new CustomEvent('rd_chat_read', { detail: { employee: activeEmployee, ids: [msgId] } }));
   };
 
@@ -727,12 +727,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
         const recipient = (m.recipient || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
         // 1. Mensaje de mí para el contacto activo
-        const isFromCurrentToActive = 
+        const isFromCurrentToActive =
           (author.includes(cleanCurrent) || cleanCurrent.includes(author)) &&
           (recipient.includes(cleanActive) || cleanActive.includes(recipient) || (isUserBoss(cleanActive) && recipient.includes('jefatura')));
 
         // 2. Mensaje del contacto activo para mí
-        const isFromActiveToCurrent = 
+        const isFromActiveToCurrent =
           (author.includes(cleanActive) || cleanActive.includes(author)) &&
           (recipient.includes(cleanCurrent) || cleanCurrent.includes(recipient) || !recipient || (isUserBoss(cleanCurrent) && recipient.includes('jefatura')));
 
@@ -850,17 +850,17 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
   });
 
   return (
-    <div 
-      className={`bg-[#0b141a] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white h-[calc(100dvh-175px)] sm:h-[calc(100vh-210px)] min-h-[460px] md:min-h-[520px] max-h-[850px] ${className}`} 
-      style={{ 
+    <div
+      className={`bg-[#0b141a] rounded-2xl sm:rounded-3xl shadow-2xl border border-white/10 overflow-hidden flex flex-col md:flex-row text-white h-[calc(100dvh-175px)] sm:h-[calc(100vh-210px)] min-h-[460px] md:min-h-[520px] max-h-[850px] ${className}`}
+      style={{
         height: compactMode ? '580px' : undefined,
         minHeight: compactMode ? '580px' : undefined
       }}
     >
-      
+
       {/* SIDEBAR DE CONVERSACIONES / DIRECTORIO DE LA FIRMA */}
       <div className={`w-full md:w-80 lg:w-96 bg-[#111b21] border-r border-white/5 flex flex-col shrink-0 h-full overflow-hidden transition-all duration-300 ${activeEmployee ? 'hidden md:flex' : 'flex'}`}>
-        
+
         {/* Header del Sidebar */}
         <div className="p-3.5 bg-[#1f2c34] border-b border-white/5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -931,29 +931,26 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 type="button"
                 onClick={() => {
                   setActiveEmployee(conv.employee);
-                  setConversations(prev => prev.map(c => 
+                  setConversations(prev => prev.map(c =>
                     c.employee === conv.employee ? { ...c, unreadCountJefe: 0, unreadCountEmpleado: 0, unreadCount: 0 } : c
                   ));
                   submitToServer('/rd-intranet/v1/chat/mark-read', {
                     is_jefatura: isJefatura,
                     employee: conv.employee,
                     user: effectiveCurrentUser
-                  }).catch(() => {});
+                  }).catch(() => { });
                 }}
-                className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${
-                  isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
-                }`}
+                className={`w-full p-3 flex items-start gap-3 text-left transition-colors cursor-pointer relative ${isActive ? 'bg-[#2a3942]' : 'hover:bg-[#202c33]/60'
+                  }`}
               >
                 <div className="relative shrink-0">
-                  <div className={`w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs ${
-                    isUserBoss(conv.employee) ? 'bg-blue-600/30 text-blue-200' : 'bg-[#202c33]'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full border border-white/10 flex items-center justify-center text-white font-bold text-sm shadow-xs ${isUserBoss(conv.employee) ? 'bg-blue-600/30 text-blue-200' : 'bg-[#202c33]'
+                    }`}>
                     {(conv.employee || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <span 
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#111b21] ${
-                      isUserBoss(conv.employee) ? 'bg-blue-400' : 'bg-emerald-400'
-                    }`}
+                  <span
+                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#111b21] ${isUserBoss(conv.employee) ? 'bg-blue-400' : 'bg-emerald-400'
+                      }`}
                     title={isUserBoss(conv.employee) ? 'Socio Director / Jefatura' : 'Equipo KANT'}
                   ></span>
                 </div>
@@ -1026,7 +1023,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             <div className="bg-[#1f2c34] px-3.5 py-3 sm:px-5 sm:py-3.5 border-b border-white/5 flex items-center justify-between gap-3 text-white">
               <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
                 {/* Back button for mobile */}
-                <button 
+                <button
                   onClick={() => setActiveEmployee('')}
                   className="md:hidden p-1.5 -ml-1 text-slate-300 hover:text-white rounded-full hover:bg-white/5 transition-colors cursor-pointer"
                   title="Volver al Directorio"
@@ -1034,23 +1031,21 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <div className="relative shrink-0">
-                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md ring-2 ${
-                    isContactDeleted(activeEmployee)
-                      ? 'bg-rose-700 ring-rose-400/30'
-                      : isUserBoss(activeEmployee) 
-                        ? 'bg-blue-600 ring-blue-400/30' 
-                        : 'bg-emerald-600 ring-emerald-400/30'
-                  }`}>
+                  <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-bold text-xs sm:text-sm shadow-md ring-2 ${isContactDeleted(activeEmployee)
+                    ? 'bg-rose-700 ring-rose-400/30'
+                    : isUserBoss(activeEmployee)
+                      ? 'bg-blue-600 ring-blue-400/30'
+                      : 'bg-emerald-600 ring-emerald-400/30'
+                    }`}>
                     {isContactDeleted(activeEmployee) ? <X className="w-4 h-4 sm:w-5 sm:h-5 text-white" /> : isUserBoss(activeEmployee) ? <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5" /> : <User className="w-4 h-4 sm:w-5 sm:h-5" />}
                   </div>
-                  <span 
-                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-[#1f2c34] ${
-                      isContactDeleted(activeEmployee)
-                        ? 'bg-rose-500'
-                        : isUserBoss(activeEmployee) 
-                          ? 'bg-blue-400' 
-                          : 'bg-emerald-400'
-                    }`}
+                  <span
+                    className={`absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full border-2 border-[#1f2c34] ${isContactDeleted(activeEmployee)
+                      ? 'bg-rose-500'
+                      : isUserBoss(activeEmployee)
+                        ? 'bg-blue-400'
+                        : 'bg-emerald-400'
+                      }`}
                     title={isContactDeleted(activeEmployee) ? 'Cuenta dada de baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo KANT'}
                   ></span>
                 </div>
@@ -1060,13 +1055,12 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                     <h3 className="text-xs sm:text-base font-bold text-white truncate max-w-[140px] sm:max-w-xs">
                       {activeEmployee}
                     </h3>
-                    <span className={`px-2 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider ${
-                      isContactDeleted(activeEmployee)
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                        : isUserBoss(activeEmployee) 
-                          ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                          : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[8.5px] sm:text-[9px] font-black uppercase tracking-wider ${isContactDeleted(activeEmployee)
+                      ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                      : isUserBoss(activeEmployee)
+                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                      }`}>
                       {isContactDeleted(activeEmployee) ? 'Inactivo / Baja' : isUserBoss(activeEmployee) ? 'Jefatura' : 'Equipo'}
                     </span>
                   </div>
@@ -1095,27 +1089,24 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                   <button
                     type="button"
                     onClick={() => setFilterMode('todos')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      filterMode === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${filterMode === 'todos' ? 'bg-[#2a3942] text-white shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                      }`}
                   >
                     Todos ({filteredMessages.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setFilterMode('pendientes')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                      filterMode === 'pendientes' ? 'bg-[#2a3942] text-sky-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer flex items-center gap-1 ${filterMode === 'pendientes' ? 'bg-[#2a3942] text-sky-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                      }`}
                   >
                     Pendientes ({pendingCount})
                   </button>
                   <button
                     type="button"
                     onClick={() => setFilterMode('atendidos')}
-                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-                      filterMode === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
-                    }`}
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${filterMode === 'atendidos' ? 'bg-[#2a3942] text-emerald-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'
+                      }`}
                   >
                     Atendidos ({attendedCount})
                   </button>
@@ -1124,9 +1115,8 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 <button
                   onClick={() => setSearchQuery(searchQuery ? '' : ' ')}
                   title="Buscar en mensajes"
-                  className={`p-2 rounded-full transition-colors cursor-pointer ${
-                    searchQuery ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
+                  className={`p-2 rounded-full transition-colors cursor-pointer ${searchQuery ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
                 >
                   <Search className="w-4 h-4" />
                 </button>
@@ -1161,7 +1151,7 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
             )}
 
             {/* CHAT MESSAGES BODY */}
-            <div 
+            <div
               ref={chatContainerRef}
               onScroll={() => {
                 const el = chatContainerRef.current;
@@ -1190,219 +1180,215 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
                 touchAction: 'pan-y'
               }}
             >
-          {/* Security & Confidentiality notice */}
-          <div className="flex justify-center">
-            <div className="bg-[#182229] border border-white/5 rounded-xl px-3.5 py-1.5 text-center shadow-sm max-w-sm">
-              <p className="text-[10px] text-emerald-300/90 font-medium flex items-center justify-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                Canal oficial confidencial de Román & Delgado • Encriptación interna
-              </p>
-            </div>
-          </div>
-
-          {filteredMessages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-48 text-center text-slate-400 space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-500">
-                <MessageSquare className="w-6 h-6" />
+              {/* Security & Confidentiality notice */}
+              <div className="flex justify-center">
+                <div className="bg-[#182229] border border-white/5 rounded-xl px-3.5 py-1.5 text-center shadow-sm max-w-sm">
+                  <p className="text-[10px] text-emerald-300/90 font-medium flex items-center justify-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Canal oficial confidencial de Román & Delgado • Encriptación interna
+                  </p>
+                </div>
               </div>
-              <p className="text-xs font-medium">No hay mensajes aún en esta conversación.</p>
-              <p className="text-[11px] text-slate-500">Escribe abajo o selecciona una respuesta rápida para iniciar el diálogo.</p>
-            </div>
-          ) : (
-            filteredMessages.map((msg, index) => {
-              const cleanAuthor = (msg.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-              const cleanCurrent = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-              
-              const isSystemNotification = (msg as any).tipo_alerta === 'gasto' || 
-                                           (msg.mensaje || '').toLowerCase().includes('relación de gastos') || 
-                                           (msg.titulo || '').toLowerCase().includes('gastos');
 
-              // REGLA FUNDAMENTAL DE ALINEACIÓN:
-              // isMe = true (Tú a la DERECHA en verde) solo si el autor coincide con el usuario actualmente logueado y NO es un aviso del sistema
-              const isMe = !isSystemNotification && (
-                cleanAuthor === cleanCurrent || 
-                (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) || 
-                (cleanCurrent.includes('luis') && !cleanCurrent.includes('carmen') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) || 
-                (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen')) ||
-                (cleanCurrent.includes('mariela') && cleanAuthor.includes('mariela')) ||
-                (cleanCurrent.includes('hector') && cleanAuthor.includes('hector')) ||
-                (cleanCurrent.includes('oscar') && cleanAuthor.includes('oscar'))
-              );
+              {filteredMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-center text-slate-400 space-y-2">
+                  <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-slate-500">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <p className="text-xs font-medium">No hay mensajes aún en esta conversación.</p>
+                  <p className="text-[11px] text-slate-500">Escribe abajo o selecciona una respuesta rápida para iniciar el diálogo.</p>
+                </div>
+              ) : (
+                filteredMessages.map((msg, index) => {
+                  const cleanAuthor = (msg.author || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+                  const cleanCurrent = (effectiveCurrentUser || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
-              // REGLA DE DOBLE CHECK AZUL:
-              // Un mensaje propio (isMe) está LEÍDO si el destinatario abrió y leyó la conversación
-              const isReadByRecipient = isMe && (
-                msg.atendido === true || 
-                (isUserBoss(msg.recipient || activeEmployee) ? msg.leido_por_jefe : msg.leido_por_empleado)
-              );
+                  const isSystemNotification = (msg as any).tipo_alerta === 'gasto' ||
+                    (msg.mensaje || '').toLowerCase().includes('relación de gastos') ||
+                    (msg.titulo || '').toLowerCase().includes('gastos');
 
-              const headerLabel = isSystemNotification
-                ? 'Notificación del Sistema (Gastos)'
-                : (isMe ? 'Tú' : (msg.author || activeEmployee));
+                  // REGLA FUNDAMENTAL DE ALINEACIÓN:
+                  // isMe = true (Tú a la DERECHA en verde) solo si el autor coincide con el usuario actualmente logueado y NO es un aviso del sistema
+                  const isMe = !isSystemNotification && (
+                    cleanAuthor === cleanCurrent ||
+                    (cleanCurrent.includes('victor') && cleanAuthor.includes('victor')) ||
+                    (cleanCurrent.includes('luis') && !cleanCurrent.includes('carmen') && cleanAuthor.includes('luis') && !cleanAuthor.includes('carmen')) ||
+                    (cleanCurrent.includes('carmen') && cleanAuthor.includes('carmen')) ||
+                    (cleanCurrent.includes('mariela') && cleanAuthor.includes('mariela')) ||
+                    (cleanCurrent.includes('hector') && cleanAuthor.includes('hector')) ||
+                    (cleanCurrent.includes('oscar') && cleanAuthor.includes('oscar'))
+                  );
 
-              const canDelete = isMe || isJefatura || isSystemNotification;
+                  // REGLA DE DOBLE CHECK AZUL:
+                  // Un mensaje propio (isMe) está LEÍDO si el destinatario abrió y leyó la conversación
+                  const isReadByRecipient = isMe && (
+                    msg.atendido === true ||
+                    (isUserBoss(msg.recipient || activeEmployee) ? msg.leido_por_jefe : msg.leido_por_empleado)
+                  );
 
-              const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
-              const meta = formatChatMessageMeta(msg);
-              const prevMeta = prevMsg ? formatChatMessageMeta(prevMsg) : null;
-              const showDateDivider = !prevMeta || prevMeta.dateGroupKey !== meta.dateGroupKey;
+                  const headerLabel = isSystemNotification
+                    ? 'Notificación del Sistema (Gastos)'
+                    : (isMe ? 'Tú' : (msg.author || activeEmployee));
 
-              return (
-                <React.Fragment key={msg.id}>
-                  {/* SEPARADOR DE FECHA ESTILO WHATSAPP */}
-                  {showDateDivider && (
-                    <div className="flex justify-center my-2.5 select-none pointer-events-none sticky top-1 z-10">
-                      <span className="bg-[#182229]/95 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-md backdrop-blur-md uppercase tracking-wider">
-                        {meta.dividerTitle}
-                      </span>
-                    </div>
-                  )}
+                  const canDelete = isMe || isJefatura || isSystemNotification;
 
-                  <div
-                    className={`flex flex-col ${isSystemNotification ? 'items-center my-2' : (isMe ? 'items-end' : 'items-start')} group`}
-                  >
-                    <div
-                      className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${
-                        isSystemNotification
-                          ? 'bg-[#182229] border border-blue-500/30 text-blue-100 rounded-2xl text-center'
-                          : (isMe 
-                              ? 'bg-[#005c4b] text-white rounded-tr-xs' 
-                              : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
-                      } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
-                    >
-                      {/* Header de la burbuja */}
-                      <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
-                        <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
-                          isSystemNotification ? 'text-blue-400' : (isMe ? 'text-emerald-200' : 'text-blue-400')
-                        }`}>
-                          {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-blue-400" />}
-                          {headerLabel}
-                        </span>
-                        {msg.atendido && !isSystemNotification && (
-                          <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                            <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
+                  const prevMsg = index > 0 ? filteredMessages[index - 1] : null;
+                  const meta = formatChatMessageMeta(msg);
+                  const prevMeta = prevMsg ? formatChatMessageMeta(prevMsg) : null;
+                  const showDateDivider = !prevMeta || prevMeta.dateGroupKey !== meta.dateGroupKey;
+
+                  return (
+                    <React.Fragment key={msg.id}>
+                      {/* SEPARADOR DE FECHA ESTILO WHATSAPP */}
+                      {showDateDivider && (
+                        <div className="flex justify-center my-2.5 select-none pointer-events-none sticky top-1 z-10">
+                          <span className="bg-[#182229]/95 text-slate-300 text-[10px] font-bold px-3 py-1 rounded-full border border-white/10 shadow-md backdrop-blur-md uppercase tracking-wider">
+                            {meta.dividerTitle}
                           </span>
-                        )}
-                      </div>
-
-                      {/* Texto del mensaje */}
-                      <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-blue-200/90' : ''}`}>
-                        {msg.mensaje}
-                      </p>
-
-                      {/* Footer con hora estilo WhatsApp, checks de lectura y botón de eliminar */}
-                      <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
-                        {canDelete && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDeleteConfirm({
-                                isOpen: true,
-                                msgId: msg.id,
-                                msgText: msg.mensaje
-                              });
-                            }}
-                            title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
-                            className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 p-1 hover:bg-white/10 rounded transition-all cursor-pointer mr-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-
-                        {/* HORA Y FECHA TIPO WHATSAPP */}
-                        <span 
-                          className="font-mono text-[9.5px] text-white/70 opacity-80 whitespace-nowrap tracking-tight" 
-                          title={meta.dateFormatted ? `${meta.dateFormatted} • ${meta.timeFormatted}` : meta.timeFormatted}
-                        >
-                          {meta.fullLabel}
-                        </span>
-
-                        {/* ICONOS DE ESTADO DE LECTURA (DOBLE CHECK AZUL COMO WHATSAPP) */}
-                        {isMe && (
-                          isReadByRecipient ? (
-                            <span title="Leído por el destinatario (Doble Check Azul)">
-                              <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
-                            </span>
-                          ) : (
-                            <span title="Enviado / Entregado (Doble Check Gris)">
-                              <CheckCheck className="w-3.5 h-3.5 text-white/60 shrink-0" />
-                            </span>
-                          )
-                        )}
-                      </div>
-
-                      {/* Acciones de Jefatura (Marcar como Atendido) */}
-                      {isJefatura && !isMe && (
-                        <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
-                          <button
-                            onClick={() => handleToggleAtendido(msg.id)}
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${
-                              msg.atendido 
-                                ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30' 
-                                : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
-                            }`}
-                          >
-                            <CheckCircle2 className="w-3 h-3" />
-                            {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
-                          </button>
                         </div>
                       )}
-                    </div>
-                  </div>
-                </React.Fragment>
-              );
-            })
-          )}
-          {/* Espaciador inferior */}
-          <div className="h-1 w-full pointer-events-none" />
-        </div>
 
-        {/* QUICK REPLY PRESETS */}
-        <div className="bg-[#111b21] px-3 py-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-          <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 pl-1">
-            <Zap className="w-3 h-3 text-blue-400" /> Rápidas:
-          </span>
-          {quickPresets.map((preset, pIdx) => (
-            <button
-              key={pIdx}
-              onClick={() => handleSend(preset)}
-              className="flex-shrink-0 px-2.5 py-1 rounded-full bg-[#202c33] hover:bg-emerald-600/30 hover:border-emerald-500/40 text-slate-300 hover:text-white border border-white/5 text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap"
-            >
-              {preset}
-            </button>
-          ))}
-        </div>
+                      <div
+                        className={`flex flex-col ${isSystemNotification ? 'items-center my-2' : (isMe ? 'items-end' : 'items-start')} group`}
+                      >
+                        <div
+                          className={`max-w-[85%] sm:max-w-[75%] rounded-2xl p-3 sm:p-3.5 shadow-md relative transition-all ${isSystemNotification
+                            ? 'bg-[#182229] border border-blue-500/30 text-blue-100 rounded-2xl text-center'
+                            : (isMe
+                              ? 'bg-[#005c4b] text-white rounded-tr-xs'
+                              : 'bg-[#202c33] text-slate-100 rounded-tl-xs')
+                            } ${msg.atendido ? 'ring-1 ring-emerald-400/40' : ''}`}
+                        >
+                          {/* Header de la burbuja */}
+                          <div className={`flex items-center ${isSystemNotification ? 'justify-center' : 'justify-between'} gap-3 mb-1`}>
+                            <span className={`text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 ${isSystemNotification ? 'text-blue-400' : (isMe ? 'text-emerald-200' : 'text-blue-400')
+                              }`}>
+                              {isSystemNotification && <Receipt className="w-3.5 h-3.5 text-blue-400" />}
+                              {headerLabel}
+                            </span>
+                            {msg.atendido && !isSystemNotification && (
+                              <span className="px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                                <CheckCircle2 className="w-2.5 h-2.5" /> Atendido
+                              </span>
+                            )}
+                          </div>
 
-        {/* WHATSAPP-STYLE INPUT BAR */}
-        <div className="bg-[#1f2c34] p-3 sm:p-3.5 border-t border-white/5 flex items-center gap-2">
-          <input
-            type="text"
-            placeholder={activeEmployee ? `Escribe un mensaje a ${activeEmployee}...` : "Escribe tu mensaje..."}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            className="flex-1 bg-[#2a3942] text-white placeholder-slate-400 text-xs sm:text-sm px-4 py-2.5 rounded-2xl outline-none border border-transparent focus:border-emerald-500/50 transition-all font-normal"
-          />
+                          {/* Texto del mensaje */}
+                          <p className={`text-xs sm:text-sm font-normal leading-relaxed whitespace-pre-wrap select-text ${isSystemNotification ? 'text-blue-200/90' : ''}`}>
+                            {msg.mensaje}
+                          </p>
 
-          <button
-            onClick={() => handleSend()}
-            disabled={!inputText.trim() || isSending}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${
-              inputText.trim() && !isSending
-                ? 'bg-emerald-600 hover:bg-emerald-500 text-white scale-105 active:scale-95'
-                : 'bg-[#2a3942] text-slate-500 cursor-not-allowed'
-            }`}
-            title="Enviar mensaje"
-          >
-            <Send className="w-4 h-4 ml-0.5" />
-          </button>
-        </div>
+                          {/* Footer con hora estilo WhatsApp, checks de lectura y botón de eliminar */}
+                          <div className="flex items-center justify-end gap-1.5 mt-1 text-[9.5px] text-white/60 font-medium">
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeleteConfirm({
+                                    isOpen: true,
+                                    msgId: msg.id,
+                                    msgText: msg.mensaje
+                                  });
+                                }}
+                                title={isMe ? 'Eliminar tu mensaje' : 'Eliminar mensaje (Jefatura)'}
+                                className="opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:text-rose-400 p-1 hover:bg-white/10 rounded transition-all cursor-pointer mr-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* HORA Y FECHA TIPO WHATSAPP */}
+                            <span
+                              className="font-mono text-[9.5px] text-white/70 opacity-80 whitespace-nowrap tracking-tight"
+                              title={meta.dateFormatted ? `${meta.dateFormatted} • ${meta.timeFormatted}` : meta.timeFormatted}
+                            >
+                              {meta.fullLabel}
+                            </span>
+
+                            {/* ICONOS DE ESTADO DE LECTURA (DOBLE CHECK AZUL COMO WHATSAPP) */}
+                            {isMe && (
+                              isReadByRecipient ? (
+                                <span title="Leído por el destinatario (Doble Check Azul)">
+                                  <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb] shrink-0" />
+                                </span>
+                              ) : (
+                                <span title="Enviado / Entregado (Doble Check Gris)">
+                                  <CheckCheck className="w-3.5 h-3.5 text-white/60 shrink-0" />
+                                </span>
+                              )
+                            )}
+                          </div>
+
+                          {/* Acciones de Jefatura (Marcar como Atendido) */}
+                          {isJefatura && !isMe && (
+                            <div className="mt-2 pt-1.5 border-t border-white/5 flex items-center justify-end">
+                              <button
+                                onClick={() => handleToggleAtendido(msg.id)}
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 transition-all cursor-pointer ${msg.atendido
+                                  ? 'bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30'
+                                  : 'bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white'
+                                  }`}
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                {msg.atendido ? 'Atendido' : 'Marcar como Atendido'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })
+              )}
+              {/* Espaciador inferior */}
+              <div className="h-1 w-full pointer-events-none" />
+            </div>
+
+            {/* QUICK REPLY PRESETS */}
+            <div className="bg-[#111b21] px-3 py-2 border-t border-white/5 flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+              <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider shrink-0 flex items-center gap-1 pl-1">
+                <Zap className="w-3 h-3 text-blue-400" /> Rápidas:
+              </span>
+              {quickPresets.map((preset, pIdx) => (
+                <button
+                  key={pIdx}
+                  onClick={() => handleSend(preset)}
+                  className="flex-shrink-0 px-2.5 py-1 rounded-full bg-[#202c33] hover:bg-emerald-600/30 hover:border-emerald-500/40 text-slate-300 hover:text-white border border-white/5 text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+
+            {/* WHATSAPP-STYLE INPUT BAR */}
+            <div className="bg-[#1f2c34] p-3 sm:p-3.5 border-t border-white/5 flex items-center gap-2">
+              <input
+                type="text"
+                placeholder={activeEmployee ? `Escribe un mensaje a ${activeEmployee}...` : "Escribe tu mensaje..."}
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                className="flex-1 bg-[#2a3942] text-white placeholder-slate-400 text-xs sm:text-sm px-4 py-2.5 rounded-2xl outline-none border border-transparent focus:border-emerald-500/50 transition-all font-normal"
+              />
+
+              <button
+                onClick={() => handleSend()}
+                disabled={!inputText.trim() || isSending}
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all cursor-pointer shadow-md ${inputText.trim() && !isSending
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white scale-105 active:scale-95'
+                  : 'bg-[#2a3942] text-slate-500 cursor-not-allowed'
+                  }`}
+                title="Enviar mensaje"
+              >
+                <Send className="w-4 h-4 ml-0.5" />
+              </button>
+            </div>
           </>
         )}
 

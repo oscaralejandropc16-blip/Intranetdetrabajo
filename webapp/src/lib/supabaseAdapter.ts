@@ -10,6 +10,64 @@ export interface UserSession {
   is_admin: boolean;
 }
 
+// Caché en memoria con TTL corto y dedupe de peticiones en vuelo para minimizar egress
+const memCache = new Map<string, { ts: number; data: any }>();
+const inFlightRequests = new Map<string, Promise<any>>();
+
+function getCachedValue<T>(key: string, ttlMs: number): T | null {
+  const entry = memCache.get(key);
+  if (entry && Date.now() - entry.ts < ttlMs) {
+    return entry.data as T;
+  }
+  return null;
+}
+
+function setCachedValue<T>(key: string, data: T): T {
+  memCache.set(key, { ts: Date.now(), data });
+  return data;
+}
+
+function invalidateMemCache(prefix: string) {
+  for (const k of Array.from(memCache.keys())) {
+    if (k.startsWith(prefix)) memCache.delete(k);
+  }
+}
+
+async function runDeduplicated<T>(key: string, loader: () => Promise<T>): Promise<T> {
+  const existing = inFlightRequests.get(key);
+  if (existing) return existing as Promise<T>;
+  const promise = loader().finally(() => {
+    inFlightRequests.delete(key);
+  });
+  inFlightRequests.set(key, promise);
+  return promise;
+}
+
+/**
+ * Sube cualquier data URL (base64) a /api/file (archivos_storage) para evitar guardar binarios pesados en tablas JSON.
+ */
+async function offloadBase64DataUrl(bucket: string, dataUrl?: string, namePrefix = 'comp'): Promise<string> {
+  if (!dataUrl || !dataUrl.startsWith('data:')) return '';
+  try {
+    const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/);
+    const contentType = mimeMatch?.[1] || 'image/jpeg';
+    const ext = contentType.includes('png') ? 'png' : contentType.includes('pdf') ? 'pdf' : 'jpg';
+    const safePrefix = namePrefix.replace(/[^a-zA-Z0-9_-]/g, '_') || 'comp';
+    const path = `migrated/${safePrefix}_${Date.now()}.${ext}`;
+    const res = await fetch('/api/file', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'upload', bucket, path, contentType, base64: dataUrl })
+    });
+    if (res.ok) {
+      return `/api/file?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
+    }
+  } catch (e) {
+    console.warn('No se pudo externalizar comprobante a /api/file:', e);
+  }
+  return '';
+}
+
 // Helper para detectar si es el superadministrador de Sistemas TI (Óscar)
 export const checkIsSistemas = (nameOrEmail?: string | null): boolean => {
   if (!nameOrEmail) return false;
@@ -683,83 +741,91 @@ export function normalizeSupervisorName(supervisor?: string, date?: string): str
 }
 
 export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> {
-  let query = supabase
-    .from('bitacoras')
-    .select('id, user_id, author_id, user_name, fecha, hora_entrada, hora_salida, total_horas, resumen, estado, pdf_url, created_at, actuaciones, ingresos, programaciones, evidences, supervisado_por, ubicacion_entrada, ubicacion_salida, cierre_retrasado, comentario_admin, respuestas_hilo, cambios_realizados')
-    .order('fecha', { ascending: false })
-    .order('created_at', { ascending: false })
-    .limit(150);
+  const cleanFilter = (userFilter || '').trim().toLowerCase();
+  const cacheKey = `bitacoras:${cleanFilter || 'all'}`;
+  const cached = getCachedValue<any[]>(cacheKey, 15000);
+  if (cached) return cached;
 
-  if (userFilter && userFilter.trim()) {
-    const clean = userFilter.trim().toLowerCase();
-    if (clean.includes('mariela')) {
-      query = query.ilike('user_name', '%mariela%');
-    } else if (clean.includes('carmen')) {
-      query = query.ilike('user_name', '%carmen%');
-    } else if (clean.includes('hector')) {
-      query = query.ilike('user_name', '%hector%');
-    } else if (clean.includes('oscar')) {
-      query = query.ilike('user_name', '%oscar%');
-    } else if (clean.includes('luis')) {
-      query = query.ilike('user_name', '%luis%').not('user_name', 'ilike', '%carmen%');
-    } else if (clean.includes('victor') || clean.includes('víctor')) {
-      query = query.ilike('user_name', '%victor%');
-    } else {
-      query = query.ilike('user_name', `%${clean}%`);
-    }
-  }
+  return runDeduplicated(cacheKey, async () => {
+    let query = supabase
+      .from('bitacoras')
+      .select('id, user_id, author_id, user_name, fecha, hora_entrada, hora_salida, total_horas, resumen, estado, pdf_url, created_at, actuaciones, ingresos, programaciones, evidences, supervisado_por, ubicacion_entrada, ubicacion_salida, cierre_retrasado, comentario_admin, respuestas_hilo, cambios_realizados')
+      .order('fecha', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(150);
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.error('Error supabaseGetBitacoras:', error);
-    return [];
-  }
-
-  return (data || [])
-    .map((b: any) => {
-      // Normalizar estado para la visualización del dashboard
-      const rawStatus = (b.estado || '').toLowerCase();
-      let displayStatus = 'Enviado';
-      if (rawStatus.includes('aprob') || rawStatus.includes('revis') || (b.supervisado_por && b.supervisado_por.trim())) {
-        displayStatus = 'Revisado';
-      } else if (rawStatus.includes('observ')) {
-        displayStatus = 'Con observaciones';
-      } else if (rawStatus.includes('curs') || rawStatus.includes('inici')) {
-        displayStatus = 'En Curso';
+    if (cleanFilter) {
+      if (cleanFilter.includes('mariela')) {
+        query = query.ilike('user_name', '%mariela%');
+      } else if (cleanFilter.includes('carmen')) {
+        query = query.ilike('user_name', '%carmen%');
+      } else if (cleanFilter.includes('hector')) {
+        query = query.ilike('user_name', '%hector%');
+      } else if (cleanFilter.includes('oscar')) {
+        query = query.ilike('user_name', '%oscar%');
+      } else if (cleanFilter.includes('luis')) {
+        query = query.ilike('user_name', '%luis%').not('user_name', 'ilike', '%carmen%');
+      } else if (cleanFilter.includes('victor') || cleanFilter.includes('víctor')) {
+        query = query.ilike('user_name', '%victor%');
+      } else {
+        query = query.ilike('user_name', `%${cleanFilter}%`);
       }
+    }
 
-      const acts = (Array.isArray(b.actuaciones) && b.actuaciones.length > 0) 
-        ? b.actuaciones 
-        : (Array.isArray(b.tareas) ? b.tareas : []);
+    const { data, error } = await query;
 
-      const supervisor = normalizeSupervisorName(b.supervisado_por, b.fecha);
+    if (error) {
+      console.error('Error supabaseGetBitacoras:', error);
+      return [];
+    }
 
-      return {
-        id: b.id,
-        author_id: b.author_id || b.user_id,
-        user: b.user_name,
-        date: b.fecha,
-        clockIn: formatTime12h(b.hora_entrada),
-        clockOut: formatTime12h(b.hora_salida),
-        status: displayStatus,
-        comentario_admin: b.comentario_admin || '',
-        supervisado_por: supervisor,
-        ubicacionEntrada: b.ubicacion_entrada,
-        ubicacionSalida: b.ubicacion_salida,
-        content: b.resumen || '',
-        pdfBase64: b.pdf_url || b.pdf_base64 || '',
-        pdf_url: b.pdf_url || '',
-        cierreRetrasado: b.cierre_retrasado === true,
-        actuaciones: acts,
-        ingresos: b.ingresos || [],
-        programaciones: b.programaciones || [],
-        evidences: b.evidences || [],
-        cambios_realizados: b.cambios_realizados || [],
-        respuestas_hilo: b.respuestas_hilo || []
-      };
-    })
-    .sort(sortHistoryDesc);
+    const result = (data || [])
+      .map((b: any) => {
+        // Normalizar estado para la visualización del dashboard
+        const rawStatus = (b.estado || '').toLowerCase();
+        let displayStatus = 'Enviado';
+        if (rawStatus.includes('aprob') || rawStatus.includes('revis') || (b.supervisado_por && b.supervisado_por.trim())) {
+          displayStatus = 'Revisado';
+        } else if (rawStatus.includes('observ')) {
+          displayStatus = 'Con observaciones';
+        } else if (rawStatus.includes('curs') || rawStatus.includes('inici')) {
+          displayStatus = 'En Curso';
+        }
+
+        const acts = (Array.isArray(b.actuaciones) && b.actuaciones.length > 0) 
+          ? b.actuaciones 
+          : (Array.isArray(b.tareas) ? b.tareas : []);
+
+        const supervisor = normalizeSupervisorName(b.supervisado_por, b.fecha);
+
+        return {
+          id: b.id,
+          author_id: b.author_id || b.user_id,
+          user: b.user_name,
+          date: b.fecha,
+          clockIn: formatTime12h(b.hora_entrada),
+          clockOut: formatTime12h(b.hora_salida),
+          status: displayStatus,
+          comentario_admin: b.comentario_admin || '',
+          supervisado_por: supervisor,
+          ubicacionEntrada: b.ubicacion_entrada,
+          ubicacionSalida: b.ubicacion_salida,
+          content: b.resumen || '',
+          pdfBase64: b.pdf_url || b.pdf_base64 || '',
+          pdf_url: b.pdf_url || '',
+          cierreRetrasado: b.cierre_retrasado === true,
+          actuaciones: acts,
+          ingresos: b.ingresos || [],
+          programaciones: b.programaciones || [],
+          evidences: b.evidences || [],
+          cambios_realizados: b.cambios_realizados || [],
+          respuestas_hilo: b.respuestas_hilo || []
+        };
+      })
+      .sort(sortHistoryDesc);
+
+    return setCachedValue(cacheKey, result);
+  });
 }
 
 export function parseDateSafe(dateVal: any): number {
@@ -934,6 +1000,9 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     console.warn('Advertencia al limpiar borrador tras envío:', draftCleanErr);
   }
 
+  invalidateMemCache('bitacoras:');
+  invalidateMemCache('expedientes:');
+
   return {
     success: true,
     post_id: data.id,
@@ -982,6 +1051,7 @@ export async function supabaseAdminUpdateBitacora(params: Record<string, any>): 
     if (error) console.warn('Update bitacora warn:', error.message);
   }
 
+  invalidateMemCache('bitacoras:');
   return { success: true, message: 'Bitácora supervisada y actualizada exitosamente.' };
 }
 
@@ -1235,16 +1305,21 @@ export async function supabaseGetAllDrafts(): Promise<any[]> {
 // 5. EXPEDIENTES
 // -------------------------------------------------------------
 export async function supabaseGetExpedientes(): Promise<any> {
-  const [expRes, bitRes] = await Promise.all([
-    supabase
-      .from('expedientes')
-      .select('*')
-      .order('created_at', { ascending: false }),
-    supabase
-      .from('bitacoras')
-      .select('id,fecha,user_name,actuaciones,ingresos')
-      .order('fecha', { ascending: false })
-  ]);
+  const cached = getCachedValue<any>('expedientes:all', 60000);
+  if (cached) return cached;
+
+  return runDeduplicated('expedientes:all', async () => {
+    const [expRes, bitRes] = await Promise.all([
+      supabase
+        .from('expedientes')
+        .select('*')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('bitacoras')
+        .select('id,fecha,user_name,actuaciones,ingresos')
+        .order('fecha', { ascending: false })
+        .limit(120)
+    ]);
 
   if (expRes.error) {
     console.error('Error obteniendo expedientes de Supabase:', expRes.error);
@@ -1454,7 +1529,8 @@ export async function supabaseGetExpedientes(): Promise<any> {
     return dateB.localeCompare(dateA);
   });
 
-  return { expedientes: formatted, data: formatted };
+    return setCachedValue('expedientes:all', { expedientes: formatted, data: formatted });
+  });
 }
 
 export async function supabaseSaveExpedientes(payload: any): Promise<any> {
@@ -1482,6 +1558,7 @@ export async function supabaseSaveExpedientes(payload: any): Promise<any> {
     }
   }
 
+  invalidateMemCache('expedientes:');
   return { success: true, message: 'Expedientes actualizados' };
 }
 
@@ -1538,6 +1615,7 @@ export async function supabaseDeleteExpediente(targetOrData: any): Promise<any> 
     return { success: false, error: lastError };
   }
 
+  invalidateMemCache('expedientes:');
   return { success: true, message: 'Expediente eliminado con éxito' };
 }
 
@@ -1545,75 +1623,82 @@ export async function supabaseDeleteExpediente(targetOrData: any): Promise<any> 
 // 6. GASTOS Y REEMBOLSOS
 // -------------------------------------------------------------
 export async function supabaseGetGastos(): Promise<any[]> {
-  const { data, error } = await supabase
-    .from('gastos')
-    .select('id, empleado_id, empleado_nombre, expediente_numero, concepto, monto, moneda, fecha, comprobante_url, estado, motivo_rechazo, created_at, titulo, periodo, fecha_inicio, fecha_fin, tasa_bcv, items, total_usd, total_ves, comentarios_jefatura')
-    .order('created_at', { ascending: false })
-    .limit(80);
+  const cached = getCachedValue<any[]>('gastos:all', 60000);
+  if (cached) return cached;
 
-  if (error) return [];
+  return runDeduplicated('gastos:all', async () => {
+    const { data, error } = await supabase
+      .from('gastos')
+      .select('id, empleado_id, empleado_nombre, expediente_numero, concepto, monto, moneda, fecha, comprobante_url, estado, motivo_rechazo, created_at, titulo, periodo, fecha_inicio, fecha_fin, tasa_bcv, items, total_usd, total_ves, comentarios_jefatura')
+      .order('created_at', { ascending: false })
+      .limit(80);
 
-  return (data || []).map((g: any) => {
-    const rawStatus = (g.estado || 'pendiente').toLowerCase();
-    const estatus: 'Pendiente' | 'Pagado' | 'Rechazado' = 
-      rawStatus.includes('paga') ? 'Pagado' : 
-      (rawStatus.includes('recha') ? 'Rechazado' : 'Pendiente');
+    if (error) return [];
 
-    const totalUsd = Number(g.total_usd || g.monto) || 0;
-    const liveTasa = typeof window !== 'undefined' ? (Number(localStorage.getItem('rd_bcv_usd')) || 877.90) : 877.90;
-    const tasaBcv = Number(g.tasa_bcv) || liveTasa;
-    const totalVes = Number(g.total_ves) || (totalUsd * tasaBcv);
-    const items = Array.isArray(g.items) && g.items.length > 0 
-      ? g.items 
-      : [{
-          id: `item_${g.id}`,
-          tramiteExpediente: g.expediente_numero || '',
-          categoria: 'Taxis / Traslados',
-          descripcion: g.concepto || 'Gasto operativo',
-          moneda: g.moneda || 'USD',
-          monto: totalUsd,
-          montoUsd: totalUsd,
-          montoVes: totalVes,
-          comprobanteUrl: g.comprobante_url || undefined,
-          fechaGasto: g.fecha || new Date().toISOString().split('T')[0]
-        }];
+    const mapped = (data || []).map((g: any) => {
+      const rawStatus = (g.estado || 'pendiente').toLowerCase();
+      const estatus: 'Pendiente' | 'Pagado' | 'Rechazado' = 
+        rawStatus.includes('paga') ? 'Pagado' : 
+        (rawStatus.includes('recha') ? 'Rechazado' : 'Pendiente');
 
-    return {
-      id: g.id,
-      titulo: g.titulo || `Gastos - ${g.fecha || ''} - ${g.empleado_nombre || 'carmen luisa'}`,
-      empleado: g.empleado_nombre || 'carmen luisa',
-      empleadoEmail: g.empleado_email || 'abgcarmendelgado.990@gmail.com',
-      fechaCreacion: g.fecha || new Date().toISOString().split('T')[0],
-      periodo: g.periodo || 'Semanal',
-      fechaInicio: g.fecha_inicio || g.fecha,
-      fechaFin: g.fecha_fin || g.fecha,
-      tasaBcv,
-      items,
-      totalUsd,
-      totalVes,
-      estatus,
-      fechaPago: g.fecha_pago || '',
-      metodoPago: g.metodo_pago || 'Pago Móvil',
-      referenciaPago: g.referencia_pago || '',
-      comentariosJefatura: g.comentarios_jefatura || g.motivo_rechazo || '',
-      pagadoPor: g.pagado_por || '',
-      createdAt: g.created_at,
-      updatedAt: g.updated_at || g.created_at
-    };
-  })
-  .sort((a: any, b: any) => {
-    // 1. Fecha del período o comprobante más reciente primero
-    const dateA = a.fechaFin || a.fechaInicio || a.fechaCreacion || '';
-    const dateB = b.fechaFin || b.fechaInicio || b.fechaCreacion || '';
-    if (dateA !== dateB) return dateB.localeCompare(dateA);
+      const totalUsd = Number(g.total_usd || g.monto) || 0;
+      const liveTasa = typeof window !== 'undefined' ? (Number(localStorage.getItem('rd_bcv_usd')) || 877.90) : 877.90;
+      const tasaBcv = Number(g.tasa_bcv) || liveTasa;
+      const totalVes = Number(g.total_ves) || (totalUsd * tasaBcv);
+      const items = Array.isArray(g.items) && g.items.length > 0 
+        ? g.items 
+        : [{
+            id: `item_${g.id}`,
+            tramiteExpediente: g.expediente_numero || '',
+            categoria: 'Taxis / Traslados',
+            descripcion: g.concepto || 'Gasto operativo',
+            moneda: g.moneda || 'USD',
+            monto: totalUsd,
+            montoUsd: totalUsd,
+            montoVes: totalVes,
+            comprobanteUrl: g.comprobante_url || undefined,
+            fechaGasto: g.fecha || new Date().toISOString().split('T')[0]
+          }];
 
-    // 2. Si tienen la misma fecha de fin/período, desempatar por fecha de creación ISO
-    const createdA = a.createdAt || '';
-    const createdB = b.createdAt || '';
-    if (createdA !== createdB) return createdB.localeCompare(createdA);
+      return {
+        id: g.id,
+        titulo: g.titulo || `Gastos - ${g.fecha || ''} - ${g.empleado_nombre || 'carmen luisa'}`,
+        empleado: g.empleado_nombre || 'carmen luisa',
+        empleadoEmail: g.empleado_email || 'abgcarmendelgado.990@gmail.com',
+        fechaCreacion: g.fecha || new Date().toISOString().split('T')[0],
+        periodo: g.periodo || 'Semanal',
+        fechaInicio: g.fecha_inicio || g.fecha,
+        fechaFin: g.fecha_fin || g.fecha,
+        tasaBcv,
+        items,
+        totalUsd,
+        totalVes,
+        estatus,
+        fechaPago: g.fecha_pago || '',
+        metodoPago: g.metodo_pago || 'Pago Móvil',
+        referenciaPago: g.referencia_pago || '',
+        comentariosJefatura: g.comentarios_jefatura || g.motivo_rechazo || '',
+        pagadoPor: g.pagado_por || '',
+        createdAt: g.created_at,
+        updatedAt: g.updated_at || g.created_at
+      };
+    })
+    .sort((a: any, b: any) => {
+      // 1. Fecha del período o comprobante más reciente primero
+      const dateA = a.fechaFin || a.fechaInicio || a.fechaCreacion || '';
+      const dateB = b.fechaFin || b.fechaInicio || b.fechaCreacion || '';
+      if (dateA !== dateB) return dateB.localeCompare(dateA);
 
-    // 3. Desempate final por ID descendente
-    return String(b.id || '').localeCompare(String(a.id || ''));
+      // 2. Si tienen la misma fecha de fin/período, desempatar por fecha de creación ISO
+      const createdA = a.createdAt || '';
+      const createdB = b.createdAt || '';
+      if (createdA !== createdB) return createdB.localeCompare(createdA);
+
+      // 3. Desempate final por ID descendente
+      return String(b.id || '').localeCompare(String(a.id || ''));
+    });
+
+    return setCachedValue('gastos:all', mapped);
   });
 }
 
@@ -1630,19 +1715,30 @@ export async function supabaseSaveGasto(payload: any): Promise<any> {
   }
 
   const rawItems = Array.isArray(payload.items) ? payload.items : [];
-  const items = rawItems.map((item: any, idx: number) => ({
-    id: item.id || `item_${idx + 1}`,
-    tramiteExpediente: item.tramiteExpediente || '',
-    categoria: item.categoria || 'Otro',
-    descripcion: item.descripcion || '',
-    moneda: item.moneda || 'USD',
-    monto: Number(item.monto ?? item.montoUsd) || 0,
-    montoUsd: Number(item.montoUsd ?? item.monto) || 0,
-    montoVes: Number(item.montoVes) || 0,
-    comprobanteUrl: item.comprobanteUrl || '',
-    comprobanteBase64: item.comprobanteBase64 || '',
-    comprobanteName: item.comprobanteName || '',
-    fechaGasto: item.fechaGasto || payload.fechaInicio || new Date().toISOString().split('T')[0]
+  const items = await Promise.all(rawItems.map(async (item: any, idx: number) => {
+    let compUrl = item.comprobanteUrl || '';
+    let compB64 = item.comprobanteBase64 || '';
+    if (compB64 && compB64.startsWith('data:')) {
+      const uploadedUrl = await offloadBase64DataUrl('comprobantes', compB64, `gasto_${idx + 1}`);
+      if (uploadedUrl) {
+        compUrl = uploadedUrl;
+        compB64 = '';
+      }
+    }
+    return {
+      id: item.id || `item_${idx + 1}`,
+      tramiteExpediente: item.tramiteExpediente || '',
+      categoria: item.categoria || 'Otro',
+      descripcion: item.descripcion || '',
+      moneda: item.moneda || 'USD',
+      monto: Number(item.monto ?? item.montoUsd) || 0,
+      montoUsd: Number(item.montoUsd ?? item.monto) || 0,
+      montoVes: Number(item.montoVes) || 0,
+      comprobanteUrl: compUrl,
+      comprobanteBase64: compB64,
+      comprobanteName: item.comprobanteName || '',
+      fechaGasto: item.fechaGasto || payload.fechaInicio || new Date().toISOString().split('T')[0]
+    };
   }));
 
   const gastoData = {
@@ -1672,11 +1768,13 @@ export async function supabaseSaveGasto(payload: any): Promise<any> {
       .select()
       .single();
     if (error) throw new Error(error.message);
+    invalidateMemCache('gastos:');
     return { success: true, gasto: data };
   }
 
   const { data, error } = await supabase.from('gastos').insert(gastoData).select().single();
   if (error) throw new Error(error.message);
+  invalidateMemCache('gastos:');
   return { success: true, gasto: data };
 }
 
@@ -1692,6 +1790,7 @@ export async function supabasePagarGasto(id: string, pagado_por?: string): Promi
     .eq('id', id);
 
   if (error) throw new Error(error.message);
+  invalidateMemCache('gastos:');
   return { success: true, message: 'Gasto marcado como pagado' };
 }
 
@@ -1705,12 +1804,14 @@ export async function supabaseRechazarGasto(id: string, motivo: string): Promise
     .eq('id', id);
 
   if (error) throw new Error(error.message);
+  invalidateMemCache('gastos:');
   return { success: true, message: 'Gasto rechazado' };
 }
 
 export async function supabaseEliminarGasto(id: string): Promise<any> {
   const { error } = await supabase.from('gastos').delete().eq('id', id);
   if (error) throw new Error(error.message);
+  invalidateMemCache('gastos:');
   return { success: true, message: 'Gasto eliminado' };
 }
 
@@ -2129,6 +2230,8 @@ export async function supabaseResetUserDay(data: { post_id?: string | number; da
       }
     }
 
+    invalidateMemCache('bitacoras:');
+    invalidateMemCache('expedientes:');
     return { success: true, message: 'Jornada eliminada y reabierta exitosamente en la base de datos.' };
   } catch (err: any) {
     console.error('Error en supabaseResetUserDay:', err);
@@ -2144,6 +2247,7 @@ export async function supabaseResetTestData(): Promise<{ success: boolean; messa
       .delete()
       .or('user_name.ilike.%oscarpc%,user_name.ilike.%test%,user_name.ilike.%prueba%');
 
+    invalidateMemCache('bitacoras:');
     return { success: true, message: 'Datos de prueba eliminados correctamente de la base de datos.' };
   } catch (err: any) {
     console.error('Error en supabaseResetTestData:', err);
@@ -2155,49 +2259,52 @@ export async function supabaseResetTestData(): Promise<{ success: boolean; messa
 // 9. NÓMINA Y RECIBOS DE PAGO (ROMÁN & DELGADO)
 // -------------------------------------------------------------
 export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise<ReciboNomina[]> {
-  const recibosMap = new Map<string, ReciboNomina>();
-  let cloudFetchSuccess = false;
+  let list = getCachedValue<ReciboNomina[]>('recibos_nomina:all', 60000);
 
-  // 1. Consultar en investigaciones_kant (categoría recibo_nomina) - Almacenamiento permanente en la nube
-  try {
-    const { data, error } = await supabase
-      .from('investigaciones_kant')
-      .select('*')
-      .eq('categoria', 'recibo_nomina')
-      .order('created_at', { ascending: false });
+  if (!list) {
+    list = await runDeduplicated('recibos_nomina:all', async () => {
+      const recibosMap = new Map<string, ReciboNomina>();
+      let cloudFetchSuccess = false;
 
-    if (!error && Array.isArray(data)) {
-      cloudFetchSuccess = true;
-      data.forEach((inv: any) => {
-        if (inv.contenido) {
-          try {
-            const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
-            if (parsed && (parsed.id || parsed.numeroRecibo)) {
-              const key = String(parsed.id || parsed.numeroRecibo);
-              const current = recibosMap.get(key);
-              if (!current) {
-                recibosMap.set(key, parsed);
-              } else {
-                // Si ya existe un registro y el actual es 'pagado', preservarlo y no degradar a borrador
-                if (parsed.estado === 'pagado' && current.estado !== 'pagado') {
-                  recibosMap.set(key, parsed);
+      // 1. Consultar en investigaciones_kant (categoría recibo_nomina) - solo columna necesaria
+      try {
+        const { data, error } = await supabase
+          .from('investigaciones_kant')
+          .select('id, contenido, created_at')
+          .eq('categoria', 'recibo_nomina')
+          .order('created_at', { ascending: false });
+
+        if (!error && Array.isArray(data)) {
+          cloudFetchSuccess = true;
+          data.forEach((inv: any) => {
+            if (inv.contenido) {
+              try {
+                const parsed = typeof inv.contenido === 'string' ? JSON.parse(inv.contenido) : inv.contenido;
+                if (parsed && (parsed.id || parsed.numeroRecibo)) {
+                  const key = String(parsed.id || parsed.numeroRecibo);
+                  const current = recibosMap.get(key);
+                  if (!current) {
+                    recibosMap.set(key, parsed);
+                  } else {
+                    if (parsed.estado === 'pagado' && current.estado !== 'pagado') {
+                      recibosMap.set(key, parsed);
+                    }
+                  }
                 }
-              }
+              } catch (err) {}
             }
-          } catch (err) {}
+          });
         }
-      });
-    }
-  } catch (e) {}
+      } catch (e) {}
 
-  // 2.5. Reconciliación con notificaciones formales de pago emitidas por Jefatura
-  // Si Jefatura ya pagó y emitió notificación a un colaborador (como Doris Rangel), asegurar que su recibo pagado se auto-recupere
-  try {
-    const { data: notifs, error: notifsErr } = await supabase
-      .from('investigaciones_kant')
-      .select('contenido')
-      .eq('categoria', 'notificacion_empleado')
-      .order('created_at', { ascending: false });
+      // 2.5. Reconciliación con notificaciones formales de pago emitidas por Jefatura (máx 40 recientes)
+      try {
+        const { data: notifs, error: notifsErr } = await supabase
+          .from('investigaciones_kant')
+          .select('contenido')
+          .eq('categoria', 'notificacion_empleado')
+          .order('created_at', { ascending: false })
+          .limit(40);
 
     if (!notifsErr && Array.isArray(notifs)) {
       notifs.forEach((n: any) => {
@@ -2299,18 +2406,24 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     } catch (e) {}
   }
 
-  // Excluir cualquier registro de prueba de 'Juan Prueba'
-  let list = Array.from(recibosMap.values()).filter(r => !(r.empleadoNombre || '').toLowerCase().includes('juan prueba'));
+      // Excluir cualquier registro de prueba de 'Juan Prueba'
+      const consolidated = Array.from(recibosMap.values()).filter(r => !(r.empleadoNombre || '').toLowerCase().includes('juan prueba'));
 
-  // Guardar la lista consolidada en caché local para acceso offline instantáneo
-  try {
-    localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(list));
-  } catch (e) {}
+      // Guardar la lista consolidada en caché local para acceso offline instantáneo
+      try {
+        localStorage.setItem('rd_local_recibos_nomina', JSON.stringify(consolidated));
+      } catch (e) {}
+
+      return setCachedValue('recibos_nomina:all', consolidated);
+    });
+  }
+
+  let resultList = [...list];
 
   // 4. Filtrar por empleado si se solicita
   if (empleadoFilter && empleadoFilter.trim()) {
     const filterClean = empleadoFilter.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-    list = list.filter(r => {
+    resultList = resultList.filter(r => {
       const nLower = (r.empleadoNombre || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       const emailLower = (r.empleadoEmail || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
       if (nLower === filterClean || nLower.includes(filterClean) || filterClean.includes(nLower)) return true;
@@ -2326,10 +2439,18 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
     });
   }
 
-  return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return resultList.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ success: boolean; data: ReciboNomina }> {
+export async function supabaseSaveReciboNomina(reciboInput: ReciboNomina): Promise<{ success: boolean; data: ReciboNomina }> {
+  let recibo = { ...reciboInput };
+  if (recibo.comprobanteBase64 && recibo.comprobanteBase64.startsWith('data:')) {
+    const uploadedUrl = await offloadBase64DataUrl('comprobantes', recibo.comprobanteBase64, `nomina_${recibo.numeroRecibo || recibo.id}`);
+    if (uploadedUrl) {
+      recibo = { ...recibo, comprobanteUrl: uploadedUrl, comprobanteBase64: undefined };
+    }
+  }
+  invalidateMemCache('recibos_nomina:');
   // 1. Actualizar caché local de inmediato (optimista)
   try {
     const raw = localStorage.getItem('rd_local_recibos_nomina');
@@ -2443,6 +2564,7 @@ export async function supabaseSaveReciboNomina(recibo: ReciboNomina): Promise<{ 
 }
 
 export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNomina): Promise<{ success: boolean }> {
+  invalidateMemCache('recibos_nomina:');
   const id = typeof idOrRecibo === 'string' ? idOrRecibo : idOrRecibo.id;
   const numeroRecibo = typeof idOrRecibo === 'object' ? idOrRecibo.numeroRecibo : '';
   const empleadoNombre = typeof idOrRecibo === 'object' ? idOrRecibo.empleadoNombre : '';
@@ -2602,6 +2724,7 @@ export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNo
 }
 
 export async function supabaseLimpiarTodosRecibosNomina(): Promise<{ success: boolean }> {
+  invalidateMemCache('recibos_nomina:');
   try {
     localStorage.removeItem('rd_local_recibos_nomina');
   } catch (e) {}
@@ -2840,7 +2963,11 @@ export async function supabaseGetSystemUsers(forceRemote = false): Promise<Syste
   }
 }
 
+let lastRemoteSystemUsersFetchAt = 0;
+
 async function fetchRemoteSystemUsers(deletedList?: DeletedSystemUser[]) {
+  if (Date.now() - lastRemoteSystemUsersFetchAt < 60000) return;
+  lastRemoteSystemUsersFetchAt = Date.now();
   try {
     const del = deletedList || await supabaseGetDeletedUsers();
     const { data, error } = await supabase
@@ -2983,7 +3110,11 @@ export async function supabaseGetDeletedUsers(): Promise<DeletedSystemUser[]> {
   }
 }
 
+let lastRemoteDeletedUsersFetchAt = 0;
+
 async function fetchRemoteDeletedUsers() {
+  if (Date.now() - lastRemoteDeletedUsersFetchAt < 60000) return;
+  lastRemoteDeletedUsersFetchAt = Date.now();
   try {
     const { data, error } = await supabase
       .from('investigaciones_kant')
