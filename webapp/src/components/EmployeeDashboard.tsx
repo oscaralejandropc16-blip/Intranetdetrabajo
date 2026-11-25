@@ -793,13 +793,17 @@ export default function EmployeeDashboard() {
         refreshTasksAndNotifications();
         fetchExpedientes();
 
-        // Sincronización periódica solo cuando la pestaña esté activa y visible (ahorro de ancho de banda)
+        // Sincronización periódica optimizada solo cuando la pestaña esté activa y visible
+        let lastSyncAt = Date.now();
         const interval = setInterval(() => {
             if (typeof document !== 'undefined' && document.hidden) return;
+            lastSyncAt = Date.now();
             refreshTasksAndNotifications();
-        }, 90000);
+        }, 240000);
 
         const handleFocus = () => {
+            if (Date.now() - lastSyncAt < 120000) return;
+            lastSyncAt = Date.now();
             refreshTasksAndNotifications();
         };
         window.addEventListener('focus', handleFocus);
@@ -1207,7 +1211,7 @@ export default function EmployeeDashboard() {
                 programaciones,
                 attachedFiles: serializedEvidences,
                 evidences: serializedEvidences,
-                pdf_base64: pdfBase64 || '',
+                pdf_base64: '',
                 fecha_reporte: clockInDateStr,
                 cierre_retrasado: isLateClosure ? '1' : '0'
             };
@@ -1396,7 +1400,7 @@ export default function EmployeeDashboard() {
         const pollInterval = setInterval(() => {
             if (typeof document !== 'undefined' && document.hidden) return;
             fetchUnreadChatCount();
-        }, 90000);
+        }, 120000);
 
         return () => {
             supabase.removeChannel(channel);

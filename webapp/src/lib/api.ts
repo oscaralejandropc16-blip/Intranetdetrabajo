@@ -285,11 +285,11 @@ export async function uploadPdfInChunks(postId: string | number, pdfBase64: stri
     const file = dataUrlToFile(`data:application/pdf;base64,${raw}`, `${cleanFileName}.pdf`, 'application/pdf');
     const publicUrl = await supabaseUploadFile('evidencias', file, 'pdfs', cleanFileName);
 
-    // Actualizar registro en bitácoras si existe ID
+    // Actualizar registro en bitácoras si existe ID (sin duplicar base64 masivo en la tabla)
     if (postId) {
       await supabase
         .from('bitacoras')
-        .update({ pdf_url: publicUrl, pdf_base64: pdfBase64 })
+        .update({ pdf_url: publicUrl, pdf_base64: '' })
         .eq('id', postId);
     }
 

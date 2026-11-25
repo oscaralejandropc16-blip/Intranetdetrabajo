@@ -46,7 +46,8 @@ export default function ModuloBolsaEmpleo() {
       const { data, error } = await supabase
         .from('candidatos_bolsa')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) {
         console.error('Error al cargar candidatos:', error);

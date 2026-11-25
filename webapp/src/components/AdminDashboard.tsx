@@ -430,8 +430,17 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     checkPaymentNotification();
-    const interval = setInterval(checkPaymentNotification, 90000);
-    const handleFocus = () => checkPaymentNotification();
+    let lastCheckAt = Date.now();
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      lastCheckAt = Date.now();
+      checkPaymentNotification();
+    }, 300000);
+    const handleFocus = () => {
+      if (Date.now() - lastCheckAt < 180000) return;
+      lastCheckAt = Date.now();
+      checkPaymentNotification();
+    };
     window.addEventListener('focus', handleFocus);
     return () => {
       clearInterval(interval);
@@ -533,7 +542,7 @@ export default function AdminDashboard() {
     const pollInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchUnreadChatCount();
-    }, 90000);
+    }, 120000);
 
     return () => {
       supabase.removeChannel(channel);
@@ -572,11 +581,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     fetchPendingGastosCount();
     fetchNuevosCandidatosCount();
+    let lastCountAt = Date.now();
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      lastCountAt = Date.now();
       fetchPendingGastosCount();
       fetchNuevosCandidatosCount();
-    }, 90000);
+    }, 240000);
     const handleFocus = () => {
+      if (Date.now() - lastCountAt < 120000) return;
+      lastCountAt = Date.now();
       fetchPendingGastosCount();
       fetchNuevosCandidatosCount();
     };
@@ -855,7 +869,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     let retryTimer: any;
-    const fetchBitacoras = async (isRetry = false) => {
+    const fetchBitacoras = async () => {
       try {
         const response = await api.get('/rd-intranet/v1/bitacoras');
         if (response.data && Array.isArray(response.data)) {
@@ -927,7 +941,11 @@ export default function AdminDashboard() {
           if (dedupedData.length > 0) {
             setReports(dedupedData);
             try {
-              localStorage.setItem('rd_cached_admin_reports', JSON.stringify(dedupedData));
+              const slimCache = dedupedData.map(item => ({
+                ...item,
+                pdfBase64: item.pdfBase64 && String(item.pdfBase64).startsWith('data:') ? '' : item.pdfBase64
+              }));
+              localStorage.setItem('rd_cached_admin_reports', JSON.stringify(slimCache));
             } catch (e) {}
           } else if (reports.length === 0) {
             setReports(dedupedData);
@@ -973,9 +991,6 @@ export default function AdminDashboard() {
             }
           }
 
-          if (parsedData.length === 0 && !isRetry) {
-            retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
-          }
         }
 
         // También obtener borradores (Adelantos) para la Agenda Global
@@ -998,9 +1013,6 @@ export default function AdminDashboard() {
 
       } catch (error) {
         console.error('Error fetching bitacoras', error);
-        if (!isRetry) {
-          retryTimer = setTimeout(() => fetchBitacoras(true), 1500);
-        }
       } finally {
         api.get('/rd-intranet/v1/mensajes-jefatura').then(res => {
           const attendedIds: string[] = [];
@@ -1050,8 +1062,8 @@ export default function AdminDashboard() {
     fetchBitacoras();
     const intervalId = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      fetchBitacoras(true);
-    }, 90000);
+      fetchBitacoras();
+    }, 300000);
     return () => {
       clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);
@@ -3528,9 +3540,9 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                   {/* Botón para descargar el PDF principal generado automáticamente */}
-                  {selectedReport.pdfBase64 ? (
+                  {selectedReport.pdfBase64 && !String(selectedReport.pdfBase64).includes('supabase.co/storage') ? (
                     <a
-                      href={selectedReport.pdfBase64.startsWith('data:') || selectedReport.pdfBase64.startsWith('http') ? selectedReport.pdfBase64 : `data:application/pdf;base64,${selectedReport.pdfBase64}`}
+                      href={selectedReport.pdfBase64.startsWith('data:') || selectedReport.pdfBase64.startsWith('http') || selectedReport.pdfBase64.startsWith('/') ? selectedReport.pdfBase64 : `data:application/pdf;base64,${selectedReport.pdfBase64}`}
                       download={`Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`}
                       className="flex items-center gap-3 p-4 bg-emerald-50 border-2 border-emerald-300 rounded-xl hover:border-emerald-500 hover:bg-emerald-100 transition-all cursor-pointer group shadow-sm"
                     >
@@ -3544,11 +3556,30 @@ export default function AdminDashboard() {
                     </a>
                   ) : (
                     <button
-                      onClick={() => generateFallbackReportPdf({
-                        ...selectedReport,
-                        programaciones: adminProgramaciones || selectedReport.programaciones,
-                        comentario_admin: adminComment || selectedReport.comentario_admin
-                      })}
+                      onClick={async () => {
+                        if (selectedReport.id) {
+                          try {
+                            const { data } = await supabase
+                              .from('bitacoras')
+                              .select('pdf_base64')
+                              .eq('id', selectedReport.id)
+                              .maybeSingle();
+                            if (data?.pdf_base64 && data.pdf_base64.length > 50) {
+                              const href = data.pdf_base64.startsWith('data:') ? data.pdf_base64 : `data:application/pdf;base64,${data.pdf_base64}`;
+                              const a = document.createElement('a');
+                              a.href = href;
+                              a.download = `Bitacora_${selectedReport.user}_${selectedReport.date}.pdf`;
+                              a.click();
+                              return;
+                            }
+                          } catch {}
+                        }
+                        generateFallbackReportPdf({
+                          ...selectedReport,
+                          programaciones: adminProgramaciones || selectedReport.programaciones,
+                          comentario_admin: adminComment || selectedReport.comentario_admin
+                        });
+                      }}
                       className="col-span-1 sm:col-span-2 flex items-center justify-between p-4 bg-blue-50/60 border-2 border-blue-300 rounded-xl hover:border-blue-500 hover:bg-blue-100/60 transition-all cursor-pointer group shadow-sm text-left"
                     >
                       <div className="flex items-center gap-3">

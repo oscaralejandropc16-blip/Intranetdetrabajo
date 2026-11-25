@@ -577,16 +577,16 @@ export const LiveChatModule: React.FC<LiveChatModuleProps> = ({
       )
       .subscribe();
 
-    // Respaldo periódico (WebSockets ya entregan mensajes al instante en tiempo real)
+    // Sondeo ligero activo solo mientras la ventana de chat está abierta y visible
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchMessages(true);
-    }, 45000);
+    }, 15000);
 
     const convInterval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchConversations();
-    }, 60000);
+    }, 45000);
 
     return () => {
       supabase.removeChannel(channel);

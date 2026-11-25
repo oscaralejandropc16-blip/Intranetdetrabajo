@@ -402,7 +402,7 @@ export async function supabaseLogin(username: string, password?: string): Promis
       };
     }
 
-    // Si no coincide con la clave asignada en memoria, validar contra WordPress oficial o Supabase Auth
+    // Si no coincide con la clave asignada en memoria, validar contra WordPress oficial
     let verifiedAlternative = false;
     try {
       const wpRes = await fetch('https://romanydelgado.com/wp-json/rd-intranet/v1/login', {
@@ -418,20 +418,6 @@ export async function supabaseLogin(username: string, password?: string): Promis
       }
     } catch (wpErr) {
       console.warn('WP Auth fallback skip:', wpErr);
-    }
-
-    if (!verifiedAlternative) {
-      try {
-        const { data: authData, error: authErr } = await supabase.auth.signInWithPassword({
-          email: matchedDyn.email,
-          password: inputPass
-        });
-        if (authData?.session && !authErr) {
-          verifiedAlternative = true;
-          matchedDyn.passwordHash = inputPass;
-          supabaseSaveSystemUsers(dynUsers);
-        }
-      } catch (authErr) {}
     }
 
     if (verifiedAlternative) {
@@ -460,46 +446,21 @@ export async function supabaseLogin(username: string, password?: string): Promis
   const isBoss = known ? (known.role === 'jefatura') : checkIsJefatura(cleanUser);
   const displayName = known ? known.displayName : username.trim();
 
-  try {
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-      email,
-      password: password || '123456',
-    });
-
-    if (authError && password && password.trim() !== '123456') {
-      return {
-        success: false,
-        error: 'Contraseña incorrecta para el usuario administrador.',
-        message: 'Contraseña incorrecta.'
-      };
-    }
-
-    const sessionToken = authData?.session?.access_token || `rd_session_${Date.now()}_${cleanUser}`;
+  if (!password || password.trim() === '123456') {
     return {
       success: true,
-      token: sessionToken,
+      token: `rd_session_${Date.now()}_${cleanUser}`,
       user_email: email,
       user_display_name: displayName,
       user_nicename: cleanUser,
       is_admin: isBoss
     };
-  } catch (err: any) {
-    if (!password || password.trim() === '123456') {
-      return {
-        success: true,
-        token: `rd_session_${Date.now()}_${cleanUser}`,
-        user_email: email,
-        user_display_name: displayName,
-        user_nicename: cleanUser,
-        is_admin: isBoss
-      };
-    }
-    return {
-      success: false,
-      error: 'Error de autenticación.',
-      message: 'Error de autenticación.'
-    };
   }
+  return {
+    success: false,
+    error: 'Contraseña incorrecta para el usuario administrador.',
+    message: 'Contraseña incorrecta.'
+  };
 }
 
 // =============================================================
@@ -515,10 +476,9 @@ let lastServerSyncTimestamp = 0;
 export async function syncServerTime(): Promise<Date> {
   const start = Date.now();
   try {
-    const envUrl = import.meta.env.VITE_SUPABASE_URL || 'https://uimuiqebgdettgmaebhi.supabase.co';
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 3500);
-    const res = await fetch(`${envUrl}/rest/v1/`, { method: 'HEAD', signal: controller.signal });
+    const res = await fetch('/api/db?health=1', { method: 'HEAD', signal: controller.signal });
     clearTimeout(timeoutId);
     const dateHeader = res.headers.get('date');
     if (dateHeader) {
@@ -709,7 +669,8 @@ export async function supabaseGetBitacoras(userFilter?: string): Promise<any[]> 
     .from('bitacoras')
     .select('id, user_id, author_id, user_name, fecha, hora_entrada, hora_salida, total_horas, resumen, estado, pdf_url, created_at, actuaciones, ingresos, programaciones, evidences, supervisado_por, ubicacion_entrada, ubicacion_salida, cierre_retrasado, comentario_admin, respuestas_hilo, cambios_realizados')
     .order('fecha', { ascending: false })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: false })
+    .limit(150);
 
   if (userFilter && userFilter.trim()) {
     const clean = userFilter.trim().toLowerCase();
@@ -914,7 +875,7 @@ export async function supabaseSubmitBitacora(params: Record<string, any>): Promi
     ingresos,
     programaciones,
     evidences: cleanEvidences,
-    pdf_base64: params.pdf_base64 || '',
+    pdf_base64: '',
     estado: 'pendiente'
   };
 
@@ -1568,8 +1529,9 @@ export async function supabaseDeleteExpediente(targetOrData: any): Promise<any> 
 export async function supabaseGetGastos(): Promise<any[]> {
   const { data, error } = await supabase
     .from('gastos')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('id, empleado_id, empleado_nombre, expediente_numero, concepto, monto, moneda, fecha, comprobante_url, estado, motivo_rechazo, created_at, titulo, periodo, fecha_inicio, fecha_fin, tasa_bcv, items, total_usd, total_ves, comentarios_jefatura')
+    .order('created_at', { ascending: false })
+    .limit(80);
 
   if (error) return [];
 
@@ -1780,13 +1742,13 @@ export async function supabaseGetChatMessages(contact?: string, user?: string): 
 
   const { data, error } = await supabase
     .from('chat_messages')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(300);
+    .select('id, sender_name, recipient_name, mensaje, adjunto_url, leido, created_at')
+    .order('created_at', { ascending: false })
+    .limit(80);
 
   if (error) return [];
 
-  const msgs = (data || []).map((m: any) => ({
+  const msgs = (data || []).slice().reverse().map((m: any) => ({
     id: m.id,
     author: m.sender_name || 'Usuario',
     recipient: m.recipient_name || '',
@@ -1852,8 +1814,8 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
     { full_name: 'oscarpc20', role: 'empleado' }
   ];
 
-  // 2. Obtener perfiles de usuarios de Supabase
-  const { data: profiles } = await supabase.from('profiles').select('*');
+  // 2. Obtener perfiles de usuarios
+  const { data: profiles } = await supabase.from('profiles').select('id, full_name, role, email');
   
   // Unificar contactos canónicos con perfiles de BD sin duplicados y filtrando eliminados
   const contactsMap = new Map<string, { full_name: string; role: string }>();
@@ -1880,12 +1842,12 @@ export async function supabaseGetChatConversations(paramUser?: string): Promise<
 
   const contactsList = Array.from(contactsMap.values()).filter(c => !isDeletedContact(c.full_name));
 
-  // 2. Obtener mensajes recientes
+  // 2. Obtener mensajes recientes (solo columnas necesarias)
   const { data: messages } = await supabase
     .from('chat_messages')
-    .select('*')
+    .select('id, sender_name, recipient_name, mensaje, leido, created_at')
     .order('created_at', { ascending: false })
-    .limit(300);
+    .limit(120);
 
   const allMsgs = messages || [];
   const conversations: any[] = [];
@@ -2178,59 +2140,7 @@ export async function supabaseGetRecibosNomina(empleadoFilter?: string): Promise
   const recibosMap = new Map<string, ReciboNomina>();
   let cloudFetchSuccess = false;
 
-  // 1. Intentar leer desde la tabla recibos_nomina
-  try {
-    const { data, error } = await supabase
-      .from('recibos_nomina')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && Array.isArray(data)) {
-      data.forEach((r: any) => {
-        recibosMap.set(String(r.id), {
-          id: String(r.id),
-          numeroRecibo: r.numero_recibo || r.numeroRecibo || `RD-${r.id}`,
-          empleadoNombre: r.empleado_nombre || r.empleadoNombre,
-          empleadoEmail: r.empleado_email || r.empleadoEmail,
-          cedula: r.cedula,
-          cargo: r.cargo,
-          codTrabajador: r.cod_trabajador || r.codTrabajador,
-          banco: r.banco,
-          tipoPago: r.tipo_pago || r.tipoPago || 'Transferencia',
-          referenciaPago: r.referencia_pago || r.referenciaPago,
-          comprobanteUrl: r.comprobante_url || r.comprobanteUrl,
-          comprobanteBase64: r.comprobante_base64 || r.comprobanteBase64,
-          comprobanteNombre: r.comprobante_nombre || r.comprobanteNombre,
-          quincena: r.quincena || 1,
-          mes: r.mes || (new Date().getMonth() + 1),
-          anio: r.anio || new Date().getFullYear(),
-          periodoInicio: r.periodo_inicio || r.periodoInicio,
-          periodoFin: r.periodo_fin || r.periodoFin,
-          monedaPrincipal: r.moneda_principal || r.monedaPrincipal || 'USD',
-          tasaCambio: Number(r.tasa_cambio || r.tasaCambio) || 0,
-          sueldoBaseMensual: Number(r.sueldo_base_mensual || r.sueldoBaseMensual) || 0,
-          sueldoQuincenalBase: Number(r.sueldo_quincenal_base || r.sueldoQuincenalBase) || 0,
-          diasLaborados: Number(r.dias_laborados || r.diasLaborados) || 11,
-          diasDescanso: Number(r.dias_descanso || r.diasDescanso) || 4,
-          conceptos: Array.isArray(r.conceptos) ? r.conceptos : [],
-          totalDevengado: Number(r.total_devengado || r.totalDevengado) || 0,
-          totalDeducciones: Number(r.total_deducciones || r.totalDeducciones) || 0,
-          netoPagarUsd: Number(r.neto_pagar_usd || r.netoPagarUsd) || 0,
-          netoPagarVes: Number(r.neto_pagar_ves || r.netoPagarVes) || 0,
-          estado: r.estado || 'borrador',
-          fechaPago: r.fecha_pago || r.fechaPago,
-          emitidoPor: r.emitido_por || r.emitidoPor,
-          observaciones: r.observaciones,
-          notificacionEnviada: r.notificacion_enviada || r.notificacionEnviada,
-          createdAt: r.created_at || r.createdAt || new Date().toISOString()
-        });
-      });
-    }
-  } catch (e) {
-    // Si la tabla no existe aún, se pasa al backup
-  }
-
-  // 2. Consultar en investigaciones_kant (categoría recibo_nomina) - Almacenamiento permanente en la nube
+  // 1. Consultar en investigaciones_kant (categoría recibo_nomina) - Almacenamiento permanente en la nube
   try {
     const { data, error } = await supabase
       .from('investigaciones_kant')
@@ -2558,13 +2468,7 @@ export async function supabaseEliminarReciboNomina(idOrRecibo: string | ReciboNo
     }
   } catch (e) {}
 
-  // 2. Intentar borrar en tabla recibos_nomina
-  try {
-    if (id) await supabase.from('recibos_nomina').delete().eq('id', id);
-    if (numeroRecibo) await supabase.from('recibos_nomina').delete().eq('numero_recibo', numeroRecibo);
-  } catch (e) {}
-
-  // 3. Borrar de investigaciones_kant por categoria recibo_nomina (SOLO ese recibo específico)
+  // 2. Borrar de investigaciones_kant por categoria recibo_nomina (SOLO ese recibo específico)
   try {
     if (numeroRecibo) {
       await supabase.from('investigaciones_kant').delete().eq('categoria', 'recibo_nomina').ilike('titulo', `%${numeroRecibo}%`);
@@ -2681,10 +2585,6 @@ export async function supabaseSavePlantillaNomina(plantilla: PlantillaEmpleadoNo
 export async function supabaseLimpiarTodosRecibosNomina(): Promise<{ success: boolean }> {
   try {
     localStorage.removeItem('rd_local_recibos_nomina');
-  } catch (e) {}
-
-  try {
-    await supabase.from('recibos_nomina').delete().neq('id', 'dummy');
   } catch (e) {}
 
   try {

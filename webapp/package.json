@@ -10,6 +10,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.1",
     "@supabase/supabase-js": "^2.117.2",
     "axios": "^1.18.1",
     "clsx": "^2.1.1",
@@ -17,6 +18,7 @@
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
     "lucide-react": "^1.24.0",
+    "pg": "^8.23.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-router-dom": "^7.18.1",
@@ -25,6 +27,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.2",
     "@types/node": "^24.13.3",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",

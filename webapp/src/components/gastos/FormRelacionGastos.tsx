@@ -487,7 +487,7 @@ export default function FormRelacionGastos({
                 <ImageIcon className="w-4 h-4 text-blue-600" /> Soporte / Factura Adjunta
               </div>
               <div className="flex items-center gap-2">
-                {previewImage.startsWith('http') && (
+                {(previewImage.startsWith('http') || previewImage.startsWith('/')) && (
                   <a
                     href={previewImage}
                     target="_blank"

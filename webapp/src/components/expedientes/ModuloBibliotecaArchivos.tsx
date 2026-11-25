@@ -167,11 +167,12 @@ export default function ModuloBibliotecaArchivos() {
       // 1. Incorporar los adjuntos legítimos de casos judiciales y administrativos de Luis y Carmen
       HISTORICAL_CASE_ATTACHMENTS.forEach(doc => allDocs.push({ ...doc }));
 
-      // 2. Cargar evidencias y adjuntos en tiempo real desde Supabase (bitácoras y actuaciones de empleados)
+      // 2. Cargar evidencias y adjuntos en tiempo real (sin descargar pdf_base64 masivos)
       const { data: bitacoras } = await supabase
         .from('bitacoras')
-        .select('*')
-        .order('fecha', { ascending: false });
+        .select('id, user_name, fecha, pdf_url, actuaciones, evidences, created_at')
+        .order('fecha', { ascending: false })
+        .limit(120);
 
       if (bitacoras && Array.isArray(bitacoras)) {
         bitacoras.forEach((b: any) => {

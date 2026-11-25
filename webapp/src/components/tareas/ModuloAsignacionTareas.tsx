@@ -59,7 +59,8 @@ export default function ModuloAsignacionTareas({ currentBossName }: ModuloAsigna
       const { data: tareasData, error: errTareas } = await supabase
         .from('tareas_asignadas')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (!errTareas && tareasData) {
         setTareas(tareasData as TareaAsignada[]);

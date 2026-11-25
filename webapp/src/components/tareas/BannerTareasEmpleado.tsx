@@ -57,7 +57,8 @@ export default function BannerTareasEmpleado({
       const { data, error } = await supabase
         .from('tareas_asignadas')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (!error && data) {
         // Filtrar tareas dirigidas a este usuario
