@@ -1455,8 +1455,8 @@ Lo que se mantendrá 100% seguro e intacto:
 
               {/* 4. Lista y Tabla de Trabajadores de la Quincena (Responsivo Móvil + Escritorio) */}
               <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-                {/* VISTA MÓVIL OPTIMIZADA PARA IPHONE / SMARTPHONES */}
-                <div className="block md:hidden divide-y divide-slate-100">
+                {/* VISTA MÓVIL / TABLET COMPACTA (SIN SCROLL LATERAL) */}
+                <div className="block lg:hidden divide-y divide-slate-100">
                   {filteredCurrentList.map((recibo) => {
                     const isPagado = recibo.estado === 'pagado';
                     const empItem = plantillaPersonal.find(p =>
@@ -1619,19 +1619,16 @@ Lo que se mantendrá 100% seguro e intacto:
                   })}
                 </div>
 
-                {/* VISTA ESCRITORIO / PANTALLAS GRANDES (TABLE) */}
-                <div className="hidden md:block overflow-x-auto">
-              <table className="w-full min-w-[1120px] text-left border-collapse">
+                {/* VISTA ESCRITORIO / LAPTOP (5 COLUMNAS ADAPTATIVAS SIN SCROLL LATERAL) */}
+                <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
                 <thead className="bg-[#dbeafe] text-[#1e3a8a] border-b border-blue-200 text-[11px] font-extrabold uppercase tracking-wider">
                         <tr>
-                          <th className="py-3.5 px-6 min-w-[260px]">Trabajador & Cargo</th>
-                          <th className="py-3.5 px-4 text-center whitespace-nowrap">Cédula</th>
-                          <th className="py-3.5 px-4 text-right whitespace-nowrap">Sueldo Base</th>
-                          <th className="py-3.5 px-4 text-right whitespace-nowrap">Devengado</th>
-                          <th className="py-3.5 px-4 text-right whitespace-nowrap">Deducciones</th>
-                          <th className="py-3.5 px-4 text-right whitespace-nowrap">Neto a Pagar (Bs. / $)</th>
-                          <th className="py-3.5 px-4 text-center whitespace-nowrap">Estado</th>
-                          <th className="py-3.5 px-6 text-right whitespace-nowrap">Acciones</th>
+                          <th className="py-3.5 px-4">Trabajador, Cédula &amp; Pago</th>
+                          <th className="py-3.5 px-3 text-right whitespace-nowrap">Base / Movimientos</th>
+                          <th className="py-3.5 px-3 text-right whitespace-nowrap">Neto a Pagar</th>
+                          <th className="py-3.5 px-3 text-center whitespace-nowrap">Estado</th>
+                          <th className="py-3.5 px-4 text-right whitespace-nowrap">Acciones</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 text-xs">
@@ -1646,10 +1643,10 @@ Lo que se mantendrá 100% seguro e intacto:
 
                           return (
                             <tr key={recibo.id} className="hover:bg-slate-50/80 transition-colors">
-                              {/* Nombre y Cargo */}
-                              <td className="py-3.5 px-6">
-                                <div className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                                  <span className="whitespace-nowrap">{recibo.empleadoNombre}</span>
+                              {/* Nombre, Cédula, Cargo y Datos Bancarios */}
+                              <td className="py-3.5 px-4 align-middle">
+                                <div className="font-extrabold text-slate-900 text-sm flex flex-wrap items-center gap-1.5">
+                                  <span>{recibo.empleadoNombre}</span>
                                   {isMensual && (
                                     isCobraFinMesQ1 ? (
                                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md text-[10px] font-bold whitespace-nowrap shrink-0">
@@ -1657,88 +1654,80 @@ Lo que se mantendrá 100% seguro e intacto:
                                       </span>
                                     ) : (
                                       <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200/80 rounded-md text-[10px] font-bold whitespace-nowrap shrink-0">
-                                        Mes Completo (100%)
+                                        Mes Completo
                                       </span>
                                     )
                                   )}
                                 </div>
-                                <div className="text-[11px] font-medium text-slate-500 flex items-center gap-1.5 mt-0.5 whitespace-nowrap">
+                                <div className="text-[11px] font-medium text-slate-500 flex flex-wrap items-center gap-1.5 mt-1 leading-snug">
+                                  <span className="px-1.5 py-0.5 bg-blue-50 text-[#1e3a8a] border border-blue-200/70 rounded font-mono font-bold">{recibo.cedula}</span>
                                   <span className="px-1.5 py-0.5 bg-slate-100 rounded text-slate-600 font-bold">{recibo.cargo}</span>
                                   {(() => {
                                     const numCta = recibo.numeroCuenta || empItem?.numeroCuenta;
                                     const cleanCta = numCta ? numCta.replace(/\D/g, '') : '';
                                     const ctaLabel = cleanCta.length >= 4 ? ` • Cta: ••${cleanCta.slice(-4)}` : (numCta ? ` • Cta: ${numCta}` : '');
                                     return (
-                                      <span>• {recibo.tipoPago} ({recibo.banco}{ctaLabel})</span>
+                                      <span className="text-slate-500">• {recibo.tipoPago} ({recibo.banco}{ctaLabel})</span>
                                     );
                                   })()}
                                 </div>
                               </td>
 
-                              {/* Cédula */}
-                              <td className="py-3.5 px-4 text-center font-bold text-slate-700 whitespace-nowrap">
-                                {recibo.cedula}
-                              </td>
-
-                              {/* Sueldo Base */}
-                              <td className="py-3.5 px-4 text-right font-medium text-slate-600 whitespace-nowrap">
-                                <div className="font-bold text-slate-800 whitespace-nowrap">${recibo.sueldoBaseMensual.toFixed(2)}</div>
-                                {isMensual ? (
-                                  <span className="text-[10px] text-indigo-700 font-bold block whitespace-nowrap">(Pago Único Fin de Mes)</span>
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 block whitespace-nowrap">(${(recibo.sueldoBaseMensual / 2).toFixed(2)} qna)</span>
-                                )}
-                              </td>
-
-                              {/* Devengado */}
-                              <td className="py-3.5 px-4 text-right font-bold text-emerald-600 whitespace-nowrap">
-                                ${recibo.totalDevengado.toFixed(2)}
-                              </td>
-
-                              {/* Deducciones */}
-                              <td className="py-3.5 px-4 text-right font-bold text-rose-500 whitespace-nowrap">
-                                {recibo.totalDeducciones > 0 ? `-$${recibo.totalDeducciones.toFixed(2)}` : '—'}
+                              {/* Sueldo Base, Devengado y Deducciones */}
+                              <td className="py-3.5 px-3 text-right font-medium text-slate-600 whitespace-nowrap align-middle">
+                                <div className="font-bold text-slate-800">
+                                  Base: ${recibo.sueldoBaseMensual.toFixed(2)}
+                                  <span className="text-[10px] text-slate-400 font-normal ml-1">
+                                    {isMensual ? '(Único)' : `($${(recibo.sueldoBaseMensual / 2).toFixed(2)} qna)`}
+                                  </span>
+                                </div>
+                                <div className="flex items-center justify-end gap-2 mt-0.5 text-[11px]">
+                                  <span className="font-bold text-emerald-600">Dev: ${recibo.totalDevengado.toFixed(2)}</span>
+                                  {recibo.totalDeducciones > 0 && (
+                                    <span className="font-bold text-rose-500">Ded: -${recibo.totalDeducciones.toFixed(2)}</span>
+                                  )}
+                                </div>
                               </td>
 
                               {/* Neto a Pagar (Bs. Protagonista) */}
-                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                <div className="font-black text-slate-900 text-sm whitespace-nowrap">
+                              <td className="py-3.5 px-3 text-right whitespace-nowrap align-middle">
+                                <div className="font-black text-slate-900 text-sm">
                                   Bs. {recibo.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
                                 </div>
-                                <div className="text-[10px] font-bold text-slate-500 whitespace-nowrap">
+                                <div className="text-[11px] font-bold text-slate-500">
                                   Ref. ${recibo.netoPagarUsd.toFixed(2)}
                                 </div>
                               </td>
 
                               {/* Estado */}
-                              <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                              <td className="py-3.5 px-3 text-center whitespace-nowrap align-middle">
                                 {isPagado ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs">
                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Pagado
                                   </span>
                                 ) : isCobraFinMesQ1 ? (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-bold tracking-wider whitespace-nowrap">
-                                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Cobra Fin de Mes
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-600 border border-slate-200 rounded-full text-[10px] font-bold tracking-wider">
+                                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Fin de Mes
                                   </span>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs whitespace-nowrap">
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-[10px] font-black uppercase tracking-wider shadow-2xs">
                                     <Clock className="w-3.5 h-3.5 text-blue-600" /> Pendiente
                                   </span>
                                 )}
                               </td>
 
                               {/* Acciones: Flujo Unificado en Pagar & Emitir */}
-                              <td className="py-3.5 px-6 text-right whitespace-nowrap">
-                                <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
+                              <td className="py-3.5 px-4 text-right align-middle">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
                                   {isPagado ? (
                                     <>
                                       {/* Botón Descargar Recibo PDF */}
                                       <button
                                         onClick={() => handleDescargarPdf(recibo)}
-                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1.5 transition-all text-xs shadow-md shadow-emerald-600/20 cursor-pointer whitespace-nowrap active:scale-95"
+                                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold flex items-center gap-1 transition-all text-xs shadow-sm cursor-pointer whitespace-nowrap active:scale-95"
                                         title="Descargar Recibo Oficial en PDF (Doble Talón)"
                                       >
-                                        <Download className="w-3.5 h-3.5" /> Recibo PDF
+                                        <Download className="w-3.5 h-3.5" /> PDF
                                       </button>
 
                                       {/* Botón WhatsApp */}
@@ -1766,7 +1755,7 @@ Lo que se mantendrá 100% seguro e intacto:
                                             url: recibo.comprobanteBase64 || recibo.comprobanteUrl || '',
                                             title: `Comprobante de Pago • ${recibo.empleadoNombre}`
                                           })}
-                                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer whitespace-nowrap shrink-0 border border-slate-200 active:scale-95"
+                                          className="px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1 transition-all text-xs cursor-pointer whitespace-nowrap shrink-0 border border-slate-200 active:scale-95"
                                           title="Ver capture o comprobante bancario adjunto"
                                         >
                                           <Eye className="w-3.5 h-3.5 text-emerald-600" /> Capture
@@ -1777,7 +1766,7 @@ Lo que se mantendrá 100% seguro e intacto:
                                     /* Botón Principal: Pagar & Emitir */
                                     <button
                                       onClick={() => handleAbrirPagar(recibo)}
-                                      className={`px-3.5 py-2 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md cursor-pointer whitespace-nowrap active:scale-95 ${isCobraFinMesQ1
+                                      className={`px-3 py-1.5 text-white rounded-xl font-black flex items-center gap-1.5 transition-all text-xs shadow-md cursor-pointer whitespace-nowrap active:scale-95 ${isCobraFinMesQ1
                                           ? 'bg-slate-700 hover:bg-slate-800 shadow-slate-700/20'
                                           : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
                                         }`}
@@ -1792,7 +1781,7 @@ Lo que se mantendrá 100% seguro e intacto:
                                   {empItem && (
                                     <button
                                       onClick={() => setExpedienteWorker(empItem)}
-                                      className="p-2 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-indigo-200"
+                                      className="p-1.5 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-indigo-200"
                                       title="Abrir Expediente Digital / RRHH del trabajador"
                                     >
                                       <FolderGit2 className="w-3.5 h-3.5" />
@@ -1803,7 +1792,7 @@ Lo que se mantendrá 100% seguro e intacto:
                                   {empItem && (
                                     <button
                                       onClick={() => handleAbrirEditarTrabajador(empItem)}
-                                      className="p-2 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-slate-200"
+                                      className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-blue-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-slate-200"
                                       title="Editar datos base del trabajador (sueldo mensual, modalidad de cobro, banco, cargo)"
                                     >
                                       <Edit3 className="w-3.5 h-3.5" />
@@ -1813,7 +1802,7 @@ Lo que se mantendrá 100% seguro e intacto:
                                   {isPagado && (
                                     <button
                                       onClick={() => handleEliminarRecibo(recibo)}
-                                      className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-rose-200"
+                                      className="p-1.5 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-xl transition-colors cursor-pointer shrink-0 border border-transparent hover:border-rose-200"
                                       title="Anular recibo emitido"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
@@ -2073,16 +2062,13 @@ Lo que se mantendrá 100% seguro e intacto:
                 </div>
               ) : (
             <div className="overflow-x-auto rounded-2xl border border-blue-200">
-              <table className="w-full min-w-[1050px] text-left border-collapse text-xs">
+              <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-[#dbeafe] text-[#1e3a8a] border-b border-blue-200 font-extrabold uppercase tracking-wider text-[10px]">
-                            <th className="py-3.5 px-4 whitespace-nowrap">Nº Recibo</th>
-                            <th className="py-3.5 px-4 min-w-[200px]">Trabajador & Cargo</th>
-                            <th className="py-3.5 px-4 whitespace-nowrap">Período / Quincena</th>
-                            <th className="py-3.5 px-4 whitespace-nowrap">Referencia / Banco</th>
-                            <th className="py-3.5 px-4 text-right whitespace-nowrap">Neto Liquidado ($)</th>
-                            <th className="py-3.5 px-4 text-right whitespace-nowrap">Neto Liquidado (Bs.)</th>
-                            <th className="py-3.5 px-4 whitespace-nowrap">Fecha de Pago</th>
+                            <th className="py-3.5 px-4">Recibo &amp; Trabajador</th>
+                            <th className="py-3.5 px-3 whitespace-nowrap">Período &amp; Pago</th>
+                            <th className="py-3.5 px-3">Referencia / Banco</th>
+                            <th className="py-3.5 px-3 text-right whitespace-nowrap">Neto Liquidado</th>
                             <th className="py-3.5 px-4 text-right whitespace-nowrap">Acciones</th>
                           </tr>
                       </thead>
@@ -2094,37 +2080,37 @@ Lo que se mantendrá 100% seguro e intacto:
                           );
                           return (
                             <tr key={r.id} className="hover:bg-slate-50/80 transition-colors">
-                              <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                {r.numeroRecibo}
-                              </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3.5 px-4 align-middle">
                                 <div className="font-extrabold text-slate-900 text-sm">{r.empleadoNombre}</div>
-                                <div className="text-[11px] text-slate-500 font-medium">{r.cargo}</div>
+                                <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                  <span className="font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">{r.numeroRecibo}</span>
+                                  <span className="text-[11px] text-slate-500 font-medium">{r.cargo}</span>
+                                </div>
                               </td>
-                              <td className="py-3.5 px-4 text-slate-700 whitespace-nowrap">
+                              <td className="py-3.5 px-3 text-slate-700 whitespace-nowrap align-middle">
                                 <span className="font-bold block">Q{r.quincena} • Mes {r.mes}/{r.anio}</span>
-                                <span className="text-[10px] text-slate-400">{r.periodoInicio} al {r.periodoFin}</span>
+                                <span className="text-[10px] text-slate-400 block">{r.periodoInicio} al {r.periodoFin}</span>
+                                {r.fechaPago && <span className="text-[10px] text-emerald-700 font-semibold block">Pagado: {r.fechaPago}</span>}
                               </td>
-                              <td className="py-3.5 px-4">
+                              <td className="py-3.5 px-3 align-middle">
                                 {r.referenciaPago ? (
-                                  <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px] block">
+                                  <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded text-[11px] inline-block">
                                     Ref: {r.referenciaPago}
                                   </span>
                                 ) : (
-                                  <span className="text-slate-400 italic text-[11px]">Sin referencia</span>
+                                  <span className="text-slate-400 italic text-[11px] block">Sin referencia</span>
                                 )}
-                                <span className="text-[10px] text-slate-500">{r.banco || r.tipoPago || 'Banesco'}</span>
+                                <span className="text-[10px] text-slate-500 block mt-0.5">{r.banco || r.tipoPago || 'Banesco'}</span>
                               </td>
-                              <td className="py-3.5 px-4 text-right font-black text-slate-700 whitespace-nowrap">
-                                $ {r.netoPagarUsd.toFixed(2)}
+                              <td className="py-3.5 px-3 text-right whitespace-nowrap align-middle">
+                                <div className="font-black text-emerald-600 text-sm">
+                                  Bs. {r.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
+                                </div>
+                                <div className="text-[11px] font-bold text-slate-600">
+                                  $ {r.netoPagarUsd.toFixed(2)}
+                                </div>
                               </td>
-                              <td className="py-3.5 px-4 text-right font-black text-emerald-600 whitespace-nowrap text-sm">
-                                Bs. {r.netoPagarVes.toLocaleString('es-VE', { minimumFractionDigits: 2 })}
-                              </td>
-                              <td className="py-3.5 px-4 text-slate-600 whitespace-nowrap">
-                                {r.fechaPago || '—'}
-                              </td>
-                              <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                              <td className="py-3.5 px-4 text-right whitespace-nowrap align-middle">
                                 <div className="flex items-center justify-end gap-1.5 whitespace-nowrap">
                                   {/* Descargar PDF oficial */}
                                   <button
