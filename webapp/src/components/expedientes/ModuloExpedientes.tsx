@@ -24,12 +24,82 @@ interface ModuloExpedientesProps {
   isAdmin?: boolean;
 }
 
+function sanitizeAccidental044CacheOnce() {
+  try {
+    const flag = 'rd_revert_044_20261125_v1';
+    if (localStorage.getItem(flag) === '1') return;
+
+    const accidentalIds = new Set([
+      'act-despacho-1795630050816',
+      'act-despacho-1795630046328',
+      'act-despacho-1795629775919',
+      'act-despacho-1795629770361'
+    ]);
+
+    for (const key of ['rd_cached_expedientes', 'rd_expedientes_list_v1']) {
+      const raw = localStorage.getItem(key);
+      if (!raw) continue;
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) continue;
+
+      let touched = false;
+      const cleaned = list.map((item: any) => {
+        if (item?.numeroExpediente !== 'RD-AD-2026-044' && item?.numero !== 'RD-AD-2026-044') {
+          return item;
+        }
+        touched = true;
+        const acts = Array.isArray(item.actuaciones)
+          ? item.actuaciones.filter((a: any) => {
+              if (!a) return false;
+              if (accidentalIds.has(a.id)) return false;
+              if (
+                a.fecha === '2026-11-25' &&
+                String(a.id || '').startsWith('act-despacho-') &&
+                String(a.registradoPor || '').toLowerCase().includes('scar')
+              ) {
+                return false;
+              }
+              return true;
+            })
+          : item.actuaciones;
+
+        const next: any = { ...item, actuaciones: acts };
+        if (
+          next.controlProcesal?.fechaInicioEtapa === '2026-11-25' &&
+          next.controlProcesal?.notasProcesales === 'Iniciado automáticamente por el sistema.'
+        ) {
+          delete next.controlProcesal;
+        }
+        if (String(next.usuario || '').toLowerCase().includes('scar')) {
+          next.usuario = 'mariela isabel';
+        }
+        if (String(next.responsableAsignado || '').toLowerCase().includes('scar')) {
+          next.responsableAsignado = 'mariela isabel';
+        }
+        if (acts?.[0]?.fecha) {
+          next.ultimaActualizacion = acts[0].fecha;
+        }
+        return next;
+      });
+
+      if (touched) {
+        localStorage.setItem(key, JSON.stringify(cleaned));
+      }
+    }
+
+    localStorage.setItem(flag, '1');
+  } catch (e) {
+    console.warn('Error limpiando caché local de expediente:', e);
+  }
+}
+
 export default function ModuloExpedientes({ isAdmin: propIsAdmin }: ModuloExpedientesProps = {}) {
   const currentUserName = localStorage.getItem('rd_user_name') || '';
   const isJefe = propIsAdmin !== undefined
     ? propIsAdmin
     : checkIsJefatura(currentUserName, localStorage.getItem('rd_is_admin') === 'true');
   const [expedientes, setExpedientes] = useState<ExpedienteJudicial[]>(() => {
+    sanitizeAccidental044CacheOnce();
     try {
       const cached = localStorage.getItem('rd_cached_expedientes');
       if (cached) {
