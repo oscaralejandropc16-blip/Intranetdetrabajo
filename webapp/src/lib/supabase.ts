@@ -247,6 +247,9 @@ class NeonQueryBuilder<T = any[]> implements PromiseLike<DbResponse<T>> {
         onConflict: this.onConflictCol,
         returning: this.returning,
       });
+      if (res.data === null && !this.singleMode && !this.maybeSingleMode && !this.head) {
+        return { ...res, data: [] as unknown as T };
+      }
       return res;
     })();
     return this.pendingPromise;

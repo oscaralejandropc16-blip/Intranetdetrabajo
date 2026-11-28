@@ -167,7 +167,6 @@ const TABLE_SCHEMA = {
   },
 };
 
-const poolCache = new Map();
 const schemaCache = new Map();
 
 function isRetryablePoolError(err) {
@@ -181,7 +180,7 @@ function isRetryablePoolError(err) {
   );
 }
 
-async function withPoolRetry(fn, maxRetries = 3) {
+async function withPoolRetry(fn, maxRetries = 2) {
   let lastErr;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -191,80 +190,110 @@ async function withPoolRetry(fn, maxRetries = 3) {
       if (!isRetryablePoolError(err) || attempt === maxRetries) {
         throw err;
       }
-      const baseMs = 200 * (attempt + 1) + Math.floor(Math.random() * 160);
+      const baseMs = 150 * (attempt + 1) + Math.floor(Math.random() * 120);
       await new Promise((r) => setTimeout(r, baseMs));
     }
   }
   throw lastErr;
 }
 
-function getSql(dbUrl) {
-  const url = dbUrl || process.env.DATABASE_URL;
+function getSupabaseTransactionUrl(url) {
+  if (url.includes('pooler.supabase.com:5432')) {
+    return url.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+  }
+  return null;
+}
+
+function createPgClient(rawUrl) {
+  const isLocal = rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1');
+  const disableSsl = rawUrl.includes('sslmode=disable');
+
+  // En pg@8.23+, ?sslmode=require en connectionString sobrescribe ssl.rejectUnauthorized=false
+  // y activa verify-full, rompiendo SSL contra Supabase Pooler ("self-signed certificate").
+  let cleanUrl = rawUrl;
+  try {
+    const parsedUrl = new URL(rawUrl);
+    if (!isLocal && !disableSsl && parsedUrl.searchParams.has('sslmode')) {
+      parsedUrl.searchParams.set('sslmode', 'no-verify');
+      cleanUrl = parsedUrl.toString();
+    }
+  } catch {
+    // Mantener rawUrl si no es parseable con URL()
+  }
+
+  return new pg.Client({
+    connectionString: cleanUrl,
+    connectionTimeoutMillis: 10000,
+    ssl: isLocal || disableSsl ? false : { rejectUnauthorized: false },
+  });
+}
+
+async function runWithConnection(dbUrl, fn) {
+  const url = String(dbUrl || process.env.DATABASE_URL || '').trim();
   if (!url) {
     throw new Error('DATABASE_URL no está configurada en el servidor.');
   }
 
-  // Usar driver serverless HTTP cuando el destino sea Neon; en cualquier otro PostgreSQL (Supabase Pooler, Aiven, local) usar pg.Pool
+  // Driver HTTP sin estado cuando el destino sea Neon
   if (url.includes('.neon.tech')) {
     const neonSql = neon(url);
-    return {
+    return await fn({
       isNeonHttp: true,
       url,
       query: (text, queryParams = []) => neonSql.query(text, queryParams),
-    };
+      withTransaction: null,
+    });
   }
 
-  let pool = poolCache.get(url);
-  if (!pool) {
-    const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
-    const disableSsl = url.includes('sslmode=disable');
-    pool = new pg.Pool({
-      connectionString: url,
-      // Cada invocación serverless solo atiende 1 petición a la vez; limitar a 1 evita agotar el Session Pooler (pool_size=15)
-      max: 1,
-      idleTimeoutMillis: 1000,
-      connectionTimeoutMillis: 10000,
-      allowExitOnIdle: true,
-      ssl: isLocal || disableSsl ? false : { rejectUnauthorized: false },
+  // En serverless (Vercel) + Supabase Pooler, abrir 1 conexión por petición y cerrarla en finally
+  // evita que contenedores congelados retengan sesiones abiertas en Session Mode (:5432).
+  const executeOnClient = async (targetUrl) => {
+    const client = createPgClient(targetUrl);
+    client.on('error', (err) => {
+      console.error('[Postgres Client] Error en conexión:', err?.message || err);
     });
-    pool.on('error', (err) => {
-      console.error('[Postgres Pool] Error en conexión inactiva:', err?.message || err);
-    });
-    poolCache.set(url, pool);
-  }
-
-  return {
-    isNeonHttp: false,
-    url,
-    query: (text, queryParams = []) =>
-      withPoolRetry(async () => {
-        const res = await pool.query(text, queryParams);
+    await client.connect();
+    try {
+      const queryFn = async (text, queryParams = []) => {
+        const res = await client.query(text, queryParams);
         return res.rows;
-      }),
-    withTransaction: (fn) =>
-      withPoolRetry(async () => {
-        const client = await pool.connect();
+      };
+      const withTransaction = async (txFn) => {
+        await client.query('BEGIN');
         try {
-          await client.query('BEGIN');
-          const txQuery = async (text, queryParams = []) => {
-            const res = await client.query(text, queryParams);
-            return res.rows;
-          };
-          const result = await fn(txQuery);
+          const result = await txFn(queryFn);
           await client.query('COMMIT');
           return result;
         } catch (err) {
           try {
             await client.query('ROLLBACK');
           } catch (rbErr) {
-            console.error('[Postgres Pool] Error en ROLLBACK:', rbErr?.message || rbErr);
+            console.error('[Postgres Client] Error en ROLLBACK:', rbErr?.message || rbErr);
           }
           throw err;
-        } finally {
-          client.release();
         }
-      }),
+      };
+      return await fn({
+        isNeonHttp: false,
+        url: targetUrl,
+        query: queryFn,
+        withTransaction,
+      });
+    } finally {
+      await client.end().catch(() => {});
+    }
   };
+
+  try {
+    return await withPoolRetry(() => executeOnClient(url), 2);
+  } catch (err) {
+    const txPoolerUrl = getSupabaseTransactionUrl(url);
+    if (txPoolerUrl && isRetryablePoolError(err)) {
+      console.warn('[Postgres] Session Pooler (:5432) saturado; conmutando a Transaction Pooler (:6543).');
+      return await executeOnClient(txPoolerUrl);
+    }
+    throw err;
+  }
 }
 
 function buildFallbackColumnInfo(table) {
@@ -820,7 +849,7 @@ export async function executeDbRequest(body, dbUrl) {
   const params = [];
 
   try {
-    const sql = getSql(dbUrl);
+    return await runWithConnection(dbUrl, async (sql) => {
 
     if (action === 'load_honorarios_data') {
       if (table !== 'investigaciones_kant') {
@@ -1073,6 +1102,7 @@ export async function executeDbRequest(body, dbUrl) {
     }
 
     return { status: 400, body: { data: null, error: { message: `Acción no soportada: ${action}` } } };
+    });
   } catch (err) {
     console.error(`[NeonDB ${action} ${table}] Error:`, err);
     const pgDetails = [err?.detail, err?.hint].filter(Boolean).join(' — ');
@@ -1100,23 +1130,24 @@ export async function executeFileGet(queryObj, dbUrl) {
     return { status: 400, body: 'Faltan parámetros bucket y path.' };
   }
   try {
-    const sql = getSql(dbUrl);
-    const rows = await sql.query(
-      `SELECT content_type, encode(data, 'base64') AS data_b64
-       FROM public.archivos_storage
-       WHERE bucket = $1 AND path = $2
-       LIMIT 1`,
-      [bucket, filePath]
-    );
-    if (!rows || rows.length === 0) {
-      return { status: 404, body: 'Archivo no encontrado.' };
-    }
-    const buf = Buffer.from(rows[0].data_b64, 'base64');
-    return {
-      status: 200,
-      contentType: rows[0].content_type || 'application/octet-stream',
-      buffer: buf,
-    };
+    return await runWithConnection(dbUrl, async (sql) => {
+      const rows = await sql.query(
+        `SELECT content_type, encode(data, 'base64') AS data_b64
+         FROM public.archivos_storage
+         WHERE bucket = $1 AND path = $2
+         LIMIT 1`,
+        [bucket, filePath]
+      );
+      if (!rows || rows.length === 0) {
+        return { status: 404, body: 'Archivo no encontrado.' };
+      }
+      const buf = Buffer.from(rows[0].data_b64, 'base64');
+      return {
+        status: 200,
+        contentType: rows[0].content_type || 'application/octet-stream',
+        buffer: buf,
+      };
+    });
   } catch (err) {
     console.error('[NeonFile GET] Error:', err);
     return { status: 500, body: err?.message || 'Error leyendo archivo' };
@@ -1126,65 +1157,66 @@ export async function executeFileGet(queryObj, dbUrl) {
 export async function executeFilePost(body, dbUrl) {
   const action = String(body?.action || 'upload').toLowerCase();
   const bucket = String(body?.bucket || 'evidencias').trim();
-  const sql = getSql(dbUrl);
 
   try {
-    if (action === 'list') {
-      const folder = String(body?.folder || '').trim();
-      const search = String(body?.search || '').trim();
-      const prefix = folder ? `${folder.replace(/\/+$/, '')}/%` : '%';
-      let rows;
-      if (search) {
-        rows = await sql.query(
-          `SELECT path AS name, size_bytes, content_type, created_at
-           FROM public.archivos_storage
-           WHERE bucket = $1 AND path LIKE $2 AND path ILIKE $3
-           ORDER BY created_at DESC LIMIT 100`,
-          [bucket, prefix, `%${search}%`]
-        );
-      } else {
-        rows = await sql.query(
-          `SELECT path AS name, size_bytes, content_type, created_at
-           FROM public.archivos_storage
-           WHERE bucket = $1 AND path LIKE $2
-           ORDER BY created_at DESC LIMIT 100`,
-          [bucket, prefix]
-        );
+    return await runWithConnection(dbUrl, async (sql) => {
+      if (action === 'list') {
+        const folder = String(body?.folder || '').trim();
+        const search = String(body?.search || '').trim();
+        const prefix = folder ? `${folder.replace(/\/+$/, '')}/%` : '%';
+        let rows;
+        if (search) {
+          rows = await sql.query(
+            `SELECT path AS name, size_bytes, content_type, created_at
+             FROM public.archivos_storage
+             WHERE bucket = $1 AND path LIKE $2 AND path ILIKE $3
+             ORDER BY created_at DESC LIMIT 100`,
+            [bucket, prefix, `%${search}%`]
+          );
+        } else {
+          rows = await sql.query(
+            `SELECT path AS name, size_bytes, content_type, created_at
+             FROM public.archivos_storage
+             WHERE bucket = $1 AND path LIKE $2
+             ORDER BY created_at DESC LIMIT 100`,
+            [bucket, prefix]
+          );
+        }
+        const mapped = rows.map((r) => ({
+          name: folder && r.name.startsWith(`${folder}/`) ? r.name.slice(folder.length + 1) : r.name,
+          fullPath: r.name,
+          size: r.size_bytes,
+          metadata: { size: Number(r.size_bytes) || 0, mimetype: r.content_type },
+          content_type: r.content_type,
+          created_at: r.created_at,
+        }));
+        return { status: 200, body: { data: mapped, error: null } };
       }
-      const mapped = rows.map((r) => ({
-        name: folder && r.name.startsWith(`${folder}/`) ? r.name.slice(folder.length + 1) : r.name,
-        fullPath: r.name,
-        size: r.size_bytes,
-        metadata: { size: Number(r.size_bytes) || 0, mimetype: r.content_type },
-        content_type: r.content_type,
-        created_at: r.created_at,
-      }));
-      return { status: 200, body: { data: mapped, error: null } };
-    }
 
-    // Upload (upsert)
-    const filePath = String(body?.path || '').replace(/^\/+/, '').trim();
-    const contentType = String(body?.contentType || 'application/octet-stream').trim();
-    const rawB64 = String(body?.base64 || '');
-    const cleanB64 = rawB64.includes('base64,') ? rawB64.split('base64,')[1] : rawB64;
+      // Upload (upsert)
+      const filePath = String(body?.path || '').replace(/^\/+/, '').trim();
+      const contentType = String(body?.contentType || 'application/octet-stream').trim();
+      const rawB64 = String(body?.base64 || '');
+      const cleanB64 = rawB64.includes('base64,') ? rawB64.split('base64,')[1] : rawB64;
 
-    if (!filePath || !cleanB64) {
-      return { status: 400, body: { data: null, error: { message: 'Faltan path o contenido base64.' } } };
-    }
+      if (!filePath || !cleanB64) {
+        return { status: 400, body: { data: null, error: { message: 'Faltan path o contenido base64.' } } };
+      }
 
-    const byteLen = Buffer.from(cleanB64, 'base64').length;
-    await sql.query(
-      `INSERT INTO public.archivos_storage (bucket, path, content_type, size_bytes, data)
-       VALUES ($1, $2, $3, $4, decode($5, 'base64'))
-       ON CONFLICT (bucket, path)
-       DO UPDATE SET content_type = EXCLUDED.content_type,
-                     size_bytes = EXCLUDED.size_bytes,
-                     data = EXCLUDED.data,
-                     created_at = now()`,
-      [bucket, filePath, contentType, byteLen, cleanB64]
-    );
+      const byteLen = Buffer.from(cleanB64, 'base64').length;
+      await sql.query(
+        `INSERT INTO public.archivos_storage (bucket, path, content_type, size_bytes, data)
+         VALUES ($1, $2, $3, $4, decode($5, 'base64'))
+         ON CONFLICT (bucket, path)
+         DO UPDATE SET content_type = EXCLUDED.content_type,
+                       size_bytes = EXCLUDED.size_bytes,
+                       data = EXCLUDED.data,
+                       created_at = now()`,
+        [bucket, filePath, contentType, byteLen, cleanB64]
+      );
 
-    return { status: 200, body: { data: { path: filePath }, error: null } };
+      return { status: 200, body: { data: { path: filePath }, error: null } };
+    });
   } catch (err) {
     console.error('[NeonFile POST] Error:', err);
     return { status: 500, body: { data: null, error: { message: err?.message || 'Error guardando archivo' } } };
