@@ -170,6 +170,34 @@ const TABLE_SCHEMA = {
 const poolCache = new Map();
 const schemaCache = new Map();
 
+function isRetryablePoolError(err) {
+  const msg = String(err?.message || err || '');
+  return (
+    err?.code === '53300' ||
+    msg.includes('EMAXCONNSESSION') ||
+    msg.includes('MaxClientsInSessionMode') ||
+    msg.toLowerCase().includes('max clients reached') ||
+    msg.toLowerCase().includes('too many clients')
+  );
+}
+
+async function withPoolRetry(fn, maxRetries = 3) {
+  let lastErr;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      if (!isRetryablePoolError(err) || attempt === maxRetries) {
+        throw err;
+      }
+      const baseMs = 200 * (attempt + 1) + Math.floor(Math.random() * 160);
+      await new Promise((r) => setTimeout(r, baseMs));
+    }
+  }
+  throw lastErr;
+}
+
 function getSql(dbUrl) {
   const url = dbUrl || process.env.DATABASE_URL;
   if (!url) {
@@ -192,9 +220,11 @@ function getSql(dbUrl) {
     const disableSsl = url.includes('sslmode=disable');
     pool = new pg.Pool({
       connectionString: url,
-      max: 3,
-      idleTimeoutMillis: 10000,
+      // Cada invocación serverless solo atiende 1 petición a la vez; limitar a 1 evita agotar el Session Pooler (pool_size=15)
+      max: 1,
+      idleTimeoutMillis: 1000,
       connectionTimeoutMillis: 10000,
+      allowExitOnIdle: true,
       ssl: isLocal || disableSsl ? false : { rejectUnauthorized: false },
     });
     pool.on('error', (err) => {
@@ -206,32 +236,34 @@ function getSql(dbUrl) {
   return {
     isNeonHttp: false,
     url,
-    query: async (text, queryParams = []) => {
-      const res = await pool.query(text, queryParams);
-      return res.rows;
-    },
-    withTransaction: async (fn) => {
-      const client = await pool.connect();
-      try {
-        await client.query('BEGIN');
-        const txQuery = async (text, queryParams = []) => {
-          const res = await client.query(text, queryParams);
-          return res.rows;
-        };
-        const result = await fn(txQuery);
-        await client.query('COMMIT');
-        return result;
-      } catch (err) {
+    query: (text, queryParams = []) =>
+      withPoolRetry(async () => {
+        const res = await pool.query(text, queryParams);
+        return res.rows;
+      }),
+    withTransaction: (fn) =>
+      withPoolRetry(async () => {
+        const client = await pool.connect();
         try {
-          await client.query('ROLLBACK');
-        } catch (rbErr) {
-          console.error('[Postgres Pool] Error en ROLLBACK:', rbErr?.message || rbErr);
+          await client.query('BEGIN');
+          const txQuery = async (text, queryParams = []) => {
+            const res = await client.query(text, queryParams);
+            return res.rows;
+          };
+          const result = await fn(txQuery);
+          await client.query('COMMIT');
+          return result;
+        } catch (err) {
+          try {
+            await client.query('ROLLBACK');
+          } catch (rbErr) {
+            console.error('[Postgres Pool] Error en ROLLBACK:', rbErr?.message || rbErr);
+          }
+          throw err;
+        } finally {
+          client.release();
         }
-        throw err;
-      } finally {
-        client.release();
-      }
-    },
+      }),
   };
 }
 
@@ -789,6 +821,84 @@ export async function executeDbRequest(body, dbUrl) {
 
   try {
     const sql = getSql(dbUrl);
+
+    if (action === 'load_honorarios_data') {
+      if (table !== 'investigaciones_kant') {
+        return { status: 400, body: { data: null, error: { message: 'Acción inválida para esta tabla.' } } };
+      }
+      const targetYear = Number(body?.year) || new Date().getFullYear();
+      const prefix = `RD-REC-${targetYear}-`;
+      const correlativoTitulo = `CORRELATIVO_RECIBOS_${targetYear}`;
+
+      const counterRows = await sql.query(
+        `SELECT id, contenido, created_at
+         FROM public.investigaciones_kant
+         WHERE categoria = $1 AND titulo = $2
+         ORDER BY created_at DESC
+         LIMIT 10`,
+        ['correlativo_honorario', correlativoTitulo]
+      );
+      const reciboRows = await sql.query(
+        `SELECT id, contenido
+         FROM public.investigaciones_kant
+         WHERE categoria = $1
+         ORDER BY created_at DESC
+         LIMIT 500`,
+        ['recibo_honorario']
+      );
+
+      let storedLastSeq = 0;
+      for (const row of counterRows || []) {
+        if (!row?.contenido) continue;
+        try {
+          const parsed = typeof row.contenido === 'string' ? JSON.parse(row.contenido) : row.contenido;
+          const candidate = Number(parsed?.lastSeq ?? parsed?.ultimoCorrelativo ?? 0);
+          if (!isNaN(candidate) && candidate > storedLastSeq) storedLastSeq = candidate;
+        } catch {
+          const m = String(row.contenido).match(/"lastSeq"\s*:\s*(\d+)/);
+          if (m) {
+            const candidate = parseInt(m[1], 10);
+            if (!isNaN(candidate) && candidate > storedLastSeq) storedLastSeq = candidate;
+          }
+        }
+      }
+
+      let maxExistingSeq = 0;
+      for (const r of reciboRows || []) {
+        if (!r?.contenido) continue;
+        try {
+          const parsed = typeof r.contenido === 'string' ? JSON.parse(r.contenido) : r.contenido;
+          const numStr = String(parsed?.numeroRecibo || '').trim();
+          if (numStr.startsWith(prefix)) {
+            const seq = parseInt(numStr.slice(prefix.length).split('-')[0], 10);
+            if (!isNaN(seq) && seq > maxExistingSeq) maxExistingSeq = seq;
+          }
+        } catch {
+          // Ignorar fila malformada
+        }
+      }
+
+      if (storedLastSeq === 0 && (reciboRows?.length || 0) >= 500) {
+        const seqState = await computeHonorariosSeqState((t, p) => sql.query(t, p), targetYear);
+        maxExistingSeq = Math.max(maxExistingSeq, seqState.currentMax);
+      }
+
+      const currentMax = Math.max(storedLastSeq, maxExistingSeq);
+      const nextSeq = currentMax + 1;
+      return {
+        status: 200,
+        body: {
+          data: {
+            recibos: reciboRows || [],
+            year: targetYear,
+            lastSeq: currentMax,
+            nextSeq,
+            nextCorrelativo: formatCorrelativoCode(targetYear, nextSeq),
+          },
+          error: null,
+        },
+      };
+    }
 
     if (action === 'get_honorarios_correlativo') {
       if (table !== 'investigaciones_kant') {

@@ -3308,35 +3308,32 @@ function sortRecibosClientesDesc(list: ReciboCliente[]): ReciboCliente[] {
 export async function supabaseLoadHonorariosData(targetYear?: number): Promise<HonorariosSyncData> {
   const year = targetYear || new Date().getFullYear();
 
-  const [recibosRes, corrRes] = await Promise.all([
-    supabase
-      .from('investigaciones_kant')
-      .select('id, contenido')
-      .eq('categoria', 'recibo_honorario')
-      .order('created_at', { ascending: false })
-      .limit(500),
-    executeCustomDbAction<{ year: number; lastSeq: number; nextSeq: number; nextCorrelativo: string }>({
-      table: 'investigaciones_kant',
-      action: 'get_honorarios_correlativo',
-      year,
-    }),
-  ]);
+  const loadRes = await executeCustomDbAction<{
+    recibos: Array<{ id: string; contenido: string }>;
+    year: number;
+    lastSeq: number;
+    nextSeq: number;
+    nextCorrelativo: string;
+  }>({
+    table: 'investigaciones_kant',
+    action: 'load_honorarios_data',
+    year,
+  });
 
-  const dbErrorMsg = recibosRes.error?.message || corrRes.error?.message;
-  if (dbErrorMsg) {
-    console.error('Error cargando Honorarios desde Postgres:', dbErrorMsg);
+  if (loadRes.error) {
+    console.error('Error cargando Honorarios desde Postgres:', loadRes.error.message);
     const localList = sortRecibosClientesDesc(readLocalRecibosClientes());
     const fallbackCorr = computeNextCorrelativoFromList(localList, year);
     return {
       recibos: localList,
       nextCorrelativo: fallbackCorr,
       cloudSynced: false,
-      error: dbErrorMsg,
+      error: loadRes.error.message,
     };
   }
 
   const cloudMap = new Map<string, ReciboCliente>();
-  const rows = Array.isArray(recibosRes.data) ? recibosRes.data : [];
+  const rows = Array.isArray(loadRes.data?.recibos) ? loadRes.data.recibos : [];
   rows.forEach((item: any) => {
     try {
       if (!item?.contenido) return;
@@ -3349,7 +3346,7 @@ export async function supabaseLoadHonorariosData(targetYear?: number): Promise<H
   });
 
   const lista = sortRecibosClientesDesc(Array.from(cloudMap.values()));
-  const nextCorrelativo = corrRes.data?.nextCorrelativo || computeNextCorrelativoFromList(lista, year);
+  const nextCorrelativo = loadRes.data?.nextCorrelativo || computeNextCorrelativoFromList(lista, year);
 
   try {
     localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(lista));
