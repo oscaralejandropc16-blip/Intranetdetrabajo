@@ -3411,60 +3411,50 @@ export async function supabaseSaveReciboCliente(recibo: ReciboCliente): Promise<
   return true;
 }
 
-export async function supabaseDeleteReciboCliente(
+export interface AnularReciboResult {
+  deleted: boolean;
+  deletedCount: number;
+  year: number;
+  lastSeq: number;
+  nextSeq: number;
+  nextCorrelativo: string;
+}
+
+export async function supabaseAnularReciboCliente(
   reciboId: string,
   numeroRecibo?: string,
-  cloudId?: string
-): Promise<boolean> {
-  let deleteError: string | null = null;
-  let deletedCount = 0;
-
-  if (cloudId) {
-    const { data, error } = await supabase
-      .from('investigaciones_kant')
-      .delete()
-      .eq('id', cloudId)
-      .eq('categoria', 'recibo_honorario')
-      .select('id');
-    if (error) deleteError = error.message;
-    else deletedCount = Array.isArray(data) ? data.length : 0;
+  cloudId?: string,
+  autor?: string
+): Promise<AnularReciboResult> {
+  let targetYear = new Date().getFullYear();
+  if (numeroRecibo) {
+    const m = String(numeroRecibo).match(/^RD-REC-(\d{4})-/i);
+    if (m) targetYear = parseInt(m[1], 10);
   }
 
-  if (!deleteError && deletedCount === 0 && numeroRecibo) {
-    const { data, error } = await supabase
-      .from('investigaciones_kant')
-      .delete()
-      .eq('categoria', 'recibo_honorario')
-      .ilike('titulo', `${numeroRecibo} - %`)
-      .select('id');
-    if (error) deleteError = error.message;
-    else deletedCount = Array.isArray(data) ? data.length : 0;
+  const res = await executeCustomDbAction<{
+    deletedCount: number;
+    year: number;
+    lastSeq: number;
+    nextSeq: number;
+    nextCorrelativo: string;
+  }>(
+    {
+      table: 'investigaciones_kant',
+      action: 'delete_recibo_honorario',
+      reciboId,
+      numeroRecibo,
+      cloudId,
+      year: targetYear,
+      autor,
+    },
+    25000
+  );
 
-    if (!deleteError && deletedCount === 0) {
-      const { data: fallbackData, error: fallbackErr } = await supabase
-        .from('investigaciones_kant')
-        .delete()
-        .eq('categoria', 'recibo_honorario')
-        .ilike('contenido', `%"numeroRecibo":"${numeroRecibo}"%`)
-        .select('id');
-      if (fallbackErr) deleteError = fallbackErr.message;
-      else deletedCount = Array.isArray(fallbackData) ? fallbackData.length : 0;
-    }
-  }
-
-  if (!deleteError && deletedCount === 0 && reciboId) {
-    const { error } = await supabase
-      .from('investigaciones_kant')
-      .delete()
-      .eq('categoria', 'recibo_honorario')
-      .ilike('contenido', `%"id":"${reciboId}"%`)
-      .select('id');
-    if (error) deleteError = error.message;
-  }
-
-  if (deleteError) {
-    console.error('Error eliminando recibo de honorarios en Postgres:', deleteError);
-    throw new Error(deleteError);
+  if (res.error || !res.data?.nextCorrelativo) {
+    const errMsg = res.error?.message || 'La base de datos no confirmó la anulación del recibo.';
+    console.error('Error eliminando recibo de honorarios en Postgres:', res.error || res);
+    throw new Error(errMsg);
   }
 
   try {
@@ -3473,8 +3463,25 @@ export async function supabaseDeleteReciboCliente(
       r => r.id !== reciboId && (!numeroRecibo || r.numeroRecibo !== numeroRecibo)
     );
     localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+    localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, res.data.nextCorrelativo);
   } catch { }
 
+  return {
+    deleted: true,
+    deletedCount: Number(res.data.deletedCount) || 0,
+    year: res.data.year || targetYear,
+    lastSeq: Number(res.data.lastSeq) || 0,
+    nextSeq: Number(res.data.nextSeq) || 1,
+    nextCorrelativo: res.data.nextCorrelativo,
+  };
+}
+
+export async function supabaseDeleteReciboCliente(
+  reciboId: string,
+  numeroRecibo?: string,
+  cloudId?: string
+): Promise<boolean> {
+  await supabaseAnularReciboCliente(reciboId, numeroRecibo, cloudId);
   return true;
 }
 

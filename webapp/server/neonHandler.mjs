@@ -693,7 +693,10 @@ async function computeHonorariosSeqState(queryFn, rawYear) {
 
   const maxExistingSeq = Number(maxRows?.[0]?.max_seq) || 0;
 
-  const currentMax = Math.max(storedLastSeq, maxExistingSeq);
+  // Usar el mayor correlativo entre recibos vigentes para que al anular el último recibo
+  // (ej. pruebas o errores recién emitidos) el correlativo retroceda sin dejar huecos finales,
+  // manteniendo sin cambios los números posteriores si se anula uno intermedio.
+  const currentMax = maxExistingSeq;
   return {
     year: targetYear,
     prefix,
@@ -861,6 +864,102 @@ async function handleEmitReciboHonorario(sql, dbUrl, body) {
   return { status: 200, body: { data, error: null } };
 }
 
+function isUuidString(val) {
+  return typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+}
+
+async function handleDeleteReciboHonorario(sql, dbUrl, body) {
+  const cloudId = String(body?.cloudId || '').trim();
+  const numeroRecibo = String(body?.numeroRecibo || '').trim();
+  const reciboId = String(body?.reciboId || '').trim();
+  const autor = String(body?.autor || 'Jefatura').trim() || 'Jefatura';
+
+  if (!cloudId && !numeroRecibo && !reciboId) {
+    return { status: 400, body: { data: null, error: { message: 'Identificador del recibo requerido para anular.' } } };
+  }
+
+  let targetYear = Number(body?.year) || 0;
+  if (!targetYear && numeroRecibo) {
+    const m = numeroRecibo.match(/^RD-REC-(\d{4})-/i);
+    if (m) targetYear = parseInt(m[1], 10);
+  }
+  if (!targetYear || targetYear < 2000 || targetYear > 2100) {
+    targetYear = new Date().getFullYear();
+  }
+
+  const effectiveUrl = dbUrl || process.env.DATABASE_URL;
+  const correlativoTitulo = `CORRELATIVO_RECIBOS_${targetYear}`;
+
+  const deleteWithinQueryFn = async (queryFn, useAdvisoryLock) => {
+    const colInfoMap = await getTableColumnInfo(queryFn, effectiveUrl, 'investigaciones_kant');
+    if (useAdvisoryLock) {
+      await queryFn('SELECT pg_advisory_xact_lock(hashtext($1::text)::bigint)', [correlativoTitulo]);
+    }
+
+    let deletedRows = [];
+    if (isUuidString(cloudId)) {
+      deletedRows = await queryFn(
+        `DELETE FROM public."investigaciones_kant"
+         WHERE "id" = $1 AND "categoria" = $2
+         RETURNING "id"`,
+        [cloudId, 'recibo_honorario']
+      );
+    }
+
+    if ((!deletedRows || deletedRows.length === 0) && numeroRecibo) {
+      deletedRows = await queryFn(
+        `DELETE FROM public."investigaciones_kant"
+         WHERE "categoria" = $1 AND ("titulo" ILIKE $2 OR "contenido"::text ILIKE $3)
+         RETURNING "id"`,
+        ['recibo_honorario', `${numeroRecibo} - %`, `%"numeroRecibo":"${numeroRecibo}"%`]
+      );
+    }
+
+    if ((!deletedRows || deletedRows.length === 0) && reciboId) {
+      deletedRows = await queryFn(
+        `DELETE FROM public."investigaciones_kant"
+         WHERE "categoria" = $1 AND "contenido"::text ILIKE $2
+         RETURNING "id"`,
+        ['recibo_honorario', `%"id":"${reciboId}"%`]
+      );
+    }
+
+    const seqState = await computeHonorariosSeqState(queryFn, targetYear);
+    const currentMax = seqState.currentMax;
+    const nextSeq = currentMax + 1;
+    const nextCorrelativo = formatCorrelativoCode(targetYear, nextSeq);
+    const nowIso = new Date().toISOString();
+
+    if (seqState.counterRowId) {
+      const counterJson = JSON.stringify({
+        year: targetYear,
+        prefix: seqState.prefix,
+        lastSeq: currentMax,
+        lastNumero: currentMax > 0 ? formatCorrelativoCode(targetYear, currentMax) : null,
+        nextSeq,
+        nextNumero: nextCorrelativo,
+        updatedAt: nowIso,
+        updatedBy: autor,
+      });
+      await updateHonorariosCounterRow(queryFn, colInfoMap, seqState.counterRowId, counterJson, autor, nowIso);
+    }
+
+    return {
+      deletedCount: Array.isArray(deletedRows) ? deletedRows.length : 0,
+      year: targetYear,
+      lastSeq: currentMax,
+      nextSeq,
+      nextCorrelativo,
+    };
+  };
+
+  const data = sql.withTransaction
+    ? await sql.withTransaction((txQuery) => deleteWithinQueryFn(txQuery, true))
+    : await deleteWithinQueryFn((t, p) => sql.query(t, p), false);
+
+  return { status: 200, body: { data, error: null } };
+}
+
 export async function executeDbRequest(body, dbUrl) {
   const table = String(body?.table || '').trim();
   const tableMeta = TABLE_SCHEMA[table];
@@ -930,12 +1029,12 @@ export async function executeDbRequest(body, dbUrl) {
         }
       }
 
-      if (storedLastSeq === 0 && (reciboRows?.length || 0) >= 500) {
+      if ((reciboRows?.length || 0) >= 500) {
         const seqState = await computeHonorariosSeqState((t, p) => sql.query(t, p), targetYear);
         maxExistingSeq = Math.max(maxExistingSeq, seqState.currentMax);
       }
 
-      const currentMax = Math.max(storedLastSeq, maxExistingSeq);
+      const currentMax = maxExistingSeq;
       const nextSeq = currentMax + 1;
       return {
         status: 200,
@@ -977,6 +1076,13 @@ export async function executeDbRequest(body, dbUrl) {
         return { status: 400, body: { data: null, error: { message: 'Acción inválida para esta tabla.' } } };
       }
       return await handleEmitReciboHonorario(sql, dbUrl, body);
+    }
+
+    if (action === 'delete_recibo_honorario') {
+      if (table !== 'investigaciones_kant') {
+        return { status: 400, body: { data: null, error: { message: 'Acción inválida para esta tabla.' } } };
+      }
+      return await handleDeleteReciboHonorario(sql, dbUrl, body);
     }
 
     if (action === 'select') {

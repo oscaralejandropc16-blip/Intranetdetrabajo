@@ -37,7 +37,7 @@ import type { ReciboCliente, TipoReciboCliente, MetodoPagoCliente } from '../../
 import {
   supabaseLoadHonorariosData,
   supabaseEmitirReciboCliente,
-  supabaseDeleteReciboCliente,
+  supabaseAnularReciboCliente,
   supabaseGetExpedientes,
   checkIsJefatura,
   checkIsSistemas,
@@ -706,13 +706,18 @@ export default function ModuloRecibosHonorarios({
       showCancel: true,
       onConfirm: async () => {
         try {
-          await supabaseDeleteReciboCliente(recibo.id, recibo.numeroRecibo, recibo.cloudId);
+          const res = await supabaseAnularReciboCliente(recibo.id, recibo.numeroRecibo, recibo.cloudId, loggedUser);
           setRecibos(prev => prev.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo));
+          if (res.nextCorrelativo) {
+            setNextCorrelativo(res.nextCorrelativo);
+            setCorrelativoLoaded(true);
+            setSyncError(null);
+          }
           setAlert({
             isOpen: true,
             type: 'info',
             title: 'Recibo Anulado',
-            message: `El recibo ${recibo.numeroRecibo} ha sido eliminado del sistema contable.`
+            message: `El recibo ${recibo.numeroRecibo} ha sido eliminado del sistema contable.${res.nextCorrelativo ? `\n\nSiguiente correlativo disponible: ${res.nextCorrelativo}` : ''}`
           });
         } catch (err: any) {
           setAlert({
