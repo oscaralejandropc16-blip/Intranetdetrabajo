@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   Receipt,
   Plus,
@@ -307,10 +307,12 @@ const formatTelefonoInput = (raw: string, prev: string = ''): string => {
   return digits;
 };
 
+const EMPTY_EXPEDIENTES: any[] = [];
+
 export default function ModuloRecibosHonorarios({
   currentUser,
   isJefatura = false,
-  globalExpedientes = []
+  globalExpedientes = EMPTY_EXPEDIENTES
 }: ModuloRecibosHonorariosProps) {
   const loggedUser = currentUser || localStorage.getItem('rd_user_name') || 'Román & Delgado';
 
@@ -396,46 +398,62 @@ export default function ModuloRecibosHonorarios({
   const [viewModeContract, setViewModeContract] = useState<'documento' | 'texto'>('documento');
   const [viewModeGastos, setViewModeGastos] = useState<'documento' | 'texto'>('documento');
 
+  const expedientesFetchedRef = useRef(false);
+  const loadInFlightRef = useRef<Promise<void> | null>(null);
+
   // Cargar datos al montar
-  const loadRecibos = async (showErrorModal = false) => {
-    setLoading(true);
-    try {
-      const res = await supabaseLoadHonorariosData();
-      setRecibos(res.recibos);
-      setNextCorrelativo(res.nextCorrelativo);
-      if (res.cloudSynced) {
-        setCorrelativoLoaded(true);
-        setSyncError(null);
-      } else {
-        const msg = res.error || 'No se pudo sincronizar el correlativo con la base de datos.';
+  const loadRecibos = useCallback(async (showErrorModal = false) => {
+    if (loadInFlightRef.current && !showErrorModal) {
+      return loadInFlightRef.current;
+    }
+
+    const run = async () => {
+      setLoading(true);
+      try {
+        const res = await supabaseLoadHonorariosData();
+        setRecibos(res.recibos);
+        setNextCorrelativo(res.nextCorrelativo);
+        if (res.cloudSynced) {
+          setCorrelativoLoaded(true);
+          setSyncError(null);
+        } else {
+          const msg = res.error || 'No se pudo sincronizar el correlativo con la base de datos.';
+          setCorrelativoLoaded(false);
+          setSyncError(msg);
+          if (showErrorModal) {
+            setAlert({
+              isOpen: true,
+              type: 'error',
+              title: 'Error de Conexión con Base de Datos',
+              message: msg,
+            });
+          }
+        }
+      } catch (e: any) {
+        const msg = e?.message || 'Error al cargar recibos desde la base de datos.';
+        console.error('Error al cargar recibos:', e);
         setCorrelativoLoaded(false);
         setSyncError(msg);
         if (showErrorModal) {
           setAlert({
             isOpen: true,
             type: 'error',
-            title: 'Error de Conexión con Base de Datos',
+            title: 'Error al Cargar Recibos',
             message: msg,
           });
         }
+      } finally {
+        if (loadInFlightRef.current === promise) {
+          loadInFlightRef.current = null;
+        }
+        setLoading(false);
       }
-    } catch (e: any) {
-      const msg = e?.message || 'Error al cargar recibos desde la base de datos.';
-      console.error('Error al cargar recibos:', e);
-      setCorrelativoLoaded(false);
-      setSyncError(msg);
-      if (showErrorModal) {
-        setAlert({
-          isOpen: true,
-          type: 'error',
-          title: 'Error al Cargar Recibos',
-          message: msg,
-        });
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    const promise = run();
+    loadInFlightRef.current = promise;
+    return promise;
+  }, []);
 
   // Refrescar Tasa Oficial BCV en vivo (con timeout seguro para evitar bloqueos)
   const refreshLiveBcv = useCallback(async () => {
@@ -466,21 +484,6 @@ export default function ModuloRecibosHonorarios({
 
   useEffect(() => {
     loadRecibos();
-
-    // Cargar expedientes si no fueron provistos en props
-    if (!globalExpedientes || globalExpedientes.length === 0) {
-      supabaseGetExpedientes().then(res => {
-        if (res && res.expedientes && Array.isArray(res.expedientes)) {
-          setExpedientesList(res.expedientes);
-        }
-      }).catch(err => {
-        console.warn('Error cargando expedientes para recibos:', err);
-      });
-    } else {
-      setExpedientesList(globalExpedientes);
-    }
-
-    // Refrescar tasa oficial BCV
     refreshLiveBcv();
 
     const handleBcvUpdate = (e: any) => {
@@ -491,7 +494,23 @@ export default function ModuloRecibosHonorarios({
     };
     window.addEventListener('rd_bcv_updated', handleBcvUpdate);
     return () => window.removeEventListener('rd_bcv_updated', handleBcvUpdate);
-  }, [globalExpedientes, refreshLiveBcv]);
+  }, [loadRecibos, refreshLiveBcv]);
+
+  useEffect(() => {
+    if (Array.isArray(globalExpedientes) && globalExpedientes.length > 0) {
+      setExpedientesList(globalExpedientes);
+      return;
+    }
+    if (expedientesFetchedRef.current) return;
+    expedientesFetchedRef.current = true;
+    supabaseGetExpedientes().then(res => {
+      if (res && res.expedientes && Array.isArray(res.expedientes)) {
+        setExpedientesList(res.expedientes);
+      }
+    }).catch(err => {
+      console.warn('Error cargando expedientes para recibos:', err);
+    });
+  }, [globalExpedientes]);
 
   // Selección inteligente de expediente desde la lista
   const handleSelectExpediente = (val: string) => {

@@ -3308,56 +3308,58 @@ function sortRecibosClientesDesc(list: ReciboCliente[]): ReciboCliente[] {
 export async function supabaseLoadHonorariosData(targetYear?: number): Promise<HonorariosSyncData> {
   const year = targetYear || new Date().getFullYear();
 
-  const loadRes = await executeCustomDbAction<{
-    recibos: Array<{ id: string; contenido: string }>;
-    year: number;
-    lastSeq: number;
-    nextSeq: number;
-    nextCorrelativo: string;
-  }>({
-    table: 'investigaciones_kant',
-    action: 'load_honorarios_data',
-    year,
-  });
+  return runDeduplicated(`honorarios:load:${year}`, async () => {
+    const loadRes = await executeCustomDbAction<{
+      recibos: Array<{ id: string; contenido: string }>;
+      year: number;
+      lastSeq: number;
+      nextSeq: number;
+      nextCorrelativo: string;
+    }>({
+      table: 'investigaciones_kant',
+      action: 'load_honorarios_data',
+      year,
+    });
 
-  if (loadRes.error) {
-    console.error('Error cargando Honorarios desde Postgres:', loadRes.error.message);
-    const localList = sortRecibosClientesDesc(readLocalRecibosClientes());
-    const fallbackCorr = computeNextCorrelativoFromList(localList, year);
-    return {
-      recibos: localList,
-      nextCorrelativo: fallbackCorr,
-      cloudSynced: false,
-      error: loadRes.error.message,
-    };
-  }
+    if (loadRes.error) {
+      console.error('Error cargando Honorarios desde Postgres:', loadRes.error.message);
+      const localList = sortRecibosClientesDesc(readLocalRecibosClientes());
+      const fallbackCorr = computeNextCorrelativoFromList(localList, year);
+      return {
+        recibos: localList,
+        nextCorrelativo: fallbackCorr,
+        cloudSynced: false,
+        error: loadRes.error.message,
+      };
+    }
 
-  const cloudMap = new Map<string, ReciboCliente>();
-  const rows = Array.isArray(loadRes.data?.recibos) ? loadRes.data.recibos : [];
-  rows.forEach((item: any) => {
+    const cloudMap = new Map<string, ReciboCliente>();
+    const rows = Array.isArray(loadRes.data?.recibos) ? loadRes.data.recibos : [];
+    rows.forEach((item: any) => {
+      try {
+        if (!item?.contenido) return;
+        const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
+        if (parsed && (parsed.id || parsed.numeroRecibo)) {
+          const key = String(parsed.id || parsed.numeroRecibo);
+          cloudMap.set(key, { ...parsed, cloudId: item.id || parsed.cloudId });
+        }
+      } catch { }
+    });
+
+    const lista = sortRecibosClientesDesc(Array.from(cloudMap.values()));
+    const nextCorrelativo = loadRes.data?.nextCorrelativo || computeNextCorrelativoFromList(lista, year);
+
     try {
-      if (!item?.contenido) return;
-      const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
-      if (parsed && (parsed.id || parsed.numeroRecibo)) {
-        const key = String(parsed.id || parsed.numeroRecibo);
-        cloudMap.set(key, { ...parsed, cloudId: item.id || parsed.cloudId });
-      }
+      localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(lista));
+      localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, nextCorrelativo);
     } catch { }
+
+    return {
+      recibos: lista,
+      nextCorrelativo,
+      cloudSynced: true,
+    };
   });
-
-  const lista = sortRecibosClientesDesc(Array.from(cloudMap.values()));
-  const nextCorrelativo = loadRes.data?.nextCorrelativo || computeNextCorrelativoFromList(lista, year);
-
-  try {
-    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(lista));
-    localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, nextCorrelativo);
-  } catch { }
-
-  return {
-    recibos: lista,
-    nextCorrelativo,
-    cloudSynced: true,
-  };
 }
 
 export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
@@ -3376,7 +3378,7 @@ export async function supabaseEmitirReciboCliente(
       recibo,
       year: targetYear,
     },
-    15000
+    25000
   );
 
   if (res.error || !res.data?.recibo) {

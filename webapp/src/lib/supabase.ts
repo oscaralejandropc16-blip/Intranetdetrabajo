@@ -78,7 +78,7 @@ async function postDbRequest<T = any>(body: Record<string, unknown>, timeoutMs =
 
 export async function executeCustomDbAction<T = any>(
   body: Record<string, unknown>,
-  timeoutMs = 15000
+  timeoutMs = 25000
 ): Promise<DbResponse<T>> {
   return postDbRequest<T>(body, timeoutMs);
 }

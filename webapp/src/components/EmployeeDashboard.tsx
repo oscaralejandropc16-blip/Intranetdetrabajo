@@ -2296,6 +2296,7 @@ export default function EmployeeDashboard() {
                             <ModuloRecibosHonorarios
                                 currentUser={currentUserName || 'Carmen Luisa'}
                                 isJefatura={false}
+                                globalExpedientes={globalExpedientes}
                             />
                         </div>
                     )}

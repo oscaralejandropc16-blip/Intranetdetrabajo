@@ -3148,7 +3148,8 @@ export default function AdminDashboard() {
         <div className="animate-in fade-in duration-200">
           <ModuloRecibosHonorarios 
             currentUser={currentLoggedUserName || 'Luis Delgado'} 
-            isJefatura={true} 
+            isJefatura={true}
+            globalExpedientes={globalExpedientes}
           />
         </div>
       )}

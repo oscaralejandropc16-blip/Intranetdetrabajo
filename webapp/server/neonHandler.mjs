@@ -169,14 +169,26 @@ const TABLE_SCHEMA = {
 
 const schemaCache = new Map();
 
+function isTimeoutConnectError(err) {
+  const msg = String(err?.message || err || '').toLowerCase();
+  return (
+    err?.code === 'ETIMEDOUT' ||
+    err?.code === 'ECONNRESET' ||
+    msg.includes('connection timeout') ||
+    msg.includes('timeout expired') ||
+    msg.includes('connection terminated')
+  );
+}
+
 function isRetryablePoolError(err) {
   const msg = String(err?.message || err || '');
+  const lower = msg.toLowerCase();
   return (
     err?.code === '53300' ||
     msg.includes('EMAXCONNSESSION') ||
     msg.includes('MaxClientsInSessionMode') ||
-    msg.toLowerCase().includes('max clients reached') ||
-    msg.toLowerCase().includes('too many clients')
+    lower.includes('max clients reached') ||
+    lower.includes('too many clients')
   );
 }
 
@@ -190,7 +202,7 @@ async function withPoolRetry(fn, maxRetries = 2) {
       if (!isRetryablePoolError(err) || attempt === maxRetries) {
         throw err;
       }
-      const baseMs = 150 * (attempt + 1) + Math.floor(Math.random() * 120);
+      const baseMs = 120 * (attempt + 1) + Math.floor(Math.random() * 100);
       await new Promise((r) => setTimeout(r, baseMs));
     }
   }
@@ -198,8 +210,16 @@ async function withPoolRetry(fn, maxRetries = 2) {
 }
 
 function getSupabaseTransactionUrl(url) {
-  if (url.includes('pooler.supabase.com:5432')) {
-    return url.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname.endsWith('.pooler.supabase.com') && (!parsed.port || parsed.port === '5432')) {
+      parsed.port = '6543';
+      return parsed.toString();
+    }
+  } catch {
+    if (url.includes('pooler.supabase.com:5432')) {
+      return url.replace('pooler.supabase.com:5432', 'pooler.supabase.com:6543');
+    }
   }
   return null;
 }
@@ -223,7 +243,8 @@ function createPgClient(rawUrl) {
 
   return new pg.Client({
     connectionString: cleanUrl,
-    connectionTimeoutMillis: 10000,
+    connectionTimeoutMillis: 4500,
+    query_timeout: 8000,
     ssl: isLocal || disableSsl ? false : { rejectUnauthorized: false },
   });
 }
@@ -284,16 +305,18 @@ async function runWithConnection(dbUrl, fn) {
     }
   };
 
-  try {
-    return await withPoolRetry(() => executeOnClient(url), 2);
-  } catch (err) {
-    const txPoolerUrl = getSupabaseTransactionUrl(url);
-    if (txPoolerUrl && isRetryablePoolError(err)) {
-      console.warn('[Postgres] Session Pooler (:5432) saturado; conmutando a Transaction Pooler (:6543).');
-      return await executeOnClient(txPoolerUrl);
+  const txPoolerUrl = getSupabaseTransactionUrl(url);
+  if (txPoolerUrl) {
+    try {
+      return await executeOnClient(url);
+    } catch (err) {
+      if (!isRetryablePoolError(err) && !isTimeoutConnectError(err)) throw err;
+      console.warn('[Postgres] Session Pooler (:5432) saturado o lento; conmutando a Transaction Pooler (:6543).');
+      return await withPoolRetry(() => executeOnClient(txPoolerUrl), 2);
     }
-    throw err;
   }
+
+  return await withPoolRetry(() => executeOnClient(url), 2);
 }
 
 function buildFallbackColumnInfo(table) {
@@ -739,7 +762,7 @@ async function handleEmitReciboHonorario(sql, dbUrl, body) {
   const persistWithinQueryFn = async (queryFn, useAdvisoryLock) => {
     const colInfoMap = await getTableColumnInfo(queryFn, effectiveUrl, 'investigaciones_kant');
     if (useAdvisoryLock) {
-      await queryFn('SELECT pg_advisory_xact_lock(hashtext($1))', [correlativoTitulo]);
+      await queryFn('SELECT pg_advisory_xact_lock(hashtext($1::text)::bigint)', [correlativoTitulo]);
     }
 
     const seqState = await computeHonorariosSeqState(queryFn, targetYear);
