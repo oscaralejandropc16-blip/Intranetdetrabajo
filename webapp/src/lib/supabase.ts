@@ -14,6 +14,75 @@ export interface DbResponse<T = any[]> {
   error: { message: string; code?: string } | null;
 }
 
+async function postDbRequest<T = any>(body: Record<string, unknown>, timeoutMs = 0): Promise<DbResponse<T>> {
+  const controller = timeoutMs > 0 && typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+  try {
+    const res = await fetch('/api/db', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller?.signal,
+    });
+
+    const rawText = await res.text();
+    let parsed: any = null;
+    if (rawText) {
+      try {
+        parsed = JSON.parse(rawText);
+      } catch {
+        parsed = null;
+      }
+    }
+
+    if (!res.ok) {
+      const serverMsg =
+        parsed?.error?.message ||
+        (rawText && !rawText.trim().startsWith('<') ? rawText.slice(0, 240) : '') ||
+        `Error HTTP ${res.status} (${res.statusText || 'Error del servidor'})`;
+      return {
+        data: (parsed?.data ?? null) as T,
+        count: parsed?.count ?? null,
+        error: {
+          message: serverMsg,
+          code: parsed?.error?.code || String(res.status),
+        },
+      };
+    }
+
+    if (parsed && typeof parsed === 'object') {
+      return parsed as DbResponse<T>;
+    }
+
+    return {
+      data: null as T,
+      count: null,
+      error: { message: 'Respuesta inválida del servidor de base de datos.' },
+    };
+  } catch (err: any) {
+    const isAbort = err?.name === 'AbortError';
+    return {
+      data: null as T,
+      count: null,
+      error: {
+        message: isAbort
+          ? 'Tiempo de espera agotado conectando con la base de datos.'
+          : err?.message || 'Error de conexión con la base de datos',
+      },
+    };
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+export async function executeCustomDbAction<T = any>(
+  body: Record<string, unknown>,
+  timeoutMs = 15000
+): Promise<DbResponse<T>> {
+  return postDbRequest<T>(body, timeoutMs);
+}
+
 function fileToBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -163,35 +232,22 @@ class NeonQueryBuilder<T = any[]> implements PromiseLike<DbResponse<T>> {
   private exec(): Promise<DbResponse<T>> {
     if (this.pendingPromise) return this.pendingPromise;
     this.pendingPromise = (async () => {
-      try {
-        const res = await fetch('/api/db', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            table: this.table,
-            action: this.action,
-            columns: this.columns,
-            head: this.head,
-            count: this.countMode,
-            filters: this.filters,
-            order: this.orders,
-            limit: this.limitVal,
-            single: this.singleMode,
-            maybeSingle: this.maybeSingleMode,
-            payload: this.payloadVal,
-            onConflict: this.onConflictCol,
-            returning: this.returning,
-          }),
-        });
-        const json = await res.json();
-        return json as DbResponse<T>;
-      } catch (err: any) {
-        return {
-          data: (this.singleMode || this.maybeSingleMode ? null : []) as T,
-          count: null,
-          error: { message: err?.message || 'Error de conexión con la base de datos' },
-        };
-      }
+      const res = await postDbRequest<T>({
+        table: this.table,
+        action: this.action,
+        columns: this.columns,
+        head: this.head,
+        count: this.countMode,
+        filters: this.filters,
+        order: this.orders,
+        limit: this.limitVal,
+        single: this.singleMode,
+        maybeSingle: this.maybeSingleMode,
+        payload: this.payloadVal,
+        onConflict: this.onConflictCol,
+        returning: this.returning,
+      });
+      return res;
     })();
     return this.pendingPromise;
   }

@@ -35,10 +35,9 @@ import {
 } from 'lucide-react';
 import type { ReciboCliente, TipoReciboCliente, MetodoPagoCliente } from '../../types/recibos';
 import {
-  supabaseGetRecibosClientes,
-  supabaseSaveReciboCliente,
+  supabaseLoadHonorariosData,
+  supabaseEmitirReciboCliente,
   supabaseDeleteReciboCliente,
-  supabaseGetNextCorrelativoRecibo,
   supabaseGetExpedientes,
   checkIsJefatura,
   checkIsSistemas,
@@ -330,7 +329,9 @@ export default function ModuloRecibosHonorarios({
   const [recibos, setRecibos] = useState<ReciboCliente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [nextCorrelativo, setNextCorrelativo] = useState<string>('RD-REC-2026-001');
+  const [nextCorrelativo, setNextCorrelativo] = useState<string>(`RD-REC-${new Date().getFullYear()}-001`);
+  const [correlativoLoaded, setCorrelativoLoaded] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Expedientes de la firma
   const [expedientesList, setExpedientesList] = useState<any[]>(() => {
@@ -396,15 +397,41 @@ export default function ModuloRecibosHonorarios({
   const [viewModeGastos, setViewModeGastos] = useState<'documento' | 'texto'>('documento');
 
   // Cargar datos al montar
-  const loadRecibos = async () => {
+  const loadRecibos = async (showErrorModal = false) => {
     setLoading(true);
     try {
-      const data = await supabaseGetRecibosClientes();
-      setRecibos(data);
-      const nextNum = await supabaseGetNextCorrelativoRecibo();
-      setNextCorrelativo(nextNum);
-    } catch (e) {
-      console.warn('Error al cargar recibos:', e);
+      const res = await supabaseLoadHonorariosData();
+      setRecibos(res.recibos);
+      setNextCorrelativo(res.nextCorrelativo);
+      if (res.cloudSynced) {
+        setCorrelativoLoaded(true);
+        setSyncError(null);
+      } else {
+        const msg = res.error || 'No se pudo sincronizar el correlativo con la base de datos.';
+        setCorrelativoLoaded(false);
+        setSyncError(msg);
+        if (showErrorModal) {
+          setAlert({
+            isOpen: true,
+            type: 'error',
+            title: 'Error de Conexión con Base de Datos',
+            message: msg,
+          });
+        }
+      }
+    } catch (e: any) {
+      const msg = e?.message || 'Error al cargar recibos desde la base de datos.';
+      console.error('Error al cargar recibos:', e);
+      setCorrelativoLoaded(false);
+      setSyncError(msg);
+      if (showErrorModal) {
+        setAlert({
+          isOpen: true,
+          type: 'error',
+          title: 'Error al Cargar Recibos',
+          message: msg,
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -527,13 +554,34 @@ export default function ModuloRecibosHonorarios({
 
     setIsSaving(true);
     try {
+      let correlativoParaEmitir = nextCorrelativo;
+      if (!correlativoLoaded) {
+        const syncCheck = await supabaseLoadHonorariosData();
+        setRecibos(syncCheck.recibos);
+        setNextCorrelativo(syncCheck.nextCorrelativo);
+        if (!syncCheck.cloudSynced) {
+          const errMsg = syncCheck.error || 'No se pudo verificar el correlativo oficial en la base de datos.';
+          setSyncError(errMsg);
+          setAlert({
+            isOpen: true,
+            type: 'error',
+            title: 'Sin Conexión con Base de Datos',
+            message: `No es posible emitir la factura sin confirmar el correlativo en la base de datos.\n\nDetalle: ${errMsg}`,
+          });
+          return;
+        }
+        setCorrelativoLoaded(true);
+        setSyncError(null);
+        correlativoParaEmitir = syncCheck.nextCorrelativo;
+      }
+
       const now = new Date();
       const horaStr = now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', hour12: true });
       const tasaNum = formData.tasaBcv ? parseFloat(formData.tasaBcv.replace(',', '.')) : undefined;
 
       const nuevoRecibo: ReciboCliente = {
         id: `rec_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        numeroRecibo: nextCorrelativo,
+        numeroRecibo: correlativoParaEmitir,
         tipoRecibo: formData.tipoRecibo,
         clienteNombre: formData.clienteNombre.trim(),
         clienteCedula: formData.clienteCedula.trim().toUpperCase(),
@@ -556,18 +604,19 @@ export default function ModuloRecibosHonorarios({
         created_at: now.toISOString()
       };
 
-      // 1. Guardar local y en la nube inmediatamente
-      await supabaseSaveReciboCliente(nuevoRecibo);
-      setRecibos(prev => [nuevoRecibo, ...prev]);
+      // 1. Guardar factura y actualizar correlativo atómicamente en PostgreSQL
+      const savedResult = await supabaseEmitirReciboCliente(nuevoRecibo);
+      const savedRecibo = savedResult.recibo;
 
-      // 2. Calcular siguiente correlativo en memoria al instante
-      const parts = nextCorrelativo.split('-');
-      const lastSeq = parseInt(parts[parts.length - 1] || '0', 10);
-      const nextSeq = (lastSeq + 1).toString().padStart(3, '0');
-      const nextNum = `RD-REC-${new Date().getFullYear()}-${nextSeq}`;
-      setNextCorrelativo(nextNum);
+      setRecibos(prev => [
+        savedRecibo,
+        ...prev.filter(r => r.id !== savedRecibo.id && r.numeroRecibo !== savedRecibo.numeroRecibo)
+      ]);
+      setNextCorrelativo(savedResult.nextCorrelativo);
+      setCorrelativoLoaded(true);
+      setSyncError(null);
 
-      // 3. Reiniciar formulario
+      // 2. Reiniciar formulario solo tras confirmar guardado en BD
       setFormData({
         tipoRecibo: 'Honorarios Profesionales',
         clienteNombre: '',
@@ -578,7 +627,7 @@ export default function ModuloRecibosHonorarios({
         concepto: '',
         monto: '',
         moneda: 'USD',
-        tasaBcv: getInitialBcvRate(),
+        tasaBcv: formData.tasaBcv || getInitialBcvRate(),
         metodoPago: 'Efectivo Divisas ($)',
         bancoDestino: '',
         referenciaPago: '',
@@ -587,25 +636,31 @@ export default function ModuloRecibosHonorarios({
       });
       setIsCustomExpediente(false);
 
-      // 4. Mostrar alerta de éxito de inmediato sin esperas
+      // 3. Mostrar alerta de éxito confirmada
+      const reasignadoMsg = savedRecibo.numeroRecibo !== correlativoParaEmitir
+        ? `\n\nNota: El correlativo fue ajustado automáticamente a ${savedRecibo.numeroRecibo} para evitar duplicados.`
+        : '';
       setAlert({
         isOpen: true,
         type: 'success',
         title: '¡Recibo Emitido con Éxito!',
-        message: `Se generó el recibo ${nuevoRecibo.numeroRecibo} por ${nuevoRecibo.moneda === 'USD' ? `$${nuevoRecibo.monto}` : `Bs. ${nuevoRecibo.monto}`}. El PDF oficial se descargó automáticamente.`
+        message: `Se guardó en la base de datos el recibo ${savedRecibo.numeroRecibo} por ${savedRecibo.moneda === 'USD' ? `$${savedRecibo.monto}` : `Bs. ${savedRecibo.monto}`}. El PDF oficial se descargó automáticamente.${reasignadoMsg}`
       });
 
-      // 5. Generar y descargar el PDF en segundo plano (no congela el botón)
-      exportarReciboClientePDF(nuevoRecibo).catch(pdfErr => {
+      // 4. Generar y descargar el PDF con el número correlativo definitivo confirmado por Postgres
+      exportarReciboClientePDF(savedRecibo).catch(pdfErr => {
         console.warn('Descarga de PDF diferida:', pdfErr);
       });
 
     } catch (err: any) {
+      const errMsg = err?.message || 'Error desconocido al guardar en la base de datos.';
+      console.error('Error emitiendo recibo de honorarios:', err);
+      setSyncError(errMsg);
       setAlert({
         isOpen: true,
         type: 'error',
-        title: 'Error al Emitir',
-        message: 'No se pudo guardar el recibo. Intenta nuevamente.'
+        title: 'Error al Emitir Recibo',
+        message: `No se pudo guardar la factura ni el correlativo en la base de datos.\n\nDetalle: ${errMsg}`
       });
     } finally {
       setIsSaving(false);
@@ -631,14 +686,23 @@ export default function ModuloRecibosHonorarios({
       message: `¿Estás seguro de que deseas anular el recibo ${recibo.numeroRecibo} de ${recibo.clienteNombre}? Esta acción eliminará el registro contable de forma definitiva.`,
       showCancel: true,
       onConfirm: async () => {
-        await supabaseDeleteReciboCliente(recibo.id, recibo.numeroRecibo);
-        setRecibos(prev => prev.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo));
-        setAlert({
-          isOpen: true,
-          type: 'info',
-          title: 'Recibo Anulado',
-          message: `El recibo ${recibo.numeroRecibo} ha sido eliminado del sistema contable.`
-        });
+        try {
+          await supabaseDeleteReciboCliente(recibo.id, recibo.numeroRecibo, recibo.cloudId);
+          setRecibos(prev => prev.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo));
+          setAlert({
+            isOpen: true,
+            type: 'info',
+            title: 'Recibo Anulado',
+            message: `El recibo ${recibo.numeroRecibo} ha sido eliminado del sistema contable.`
+          });
+        } catch (err: any) {
+          setAlert({
+            isOpen: true,
+            type: 'error',
+            title: 'Error al Anular Recibo',
+            message: `No se pudo eliminar el recibo en la base de datos.\n\nDetalle: ${err?.message || 'Error desconocido'}`
+          });
+        }
       }
     });
   };
@@ -769,7 +833,7 @@ export default function ModuloRecibosHonorarios({
 
             <button
               type="button"
-              onClick={loadRecibos}
+              onClick={() => loadRecibos(true)}
               disabled={loading}
               className="px-4 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 active:scale-95 text-slate-700 border border-slate-200 font-bold text-xs flex items-center gap-2 shadow-2xs transition-all cursor-pointer"
               title="Sincronizar recibos con la nube"
@@ -826,6 +890,26 @@ export default function ModuloRecibosHonorarios({
           </div>
         </div>
       </div>
+
+      {/* ALERTA DE ERROR DE SINCRONIZACIÓN CON BASE DE DATOS */}
+      {syncError && (
+        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-rose-900 shadow-2xs">
+          <div className="space-y-0.5">
+            <p className="font-black text-rose-800 uppercase tracking-wider text-[11px]">
+              Error de Base de Datos (Honorarios)
+            </p>
+            <p className="font-medium text-rose-700 break-words">{syncError}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => loadRecibos(true)}
+            disabled={loading}
+            className="px-3.5 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shrink-0 cursor-pointer transition-all"
+          >
+            Reintentar Conexión
+          </button>
+        </div>
+      )}
 
       {/* MÉTRICAS RÁPIDAS DE FACTURACIÓN (4 TARJETAS KPI EJECUTIVAS) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -1335,7 +1419,7 @@ export default function ModuloRecibosHonorarios({
 
                   <button
                     type="submit"
-                    disabled={isSaving}
+                    disabled={isSaving || (loading && !correlativoLoaded)}
                     className="w-full sm:w-auto px-7 py-3.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold text-xs sm:text-sm rounded-2xl shadow-md shadow-blue-600/20 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-2.5"
                   >
                     {isSaving ? (
@@ -1544,7 +1628,7 @@ export default function ModuloRecibosHonorarios({
 
               <button
                 type="button"
-                onClick={loadRecibos}
+                onClick={() => loadRecibos(true)}
                 title="Actualizar lista"
                 className="p-2.5 text-slate-600 hover:text-blue-600 bg-slate-50 hover:bg-blue-50 rounded-xl border border-slate-200 transition-colors cursor-pointer self-end sm:self-auto"
               >

@@ -15,6 +15,7 @@ export type MetodoPagoCliente =
 
 export interface ReciboCliente {
   id: string;
+  cloudId?: string;              // UUID del registro en la base de datos (investigaciones_kant.id)
   numeroRecibo: string;          // ej: "RD-REC-2026-001"
   tipoRecibo: TipoReciboCliente;  // Honorarios o Gastos
   clienteNombre: string;         // ej: "Aquiles..."

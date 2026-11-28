@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, executeCustomDbAction } from './supabase';
 import { type ReciboNomina, type PlantillaEmpleadoNomina, EMPLEADOS_NOMINA_DEFAULT } from '../types/nomina';
 import type { ReciboCliente } from '../types/recibos';
 
@@ -1822,7 +1822,7 @@ export async function supabaseGetInvestigaciones(): Promise<any[]> {
   const { data, error } = await supabase
     .from('investigaciones_kant')
     .select('id, titulo, categoria, contenido, autor, tags, created_at, archivos_url')
-    .not('categoria', 'in', '("recibo_nomina","notificacion_empleado","recibo_honorario")')
+    .not('categoria', 'in', '("recibo_nomina","notificacion_empleado","recibo_honorario","correlativo_honorario")')
     .order('created_at', { ascending: false })
     .limit(30);
 
@@ -3252,132 +3252,231 @@ export async function supabasePurgarUsuarioDefinitivo(deletedId: string): Promis
 // 14. RECIBOS DE HONORARIOS Y CLIENTES (ROMÁN & DELGADO)
 // -------------------------------------------------------------
 const STORAGE_KEY_RECIBOS_CLIENTES = 'rd_recibos_clientes_v1';
+const STORAGE_KEY_CORRELATIVO_HONORARIOS = 'rd_correlativo_honorario_v1';
 
-export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
-  const recibosMap = new Map<string, ReciboCliente>();
+export interface HonorariosSyncData {
+  recibos: ReciboCliente[];
+  nextCorrelativo: string;
+  cloudSynced: boolean;
+  error?: string;
+}
 
-  // 1. Cargar desde almacenamiento local
+export interface EmitirReciboResult {
+  recibo: ReciboCliente;
+  correlativoAsignado: string;
+  nextCorrelativo: string;
+  seq: number;
+}
+
+function readLocalRecibosClientes(): ReciboCliente[] {
   try {
     const localRaw = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
     if (localRaw) {
       const parsed: ReciboCliente[] = JSON.parse(localRaw);
       if (Array.isArray(parsed)) {
-        parsed.forEach(r => {
-          if (r && (r.id || r.numeroRecibo)) recibosMap.set(r.id || r.numeroRecibo, r);
-        });
+        return parsed.filter(r => Boolean(r && (r.id || r.numeroRecibo)));
       }
     }
-  } catch (e) {}
+  } catch { }
+  return [];
+}
 
-  // 2. Cargar desde la nube (investigaciones_kant con categoria 'recibo_honorario')
-  try {
-    const { data, error } = await supabase
-      .from('investigaciones_kant')
-      .select('id, titulo, contenido, created_at, autor')
-      .eq('categoria', 'recibo_honorario')
-      .order('created_at', { ascending: false })
-      .limit(200);
-
-    if (!error && Array.isArray(data)) {
-      // Reconciliar con la nube: si un recibo fue eliminado en Supabase, purgarlo localmente
-      const cloudMap = new Map<string, ReciboCliente>();
-      data.forEach(item => {
-        try {
-          if (item.contenido) {
-            const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
-            if (parsed && (parsed.id || parsed.numeroRecibo)) {
-              cloudMap.set(parsed.id || parsed.numeroRecibo, parsed);
-            }
-          }
-        } catch (e) {}
-      });
-      recibosMap.clear();
-      cloudMap.forEach((v, k) => recibosMap.set(k, v));
+function computeNextCorrelativoFromList(recibos: ReciboCliente[], year: number): string {
+  const prefix = `RD-REC-${year}-`;
+  let maxNum = 0;
+  recibos.forEach(r => {
+    const numStr = r.numeroRecibo || '';
+    if (numStr.startsWith(prefix)) {
+      const tail = numStr.slice(prefix.length).split('-')[0];
+      const num = parseInt(tail, 10);
+      if (!isNaN(num) && num > maxNum) {
+        maxNum = num;
+      }
     }
-  } catch (e) {
-    console.warn('Error sincronizando recibos de clientes desde Supabase:', e);
-  }
+  });
+  return `${prefix}${(maxNum + 1).toString().padStart(3, '0')}`;
+}
 
-  // 3. Ordenar cronológicamente (más recientes primero)
-  const lista = Array.from(recibosMap.values()).sort((a, b) => {
-    const tA = new Date(a.created_at || a.fecha).getTime();
-    const tB = new Date(b.created_at || b.fecha).getTime();
+function sortRecibosClientesDesc(list: ReciboCliente[]): ReciboCliente[] {
+  return [...list].sort((a, b) => {
+    const tA = new Date(a.created_at || a.fecha).getTime() || 0;
+    const tB = new Date(b.created_at || b.fecha).getTime() || 0;
     return tB - tA;
   });
+}
+
+export async function supabaseLoadHonorariosData(targetYear?: number): Promise<HonorariosSyncData> {
+  const year = targetYear || new Date().getFullYear();
+
+  const [recibosRes, corrRes] = await Promise.all([
+    supabase
+      .from('investigaciones_kant')
+      .select('id, contenido')
+      .eq('categoria', 'recibo_honorario')
+      .order('created_at', { ascending: false })
+      .limit(500),
+    executeCustomDbAction<{ year: number; lastSeq: number; nextSeq: number; nextCorrelativo: string }>({
+      table: 'investigaciones_kant',
+      action: 'get_honorarios_correlativo',
+      year,
+    }),
+  ]);
+
+  const dbErrorMsg = recibosRes.error?.message || corrRes.error?.message;
+  if (dbErrorMsg) {
+    console.error('Error cargando Honorarios desde Postgres:', dbErrorMsg);
+    const localList = sortRecibosClientesDesc(readLocalRecibosClientes());
+    const fallbackCorr = computeNextCorrelativoFromList(localList, year);
+    return {
+      recibos: localList,
+      nextCorrelativo: fallbackCorr,
+      cloudSynced: false,
+      error: dbErrorMsg,
+    };
+  }
+
+  const cloudMap = new Map<string, ReciboCliente>();
+  const rows = Array.isArray(recibosRes.data) ? recibosRes.data : [];
+  rows.forEach((item: any) => {
+    try {
+      if (!item?.contenido) return;
+      const parsed = typeof item.contenido === 'string' ? JSON.parse(item.contenido) : item.contenido;
+      if (parsed && (parsed.id || parsed.numeroRecibo)) {
+        const key = String(parsed.id || parsed.numeroRecibo);
+        cloudMap.set(key, { ...parsed, cloudId: item.id || parsed.cloudId });
+      }
+    } catch { }
+  });
+
+  const lista = sortRecibosClientesDesc(Array.from(cloudMap.values()));
+  const nextCorrelativo = corrRes.data?.nextCorrelativo || computeNextCorrelativoFromList(lista, year);
 
   try {
     localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(lista));
-  } catch (e) {}
+    localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, nextCorrelativo);
+  } catch { }
 
-  return lista;
+  return {
+    recibos: lista,
+    nextCorrelativo,
+    cloudSynced: true,
+  };
+}
+
+export async function supabaseGetRecibosClientes(): Promise<ReciboCliente[]> {
+  const res = await supabaseLoadHonorariosData();
+  return res.recibos;
+}
+
+export async function supabaseEmitirReciboCliente(
+  recibo: ReciboCliente,
+  targetYear?: number
+): Promise<EmitirReciboResult> {
+  const res = await executeCustomDbAction<EmitirReciboResult>(
+    {
+      table: 'investigaciones_kant',
+      action: 'emit_recibo_honorario',
+      recibo,
+      year: targetYear,
+    },
+    15000
+  );
+
+  if (res.error || !res.data?.recibo) {
+    const errMsg = res.error?.message || 'La base de datos no confirmó el guardado del recibo ni del correlativo.';
+    console.error('Error emitiendo recibo de honorarios en Postgres:', res.error || res);
+    throw new Error(errMsg);
+  }
+
+  const savedRecibo = res.data.recibo;
+  const nextCorrelativo = res.data.nextCorrelativo;
+
+  // Actualizar respaldo local solo después de confirmar persistencia real en la nube
+  try {
+    const current = readLocalRecibosClientes();
+    const filtered = current.filter(
+      r => r.id !== savedRecibo.id && r.numeroRecibo !== savedRecibo.numeroRecibo
+    );
+    filtered.unshift(savedRecibo);
+    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+    if (nextCorrelativo) {
+      localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, nextCorrelativo);
+    }
+  } catch { }
+
+  return res.data;
 }
 
 export async function supabaseSaveReciboCliente(recibo: ReciboCliente): Promise<boolean> {
-  try {
-    // 1. Guardar localmente de inmediato (0ms de latencia para el usuario)
-    let current: ReciboCliente[] = [];
-    try {
-      const local = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
-      if (local) current = JSON.parse(local);
-    } catch {}
-    const filtered = current.filter(r => r.id !== recibo.id && r.numeroRecibo !== recibo.numeroRecibo);
-    filtered.unshift(recibo);
-    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
-
-    // 2. Guardar en Supabase en segundo plano con timeout protegido de 4s
-    const invPayload = {
-      titulo: `${recibo.numeroRecibo} - ${recibo.clienteNombre} (${recibo.moneda} ${recibo.monto})`,
-      categoria: 'recibo_honorario',
-      contenido: JSON.stringify(recibo),
-      autor: recibo.abogadoReceptor || 'Román & Delgado',
-      tags: ['recibo', recibo.moneda, recibo.tipoRecibo, recibo.clienteNombre]
-    };
-
-    Promise.race([
-      supabase.from('investigaciones_kant').insert(invPayload),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout inserción')), 4000))
-    ]).catch(err => {
-      console.warn('Inserción en Supabase diferida:', err);
-    });
-
-    return true;
-  } catch (err) {
-    console.error('Error al guardar recibo de cliente:', err);
-    return true;
-  }
+  await supabaseEmitirReciboCliente(recibo);
+  return true;
 }
 
-export async function supabaseDeleteReciboCliente(reciboId: string, numeroRecibo?: string): Promise<boolean> {
-  try {
-    // 1. Actualizar localmente de inmediato
-    let current: ReciboCliente[] = [];
-    try {
-      const local = localStorage.getItem(STORAGE_KEY_RECIBOS_CLIENTES);
-      if (local) current = JSON.parse(local);
-    } catch {}
-    const filtered = current.filter(r => r.id !== reciboId && r.numeroRecibo !== numeroRecibo);
-    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+export async function supabaseDeleteReciboCliente(
+  reciboId: string,
+  numeroRecibo?: string,
+  cloudId?: string
+): Promise<boolean> {
+  let deleteError: string | null = null;
+  let deletedCount = 0;
 
-    // 2. Eliminar de Supabase en segundo plano
-    if (numeroRecibo) {
-      (async () => {
-        try {
-          await supabase
-            .from('investigaciones_kant')
-            .delete()
-            .eq('categoria', 'recibo_honorario')
-            .ilike('titulo', `%${numeroRecibo}%`);
-        } catch (err) {
-          console.warn('Error eliminando recibo en nube:', err);
-        }
-      })();
-    }
-
-    return true;
-  } catch (err) {
-    console.error('Error al eliminar recibo de cliente:', err);
-    return false;
+  if (cloudId) {
+    const { data, error } = await supabase
+      .from('investigaciones_kant')
+      .delete()
+      .eq('id', cloudId)
+      .eq('categoria', 'recibo_honorario')
+      .select('id');
+    if (error) deleteError = error.message;
+    else deletedCount = Array.isArray(data) ? data.length : 0;
   }
+
+  if (!deleteError && deletedCount === 0 && numeroRecibo) {
+    const { data, error } = await supabase
+      .from('investigaciones_kant')
+      .delete()
+      .eq('categoria', 'recibo_honorario')
+      .ilike('titulo', `${numeroRecibo} - %`)
+      .select('id');
+    if (error) deleteError = error.message;
+    else deletedCount = Array.isArray(data) ? data.length : 0;
+
+    if (!deleteError && deletedCount === 0) {
+      const { data: fallbackData, error: fallbackErr } = await supabase
+        .from('investigaciones_kant')
+        .delete()
+        .eq('categoria', 'recibo_honorario')
+        .ilike('contenido', `%"numeroRecibo":"${numeroRecibo}"%`)
+        .select('id');
+      if (fallbackErr) deleteError = fallbackErr.message;
+      else deletedCount = Array.isArray(fallbackData) ? fallbackData.length : 0;
+    }
+  }
+
+  if (!deleteError && deletedCount === 0 && reciboId) {
+    const { error } = await supabase
+      .from('investigaciones_kant')
+      .delete()
+      .eq('categoria', 'recibo_honorario')
+      .ilike('contenido', `%"id":"${reciboId}"%`)
+      .select('id');
+    if (error) deleteError = error.message;
+  }
+
+  if (deleteError) {
+    console.error('Error eliminando recibo de honorarios en Postgres:', deleteError);
+    throw new Error(deleteError);
+  }
+
+  try {
+    const current = readLocalRecibosClientes();
+    const filtered = current.filter(
+      r => r.id !== reciboId && (!numeroRecibo || r.numeroRecibo !== numeroRecibo)
+    );
+    localStorage.setItem(STORAGE_KEY_RECIBOS_CLIENTES, JSON.stringify(filtered));
+  } catch { }
+
+  return true;
 }
 
 /**
@@ -3386,29 +3485,24 @@ export async function supabaseDeleteReciboCliente(reciboId: string, numeroRecibo
  */
 export async function supabaseGetNextCorrelativoRecibo(targetYear?: number): Promise<string> {
   const year = targetYear || new Date().getFullYear();
-  const prefix = `RD-REC-${year}-`;
+  const res = await executeCustomDbAction<{ nextCorrelativo: string }>({
+    table: 'investigaciones_kant',
+    action: 'get_honorarios_correlativo',
+    year,
+  });
 
-  try {
-    const recibos = await supabaseGetRecibosClientes();
-    let maxNum = 0;
-
-    recibos.forEach(r => {
-      const numStr = r.numeroRecibo || '';
-      if (numStr.startsWith(prefix)) {
-        const parts = numStr.split('-');
-        const lastPart = parts[parts.length - 1];
-        const num = parseInt(lastPart, 10);
-        if (!isNaN(num) && num > maxNum) {
-          maxNum = num;
-        }
-      }
-    });
-
-    const nextSeq = (maxNum + 1).toString().padStart(3, '0');
-    return `${prefix}${nextSeq}`;
-  } catch (e) {
-    return `${prefix}001`;
+  if (!res.error && res.data?.nextCorrelativo) {
+    try {
+      localStorage.setItem(STORAGE_KEY_CORRELATIVO_HONORARIOS, res.data.nextCorrelativo);
+    } catch { }
+    return res.data.nextCorrelativo;
   }
+
+  if (res.error) {
+    console.error('Error consultando correlativo de honorarios:', res.error.message);
+  }
+
+  return computeNextCorrelativoFromList(readLocalRecibosClientes(), year);
 }
 
 

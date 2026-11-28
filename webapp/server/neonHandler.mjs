@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { neon, types as neonTypes } from '@neondatabase/serverless';
 import pg from 'pg';
 
@@ -167,6 +168,7 @@ const TABLE_SCHEMA = {
 };
 
 const poolCache = new Map();
+const schemaCache = new Map();
 
 function getSql(dbUrl) {
   const url = dbUrl || process.env.DATABASE_URL;
@@ -176,18 +178,24 @@ function getSql(dbUrl) {
 
   // Usar driver serverless HTTP cuando el destino sea Neon; en cualquier otro PostgreSQL (Supabase Pooler, Aiven, local) usar pg.Pool
   if (url.includes('.neon.tech')) {
-    return neon(url);
+    const neonSql = neon(url);
+    return {
+      isNeonHttp: true,
+      url,
+      query: (text, queryParams = []) => neonSql.query(text, queryParams),
+    };
   }
 
   let pool = poolCache.get(url);
   if (!pool) {
     const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+    const disableSsl = url.includes('sslmode=disable');
     pool = new pg.Pool({
       connectionString: url,
       max: 3,
       idleTimeoutMillis: 10000,
       connectionTimeoutMillis: 10000,
-      ssl: isLocal ? false : { rejectUnauthorized: false },
+      ssl: isLocal || disableSsl ? false : { rejectUnauthorized: false },
     });
     pool.on('error', (err) => {
       console.error('[Postgres Pool] Error en conexión inactiva:', err?.message || err);
@@ -196,11 +204,82 @@ function getSql(dbUrl) {
   }
 
   return {
+    isNeonHttp: false,
+    url,
     query: async (text, queryParams = []) => {
       const res = await pool.query(text, queryParams);
       return res.rows;
     },
+    withTransaction: async (fn) => {
+      const client = await pool.connect();
+      try {
+        await client.query('BEGIN');
+        const txQuery = async (text, queryParams = []) => {
+          const res = await client.query(text, queryParams);
+          return res.rows;
+        };
+        const result = await fn(txQuery);
+        await client.query('COMMIT');
+        return result;
+      } catch (err) {
+        try {
+          await client.query('ROLLBACK');
+        } catch (rbErr) {
+          console.error('[Postgres Pool] Error en ROLLBACK:', rbErr?.message || rbErr);
+        }
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
   };
+}
+
+function buildFallbackColumnInfo(table) {
+  const tableMeta = TABLE_SCHEMA[table];
+  const out = {};
+  if (!tableMeta) return out;
+  for (const [colName, colType] of Object.entries(tableMeta.cols)) {
+    out[colName] = {
+      udtName: colType === 'text[]' ? '_text' : colType,
+      dataType: colType,
+      isNullable: true,
+      hasDefault: true,
+    };
+  }
+  return out;
+}
+
+async function getTableColumnInfo(queryFn, dbUrl, table) {
+  const cacheKey = `${dbUrl || 'env'}::${table}`;
+  const cached = schemaCache.get(cacheKey);
+  if (cached) return cached;
+
+  try {
+    const rows = await queryFn(
+      `SELECT column_name, data_type, udt_name, is_nullable, column_default
+       FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = $1`,
+      [table]
+    );
+    if (Array.isArray(rows) && rows.length > 0) {
+      const colInfoMap = {};
+      for (const r of rows) {
+        colInfoMap[r.column_name] = {
+          udtName: String(r.udt_name || r.data_type || 'text').toLowerCase(),
+          dataType: String(r.data_type || '').toLowerCase(),
+          isNullable: r.is_nullable === 'YES',
+          hasDefault: r.column_default !== null && r.column_default !== undefined,
+        };
+      }
+      schemaCache.set(cacheKey, colInfoMap);
+      return colInfoMap;
+    }
+  } catch (err) {
+    console.warn(`[Schema Inspect ${table}] Fallback a TABLE_SCHEMA:`, err?.message || err);
+  }
+
+  return buildFallbackColumnInfo(table);
 }
 
 function resolveColumnRef(tableMeta, rawCol, allowJsonPath = true) {
@@ -377,6 +456,94 @@ function normalizeWriteValue(colType, val) {
   return val;
 }
 
+function normalizeColumnWrite(colMeta, val, params) {
+  const udt = String(colMeta?.udtName || 'text').toLowerCase();
+  const pushParam = (v, cast = '') => {
+    params.push(v);
+    return `$${params.length}${cast}`;
+  };
+
+  if (val === undefined || val === null) {
+    return pushParam(null);
+  }
+
+  if (udt === 'jsonb' || udt === 'json') {
+    let jsonStr;
+    if (typeof val === 'string') {
+      try {
+        JSON.parse(val);
+        jsonStr = val;
+      } catch {
+        jsonStr = JSON.stringify(val);
+      }
+    } else {
+      jsonStr = JSON.stringify(val);
+    }
+    return pushParam(jsonStr, `::${udt}`);
+  }
+
+  if (udt === '_text' || udt === 'text[]') {
+    let arr;
+    if (Array.isArray(val)) {
+      arr = val.filter((v) => v !== undefined && v !== null).map(String);
+    } else if (typeof val === 'string') {
+      const trimmed = val.trim();
+      if (trimmed.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          arr = Array.isArray(parsed) ? parsed.filter((v) => v !== undefined && v !== null).map(String) : [trimmed];
+        } catch {
+          arr = [trimmed];
+        }
+      } else {
+        arr = trimmed ? [trimmed] : [];
+      }
+    } else {
+      arr = [String(val)];
+    }
+    return pushParam(arr, '::text[]');
+  }
+
+  if ((udt === 'date' || udt === 'uuid' || udt === 'numeric' || udt === 'timestamptz' || udt === 'timestamp' || udt === 'int8' || udt === 'int4') && val === '') {
+    return pushParam(null);
+  }
+
+  if ((udt === 'text' || udt === 'varchar' || udt === 'bpchar') && (Array.isArray(val) || (typeof val === 'object' && !(val instanceof Date)))) {
+    return pushParam(JSON.stringify(val));
+  }
+
+  return pushParam(val);
+}
+
+function prepareRowForInsert(row, colInfoMap, isPureInsert) {
+  const out = { ...row };
+  const nowIso = new Date().toISOString();
+
+  if (colInfoMap?.id && (out.id === undefined || out.id === null || out.id === '')) {
+    const idUdt = colInfoMap.id.udtName;
+    const needsId = isPureInsert
+      ? (idUdt === 'uuid' || (!colInfoMap.id.hasDefault && !colInfoMap.id.isNullable && (idUdt === 'text' || idUdt === 'varchar')))
+      : (!colInfoMap.id.hasDefault && !colInfoMap.id.isNullable && (idUdt === 'uuid' || idUdt === 'text' || idUdt === 'varchar'));
+    if (needsId) {
+      out.id = crypto.randomUUID();
+    }
+  }
+
+  if (colInfoMap?.created_at && (out.created_at === undefined || out.created_at === null || out.created_at === '')) {
+    if (!colInfoMap.created_at.hasDefault && !colInfoMap.created_at.isNullable) {
+      out.created_at = nowIso;
+    }
+  }
+
+  if (colInfoMap?.archivos_url && (out.archivos_url === undefined || out.archivos_url === null)) {
+    if (!colInfoMap.archivos_url.hasDefault && !colInfoMap.archivos_url.isNullable) {
+      out.archivos_url = [];
+    }
+  }
+
+  return out;
+}
+
 function normalizeResponseRow(row, tableMeta) {
   if (!row || typeof row !== 'object') return row;
   const out = { ...row };
@@ -390,6 +557,226 @@ function normalizeResponseRow(row, tableMeta) {
   return out;
 }
 
+function formatCorrelativoCode(year, seq) {
+  return `RD-REC-${year}-${String(seq).padStart(3, '0')}`;
+}
+
+async function computeHonorariosSeqState(queryFn, rawYear) {
+  const targetYear = Number(rawYear) || new Date().getFullYear();
+  const prefix = `RD-REC-${targetYear}-`;
+  const correlativoTitulo = `CORRELATIVO_RECIBOS_${targetYear}`;
+
+  const counterRows = await queryFn(
+    `SELECT id, contenido, created_at
+     FROM public.investigaciones_kant
+     WHERE categoria = $1 AND titulo = $2
+     ORDER BY created_at DESC
+     LIMIT 10`,
+    ['correlativo_honorario', correlativoTitulo]
+  );
+
+  let storedLastSeq = 0;
+  for (const row of counterRows || []) {
+    if (!row?.contenido) continue;
+    try {
+      const parsed = typeof row.contenido === 'string' ? JSON.parse(row.contenido) : row.contenido;
+      const candidate = Number(parsed?.lastSeq ?? parsed?.ultimoCorrelativo ?? 0);
+      if (!isNaN(candidate) && candidate > storedLastSeq) {
+        storedLastSeq = candidate;
+      }
+    } catch {
+      const m = String(row.contenido).match(/"lastSeq"\s*:\s*(\d+)/);
+      if (m) {
+        const candidate = parseInt(m[1], 10);
+        if (!isNaN(candidate) && candidate > storedLastSeq) storedLastSeq = candidate;
+      }
+    }
+  }
+
+  const titlePattern = `^RD-REC-${targetYear}-([0-9]{1,9})`;
+  const jsonPattern = `"numeroRecibo"\\s*:\\s*"RD-REC-${targetYear}-([0-9]{1,9})"`;
+  const maxRows = await queryFn(
+    `SELECT COALESCE(MAX(
+       GREATEST(
+         COALESCE(NULLIF(substring("titulo" FROM $2), '')::int, 0),
+         COALESCE(NULLIF(substring("contenido" FROM $3), '')::int, 0)
+       )
+     ), 0)::int AS max_seq
+     FROM public.investigaciones_kant
+     WHERE categoria = $1`,
+    ['recibo_honorario', titlePattern, jsonPattern]
+  );
+
+  const maxExistingSeq = Number(maxRows?.[0]?.max_seq) || 0;
+
+  const currentMax = Math.max(storedLastSeq, maxExistingSeq);
+  return {
+    year: targetYear,
+    prefix,
+    correlativoTitulo,
+    counterRowId: counterRows?.[0]?.id || null,
+    storedLastSeq,
+    maxExistingSeq,
+    currentMax,
+  };
+}
+
+async function insertInvestigacionesRow(queryFn, colInfoMap, rowObj, returning = false) {
+  const prepared = prepareRowForInsert(rowObj, colInfoMap, true);
+  const keys = Object.keys(prepared).filter((k) => Boolean(colInfoMap?.[k]));
+  if (keys.length === 0) {
+    throw new Error('No se encontraron columnas válidas en public.investigaciones_kant.');
+  }
+  const params = [];
+  const placeholders = keys.map((k) => normalizeColumnWrite(colInfoMap[k], prepared[k], params));
+  const colSql = keys.map((k) => `"${k}"`).join(', ');
+  const retSql = returning ? 'RETURNING id, titulo, created_at' : '';
+  const query = `INSERT INTO public."investigaciones_kant" (${colSql}) VALUES (${placeholders.join(', ')}) ${retSql}`;
+  return await queryFn(query, params);
+}
+
+async function updateHonorariosCounterRow(queryFn, colInfoMap, counterRowId, counterJson, autor, nowIso) {
+  const fields = { contenido: counterJson };
+  if (colInfoMap?.autor) fields.autor = autor;
+  if (colInfoMap?.created_at) fields.created_at = nowIso;
+
+  const keys = Object.keys(fields).filter((k) => Boolean(colInfoMap?.[k]));
+  const params = [];
+  const setSql = keys
+    .map((k) => `"${k}" = ${normalizeColumnWrite(colInfoMap[k], fields[k], params)}`)
+    .join(', ');
+  params.push(counterRowId);
+  const query = `UPDATE public."investigaciones_kant" SET ${setSql} WHERE "id" = $${params.length}`;
+  await queryFn(query, params);
+}
+
+async function handleEmitReciboHonorario(sql, dbUrl, body) {
+  const rawRecibo = body?.recibo;
+  if (!rawRecibo || typeof rawRecibo !== 'object') {
+    return { status: 400, body: { data: null, error: { message: 'Datos del recibo inválidos o vacíos.' } } };
+  }
+  if (!String(rawRecibo.clienteNombre || '').trim() || !String(rawRecibo.clienteCedula || '').trim()) {
+    return { status: 400, body: { data: null, error: { message: 'El recibo requiere nombre y cédula/RIF del cliente.' } } };
+  }
+  const montoNum = Number(rawRecibo.monto);
+  if (!Number.isFinite(montoNum) || montoNum <= 0) {
+    return { status: 400, body: { data: null, error: { message: 'El monto del recibo debe ser mayor a cero.' } } };
+  }
+
+  let targetYear = Number(body?.year) || 0;
+  if (!targetYear && rawRecibo.numeroRecibo) {
+    const m = String(rawRecibo.numeroRecibo).match(/^RD-REC-(\d{4})-/i);
+    if (m) targetYear = parseInt(m[1], 10);
+  }
+  if (!targetYear || targetYear < 2000 || targetYear > 2100) {
+    targetYear = new Date().getFullYear();
+  }
+
+  const effectiveUrl = dbUrl || process.env.DATABASE_URL;
+  const correlativoTitulo = `CORRELATIVO_RECIBOS_${targetYear}`;
+
+  const persistWithinQueryFn = async (queryFn, useAdvisoryLock) => {
+    const colInfoMap = await getTableColumnInfo(queryFn, effectiveUrl, 'investigaciones_kant');
+    if (useAdvisoryLock) {
+      await queryFn('SELECT pg_advisory_xact_lock(hashtext($1))', [correlativoTitulo]);
+    }
+
+    const seqState = await computeHonorariosSeqState(queryFn, targetYear);
+    const assignedSeq = seqState.currentMax + 1;
+    const assignedNumero = formatCorrelativoCode(targetYear, assignedSeq);
+    const nextCorrelativo = formatCorrelativoCode(targetYear, assignedSeq + 1);
+    const nowIso = new Date().toISOString();
+
+    const finalRecibo = {
+      ...rawRecibo,
+      monto: montoNum,
+      numeroRecibo: assignedNumero,
+      estado: rawRecibo.estado || 'Emitido',
+      created_at: rawRecibo.created_at || nowIso,
+    };
+
+    const autor = finalRecibo.abogadoReceptor || 'Román & Delgado';
+    const counterJson = JSON.stringify({
+      year: targetYear,
+      prefix: seqState.prefix,
+      lastSeq: assignedSeq,
+      lastNumero: assignedNumero,
+      nextSeq: assignedSeq + 1,
+      nextNumero: nextCorrelativo,
+      updatedAt: nowIso,
+      updatedBy: autor,
+    });
+
+    const saveCounter = async () => {
+      if (seqState.counterRowId) {
+        await updateHonorariosCounterRow(queryFn, colInfoMap, seqState.counterRowId, counterJson, autor, nowIso);
+      } else {
+        await insertInvestigacionesRow(queryFn, colInfoMap, {
+          titulo: correlativoTitulo,
+          categoria: 'correlativo_honorario',
+          contenido: counterJson,
+          autor,
+          archivos_url: [],
+          tags: ['correlativo', 'honorarios', String(targetYear)],
+          created_at: nowIso,
+        });
+      }
+    };
+
+    const receiptRowPayload = {
+      titulo: `${assignedNumero} - ${finalRecibo.clienteNombre} (${finalRecibo.moneda} ${finalRecibo.monto})`,
+      categoria: 'recibo_honorario',
+      contenido: JSON.stringify(finalRecibo),
+      autor,
+      archivos_url: [],
+      tags: ['recibo', finalRecibo.moneda, finalRecibo.tipoRecibo, finalRecibo.clienteNombre]
+        .filter((v) => v !== undefined && v !== null && String(v).trim() !== '')
+        .map(String),
+      created_at: finalRecibo.created_at,
+    };
+
+    if (useAdvisoryLock) {
+      await saveCounter();
+      const insertedRows = await insertInvestigacionesRow(queryFn, colInfoMap, receiptRowPayload, true);
+      if (!insertedRows || insertedRows.length === 0) {
+        throw new Error('PostgreSQL no devolvió el recibo insertado tras la confirmación.');
+      }
+      finalRecibo.cloudId = insertedRows[0].id;
+    } else {
+      // Driver HTTP sin transacción interactiva: insertar primero el recibo y compensar si falla el correlativo
+      const insertedRows = await insertInvestigacionesRow(queryFn, colInfoMap, receiptRowPayload, true);
+      if (!insertedRows || insertedRows.length === 0) {
+        throw new Error('La base de datos no confirmó la inserción del recibo.');
+      }
+      const insertedId = insertedRows[0].id;
+      try {
+        await saveCounter();
+      } catch (counterErr) {
+        try {
+          await queryFn('DELETE FROM public."investigaciones_kant" WHERE "id" = $1', [insertedId]);
+        } catch (cleanupErr) {
+          console.error('[NeonDB emit_recibo_honorario] Error en rollback compensatorio:', cleanupErr);
+        }
+        throw counterErr;
+      }
+      finalRecibo.cloudId = insertedId;
+    }
+
+    return {
+      recibo: finalRecibo,
+      correlativoAsignado: assignedNumero,
+      nextCorrelativo,
+      seq: assignedSeq,
+    };
+  };
+
+  const data = sql.withTransaction
+    ? await sql.withTransaction((txQuery) => persistWithinQueryFn(txQuery, true))
+    : await persistWithinQueryFn((t, p) => sql.query(t, p), false);
+
+  return { status: 200, body: { data, error: null } };
+}
+
 export async function executeDbRequest(body, dbUrl) {
   const table = String(body?.table || '').trim();
   const tableMeta = TABLE_SCHEMA[table];
@@ -397,11 +784,39 @@ export async function executeDbRequest(body, dbUrl) {
     return { status: 400, body: { data: null, error: { message: `Tabla no permitida: ${table}` } } };
   }
 
-  const sql = getSql(dbUrl);
   const action = String(body?.action || 'select').toLowerCase();
   const params = [];
 
   try {
+    const sql = getSql(dbUrl);
+
+    if (action === 'get_honorarios_correlativo') {
+      if (table !== 'investigaciones_kant') {
+        return { status: 400, body: { data: null, error: { message: 'Acción inválida para esta tabla.' } } };
+      }
+      const seqState = await computeHonorariosSeqState((t, p) => sql.query(t, p), body?.year);
+      const nextSeq = seqState.currentMax + 1;
+      return {
+        status: 200,
+        body: {
+          data: {
+            year: seqState.year,
+            lastSeq: seqState.currentMax,
+            nextSeq,
+            nextCorrelativo: formatCorrelativoCode(seqState.year, nextSeq),
+          },
+          error: null,
+        },
+      };
+    }
+
+    if (action === 'emit_recibo_honorario') {
+      if (table !== 'investigaciones_kant') {
+        return { status: 400, body: { data: null, error: { message: 'Acción inválida para esta tabla.' } } };
+      }
+      return await handleEmitReciboHonorario(sql, dbUrl, body);
+    }
+
     if (action === 'select') {
       const whereSql = buildWhereClause(tableMeta, body.filters, params);
       if (body.head === true) {
@@ -550,9 +965,20 @@ export async function executeDbRequest(body, dbUrl) {
     return { status: 400, body: { data: null, error: { message: `Acción no soportada: ${action}` } } };
   } catch (err) {
     console.error(`[NeonDB ${action} ${table}] Error:`, err);
+    const pgDetails = [err?.detail, err?.hint].filter(Boolean).join(' — ');
+    const message = pgDetails
+      ? `${err?.message || 'Error en PostgreSQL'} (${pgDetails})`
+      : err?.message || 'Error ejecutando consulta en PostgreSQL';
     return {
       status: 500,
-      body: { data: null, error: { message: err?.message || 'Error ejecutando consulta en Neon Postgres' } },
+      body: {
+        data: null,
+        error: {
+          message,
+          code: err?.code || undefined,
+          constraint: err?.constraint || undefined,
+        },
+      },
     };
   }
 }
